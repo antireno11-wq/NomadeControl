@@ -16,7 +16,7 @@ App web para registrar reportes diarios por campamento y supervisar desde una of
 ## Stack
 - Next.js 14 (App Router)
 - Prisma ORM
-- SQLite local (desarrollo)
+- PostgreSQL (Railway / producción)
 - Railway para despliegue
 
 ## 1. Configuración local
