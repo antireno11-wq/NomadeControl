@@ -1,4 +1,4 @@
-# Control de Campamentos
+# NomadeControl
 
 App web para registrar reportes diarios por campamento y supervisar desde una oficina central.
 
