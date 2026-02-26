@@ -19,12 +19,17 @@ const reportSchema = z.object({
   notes: z.string().optional()
 });
 
+export type ReportFormState = {
+  error: string;
+  success: string;
+};
+
 export async function logoutAction() {
   await clearSession();
   redirect("/login");
 }
 
-export async function saveReportAction(_: { error?: string; success?: string } | undefined, formData: FormData) {
+export async function saveReportAction(_: ReportFormState, formData: FormData): Promise<ReportFormState> {
   const user = await requireUser();
 
   const parsed = reportSchema.safeParse({
@@ -40,7 +45,7 @@ export async function saveReportAction(_: { error?: string; success?: string } |
   });
 
   if (!parsed.success) {
-    return { error: "Verifica los campos numéricos y la fecha." };
+    return { error: "Verifica los campos numéricos y la fecha.", success: "" };
   }
 
   const payload = parsed.data;
@@ -78,5 +83,5 @@ export async function saveReportAction(_: { error?: string; success?: string } |
   });
 
   revalidatePath("/dashboard");
-  return { success: "Reporte guardado correctamente." };
+  return { error: "", success: "Reporte guardado correctamente." };
 }

@@ -2,13 +2,14 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { saveReportAction } from "./actions";
+import type { ReportFormState } from "./actions";
 
 type CampOption = {
   id: string;
   name: string;
 };
 
-const initialState = { error: "", success: "" };
+const initialState: ReportFormState = { error: "", success: "" };
 
 function SaveButton() {
   const { pending } = useFormStatus();
