@@ -1,0 +1,274 @@
+import Image from "next/image";
+import { requireRole } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { toInputDateValue } from "@/lib/report-utils";
+import { logoutAction } from "./actions";
+import { ReportForm } from "./report-form";
+
+export default async function DashboardPage() {
+  const user = await requireRole(["ADMIN", "OPERADOR"]);
+  const today = new Date();
+  const last30Days = new Date(today);
+  last30Days.setDate(last30Days.getDate() - 30);
+
+  const [camps, recentReports, reports30Days] = await Promise.all([
+    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.dailyReport.findMany({
+      take: 20,
+      orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
+      include: { camp: true, createdBy: true }
+    }),
+    db.dailyReport.findMany({
+      where: {
+        date: {
+          gte: last30Days
+        }
+      },
+      orderBy: [{ date: "asc" }, { camp: { name: "asc" } }],
+      include: { camp: true }
+    })
+  ]);
+
+  const totals = reports30Days.reduce(
+    (acc, row) => {
+      acc.people += row.peopleCount;
+      acc.breakfast += row.breakfastCount;
+      acc.lunch += row.lunchCount;
+      acc.dinner += row.dinnerCount;
+      acc.water += row.waterLiters;
+      acc.fuel += row.fuelLiters;
+      return acc;
+    },
+    { people: 0, breakfast: 0, lunch: 0, dinner: 0, water: 0, fuel: 0 }
+  );
+
+  const byDay = new Map<
+    string,
+    {
+      date: string;
+      people: number;
+      meals: number;
+      water: number;
+      fuel: number;
+    }
+  >();
+
+  for (const report of reports30Days) {
+    const date = toInputDateValue(report.date);
+    const previous = byDay.get(date) ?? { date, people: 0, meals: 0, water: 0, fuel: 0 };
+    previous.people += report.peopleCount;
+    previous.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
+    previous.water += report.waterLiters;
+    previous.fuel += report.fuelLiters;
+    byDay.set(date, previous);
+  }
+
+  const dailySeries = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const latestDay = dailySeries[dailySeries.length - 1];
+  const previousDay = dailySeries[dailySeries.length - 2];
+  const recent14Days = dailySeries.slice(-14).reverse();
+
+  const campRows = camps.map((camp) => {
+    const campReports = reports30Days.filter((report) => report.campId === camp.id);
+    const ordered = [...campReports].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const last = ordered[ordered.length - 1];
+    const prev = ordered[ordered.length - 2];
+    const peopleTotal = campReports.reduce((sum, report) => sum + report.peopleCount, 0);
+    const mealsTotal = campReports.reduce(
+      (sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount,
+      0
+    );
+    const waterTotal = campReports.reduce((sum, report) => sum + report.waterLiters, 0);
+    const fuelTotal = campReports.reduce((sum, report) => sum + report.fuelLiters, 0);
+
+    return {
+      id: camp.id,
+      name: camp.name,
+      reportsCount: campReports.length,
+      avgPeople: campReports.length > 0 ? Math.round(peopleTotal / campReports.length) : 0,
+      mealsPerPerson: peopleTotal > 0 ? mealsTotal / peopleTotal : 0,
+      waterPerPerson: peopleTotal > 0 ? waterTotal / peopleTotal : 0,
+      fuelPerPerson: peopleTotal > 0 ? fuelTotal / peopleTotal : 0,
+      mealCoverage: peopleTotal > 0 ? (mealsTotal / (peopleTotal * 3)) * 100 : 0,
+      peopleDelta: last && prev ? last.peopleCount - prev.peopleCount : 0
+    };
+  });
+
+  return (
+    <main>
+      <div className="header">
+        <div>
+          <div className="brand-inline">
+            <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
+          </div>
+          <h1>Panel de Campamentos</h1>
+          <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
+            Sesión: {user.name} ({user.role})
+          </div>
+        </div>
+
+        <form action={logoutAction}>
+          <button className="danger" type="submit">
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
+
+      <div className="grid two" style={{ marginBottom: 16 }}>
+        <div className="metric">
+          <div className="label">Personas acumuladas (30 días)</div>
+          <div className="value">{totals.people}</div>
+        </div>
+        <div className="metric">
+          <div className="label">Raciones acumuladas (30 días)</div>
+          <div className="value">{totals.breakfast + totals.lunch + totals.dinner}</div>
+        </div>
+        <div className="metric">
+          <div className="label">Agua total (30 días)</div>
+          <div className="value">{totals.water} L</div>
+        </div>
+        <div className="metric">
+          <div className="label">Combustible total (30 días)</div>
+          <div className="value">{totals.fuel} L</div>
+        </div>
+        <div className="metric">
+          <div className="label">Personas último día</div>
+          <div className="value">{latestDay ? latestDay.people : 0}</div>
+        </div>
+        <div className="metric">
+          <div className="label">Variación diaria personas</div>
+          <div
+            className={`value ${
+              latestDay && previousDay
+                ? latestDay.people - previousDay.people > 0
+                  ? "up"
+                  : latestDay.people - previousDay.people < 0
+                    ? "down"
+                    : ""
+                : ""
+            }`}
+          >
+            {latestDay && previousDay
+              ? `${latestDay.people - previousDay.people > 0 ? "+" : ""}${latestDay.people - previousDay.people}`
+              : "0"}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16, overflowX: "auto" }}>
+        <h2 style={{ marginTop: 0 }}>Rendimiento por Campamento (últimos 30 días)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Campamento</th>
+              <th>Reportes</th>
+              <th>Prom. personas</th>
+              <th>Comidas/persona</th>
+              <th>Agua/persona (L)</th>
+              <th>Comb./persona (L)</th>
+              <th>Cobertura comidas</th>
+              <th>Tendencia personas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {campRows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.name}</td>
+                <td>{row.reportsCount}</td>
+                <td>{row.avgPeople}</td>
+                <td>{row.mealsPerPerson.toFixed(2)}</td>
+                <td>{row.waterPerPerson.toFixed(2)}</td>
+                <td>{row.fuelPerPerson.toFixed(2)}</td>
+                <td>
+                  <div className="progress-cell">
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${Math.min(row.mealCoverage, 100)}%` }} />
+                    </div>
+                    <span>{row.mealCoverage.toFixed(0)}%</span>
+                  </div>
+                </td>
+                <td className={row.peopleDelta > 0 ? "up" : row.peopleDelta < 0 ? "down" : ""}>
+                  {row.peopleDelta > 0 ? `+${row.peopleDelta}` : row.peopleDelta}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16, overflowX: "auto" }}>
+        <h2 style={{ marginTop: 0 }}>Evolución Diaria (últimos 14 días)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Personas</th>
+              <th>Comidas</th>
+              <th>Agua (L)</th>
+              <th>Combustible (L)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recent14Days.map((day) => (
+              <tr key={day.date}>
+                <td>{day.date}</td>
+                <td>{day.people}</td>
+                <td>{day.meals}</td>
+                <td>{day.water}</td>
+                <td>{day.fuel}</td>
+              </tr>
+            ))}
+            {recent14Days.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ color: "var(--muted)" }}>
+                  Aún no hay datos suficientes para evolución diaria.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid two">
+        <ReportForm camps={camps.map((c) => ({ id: c.id, name: c.name }))} defaultDate={toInputDateValue(new Date())} />
+
+        <div className="card" style={{ overflowX: "auto" }}>
+          <h2 style={{ marginTop: 0 }}>Últimos reportes</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Campamento</th>
+                <th>Personas</th>
+                <th>Comidas</th>
+                <th>Agua</th>
+                <th>Combustible</th>
+                <th>Operador</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentReports.map((report) => (
+                <tr key={report.id}>
+                  <td>{toInputDateValue(report.date)}</td>
+                  <td>{report.camp.name}</td>
+                  <td>{report.peopleCount}</td>
+                  <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
+                  <td>{report.waterLiters} L</td>
+                  <td>{report.fuelLiters} L</td>
+                  <td>{report.createdBy.name}</td>
+                </tr>
+              ))}
+              {recentReports.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ color: "var(--muted)" }}>
+                    Aún no hay reportes cargados.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  );
+}

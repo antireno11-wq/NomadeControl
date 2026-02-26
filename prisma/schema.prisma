@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         String
+  sessions     Session[]
+  reports      DailyReport[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Camp {
+  id        String        @id @default(cuid())
+  name      String
+  location  String?
+  isActive  Boolean       @default(true)
+  reports   DailyReport[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model DailyReport {
+  id             String   @id @default(cuid())
+  date           DateTime
+  campId         String
+  camp           Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  peopleCount    Int
+  breakfastCount Int
+  lunchCount     Int
+  dinnerCount    Int
+  waterLiters    Int
+  fuelLiters     Int
+  extras         String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([campId, date])
+}
