@@ -23,78 +23,88 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
     <form action={formAction} className="card grid">
       <h2 style={{ margin: 0 }}>Carga diaria</h2>
 
-      <div className="grid two">
-        <div>
-          <label htmlFor="date">Fecha</label>
-          <input id="date" name="date" type="date" defaultValue={defaultDate} required />
-        </div>
+      <section className="report-section">
+        <h3 className="section-title">Contexto Diario</h3>
+        <div className="grid two">
+          <div>
+            <label htmlFor="date">Fecha</label>
+            <input id="date" name="date" type="date" defaultValue={defaultDate} required />
+          </div>
 
-        <div>
-          <label htmlFor="campId">Campamento</label>
-          <select id="campId" name="campId" required>
-            {camps.map((camp) => (
-              <option key={camp.id} value={camp.id}>
-                {camp.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+          <div>
+            <label htmlFor="campId">Campamento</label>
+            <select id="campId" name="campId" required>
+              {camps.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      <div className="grid two">
-        <div>
-          <label htmlFor="peopleCount">Personas en campamento</label>
-          <input id="peopleCount" name="peopleCount" type="number" min={0} defaultValue={0} required />
+          <div>
+            <label htmlFor="peopleCount">Personas en campamento</label>
+            <input id="peopleCount" name="peopleCount" type="number" min={0} defaultValue={0} required />
+          </div>
         </div>
-        <div>
-          <label htmlFor="breakfastCount">Desayunos entregados</label>
-          <input id="breakfastCount" name="breakfastCount" type="number" min={0} defaultValue={0} required />
-        </div>
-      </div>
+      </section>
 
-      <div className="grid two">
-        <div>
-          <label htmlFor="lunchCount">Almuerzos entregados</label>
-          <input id="lunchCount" name="lunchCount" type="number" min={0} defaultValue={0} required />
+      <section className="report-section">
+        <h3 className="section-title">Alimentación</h3>
+        <div className="grid two">
+          <div>
+            <label htmlFor="breakfastCount">Desayunos entregados</label>
+            <input id="breakfastCount" name="breakfastCount" type="number" min={0} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="lunchCount">Almuerzos entregados</label>
+            <input id="lunchCount" name="lunchCount" type="number" min={0} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="dinnerCount">Cenas entregadas</label>
+            <input id="dinnerCount" name="dinnerCount" type="number" min={0} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="snackSimpleCount">Colaciones simples</label>
+            <input id="snackSimpleCount" name="snackSimpleCount" type="number" min={0} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="snackReplacementCount">Colaciones de reemplazo</label>
+            <input
+              id="snackReplacementCount"
+              name="snackReplacementCount"
+              type="number"
+              min={0}
+              defaultValue={0}
+              required
+            />
+          </div>
         </div>
-        <div>
-          <label htmlFor="dinnerCount">Cenas entregadas</label>
-          <input id="dinnerCount" name="dinnerCount" type="number" min={0} defaultValue={0} required />
-        </div>
-      </div>
+      </section>
 
-      <div className="grid two">
-        <div>
-          <label htmlFor="snackSimpleCount">Colaciones simples</label>
-          <input id="snackSimpleCount" name="snackSimpleCount" type="number" min={0} defaultValue={0} required />
+      <section className="report-section">
+        <h3 className="section-title">Alojamiento</h3>
+        <div className="grid two">
+          <div>
+            <label htmlFor="lodgingCount">Alojamientos</label>
+            <input id="lodgingCount" name="lodgingCount" type="number" min={0} defaultValue={0} required />
+          </div>
         </div>
-        <div>
-          <label htmlFor="snackReplacementCount">Colaciones de reemplazo</label>
-          <input
-            id="snackReplacementCount"
-            name="snackReplacementCount"
-            type="number"
-            min={0}
-            defaultValue={0}
-            required
-          />
-        </div>
-      </div>
+      </section>
 
-      <div className="grid two">
-        <div>
-          <label htmlFor="lodgingCount">Alojamientos</label>
-          <input id="lodgingCount" name="lodgingCount" type="number" min={0} defaultValue={0} required />
+      <section className="report-section">
+        <h3 className="section-title">Recursos Operativos</h3>
+        <div className="grid two">
+          <div>
+            <label htmlFor="waterLiters">Agua (litros)</label>
+            <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="fuelLiters">Combustible (litros)</label>
+            <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
+          </div>
         </div>
-        <div>
-          <label htmlFor="waterLiters">Agua (litros)</label>
-          <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
-        </div>
-        <div>
-          <label htmlFor="fuelLiters">Combustible (litros)</label>
-          <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
-        </div>
-      </div>
+      </section>
 
       <div>
         <label htmlFor="notes">Observaciones</label>

@@ -221,6 +221,122 @@ th {
   background: linear-gradient(90deg, #0b7a75, #0da9a2);
 }
 
+.report-section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #f9fcfd;
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  color: #214656;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
+  gap: 6px;
+  align-items: flex-end;
+  min-height: 220px;
+}
+
+.chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-value {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.chart-track {
+  width: 100%;
+  height: 140px;
+  background: #edf4f7;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.chart-stack {
+  width: 100%;
+  height: 140px;
+  background: #edf4f7;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.chart-bar {
+  width: 100%;
+}
+
+.chart-bar.people {
+  background: linear-gradient(180deg, #0b7a75, #0a5f5b);
+}
+
+.chart-bar.meals {
+  background: #1f8f8a;
+}
+
+.chart-bar.snacks {
+  background: #ff6b00;
+}
+
+.chart-bar.water {
+  background: #2480c5;
+}
+
+.chart-bar.fuel {
+  background: #6c757d;
+}
+
+.chart-label {
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+.chart-legend {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-right: 5px;
+}
+
+.dot.meals {
+  background: #1f8f8a;
+}
+
+.dot.snacks {
+  background: #ff6b00;
+}
+
+.dot.water {
+  background: #2480c5;
+}
+
+.dot.fuel {
+  background: #6c757d;
+}
+
 @media (max-width: 700px) {
   .header {
     flex-direction: column;

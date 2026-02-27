@@ -106,6 +106,12 @@ export default async function DashboardPage({
   const latestDay = dailySeries[dailySeries.length - 1];
   const previousDay = dailySeries[dailySeries.length - 2];
   const recent14Days = dailySeries.slice(-14).reverse();
+  const chartDays = [...recent14Days].reverse();
+  const maxPeopleChart = Math.max(1, ...chartDays.map((day) => day.people));
+  const maxResourcesChart = Math.max(
+    1,
+    ...chartDays.map((day) => Math.max(day.meals, day.snacks, day.water, day.fuel))
+  );
 
   const campRows = scopeCamps.map((camp) => {
     const campReports = reports30DaysFiltered.filter((report) => report.campId === camp.id);
@@ -338,6 +344,46 @@ export default async function DashboardPage({
             ) : null}
           </tbody>
         </table>
+      </div>
+
+      <div className="grid two" style={{ marginBottom: 16 }}>
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Gráfico: Tendencia de Personas (14 días)</h2>
+          <div className="chart-grid">
+            {chartDays.map((day) => (
+              <div key={`people-${day.date}`} className="chart-col">
+                <div className="chart-value">{day.people}</div>
+                <div className="chart-track">
+                  <div className="chart-bar people" style={{ height: `${(day.people / maxPeopleChart) * 100}%` }} />
+                </div>
+                <div className="chart-label">{day.date.slice(5)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Gráfico: Consumos Diarios (14 días)</h2>
+          <div className="chart-grid">
+            {chartDays.map((day) => (
+              <div key={`consumption-${day.date}`} className="chart-col">
+                <div className="chart-stack">
+                  <div className="chart-bar meals" style={{ height: `${(day.meals / maxResourcesChart) * 100}%` }} />
+                  <div className="chart-bar snacks" style={{ height: `${(day.snacks / maxResourcesChart) * 100}%` }} />
+                  <div className="chart-bar water" style={{ height: `${(day.water / maxResourcesChart) * 100}%` }} />
+                  <div className="chart-bar fuel" style={{ height: `${(day.fuel / maxResourcesChart) * 100}%` }} />
+                </div>
+                <div className="chart-label">{day.date.slice(5)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="chart-legend">
+            <span><i className="dot meals" /> Comidas</span>
+            <span><i className="dot snacks" /> Colaciones</span>
+            <span><i className="dot water" /> Agua</span>
+            <span><i className="dot fuel" /> Combustible</span>
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ overflowX: "auto" }}>
