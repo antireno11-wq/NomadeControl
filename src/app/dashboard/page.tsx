@@ -8,10 +8,11 @@ import { ReportForm } from "./report-form";
 export default async function DashboardPage() {
   const user = await requireRole(["ADMIN", "OPERADOR"]);
   const today = new Date();
+  const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   const last30Days = new Date(today);
   last30Days.setDate(last30Days.getDate() - 30);
 
-  const [camps, recentReports, reports30Days] = await Promise.all([
+  const [camps, recentReports, reports30Days, reportsToday] = await Promise.all([
     db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.dailyReport.findMany({
       take: 20,
@@ -26,6 +27,14 @@ export default async function DashboardPage() {
       },
       orderBy: [{ date: "asc" }, { camp: { name: "asc" } }],
       include: { camp: true }
+    }),
+    db.dailyReport.findMany({
+      where: {
+        date: todayDate
+      },
+      include: {
+        camp: true
+      }
     })
   ]);
 
@@ -35,11 +44,24 @@ export default async function DashboardPage() {
       acc.breakfast += row.breakfastCount;
       acc.lunch += row.lunchCount;
       acc.dinner += row.dinnerCount;
+      acc.snackSimple += row.snackSimpleCount;
+      acc.snackReplacement += row.snackReplacementCount;
+      acc.lodging += row.lodgingCount;
       acc.water += row.waterLiters;
       acc.fuel += row.fuelLiters;
       return acc;
     },
-    { people: 0, breakfast: 0, lunch: 0, dinner: 0, water: 0, fuel: 0 }
+    {
+      people: 0,
+      breakfast: 0,
+      lunch: 0,
+      dinner: 0,
+      snackSimple: 0,
+      snackReplacement: 0,
+      lodging: 0,
+      water: 0,
+      fuel: 0
+    }
   );
 
   const byDay = new Map<
@@ -48,6 +70,8 @@ export default async function DashboardPage() {
       date: string;
       people: number;
       meals: number;
+      snacks: number;
+      lodgings: number;
       water: number;
       fuel: number;
     }
@@ -55,9 +79,11 @@ export default async function DashboardPage() {
 
   for (const report of reports30Days) {
     const date = toInputDateValue(report.date);
-    const previous = byDay.get(date) ?? { date, people: 0, meals: 0, water: 0, fuel: 0 };
+    const previous = byDay.get(date) ?? { date, people: 0, meals: 0, snacks: 0, lodgings: 0, water: 0, fuel: 0 };
     previous.people += report.peopleCount;
     previous.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
+    previous.snacks += report.snackSimpleCount + report.snackReplacementCount;
+    previous.lodgings += report.lodgingCount;
     previous.water += report.waterLiters;
     previous.fuel += report.fuelLiters;
     byDay.set(date, previous);
@@ -78,6 +104,8 @@ export default async function DashboardPage() {
       (sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount,
       0
     );
+    const snacksTotal = campReports.reduce((sum, report) => sum + report.snackSimpleCount + report.snackReplacementCount, 0);
+    const lodgingsTotal = campReports.reduce((sum, report) => sum + report.lodgingCount, 0);
     const waterTotal = campReports.reduce((sum, report) => sum + report.waterLiters, 0);
     const fuelTotal = campReports.reduce((sum, report) => sum + report.fuelLiters, 0);
 
@@ -87,12 +115,18 @@ export default async function DashboardPage() {
       reportsCount: campReports.length,
       avgPeople: campReports.length > 0 ? Math.round(peopleTotal / campReports.length) : 0,
       mealsPerPerson: peopleTotal > 0 ? mealsTotal / peopleTotal : 0,
+      snacksPerPerson: peopleTotal > 0 ? snacksTotal / peopleTotal : 0,
+      lodgingCoverage: peopleTotal > 0 ? (lodgingsTotal / peopleTotal) * 100 : 0,
       waterPerPerson: peopleTotal > 0 ? waterTotal / peopleTotal : 0,
       fuelPerPerson: peopleTotal > 0 ? fuelTotal / peopleTotal : 0,
       mealCoverage: peopleTotal > 0 ? (mealsTotal / (peopleTotal * 3)) * 100 : 0,
       peopleDelta: last && prev ? last.peopleCount - prev.peopleCount : 0
     };
   });
+
+  const reportedCampIdsToday = new Set(reportsToday.map((report) => report.campId));
+  const missingCampsToday = camps.filter((camp) => !reportedCampIdsToday.has(camp.id));
+  const dailyCompliance = camps.length > 0 ? Math.round((reportsToday.length / camps.length) * 100) : 0;
 
   return (
     <main>
@@ -124,6 +158,14 @@ export default async function DashboardPage() {
           <div className="value">{totals.breakfast + totals.lunch + totals.dinner}</div>
         </div>
         <div className="metric">
+          <div className="label">Colaciones acumuladas (30 días)</div>
+          <div className="value">{totals.snackSimple + totals.snackReplacement}</div>
+        </div>
+        <div className="metric">
+          <div className="label">Alojamientos acumulados (30 días)</div>
+          <div className="value">{totals.lodging}</div>
+        </div>
+        <div className="metric">
           <div className="label">Agua total (30 días)</div>
           <div className="value">{totals.water} L</div>
         </div>
@@ -153,6 +195,24 @@ export default async function DashboardPage() {
               : "0"}
           </div>
         </div>
+        <div className="metric">
+          <div className="label">Cumplimiento diario (hoy)</div>
+          <div className="value">{dailyCompliance}%</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Control Exigible Diario</h2>
+        <div style={{ color: "var(--muted)", marginBottom: 8 }}>
+          Campamentos con carga hoy: {reportsToday.length} de {camps.length}
+        </div>
+        {missingCampsToday.length > 0 ? (
+          <div className="alert error">
+            Faltan reportes diarios de: {missingCampsToday.map((camp) => camp.name).join(", ")}
+          </div>
+        ) : (
+          <div className="alert success">Todos los campamentos cargaron consumos diarios hoy.</div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 16, overflowX: "auto" }}>
@@ -164,6 +224,8 @@ export default async function DashboardPage() {
               <th>Reportes</th>
               <th>Prom. personas</th>
               <th>Comidas/persona</th>
+              <th>Colaciones/persona</th>
+              <th>Cobertura alojamientos</th>
               <th>Agua/persona (L)</th>
               <th>Comb./persona (L)</th>
               <th>Cobertura comidas</th>
@@ -177,6 +239,8 @@ export default async function DashboardPage() {
                 <td>{row.reportsCount}</td>
                 <td>{row.avgPeople}</td>
                 <td>{row.mealsPerPerson.toFixed(2)}</td>
+                <td>{row.snacksPerPerson.toFixed(2)}</td>
+                <td>{row.lodgingCoverage.toFixed(0)}%</td>
                 <td>{row.waterPerPerson.toFixed(2)}</td>
                 <td>{row.fuelPerPerson.toFixed(2)}</td>
                 <td>
@@ -204,6 +268,8 @@ export default async function DashboardPage() {
               <th>Fecha</th>
               <th>Personas</th>
               <th>Comidas</th>
+              <th>Colaciones</th>
+              <th>Alojamientos</th>
               <th>Agua (L)</th>
               <th>Combustible (L)</th>
             </tr>
@@ -214,13 +280,15 @@ export default async function DashboardPage() {
                 <td>{day.date}</td>
                 <td>{day.people}</td>
                 <td>{day.meals}</td>
+                <td>{day.snacks}</td>
+                <td>{day.lodgings}</td>
                 <td>{day.water}</td>
                 <td>{day.fuel}</td>
               </tr>
             ))}
             {recent14Days.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ color: "var(--muted)" }}>
+                <td colSpan={7} style={{ color: "var(--muted)" }}>
                   Aún no hay datos suficientes para evolución diaria.
                 </td>
               </tr>
@@ -241,6 +309,8 @@ export default async function DashboardPage() {
                 <th>Campamento</th>
                 <th>Personas</th>
                 <th>Comidas</th>
+                <th>Colaciones</th>
+                <th>Alojamientos</th>
                 <th>Agua</th>
                 <th>Combustible</th>
                 <th>Operador</th>
@@ -253,6 +323,8 @@ export default async function DashboardPage() {
                   <td>{report.camp.name}</td>
                   <td>{report.peopleCount}</td>
                   <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
+                  <td>{report.snackSimpleCount + report.snackReplacementCount}</td>
+                  <td>{report.lodgingCount}</td>
                   <td>{report.waterLiters} L</td>
                   <td>{report.fuelLiters} L</td>
                   <td>{report.createdBy.name}</td>
@@ -260,7 +332,7 @@ export default async function DashboardPage() {
               ))}
               {recentReports.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ color: "var(--muted)" }}>
+                  <td colSpan={9} style={{ color: "var(--muted)" }}>
                     Aún no hay reportes cargados.
                   </td>
                 </tr>

@@ -49,6 +49,9 @@ model DailyReport {
   breakfastCount Int
   lunchCount     Int
   dinnerCount    Int
+  snackSimpleCount      Int
+  snackReplacementCount Int
+  lodgingCount          Int
   waterLiters    Int
   fuelLiters     Int
   extras         String?

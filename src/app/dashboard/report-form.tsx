@@ -65,6 +65,28 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
 
       <div className="grid two">
         <div>
+          <label htmlFor="snackSimpleCount">Colaciones simples</label>
+          <input id="snackSimpleCount" name="snackSimpleCount" type="number" min={0} defaultValue={0} required />
+        </div>
+        <div>
+          <label htmlFor="snackReplacementCount">Colaciones de reemplazo</label>
+          <input
+            id="snackReplacementCount"
+            name="snackReplacementCount"
+            type="number"
+            min={0}
+            defaultValue={0}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="grid two">
+        <div>
+          <label htmlFor="lodgingCount">Alojamientos</label>
+          <input id="lodgingCount" name="lodgingCount" type="number" min={0} defaultValue={0} required />
+        </div>
+        <div>
           <label htmlFor="waterLiters">Agua (litros)</label>
           <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
         </div>
