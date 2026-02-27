@@ -38,6 +38,34 @@ a {
   box-shadow: 0 10px 30px rgba(16, 33, 43, 0.06);
 }
 
+.top-menu {
+  display: flex;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+.menu-item {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.menu-item:hover {
+  background: #eef4f7;
+  color: var(--text);
+}
+
+.menu-item.active {
+  background: #dff0f2;
+  color: #0b5f5a;
+}
+
 .grid {
   display: grid;
   gap: 16px;
@@ -197,6 +225,10 @@ th {
   .header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .top-menu {
+    flex-direction: column;
   }
 
   .brand-inline {

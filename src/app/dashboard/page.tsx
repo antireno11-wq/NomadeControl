@@ -1,11 +1,15 @@
 import Image from "next/image";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "./actions";
-import { ReportForm } from "./report-form";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams?: { campId?: string | string[] };
+}) {
   const user = await requireRole(["ADMIN", "OPERADOR"]);
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
@@ -38,7 +42,16 @@ export default async function DashboardPage() {
     })
   ]);
 
-  const totals = reports30Days.reduce(
+  const selectedCampIdRaw = searchParams?.campId;
+  const selectedCampId = typeof selectedCampIdRaw === "string" ? selectedCampIdRaw : undefined;
+  const selectedCamp = selectedCampId ? camps.find((camp) => camp.id === selectedCampId) : undefined;
+  const scopeCamps = selectedCamp ? [selectedCamp] : camps;
+  const scopeCampIds = new Set(scopeCamps.map((camp) => camp.id));
+  const recentReportsFiltered = recentReports.filter((report) => scopeCampIds.has(report.campId));
+  const reports30DaysFiltered = reports30Days.filter((report) => scopeCampIds.has(report.campId));
+  const reportsTodayFiltered = reportsToday.filter((report) => scopeCampIds.has(report.campId));
+
+  const totals = reports30DaysFiltered.reduce(
     (acc, row) => {
       acc.people += row.peopleCount;
       acc.breakfast += row.breakfastCount;
@@ -77,7 +90,7 @@ export default async function DashboardPage() {
     }
   >();
 
-  for (const report of reports30Days) {
+  for (const report of reports30DaysFiltered) {
     const date = toInputDateValue(report.date);
     const previous = byDay.get(date) ?? { date, people: 0, meals: 0, snacks: 0, lodgings: 0, water: 0, fuel: 0 };
     previous.people += report.peopleCount;
@@ -94,8 +107,8 @@ export default async function DashboardPage() {
   const previousDay = dailySeries[dailySeries.length - 2];
   const recent14Days = dailySeries.slice(-14).reverse();
 
-  const campRows = camps.map((camp) => {
-    const campReports = reports30Days.filter((report) => report.campId === camp.id);
+  const campRows = scopeCamps.map((camp) => {
+    const campReports = reports30DaysFiltered.filter((report) => report.campId === camp.id);
     const ordered = [...campReports].sort((a, b) => a.date.getTime() - b.date.getTime());
     const last = ordered[ordered.length - 1];
     const prev = ordered[ordered.length - 2];
@@ -124,12 +137,21 @@ export default async function DashboardPage() {
     };
   });
 
-  const reportedCampIdsToday = new Set(reportsToday.map((report) => report.campId));
-  const missingCampsToday = camps.filter((camp) => !reportedCampIdsToday.has(camp.id));
-  const dailyCompliance = camps.length > 0 ? Math.round((reportsToday.length / camps.length) * 100) : 0;
+  const reportedCampIdsToday = new Set(reportsTodayFiltered.map((report) => report.campId));
+  const missingCampsToday = scopeCamps.filter((camp) => !reportedCampIdsToday.has(camp.id));
+  const dailyCompliance = scopeCamps.length > 0 ? Math.round((reportsTodayFiltered.length / scopeCamps.length) * 100) : 0;
 
   return (
     <main>
+      <nav className="top-menu">
+        <Link href="/dashboard" className="menu-item active">
+          Dashboard
+        </Link>
+        <Link href="/carga-diaria" className="menu-item">
+          Cargar información
+        </Link>
+      </nav>
+
       <div className="header">
         <div>
           <div className="brand-inline">
@@ -137,14 +159,35 @@ export default async function DashboardPage() {
           </div>
           <h1>Panel de Campamentos</h1>
           <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesión: {user.name} ({user.role})
+            Sesión: {user.name} ({user.role}){selectedCamp ? ` · Vista: ${selectedCamp.name}` : " · Vista: General"}
           </div>
         </div>
 
-        <form action={logoutAction}>
-          <button className="danger" type="submit">
-            Cerrar sesión
-          </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <form action={logoutAction}>
+            <button className="danger" type="submit">
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <form method="get" className="grid two" style={{ alignItems: "end" }}>
+          <div>
+            <label htmlFor="campId">Vista del dashboard</label>
+            <select id="campId" name="campId" defaultValue={selectedCamp?.id ?? "general"}>
+              <option value="general">General (todos los campamentos)</option>
+              {camps.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <button type="submit">Aplicar vista</button>
+          </div>
         </form>
       </div>
 
@@ -204,7 +247,7 @@ export default async function DashboardPage() {
       <div className="card" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Control Exigible Diario</h2>
         <div style={{ color: "var(--muted)", marginBottom: 8 }}>
-          Campamentos con carga hoy: {reportsToday.length} de {camps.length}
+          Campamentos con carga hoy: {reportsTodayFiltered.length} de {scopeCamps.length}
         </div>
         {missingCampsToday.length > 0 ? (
           <div className="alert error">
@@ -297,49 +340,45 @@ export default async function DashboardPage() {
         </table>
       </div>
 
-      <div className="grid two">
-        <ReportForm camps={camps.map((c) => ({ id: c.id, name: c.name }))} defaultDate={toInputDateValue(new Date())} />
-
-        <div className="card" style={{ overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Últimos reportes</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Campamento</th>
-                <th>Personas</th>
-                <th>Comidas</th>
-                <th>Colaciones</th>
-                <th>Alojamientos</th>
-                <th>Agua</th>
-                <th>Combustible</th>
-                <th>Operador</th>
+      <div className="card" style={{ overflowX: "auto" }}>
+        <h2 style={{ marginTop: 0 }}>Últimos reportes</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Campamento</th>
+              <th>Personas</th>
+              <th>Comidas</th>
+              <th>Colaciones</th>
+              <th>Alojamientos</th>
+              <th>Agua</th>
+              <th>Combustible</th>
+              <th>Operador</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentReportsFiltered.map((report) => (
+              <tr key={report.id}>
+                <td>{toInputDateValue(report.date)}</td>
+                <td>{report.camp.name}</td>
+                <td>{report.peopleCount}</td>
+                <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
+                <td>{report.snackSimpleCount + report.snackReplacementCount}</td>
+                <td>{report.lodgingCount}</td>
+                <td>{report.waterLiters} L</td>
+                <td>{report.fuelLiters} L</td>
+                <td>{report.createdBy.name}</td>
               </tr>
-            </thead>
-            <tbody>
-              {recentReports.map((report) => (
-                <tr key={report.id}>
-                  <td>{toInputDateValue(report.date)}</td>
-                  <td>{report.camp.name}</td>
-                  <td>{report.peopleCount}</td>
-                  <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
-                  <td>{report.snackSimpleCount + report.snackReplacementCount}</td>
-                  <td>{report.lodgingCount}</td>
-                  <td>{report.waterLiters} L</td>
-                  <td>{report.fuelLiters} L</td>
-                  <td>{report.createdBy.name}</td>
-                </tr>
-              ))}
-              {recentReports.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ color: "var(--muted)" }}>
-                    Aún no hay reportes cargados.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {recentReportsFiltered.length === 0 ? (
+              <tr>
+                <td colSpan={9} style={{ color: "var(--muted)" }}>
+                  Aún no hay reportes cargados.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
     </main>
   );
