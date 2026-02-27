@@ -20,19 +20,12 @@ export default async function CargaDiariaPage() {
 
   return (
     <main>
-      <nav className="top-menu">
-        <Link href="/dashboard" className="menu-item">
-          Dashboard
-        </Link>
-        <Link href="/carga-diaria" className="menu-item active">
-          Cargar información
-        </Link>
-      </nav>
-
       <div className="header">
         <div>
           <div className="brand-inline">
-            <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
+            <Link href="/" aria-label="Ir al inicio">
+              <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
+            </Link>
           </div>
           <h1>Carga Diaria de Consumos</h1>
           <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
@@ -49,8 +42,17 @@ export default async function CargaDiariaPage() {
         </div>
       </div>
 
+      <nav className="top-menu">
+        <Link href="/dashboard" className="menu-item">
+          Dashboard
+        </Link>
+        <Link href="/carga-diaria" className="menu-item active">
+          Cargar información
+        </Link>
+      </nav>
+
       <div className="alert error" style={{ marginBottom: 16 }}>
-        Campos exigibles diarios: desayuno, almuerzo, cena, colación simple, colación de reemplazo, agua y alojamientos.
+        Campos exigibles diarios: desayuno, almuerzo, cena, colación simple, colación de reemplazo, botellas de agua, alojamientos, lectura de medidor, agua gastada, basura, cloro y pH.
       </div>
 
       <div className="grid two">
@@ -66,9 +68,14 @@ export default async function CargaDiariaPage() {
                 <th>Personas</th>
                 <th>Comidas</th>
                 <th>Colaciones</th>
+                <th>Botellas</th>
                 <th>Alojamientos</th>
-                <th>Agua</th>
+                <th>Lectura medidor</th>
+                <th>Agua gastada</th>
                 <th>Combustible</th>
+                <th>Basura</th>
+                <th>Cloro</th>
+                <th>pH</th>
               </tr>
             </thead>
             <tbody>
@@ -79,14 +86,19 @@ export default async function CargaDiariaPage() {
                   <td>{report.peopleCount}</td>
                   <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
                   <td>{report.snackSimpleCount + report.snackReplacementCount}</td>
+                  <td>{report.waterBottleCount}</td>
                   <td>{report.lodgingCount}</td>
+                  <td>{report.meterReading.toFixed(2)}</td>
                   <td>{report.waterLiters} L</td>
                   <td>{report.fuelLiters} L</td>
+                  <td>{report.wasteFillPercent}%</td>
+                  <td>{report.chlorineLevel.toFixed(2)}</td>
+                  <td>{report.phLevel.toFixed(2)}</td>
                 </tr>
               ))}
               {recentReports.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ color: "var(--muted)" }}>
+                  <td colSpan={13} style={{ color: "var(--muted)" }}>
                     Aún no hay cargas registradas.
                   </td>
                 </tr>

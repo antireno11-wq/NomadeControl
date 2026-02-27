@@ -79,6 +79,10 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
               required
             />
           </div>
+          <div>
+            <label htmlFor="waterBottleCount">Botellas de agua</label>
+            <input id="waterBottleCount" name="waterBottleCount" type="number" min={0} defaultValue={0} required />
+          </div>
         </div>
       </section>
 
@@ -96,12 +100,28 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
         <h3 className="section-title">Recursos Operativos</h3>
         <div className="grid two">
           <div>
-            <label htmlFor="waterLiters">Agua (litros)</label>
+            <label htmlFor="meterReading">Lectura del medidor</label>
+            <input id="meterReading" name="meterReading" type="number" min={0} step="0.01" defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="waterLiters">Agua gastada (litros)</label>
             <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
           </div>
           <div>
             <label htmlFor="fuelLiters">Combustible (litros)</label>
             <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="wasteFillPercent">Llenado contenedor basura (%)</label>
+            <input id="wasteFillPercent" name="wasteFillPercent" type="range" min={0} max={100} defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="chlorineLevel">Medición de cloro</label>
+            <input id="chlorineLevel" name="chlorineLevel" type="number" min={0} step="0.01" defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="phLevel">Medición de pH</label>
+            <input id="phLevel" name="phLevel" type="number" min={0} step="0.01" defaultValue={7} required />
           </div>
         </div>
       </section>

@@ -29,6 +29,7 @@ async function main() {
   const days = 45;
   const now = new Date();
   const created = [];
+  const meterByCamp = new Map();
 
   for (let dayOffset = days - 1; dayOffset >= 0; dayOffset -= 1) {
     const date = new Date(now);
@@ -47,9 +48,17 @@ async function main() {
       const dinnerCount = Math.max(0, Math.round(peopleCount * (0.9 + ((noise + 1) % 6) * 0.01)));
       const snackSimpleCount = Math.max(0, Math.round(peopleCount * (0.45 + (i % 2) * 0.05)));
       const snackReplacementCount = Math.max(0, Math.round(peopleCount * (0.06 + ((noise + 1) % 3) * 0.01)));
+      const waterBottleCount = Math.max(0, Math.round(peopleCount * (1.3 + (i % 2) * 0.08)));
       const lodgingCount = Math.max(0, Math.round(peopleCount * (0.78 + (i % 3) * 0.04)));
       const waterLiters = Math.max(0, Math.round(peopleCount * (13 + (i % 3)) + noise * 3));
       const fuelLiters = Math.max(0, Math.round(peopleCount * (1.4 + i * 0.12) + noise));
+      const previousMeter = meterByCamp.get(camp.id) ?? Math.round(1200 + i * 250);
+      const meterDailyUse = Math.max(6, Math.round(fuelLiters * 0.65 + Math.abs(noise)));
+      const meterReading = previousMeter + meterDailyUse;
+      meterByCamp.set(camp.id, meterReading);
+      const wasteFillPercent = Math.max(5, Math.min(100, Math.round(25 + (dayOffset % 7) * 8 + i * 6 + noise * 0.5)));
+      const chlorineLevel = Number((0.7 + (i % 3) * 0.2 + ((noise % 5) * 0.02)).toFixed(2));
+      const phLevel = Number((7.1 + ((noise % 7) - 3) * 0.04).toFixed(2));
 
       await prisma.dailyReport.upsert({
         where: {
@@ -66,9 +75,14 @@ async function main() {
           dinnerCount,
           snackSimpleCount,
           snackReplacementCount,
+          waterBottleCount,
           lodgingCount,
+          meterReading,
           waterLiters,
           fuelLiters,
+          wasteFillPercent,
+          chlorineLevel,
+          phLevel,
           extras: JSON.stringify({
             gasKg: Math.max(1, Math.round(peopleCount * 0.16 + i)),
             hygieneKits: Math.max(0, Math.round(peopleCount * 0.04))
@@ -85,9 +99,14 @@ async function main() {
           dinnerCount,
           snackSimpleCount,
           snackReplacementCount,
+          waterBottleCount,
           lodgingCount,
+          meterReading,
           waterLiters,
           fuelLiters,
+          wasteFillPercent,
+          chlorineLevel,
+          phLevel,
           extras: JSON.stringify({
             gasKg: Math.max(1, Math.round(peopleCount * 0.16 + i)),
             hygieneKits: Math.max(0, Math.round(peopleCount * 0.04))

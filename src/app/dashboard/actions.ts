@@ -16,9 +16,14 @@ const reportSchema = z.object({
   dinnerCount: z.coerce.number().int().min(0),
   snackSimpleCount: z.coerce.number().int().min(0),
   snackReplacementCount: z.coerce.number().int().min(0),
+  waterBottleCount: z.coerce.number().int().min(0),
   lodgingCount: z.coerce.number().int().min(0),
+  meterReading: z.coerce.number().min(0),
   waterLiters: z.coerce.number().int().min(0),
   fuelLiters: z.coerce.number().int().min(0),
+  wasteFillPercent: z.coerce.number().int().min(0).max(100),
+  chlorineLevel: z.coerce.number().min(0),
+  phLevel: z.coerce.number().min(0),
   notes: z.string().optional()
 });
 
@@ -44,9 +49,14 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     dinnerCount: formData.get("dinnerCount"),
     snackSimpleCount: formData.get("snackSimpleCount"),
     snackReplacementCount: formData.get("snackReplacementCount"),
+    waterBottleCount: formData.get("waterBottleCount"),
     lodgingCount: formData.get("lodgingCount"),
+    meterReading: formData.get("meterReading"),
     waterLiters: formData.get("waterLiters"),
     fuelLiters: formData.get("fuelLiters"),
+    wasteFillPercent: formData.get("wasteFillPercent"),
+    chlorineLevel: formData.get("chlorineLevel"),
+    phLevel: formData.get("phLevel"),
     notes: String(formData.get("notes") ?? "")
   });
 
@@ -71,9 +81,14 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
       dinnerCount: payload.dinnerCount,
       snackSimpleCount: payload.snackSimpleCount,
       snackReplacementCount: payload.snackReplacementCount,
+      waterBottleCount: payload.waterBottleCount,
       lodgingCount: payload.lodgingCount,
+      meterReading: payload.meterReading,
       waterLiters: payload.waterLiters,
       fuelLiters: payload.fuelLiters,
+      wasteFillPercent: payload.wasteFillPercent,
+      chlorineLevel: payload.chlorineLevel,
+      phLevel: payload.phLevel,
       notes: payload.notes || null,
       createdById: user.id
     },
@@ -86,9 +101,14 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
       dinnerCount: payload.dinnerCount,
       snackSimpleCount: payload.snackSimpleCount,
       snackReplacementCount: payload.snackReplacementCount,
+      waterBottleCount: payload.waterBottleCount,
       lodgingCount: payload.lodgingCount,
+      meterReading: payload.meterReading,
       waterLiters: payload.waterLiters,
       fuelLiters: payload.fuelLiters,
+      wasteFillPercent: payload.wasteFillPercent,
+      chlorineLevel: payload.chlorineLevel,
+      phLevel: payload.phLevel,
       notes: payload.notes || null,
       createdById: user.id
     }
