@@ -51,14 +51,14 @@ model DailyReport {
   dinnerCount    Int
   snackSimpleCount      Int
   snackReplacementCount Int
-  waterBottleCount      Int
+  waterBottleCount      Int     @default(0)
   lodgingCount          Int
-  meterReading          Float
+  meterReading          Float   @default(0)
   waterLiters           Int
   fuelLiters     Int
-  wasteFillPercent      Int
-  chlorineLevel         Float
-  phLevel               Float
+  wasteFillPercent      Int     @default(0)
+  chlorineLevel         Float   @default(0)
+  phLevel               Float   @default(7)
   extras         String?
   notes          String?
   createdAt      DateTime @default(now())
