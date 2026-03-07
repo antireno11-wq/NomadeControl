@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
 import { logoutAction } from "@/app/dashboard/actions";
 import { createUserAction } from "@/app/administracion/actions";
 
-export default async function NuevoUsuarioPage({ searchParams }: { searchParams?: { ok?: string } }) {
+export default async function NuevoUsuarioPage({ searchParams }: { searchParams?: { ok?: string; error?: string } }) {
   const user = await requireRole(ADMIN_ROLES);
   const camps = await db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
+  const errorText = searchParams?.error ? String(searchParams.error) : "";
 
   return (
     <main>
@@ -37,6 +38,11 @@ export default async function NuevoUsuarioPage({ searchParams }: { searchParams?
         {searchParams?.ok === "1" ? (
           <div className="alert success" style={{ marginBottom: 12 }}>
             Usuario creado correctamente.
+          </div>
+        ) : null}
+        {errorText ? (
+          <div className="alert error" style={{ marginBottom: 12 }}>
+            {errorText}
           </div>
         ) : null}
 

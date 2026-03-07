@@ -36,64 +36,79 @@ function normalizedCampIdForRole(role: "ADMINISTRADOR" | "SUPERVISOR", campId?: 
 }
 
 export async function createUserAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  try {
+    await requireRole(ADMIN_ROLES);
 
-  const parsed = createUserSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    role: formData.get("role"),
-    campId: formData.get("campId"),
-    password: formData.get("password"),
-    sendWelcomeEmail: formData.get("sendWelcomeEmail")
-  });
+    const parsed = createUserSchema.safeParse({
+      name: formData.get("name"),
+      email: formData.get("email"),
+      role: formData.get("role"),
+      campId: formData.get("campId"),
+      password: formData.get("password"),
+      sendWelcomeEmail: formData.get("sendWelcomeEmail")
+    });
 
-  if (!parsed.success) {
-    throw new Error("Datos inválidos para crear usuario.");
-  }
-
-  const payload = parsed.data;
-  const existing = await db.user.findUnique({ where: { email: payload.email } });
-  if (existing) {
-    throw new Error("Ya existe un usuario con ese correo.");
-  }
-
-  let campName: string | null = null;
-  const campId = normalizedCampIdForRole(payload.role, payload.campId);
-  if (campId) {
-    const camp = await db.camp.findUnique({ where: { id: campId } });
-    campName = camp?.name ?? null;
-  }
-
-  const passwordHash = await bcrypt.hash(payload.password, 10);
-
-  const createdUser = await db.user.create({
-    data: {
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      campId,
-      isActive: true,
-      passwordHash
+    if (!parsed.success) {
+      redirect("/administracion/usuarios/nuevo?error=Datos%20invalidos%20para%20crear%20usuario");
     }
-  });
 
-  if (payload.sendWelcomeEmail === "on") {
-    try {
-      await sendWelcomeEmail({
-        to: payload.email,
+    const payload = parsed.data;
+    const existing = await db.user.findUnique({ where: { email: payload.email } });
+    if (existing) {
+      redirect("/administracion/usuarios/nuevo?error=Ya%20existe%20un%20usuario%20con%20ese%20correo");
+    }
+
+    let campName: string | null = null;
+    const campId = normalizedCampIdForRole(payload.role, payload.campId);
+    if (campId) {
+      const camp = await db.camp.findUnique({ where: { id: campId } });
+      campName = camp?.name ?? null;
+    }
+
+    const passwordHash = await bcrypt.hash(payload.password, 10);
+
+    const createdUser = await db.user.create({
+      data: {
         name: payload.name,
+        email: payload.email,
         role: payload.role,
-        password: payload.password,
-        campName
-      });
-    } catch (error) {
-      await db.user.delete({ where: { id: createdUser.id } });
+        campId,
+        isActive: true,
+        passwordHash
+      }
+    });
+
+    if (payload.sendWelcomeEmail === "on") {
+      try {
+        await sendWelcomeEmail({
+          to: payload.email,
+          name: payload.name,
+          role: payload.role,
+          password: payload.password,
+          campName
+        });
+      } catch (error) {
+        await db.user.delete({ where: { id: createdUser.id } });
+        const message = encodeURIComponent(error instanceof Error ? error.message : "No se pudo enviar el correo");
+        redirect(`/administracion/usuarios/nuevo?error=${message}`);
+      }
+    }
+
+    revalidatePath("/administracion");
+    redirect("/administracion/usuarios/nuevo?ok=1");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest?: string }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
       throw error;
     }
+    const message = encodeURIComponent(error instanceof Error ? error.message : "Error creando usuario");
+    redirect(`/administracion/usuarios/nuevo?error=${message}`);
   }
-
-  revalidatePath("/administracion");
-  redirect("/administracion/usuarios/nuevo?ok=1");
 }
 
 export async function updateUserAccessAction(formData: FormData) {
