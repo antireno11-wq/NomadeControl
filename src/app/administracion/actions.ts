@@ -2,7 +2,6 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -35,7 +34,25 @@ function normalizedCampIdForRole(role: "ADMINISTRADOR" | "SUPERVISOR", campId?: 
   return campId && campId !== "none" ? campId : null;
 }
 
-export async function createUserAction(formData: FormData) {
+export type CreateUserFormState = {
+  error: string;
+  success: string;
+};
+
+function isNextRedirectError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: string }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
+export async function createUserAction(
+  _: CreateUserFormState,
+  formData: FormData
+): Promise<CreateUserFormState> {
   try {
     await requireRole(ADMIN_ROLES);
 
@@ -48,14 +65,12 @@ export async function createUserAction(formData: FormData) {
       sendWelcomeEmail: formData.get("sendWelcomeEmail")
     });
 
-    if (!parsed.success) {
-      redirect("/administracion/usuarios/nuevo?error=Datos%20invalidos%20para%20crear%20usuario");
-    }
+    if (!parsed.success) return { error: "Datos inválidos para crear usuario.", success: "" };
 
     const payload = parsed.data;
     const existing = await db.user.findUnique({ where: { email: payload.email } });
     if (existing) {
-      redirect("/administracion/usuarios/nuevo?error=Ya%20existe%20un%20usuario%20con%20ese%20correo");
+      return { error: "Ya existe un usuario con ese correo.", success: "" };
     }
 
     let campName: string | null = null;
@@ -89,25 +104,20 @@ export async function createUserAction(formData: FormData) {
         });
       } catch (error) {
         await db.user.delete({ where: { id: createdUser.id } });
-        const message = encodeURIComponent(error instanceof Error ? error.message : "No se pudo enviar el correo");
-        redirect(`/administracion/usuarios/nuevo?error=${message}`);
+        return {
+          error: error instanceof Error ? error.message : "No se pudo enviar el correo.",
+          success: ""
+        };
       }
     }
 
     revalidatePath("/administracion");
-    redirect("/administracion/usuarios/nuevo?ok=1");
+    return { error: "", success: "Usuario creado correctamente." };
   } catch (error) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "digest" in error &&
-      typeof (error as { digest?: string }).digest === "string" &&
-      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
-    ) {
+    if (isNextRedirectError(error)) {
       throw error;
     }
-    const message = encodeURIComponent(error instanceof Error ? error.message : "Error creando usuario");
-    redirect(`/administracion/usuarios/nuevo?error=${message}`);
+    return { error: error instanceof Error ? error.message : "Error creando usuario.", success: "" };
   }
 }
 

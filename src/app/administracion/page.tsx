@@ -59,8 +59,8 @@ export default async function AdministracionPage() {
       <div className="card" style={{ overflowX: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h2 style={{ margin: 0 }}>Usuarios del sistema</h2>
-          <Link href="/administracion/usuarios/nuevo" target="_blank" rel="noopener noreferrer">
-            <button type="button">Crear usuario (nueva ventana)</button>
+          <Link href="/administracion/usuarios/nuevo">
+            <button type="button">Crear usuario</button>
           </Link>
         </div>
 
