@@ -1,13 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
-import { requireRole } from "@/lib/auth";
+import { OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
 import { ReportForm } from "@/app/dashboard/report-form";
+import { OpsNav } from "@/components/ops-nav";
 
 export default async function CargaDiariaPage() {
-  const user = await requireRole(["ADMIN", "OPERADOR"]);
+  const user = await requireRole(OPERATION_ROLES);
 
   const [camps, recentReports] = await Promise.all([
     db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
@@ -42,14 +43,7 @@ export default async function CargaDiariaPage() {
         </div>
       </div>
 
-      <nav className="top-menu">
-        <Link href="/dashboard" className="menu-item">
-          Dashboard
-        </Link>
-        <Link href="/carga-diaria" className="menu-item active">
-          Cargar información
-        </Link>
-      </nav>
+      <OpsNav active="carga" />
 
       <div className="alert error" style={{ marginBottom: 16 }}>
         Campos exigibles diarios: desayuno, almuerzo, cena, colación simple, colación de reemplazo, botellas de agua, alojamientos, lectura de medidor, agua gastada, basura, cloro y pH.

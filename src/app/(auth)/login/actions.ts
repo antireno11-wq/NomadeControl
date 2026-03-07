@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession } from "@/lib/auth";
+import { createSession, defaultRouteForRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth";
 
@@ -26,5 +26,5 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
   }
 
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect(defaultRouteForRole(user.role));
 }

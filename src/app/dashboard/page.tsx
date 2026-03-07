@@ -1,16 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "./actions";
+import { OpsNav } from "@/components/ops-nav";
 
 export default async function DashboardPage({
   searchParams
 }: {
   searchParams?: { campId?: string | string[] };
 }) {
-  const user = await requireRole(["ADMIN", "OPERADOR"]);
+  const user = await requireRole(ADMIN_ROLES);
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   const last30Days = new Date(today);
@@ -205,14 +206,7 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <nav className="top-menu">
-        <Link href="/dashboard" className="menu-item active">
-          Dashboard
-        </Link>
-        <Link href="/carga-diaria" className="menu-item">
-          Cargar información
-        </Link>
-      </nav>
+      <OpsNav active="dashboard" />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <form method="get" className="grid two" style={{ alignItems: "end" }}>

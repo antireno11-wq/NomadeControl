@@ -5,40 +5,71 @@ const { PrismaClient } = prismaPkg;
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@campamentos.local";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "administrador@campamentos.local";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "Admin1234";
+  const supervisorEmail = process.env.SEED_SUPERVISOR_EMAIL ?? "supervisor@campamentos.local";
+  const supervisorPassword = process.env.SEED_SUPERVISOR_PASSWORD ?? "Supervisor1234";
 
   const adminHash = await bcrypt.hash(adminPassword, 10);
+  const supervisorHash = await bcrypt.hash(supervisorPassword, 10);
 
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
-      name: "Administrador General",
-      role: "ADMIN",
+      name: "Administrador Plataforma",
+      role: "ADMINISTRADOR",
       passwordHash: adminHash
     },
     create: {
-      name: "Administrador General",
+      name: "Administrador Plataforma",
       email: adminEmail,
-      role: "ADMIN",
+      role: "ADMINISTRADOR",
       passwordHash: adminHash
     }
   });
 
-  const operatorHash = await bcrypt.hash("Operador1234", 10);
+  await prisma.user.upsert({
+    where: { email: supervisorEmail },
+    update: {
+      name: "Supervisor Campamento",
+      role: "SUPERVISOR",
+      passwordHash: supervisorHash
+    },
+    create: {
+      name: "Supervisor Campamento",
+      email: supervisorEmail,
+      role: "SUPERVISOR",
+      passwordHash: supervisorHash
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { email: "admin@campamentos.local" },
+    update: {
+      name: "Administrador Legacy",
+      role: "ADMINISTRADOR",
+      passwordHash: adminHash
+    },
+    create: {
+      name: "Administrador Legacy",
+      email: "admin@campamentos.local",
+      role: "ADMINISTRADOR",
+      passwordHash: adminHash
+    }
+  });
 
   await prisma.user.upsert({
     where: { email: "operador@campamentos.local" },
     update: {
-      name: "Operador Base",
-      role: "OPERADOR",
-      passwordHash: operatorHash
+      name: "Supervisor Legacy",
+      role: "SUPERVISOR",
+      passwordHash: supervisorHash
     },
     create: {
-      name: "Operador Base",
+      name: "Supervisor Legacy",
       email: "operador@campamentos.local",
-      role: "OPERADOR",
-      passwordHash: operatorHash
+      role: "SUPERVISOR",
+      passwordHash: supervisorHash
     }
   });
 

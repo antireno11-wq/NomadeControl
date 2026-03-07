@@ -14,8 +14,9 @@ function seedNoise(dayOffset, campFactor) {
 
 async function main() {
   const operator =
+    (await prisma.user.findUnique({ where: { email: "supervisor@campamentos.local" } })) ||
     (await prisma.user.findUnique({ where: { email: "operador@campamentos.local" } })) ||
-    (await prisma.user.findFirst({ where: { role: "ADMIN" } }));
+    (await prisma.user.findFirst({ where: { role: { in: ["SUPERVISOR", "ADMINISTRADOR", "ADMIN"] } } }));
 
   if (!operator) {
     throw new Error("No hay usuarios. Ejecuta primero: npm run prisma:seed");

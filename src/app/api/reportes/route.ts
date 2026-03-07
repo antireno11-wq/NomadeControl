@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET() {
-  await requireRole(["ADMIN"]);
+  await requireRole(ADMIN_ROLES);
 
   const reports = await db.dailyReport.findMany({
     include: { camp: true, createdBy: true },

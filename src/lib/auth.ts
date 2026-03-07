@@ -6,7 +6,16 @@ import { db } from "@/lib/db";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "camp_session";
 const SESSION_TTL_DAYS = 7;
-export type AppRole = "ADMIN" | "OPERADOR";
+export type AppRole = "ADMINISTRADOR" | "SUPERVISOR" | "ADMIN" | "OPERADOR";
+export const ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
+export const OPERATION_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN", "SUPERVISOR", "OPERADOR"];
+
+export function defaultRouteForRole(role: string) {
+  if (role === "ADMINISTRADOR" || role === "ADMIN") {
+    return "/dashboard";
+  }
+  return "/carga-diaria";
+}
 
 function sessionExpirationDate() {
   const date = new Date();
@@ -85,7 +94,7 @@ export async function requireRole(allowed: AppRole[]) {
   const user = await requireUser();
 
   if (!allowed.includes(user.role as AppRole)) {
-    redirect("/dashboard");
+    redirect(defaultRouteForRole(user.role));
   }
 
   return user;

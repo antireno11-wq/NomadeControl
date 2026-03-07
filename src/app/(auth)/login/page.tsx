@@ -42,7 +42,10 @@ export default function LoginPage() {
         </form>
 
         <div style={{ marginTop: 16, color: "var(--muted)", fontSize: "0.88rem" }}>
-          Usuario inicial: <strong>admin@campamentos.local</strong> / <strong>Admin1234</strong>
+          Administrador: <strong>administrador@campamentos.local</strong> / <strong>Admin1234</strong>
+        </div>
+        <div style={{ marginTop: 6, color: "var(--muted)", fontSize: "0.88rem" }}>
+          Supervisor: <strong>supervisor@campamentos.local</strong> / <strong>Supervisor1234</strong>
         </div>
       </div>
     </main>
