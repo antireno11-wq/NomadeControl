@@ -1,18 +1,14 @@
-"use client";
-
 import Image from "next/image";
-import { useFormState, useFormStatus } from "react-dom";
-import { loginAction } from "./actions";
+import { LoginForm } from "./login-form";
 
-const initialState = { error: "" };
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return <button type="submit">{pending ? "Ingresando..." : "Ingresar"}</button>;
-}
-
-export default function LoginPage() {
-  const [state, formAction] = useFormState(loginAction, initialState);
+export default function LoginPage({ searchParams }: { searchParams?: { error?: string } }) {
+  const oauthError = searchParams?.error;
+  const oauthErrorText =
+    oauthError === "google_user_not_authorized"
+      ? "Tu cuenta Google no está autorizada en la plataforma."
+      : oauthError
+        ? "No se pudo iniciar sesión con Google. Inténtalo nuevamente."
+        : "";
 
   return (
     <main style={{ maxWidth: 460, paddingTop: 80 }}>
@@ -24,22 +20,7 @@ export default function LoginPage() {
         <p style={{ color: "var(--muted)" }}>
           Inicia sesión para registrar y revisar reportes diarios.
         </p>
-
-        <form action={formAction} className="grid" style={{ marginTop: 16 }}>
-          <div>
-            <label htmlFor="email">Correo</label>
-            <input id="email" name="email" type="email" placeholder="admin@campamentos.local" required />
-          </div>
-
-          <div>
-            <label htmlFor="password">Contraseña</label>
-            <input id="password" name="password" type="password" required />
-          </div>
-
-          {state?.error ? <div className="alert error">{state.error}</div> : null}
-
-          <SubmitButton />
-        </form>
+        <LoginForm oauthErrorText={oauthErrorText} />
 
         <div style={{ marginTop: 16, color: "var(--muted)", fontSize: "0.88rem" }}>
           Administrador: <strong>administrador@campamentos.local</strong> / <strong>Admin1234</strong>

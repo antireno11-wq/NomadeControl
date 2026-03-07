@@ -66,6 +66,21 @@ Para que funcione, configura en Railway:
 - `RESEND_FROM_EMAIL`
 - `APP_URL` (URL pública de tu app)
 
+## Login con Google (OAuth)
+La plataforma permite `Continuar con Google` en login para usuarios ya registrados.
+Variables requeridas:
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `APP_URL`
+
+En Google Cloud Console:
+1. Crea credenciales OAuth 2.0 (Web application).
+2. Authorized redirect URI:
+   - Local: `http://localhost:3000/api/auth/google/callback`
+   - Producción: `https://nomadecontrol-production.up.railway.app/api/auth/google/callback`
+3. Copia Client ID/Secret en Railway Variables.
+
 ## 4. Siguientes mejoras sugeridas
 - Catálogo dinámico de "otros consumos" (no solo agua/combustible).
 - Histórico con filtros por rango de fechas y por campamento.
