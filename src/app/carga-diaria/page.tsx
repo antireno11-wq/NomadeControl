@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, requireRole, SUPERVISOR_ROLES } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
@@ -8,11 +8,20 @@ import { ReportForm } from "@/app/dashboard/report-form";
 import { OpsNav } from "@/components/ops-nav";
 
 export default async function CargaDiariaPage() {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(SUPERVISOR_ROLES);
+  const canSeeAdminSections = isAdminRole(user.role);
+  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
   const [camps, recentReports] = await Promise.all([
-    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.camp.findMany({
+      where: {
+        isActive: true,
+        ...(campFilter ? { id: campFilter } : {})
+      },
+      orderBy: { name: "asc" }
+    }),
     db.dailyReport.findMany({
+      where: campFilter ? { campId: campFilter } : undefined,
       take: 15,
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
@@ -43,14 +52,27 @@ export default async function CargaDiariaPage() {
         </div>
       </div>
 
-      <OpsNav active="carga" />
+      <OpsNav active="carga" showAdminSections={canSeeAdminSections} />
+
+      {!canSeeAdminSections && !user.campId ? (
+        <div className="alert error" style={{ marginBottom: 16 }}>
+          Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
+        </div>
+      ) : null}
 
       <div className="alert error" style={{ marginBottom: 16 }}>
         Campos exigibles diarios: desayuno, almuerzo, cena, colación simple, colación de reemplazo, botellas de agua, alojamientos, lectura de medidor, agua gastada, basura, cloro y pH.
       </div>
 
       <div className="grid two">
-        <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
+        {camps.length > 0 ? (
+          <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
+        ) : (
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Carga diaria</h2>
+            <div className="alert error">No hay campamento asignado o activo para este usuario.</div>
+          </div>
+        )}
 
         <div className="card" style={{ overflowX: "auto" }}>
           <h2 style={{ marginTop: 0 }}>Últimas cargas</h2>

@@ -19,6 +19,10 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
     return { error: "Credenciales inválidas." };
   }
 
+  if (!user.isActive) {
+    return { error: "Tu usuario está inactivo. Contacta al administrador." };
+  }
+
   const validPassword = await verifyPassword(password, user.passwordHash);
 
   if (!validPassword) {

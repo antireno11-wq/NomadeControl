@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
@@ -8,7 +8,10 @@ import { OpsNav } from "@/components/ops-nav";
 
 export default async function HsecPage() {
   const user = await requireRole(OPERATION_ROLES);
+  const canSeeAdminSections = isAdminRole(user.role);
+  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
   const recent = await db.dailyReport.findMany({
+    where: campFilter ? { campId: campFilter } : undefined,
     take: 20,
     orderBy: [{ date: "desc" }],
     include: { camp: true }
@@ -45,7 +48,13 @@ export default async function HsecPage() {
         </div>
       </div>
 
-      <OpsNav active="hsec" />
+      <OpsNav active="hsec" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
+
+      {!canSeeAdminSections && !user.campId ? (
+        <div className="alert error" style={{ marginBottom: 16 }}>
+          Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
+        </div>
+      ) : null}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Monitoreo de agua y condiciones sanitarias</h2>

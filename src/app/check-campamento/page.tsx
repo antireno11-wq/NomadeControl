@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
@@ -8,16 +8,28 @@ import { OpsNav } from "@/components/ops-nav";
 
 export default async function CheckCampamentoPage() {
   const user = await requireRole(OPERATION_ROLES);
+  const canSeeAdminSections = isAdminRole(user.role);
+  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
   const [camps, reportsToday, latestReports] = await Promise.all([
-    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.camp.findMany({
+      where: {
+        isActive: true,
+        ...(campFilter ? { id: campFilter } : {})
+      },
+      orderBy: { name: "asc" }
+    }),
     db.dailyReport.findMany({
-      where: { date: todayDate },
+      where: {
+        date: todayDate,
+        ...(campFilter ? { campId: campFilter } : {})
+      },
       include: { camp: true }
     }),
     db.dailyReport.findMany({
+      where: campFilter ? { campId: campFilter } : undefined,
       take: 60,
       orderBy: [{ date: "desc" }],
       include: { camp: true }
@@ -56,7 +68,13 @@ export default async function CheckCampamentoPage() {
         </div>
       </div>
 
-      <OpsNav active="check" />
+      <OpsNav active="check" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
+
+      {!canSeeAdminSections && !user.campId ? (
+        <div className="alert error" style={{ marginBottom: 16 }}>
+          Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
+        </div>
+      ) : null}
 
       <div className="grid two">
         {camps.map((camp) => {

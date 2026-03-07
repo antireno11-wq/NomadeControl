@@ -208,7 +208,7 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <OpsNav active="dashboard" />
+      <OpsNav active="dashboard" showLoadSection={false} />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <form method="get" className="grid two" style={{ alignItems: "end" }}>

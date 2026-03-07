@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { clearSession, requireUser } from "@/lib/auth";
+import { clearSession, isSupervisorRole, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
 
@@ -40,6 +40,10 @@ export async function logoutAction() {
 export async function saveReportAction(_: ReportFormState, formData: FormData): Promise<ReportFormState> {
   const user = await requireUser();
 
+  if (!isSupervisorRole(user.role)) {
+    return { error: "Solo usuarios SUPERVISOR pueden cargar información diaria.", success: "" };
+  }
+
   const parsed = reportSchema.safeParse({
     date: formData.get("date"),
     campId: formData.get("campId"),
@@ -66,6 +70,15 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
 
   const payload = parsed.data;
   const date = normalizeDateOnly(payload.date);
+
+  if (isSupervisorRole(user.role)) {
+    if (!user.campId) {
+      return { error: "Tu usuario supervisor no tiene campamento asignado.", success: "" };
+    }
+    if (payload.campId !== user.campId) {
+      return { error: "Solo puedes cargar información de tu campamento asignado.", success: "" };
+    }
+  }
 
   await db.dailyReport.upsert({
     where: {
@@ -115,5 +128,8 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
   });
 
   revalidatePath("/dashboard");
+  revalidatePath("/carga-diaria");
+  revalidatePath("/check-campamento");
+  revalidatePath("/hsec");
   return { error: "", success: "Reporte guardado correctamente." };
 }

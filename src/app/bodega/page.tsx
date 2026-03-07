@@ -1,13 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
-import { OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logoutAction } from "@/app/dashboard/actions";
 import { OpsNav } from "@/components/ops-nav";
 
 export default async function BodegaPage() {
   const user = await requireRole(OPERATION_ROLES);
-  const camps = await db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
+  const canSeeAdminSections = isAdminRole(user.role);
+  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
+  const camps = await db.camp.findMany({
+    where: {
+      isActive: true,
+      ...(campFilter ? { id: campFilter } : {})
+    },
+    orderBy: { name: "asc" }
+  });
 
   const stockRows = camps.map((camp, index) => ({
     campName: camp.name,
@@ -41,7 +49,13 @@ export default async function BodegaPage() {
         </div>
       </div>
 
-      <OpsNav active="bodega" />
+      <OpsNav active="bodega" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
+
+      {!canSeeAdminSections && !user.campId ? (
+        <div className="alert error" style={{ marginBottom: 16 }}>
+          Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
+        </div>
+      ) : null}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Control de stock por campamento</h2>

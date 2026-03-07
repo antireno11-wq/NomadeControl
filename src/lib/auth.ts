@@ -9,12 +9,21 @@ const SESSION_TTL_DAYS = 7;
 export type AppRole = "ADMINISTRADOR" | "SUPERVISOR" | "ADMIN" | "OPERADOR";
 export const ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
 export const OPERATION_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN", "SUPERVISOR", "OPERADOR"];
+export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
 
 export function defaultRouteForRole(role: string) {
   if (role === "ADMINISTRADOR" || role === "ADMIN") {
     return "/dashboard";
   }
   return "/carga-diaria";
+}
+
+export function isAdminRole(role: string) {
+  return role === "ADMINISTRADOR" || role === "ADMIN";
+}
+
+export function isSupervisorRole(role: string) {
+  return role === "SUPERVISOR" || role === "OPERADOR";
 }
 
 function sessionExpirationDate() {
@@ -72,6 +81,12 @@ export async function getCurrentUser() {
   if (!session) return null;
 
   if (session.expiresAt < new Date()) {
+    await db.session.delete({ where: { token } });
+    cookies().delete(SESSION_COOKIE_NAME);
+    return null;
+  }
+
+  if (!session.user.isActive) {
     await db.session.delete({ where: { token } });
     cookies().delete(SESSION_COOKIE_NAME);
     return null;

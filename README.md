@@ -3,7 +3,7 @@
 App web para registrar reportes diarios por campamento y supervisar desde una oficina central.
 
 ## Funcionalidades iniciales
-- Usuarios con roles `ADMIN` y `OPERADOR`.
+- Usuarios con roles `ADMINISTRADOR` y `SUPERVISOR`.
 - Registro diario por campamento:
   - Personas en campamento
   - Desayunos, almuerzos y cenas entregadas
@@ -32,8 +32,8 @@ npm run dev
 Abrir: [http://localhost:3000](http://localhost:3000)
 
 ### Usuarios semilla
-- `admin@campamentos.local` / `Admin1234`
-- `operador@campamentos.local` / `Operador1234`
+- `administrador@campamentos.local` / `Admin1234`
+- `supervisor@campamentos.local` / `Supervisor1234`
 
 ## 2. Crear repositorio nuevo en GitHub
 Desde la carpeta `campamentos-control`:
@@ -53,8 +53,18 @@ git push -u origin main
    - `SESSION_COOKIE_NAME=camp_session`
    - `SEED_ADMIN_EMAIL`
    - `SEED_ADMIN_PASSWORD`
+   - `APP_URL`
+   - `RESEND_API_KEY`
+   - `RESEND_FROM_EMAIL`
 3. En producción usa Postgres de Railway y actualiza `DATABASE_URL`.
 4. Ejecutar migraciones con `npx prisma migrate deploy` en el proceso de despliegue.
+
+## Envío de correo al crear usuario
+En Administración, al crear usuario puedes activar `Enviar credenciales por correo`.
+Para que funcione, configura en Railway:
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `APP_URL` (URL pública de tu app)
 
 ## 4. Siguientes mejoras sugeridas
 - Catálogo dinámico de "otros consumos" (no solo agua/combustible).
