@@ -46,6 +46,8 @@ export default async function DashboardPage({
   const selectedCampIdRaw = searchParams?.campId;
   const selectedCampId = typeof selectedCampIdRaw === "string" ? selectedCampIdRaw : undefined;
   const selectedCamp = selectedCampId ? camps.find((camp) => camp.id === selectedCampId) : undefined;
+  const defaultFromDate = toInputDateValue(last30Days);
+  const defaultToDate = toInputDateValue(todayDate);
   const scopeCamps = selectedCamp ? [selectedCamp] : camps;
   const scopeCampIds = new Set(scopeCamps.map((camp) => camp.id));
   const recentReportsFiltered = recentReports.filter((report) => scopeCampIds.has(report.campId));
@@ -223,6 +225,39 @@ export default async function DashboardPage({
           </div>
           <div>
             <button type="submit">Aplicar vista</button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Descargar información</h2>
+        <form method="get" action="/api/reportes/export" className="grid two" style={{ alignItems: "end" }}>
+          <div>
+            <label htmlFor="from">Desde</label>
+            <input id="from" name="from" type="date" defaultValue={defaultFromDate} />
+          </div>
+          <div>
+            <label htmlFor="to">Hasta</label>
+            <input id="to" name="to" type="date" defaultValue={defaultToDate} />
+          </div>
+          <div>
+            <label htmlFor="exportCampId">Campamento</label>
+            <select id="exportCampId" name="campId" defaultValue={selectedCamp?.id ?? "general"}>
+              <option value="general">Todos los campamentos</option>
+              {camps.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" name="format" value="csv">
+              Descargar CSV
+            </button>
+            <button type="submit" name="format" value="xls" className="secondary">
+              Descargar Excel
+            </button>
           </div>
         </form>
       </div>
