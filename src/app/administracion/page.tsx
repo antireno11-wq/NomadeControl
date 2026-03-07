@@ -4,7 +4,7 @@ import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logoutAction } from "@/app/dashboard/actions";
 import { OpsNav } from "@/components/ops-nav";
-import { createUserAction, resetUserPasswordAction, updateUserAccessAction } from "./actions";
+import { resetUserPasswordAction, updateUserAccessAction } from "./actions";
 
 export default async function AdministracionPage() {
   const user = await requireRole(ADMIN_ROLES);
@@ -57,50 +57,13 @@ export default async function AdministracionPage() {
       </div>
 
       <div className="card" style={{ overflowX: "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Crear usuario</h2>
-        <form action={createUserAction} className="grid two" style={{ marginBottom: 18 }}>
-          <div>
-            <label htmlFor="new-name">Nombre</label>
-            <input id="new-name" name="name" required />
-          </div>
-          <div>
-            <label htmlFor="new-email">Correo</label>
-            <input id="new-email" name="email" type="email" required />
-          </div>
-          <div>
-            <label htmlFor="new-role">Rol</label>
-            <select id="new-role" name="role" defaultValue="SUPERVISOR">
-              <option value="SUPERVISOR">SUPERVISOR</option>
-              <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="new-camp">Campamento (solo supervisor)</label>
-            <select id="new-camp" name="campId" defaultValue="none">
-              <option value="none">Sin asignar</option>
-              {camps.map((camp) => (
-                <option key={camp.id} value={camp.id}>
-                  {camp.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="new-password">Contraseña inicial</label>
-            <input id="new-password" name="password" type="password" minLength={8} required />
-          </div>
-          <div>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 28 }}>
-              <input type="checkbox" name="sendWelcomeEmail" defaultChecked style={{ width: "auto", padding: 0 }} />
-              Enviar credenciales por correo
-            </label>
-          </div>
-          <div style={{ display: "flex", alignItems: "end" }}>
-            <button type="submit">Crear usuario</button>
-          </div>
-        </form>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>Usuarios del sistema</h2>
+          <Link href="/administracion/usuarios/nuevo" target="_blank" rel="noopener noreferrer">
+            <button type="button">Crear usuario (nueva ventana)</button>
+          </Link>
+        </div>
 
-        <h2 style={{ marginTop: 0 }}>Usuarios del sistema</h2>
         <table>
           <thead>
             <tr>
