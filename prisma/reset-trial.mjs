@@ -15,6 +15,7 @@ async function main() {
 
   await prisma.session.deleteMany();
   await prisma.stockMovement.deleteMany();
+  await prisma.inventoryItem.deleteMany();
   await prisma.dailyReport.deleteMany();
   await prisma.dailyTaskControl.deleteMany();
   await prisma.user.deleteMany();

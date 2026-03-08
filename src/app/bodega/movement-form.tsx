@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
 import { saveStockMovementAction, type StockFormState } from "./actions";
 
@@ -35,6 +36,9 @@ export function MovementForm({
   return (
     <form action={formAction} className="card grid">
       <h2 style={{ margin: 0 }}>Movimiento de bodega</h2>
+      <div style={{ marginTop: -6 }}>
+        <Link href="/bodega/items/nuevo">+ Agregar item si no aparece en la lista</Link>
+      </div>
       <div className="grid two">
         <div>
           <label htmlFor="date">Fecha</label>

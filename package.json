@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.mjs",
     "prisma:seed:demo": "node prisma/seed-demo.mjs",
-    "prisma:reset:trial": "node prisma/reset-trial.mjs"
+    "prisma:reset:trial": "node prisma/reset-trial.mjs",
+    "inventory:import": "node prisma/import-inventory-from-xlsx.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
