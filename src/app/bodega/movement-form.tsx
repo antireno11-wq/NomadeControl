@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { saveStockMovementAction, type StockFormState } from "./actions";
 
 type CampOption = { id: string; name: string };
+type InventoryItemOption = { id: string; name: string; unit: string; category: string };
 
 const initialState: StockFormState = { error: "", success: "" };
 
@@ -12,8 +13,24 @@ function SaveButton() {
   return <button type="submit">{pending ? "Guardando..." : "Guardar movimiento"}</button>;
 }
 
-export function MovementForm({ camps, defaultDate }: { camps: CampOption[]; defaultDate: string }) {
+export function MovementForm({
+  camps,
+  inventoryItems,
+  defaultDate
+}: {
+  camps: CampOption[];
+  inventoryItems: InventoryItemOption[];
+  defaultDate: string;
+}) {
   const [state, formAction] = useFormState(saveStockMovementAction, initialState);
+  const groupedItems = inventoryItems.reduce<Record<string, InventoryItemOption[]>>((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
+    }
+    acc[item.category].push(item);
+    return acc;
+  }, {});
+  const categories = Object.keys(groupedItems).sort((a, b) => a.localeCompare(b, "es"));
 
   return (
     <form action={formAction} className="card grid">
@@ -41,16 +58,25 @@ export function MovementForm({ camps, defaultDate }: { camps: CampOption[]; defa
           </select>
         </div>
         <div>
-          <label htmlFor="itemName">Ítem</label>
-          <input id="itemName" name="itemName" placeholder="Ej: Arroz, Aceite, Gas..." required />
+          <label htmlFor="inventoryItemId">Item</label>
+          <select id="inventoryItemId" name="inventoryItemId" required defaultValue="">
+            <option value="" disabled>
+              Selecciona un item del catalogo...
+            </option>
+            {categories.map((category) => (
+              <optgroup key={category} label={category}>
+                {groupedItems[category].map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.unit})
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
         </div>
         <div>
           <label htmlFor="quantity">Cantidad</label>
           <input id="quantity" name="quantity" type="number" min={0.01} step="0.01" required />
-        </div>
-        <div>
-          <label htmlFor="unit">Unidad</label>
-          <input id="unit" name="unit" defaultValue="unidad" required />
         </div>
       </div>
       <div>

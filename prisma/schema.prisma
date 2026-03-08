@@ -43,6 +43,7 @@ model Camp {
   reports   DailyReport[]
   dailyTaskControls DailyTaskControl[]
   stockMovements    StockMovement[]
+  inventoryItems    InventoryItem[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -102,6 +103,8 @@ model StockMovement {
   camp        Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
   createdById String
   createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  inventoryItemId String?
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
   itemName    String
   movementType String
   quantity    Float
@@ -110,4 +113,22 @@ model StockMovement {
   createdAt   DateTime @default(now())
 
   @@index([campId, date])
+  @@index([inventoryItemId])
+}
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  campId         String?
+  camp           Camp?    @relation(fields: [campId], references: [id], onDelete: Cascade)
+  name           String
+  normalizedName String
+  category       String   @default("OTROS")
+  unit           String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  stockMovements StockMovement[]
+
+  @@index([campId, isActive, category])
+  @@unique([campId, normalizedName, unit])
 }

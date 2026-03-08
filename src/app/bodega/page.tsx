@@ -13,13 +13,24 @@ export default async function BodegaPage() {
   const canSeeAdminSections = isAdminRole(user.role);
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
-  const [camps, recentMovements] = await Promise.all([
+  const [camps, inventoryItems, recentMovements] = await Promise.all([
     db.camp.findMany({
       where: {
         isActive: true,
         ...(campFilter ? { id: campFilter } : {})
       },
       orderBy: { name: "asc" }
+    }),
+    db.inventoryItem.findMany({
+      where: {
+        isActive: true,
+        ...(campFilter
+          ? {
+              OR: [{ campId: null }, { campId: campFilter }]
+            }
+          : {})
+      },
+      orderBy: [{ category: "asc" }, { name: "asc" }]
     }),
     db.stockMovement.findMany({
       where: campFilter ? { campId: campFilter } : undefined,
@@ -84,11 +95,24 @@ export default async function BodegaPage() {
       ) : null}
 
       <div className="grid two">
-        {camps.length > 0 ? (
-          <MovementForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
+        {camps.length > 0 && inventoryItems.length > 0 ? (
+          <MovementForm
+            camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))}
+            inventoryItems={inventoryItems.map((item) => ({
+              id: item.id,
+              name: item.name,
+              unit: item.unit,
+              category: item.category
+            }))}
+            defaultDate={toInputDateValue(new Date())}
+          />
         ) : (
           <div className="card">
-            <div className="alert error">No hay campamento disponible para registrar bodega.</div>
+            <div className="alert error">
+              {camps.length === 0
+                ? "No hay campamento disponible para registrar bodega."
+                : "No hay items de inventario cargados todavia. Importa el inventario primero."}
+            </div>
           </div>
         )}
 
