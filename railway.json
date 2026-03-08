@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm run build && npm run prisma:generate && npm run start",
+    "startCommand": "npm run start",
     "healthcheckPath": "/login",
     "healthcheckTimeout": 120
   }
