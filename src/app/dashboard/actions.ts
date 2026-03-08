@@ -141,7 +141,6 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
 
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
-  revalidatePath("/check-campamento");
   revalidatePath("/hsec");
   return { error: "", success: "Reporte guardado correctamente." };
 }
