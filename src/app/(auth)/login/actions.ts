@@ -1,16 +1,20 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession, defaultRouteForRole } from "@/lib/auth";
+import { createSession, defaultRouteForRole, isAdminRole, isSupervisorRole, verifyPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { verifyPassword } from "@/lib/auth";
 
 export async function loginAction(_: { error?: string } | undefined, formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const accessRole = String(formData.get("accessRole") ?? "").trim().toUpperCase();
 
-  if (!email || !password) {
-    return { error: "Correo y contraseña son obligatorios." };
+  if (!email || !password || !accessRole) {
+    return { error: "Tipo de acceso, correo y contraseña son obligatorios." };
+  }
+
+  if (accessRole !== "SUPERVISOR" && accessRole !== "ADMINISTRADOR") {
+    return { error: "Selecciona un tipo de acceso válido." };
   }
 
   const user = await db.user.findUnique({ where: { email } });
@@ -27,6 +31,14 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
 
   if (!validPassword) {
     return { error: "Credenciales inválidas." };
+  }
+
+  if (accessRole === "ADMINISTRADOR" && !isAdminRole(user.role)) {
+    return { error: "Este usuario no tiene perfil de administrador." };
+  }
+
+  if (accessRole === "SUPERVISOR" && !isSupervisorRole(user.role)) {
+    return { error: "Este usuario no tiene perfil de supervisor." };
   }
 
   await createSession(user.id);

@@ -18,7 +18,7 @@ export default function LoginPage({ searchParams }: { searchParams?: { error?: s
         </div>
         <h1 style={{ marginTop: 0 }}>Control de Campamentos</h1>
         <p style={{ color: "var(--muted)" }}>
-          Inicia sesión para registrar y revisar reportes diarios.
+          Selecciona si ingresas como supervisor o administrador antes de iniciar sesión.
         </p>
         <LoginForm oauthErrorText={oauthErrorText} />
 

@@ -24,6 +24,14 @@ export function LoginForm({ oauthErrorText }: { oauthErrorText?: string }) {
 
       <form action={formAction} className="grid" style={{ marginTop: 16 }}>
         <div>
+          <label htmlFor="accessRole">Tipo de acceso</label>
+          <select id="accessRole" name="accessRole" defaultValue="SUPERVISOR" required>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="ADMINISTRADOR">Administrador</option>
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="email">Correo</label>
           <input id="email" name="email" type="email" placeholder="admin@campamentos.local" required />
         </div>
