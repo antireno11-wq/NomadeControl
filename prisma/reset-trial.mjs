@@ -14,7 +14,9 @@ async function main() {
   const supervisorHash = await bcrypt.hash(supervisorPassword, 10);
 
   await prisma.session.deleteMany();
+  await prisma.stockMovement.deleteMany();
   await prisma.dailyReport.deleteMany();
+  await prisma.dailyTaskControl.deleteMany();
   await prisma.user.deleteMany();
   await prisma.camp.deleteMany();
 

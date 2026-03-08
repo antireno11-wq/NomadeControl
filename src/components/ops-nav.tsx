@@ -6,6 +6,7 @@ const navItems: Array<{ key: NavKey; href: string; label: string; adminOnly?: bo
   { key: "dashboard", href: "/dashboard", label: "Dashboard" },
   { key: "carga", href: "/carga-diaria", label: "Informe diario" },
   { key: "tareas", href: "/control-tareas-diarias", label: "Control de tareas diarias" },
+  { key: "bodega", href: "/bodega", label: "Bodega" },
   { key: "check", href: "/check-campamento", label: "Check campamento" },
   { key: "administracion", href: "/administracion", label: "Administración", adminOnly: true }
 ];

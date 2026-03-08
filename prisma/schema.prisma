@@ -19,6 +19,7 @@ model User {
   sessions     Session[]
   reports      DailyReport[]
   dailyTaskControls DailyTaskControl[]
+  stockMovements   StockMovement[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -41,6 +42,7 @@ model Camp {
   users     User[]
   reports   DailyReport[]
   dailyTaskControls DailyTaskControl[]
+  stockMovements    StockMovement[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -91,4 +93,21 @@ model DailyTaskControl {
   updatedAt           DateTime @updatedAt
 
   @@unique([campId, date])
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  date        DateTime
+  campId      String
+  camp        Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  itemName    String
+  movementType String
+  quantity    Float
+  unit        String   @default("unidad")
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([campId, date])
 }
