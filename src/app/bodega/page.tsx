@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
 import { OpsNav } from "@/components/ops-nav";
+import { NotificationBell } from "@/components/notification-bell";
 import { MovementForm } from "./movement-form";
 
 export default async function BodegaPage() {
@@ -36,6 +37,13 @@ export default async function BodegaPage() {
     stockMap.set(key, current);
   }
 
+  const LOW_STOCK_THRESHOLD = 10;
+  const lowStockRows = Array.from(stockMap.values()).filter((row) => row.stock <= LOW_STOCK_THRESHOLD);
+  const notificationItems = lowStockRows.map((row) => ({
+    text: `${row.itemName}: stock bajo (${row.stock.toFixed(2)} ${row.unit})`,
+    severity: row.stock <= 0 ? ("error" as const) : ("warning" as const)
+  }));
+
   return (
     <main>
       <div className="header">
@@ -52,6 +60,7 @@ export default async function BodegaPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <NotificationBell items={notificationItems} />
           <form action={logoutAction}>
             <button className="danger" type="submit">
               Cerrar sesión
@@ -65,6 +74,12 @@ export default async function BodegaPage() {
       {!canSeeAdminSections && !user.campId ? (
         <div className="alert error" style={{ marginBottom: 16 }}>
           Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
+        </div>
+      ) : null}
+
+      {lowStockRows.length > 0 ? (
+        <div className="alert error" style={{ marginBottom: 16 }}>
+          Alertas de bodega: {lowStockRows.map((row) => `${row.itemName} (${row.stock.toFixed(2)} ${row.unit})`).join(", ")}
         </div>
       ) : null}
 
@@ -85,6 +100,7 @@ export default async function BodegaPage() {
                 <th>Ítem</th>
                 <th>Unidad</th>
                 <th>Stock estimado</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -93,11 +109,14 @@ export default async function BodegaPage() {
                   <td>{row.itemName}</td>
                   <td>{row.unit}</td>
                   <td className={row.stock < 0 ? "warn" : ""}>{row.stock.toFixed(2)}</td>
+                  <td className={row.stock <= LOW_STOCK_THRESHOLD ? "warn" : "up"}>
+                    {row.stock <= 0 ? "CRITICO" : row.stock <= LOW_STOCK_THRESHOLD ? "BAJO" : "OK"}
+                  </td>
                 </tr>
               ))}
               {stockMap.size === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ color: "var(--muted)" }}>
+                  <td colSpan={4} style={{ color: "var(--muted)" }}>
                     Aún no hay movimientos registrados.
                   </td>
                 </tr>
