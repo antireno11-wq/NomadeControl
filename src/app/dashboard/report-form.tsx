@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { saveReportAction } from "./actions";
 import type { ReportFormState } from "./actions";
@@ -18,10 +19,11 @@ function SaveButton() {
 
 export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaultDate: string }) {
   const [state, formAction] = useFormState(saveReportAction, initialState);
+  const [wasteFillPercent, setWasteFillPercent] = useState(0);
 
   return (
     <form action={formAction} className="card grid">
-      <h2 style={{ margin: 0 }}>Carga diaria</h2>
+      <h2 style={{ margin: 0 }}>Informe diario</h2>
 
       <section className="report-section">
         <h3 className="section-title">Contexto Diario</h3>
@@ -112,8 +114,33 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
             <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
           </div>
           <div>
-            <label htmlFor="wasteFillPercent">Llenado contenedor basura (%)</label>
-            <input id="wasteFillPercent" name="wasteFillPercent" type="range" min={0} max={100} defaultValue={0} required />
+            <label htmlFor="generator1Hours">Horómetro generador 1</label>
+            <input id="generator1Hours" name="generator1Hours" type="number" min={0} step="0.01" defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="generator2Hours">Horómetro generador 2</label>
+            <input id="generator2Hours" name="generator2Hours" type="number" min={0} step="0.01" defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="internetStatus">Status internet</label>
+            <select id="internetStatus" name="internetStatus" defaultValue="FUNCIONANDO">
+              <option value="FUNCIONANDO">Funcionando</option>
+              <option value="CON_INTERRUPCIONES">Con interrupciones</option>
+              <option value="NO_FUNCIONA">No funciona</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="wasteFillPercent">Llenado contenedor basura ({wasteFillPercent}%)</label>
+            <input
+              id="wasteFillPercent"
+              name="wasteFillPercent"
+              type="range"
+              min={0}
+              max={100}
+              value={wasteFillPercent}
+              onChange={(event) => setWasteFillPercent(Number(event.target.value))}
+              required
+            />
           </div>
           <div>
             <label htmlFor="chlorineLevel">Medición de cloro</label>

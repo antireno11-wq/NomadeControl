@@ -6,6 +6,7 @@ import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
 import { ReportForm } from "@/app/dashboard/report-form";
 import { OpsNav } from "@/components/ops-nav";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default async function CargaDiariaPage() {
   const user = await requireRole(SUPERVISOR_ROLES);
@@ -27,6 +28,22 @@ export default async function CargaDiariaPage() {
       include: { camp: true, createdBy: true }
     })
   ]);
+  const notificationItems = [
+    ...recentReports
+      .filter((report) => Math.abs(report.generator1Hours - report.generator2Hours) > 30)
+      .slice(0, 3)
+      .map((report) => ({
+        text: `${report.camp.name} ${toInputDateValue(report.date)}: diferencia horómetros > 30h`,
+        severity: "warning" as const
+      })),
+    ...recentReports
+      .filter((report) => report.internetStatus !== "FUNCIONANDO")
+      .slice(0, 3)
+      .map((report) => ({
+        text: `${report.camp.name} ${toInputDateValue(report.date)}: internet ${report.internetStatus.replaceAll("_", " ").toLowerCase()}`,
+        severity: "warning" as const
+      }))
+  ];
 
   return (
     <main>
@@ -37,13 +54,14 @@ export default async function CargaDiariaPage() {
               <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
             </Link>
           </div>
-          <h1>Carga Diaria de Consumos</h1>
+          <h1>Informe diario de consumos</h1>
           <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
             Sesión: {user.name} ({user.role})
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <NotificationBell items={notificationItems} />
           <form action={logoutAction}>
             <button className="danger" type="submit">
               Cerrar sesión
@@ -87,6 +105,9 @@ export default async function CargaDiariaPage() {
                 <th>Botellas</th>
                 <th>Alojamientos</th>
                 <th>Lectura medidor</th>
+                <th>Horómetro G1</th>
+                <th>Horómetro G2</th>
+                <th>Internet</th>
                 <th>Agua gastada</th>
                 <th>Combustible</th>
                 <th>Basura</th>
@@ -105,6 +126,9 @@ export default async function CargaDiariaPage() {
                   <td>{report.waterBottleCount}</td>
                   <td>{report.lodgingCount}</td>
                   <td>{report.meterReading.toFixed(2)}</td>
+                  <td>{report.generator1Hours.toFixed(2)}</td>
+                  <td>{report.generator2Hours.toFixed(2)}</td>
+                  <td>{report.internetStatus.replaceAll("_", " ")}</td>
                   <td>{report.waterLiters} L</td>
                   <td>{report.fuelLiters} L</td>
                   <td>{report.wasteFillPercent}%</td>
@@ -114,7 +138,7 @@ export default async function CargaDiariaPage() {
               ))}
               {recentReports.length === 0 ? (
                 <tr>
-                  <td colSpan={13} style={{ color: "var(--muted)" }}>
+                  <td colSpan={16} style={{ color: "var(--muted)" }}>
                     Aún no hay cargas registradas.
                   </td>
                 </tr>

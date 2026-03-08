@@ -29,6 +29,12 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8)
 });
 
+const createCampSchema = z.object({
+  name: z.string().trim().min(2),
+  location: z.string().trim().optional(),
+  capacityPeople: z.coerce.number().int().min(0)
+});
+
 function normalizedCampIdForRole(role: "ADMINISTRADOR" | "SUPERVISOR", campId?: string) {
   if (role === "ADMINISTRADOR") return null;
   return campId && campId !== "none" ? campId : null;
@@ -177,4 +183,32 @@ export async function resetUserPasswordAction(formData: FormData) {
   });
 
   revalidatePath("/administracion");
+}
+
+export async function createCampAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+
+  const parsed = createCampSchema.safeParse({
+    name: formData.get("name"),
+    location: String(formData.get("location") ?? ""),
+    capacityPeople: formData.get("capacityPeople")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Datos inválidos para crear campamento.");
+  }
+
+  const payload = parsed.data;
+  await db.camp.create({
+    data: {
+      name: payload.name,
+      location: payload.location || null,
+      capacityPeople: payload.capacityPeople,
+      isActive: true
+    }
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/dashboard");
+  revalidatePath("/carga-diaria");
 }

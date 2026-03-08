@@ -1,10 +1,11 @@
 import Link from "next/link";
 
-export type NavKey = "dashboard" | "carga" | "check" | "bodega" | "hsec" | "administracion";
+export type NavKey = "dashboard" | "carga" | "tareas" | "check" | "bodega" | "hsec" | "administracion";
 
 const navItems: Array<{ key: NavKey; href: string; label: string; adminOnly?: boolean }> = [
-  { key: "dashboard", href: "/dashboard", label: "Dashboard", adminOnly: true },
-  { key: "carga", href: "/carga-diaria", label: "Cargar información" },
+  { key: "dashboard", href: "/dashboard", label: "Dashboard" },
+  { key: "carga", href: "/carga-diaria", label: "Informe diario" },
+  { key: "tareas", href: "/control-tareas-diarias", label: "Control de tareas diarias" },
   { key: "check", href: "/check-campamento", label: "Check campamento" },
   { key: "bodega", href: "/bodega", label: "Bodega" },
   { key: "hsec", href: "/hsec", label: "HSEC" },

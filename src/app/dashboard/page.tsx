@@ -1,31 +1,42 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "./actions";
 import { OpsNav } from "@/components/ops-nav";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default async function DashboardPage({
   searchParams
 }: {
   searchParams?: { campId?: string | string[] };
 }) {
-  const user = await requireRole(ADMIN_ROLES);
+  const user = await requireRole(OPERATION_ROLES);
+  const canSeeAdminSections = isAdminRole(user.role);
+  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   const last30Days = new Date(today);
   last30Days.setDate(last30Days.getDate() - 30);
 
   const [camps, recentReports, reports30Days, reportsToday] = await Promise.all([
-    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.camp.findMany({
+      where: {
+        isActive: true,
+        ...(campFilter ? { id: campFilter } : {})
+      },
+      orderBy: { name: "asc" }
+    }),
     db.dailyReport.findMany({
+      where: campFilter ? { campId: campFilter } : undefined,
       take: 20,
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
     }),
     db.dailyReport.findMany({
       where: {
+        ...(campFilter ? { campId: campFilter } : {}),
         date: {
           gte: last30Days
         }
@@ -35,6 +46,7 @@ export default async function DashboardPage({
     }),
     db.dailyReport.findMany({
       where: {
+        ...(campFilter ? { campId: campFilter } : {}),
         date: todayDate
       },
       include: {
@@ -45,10 +57,12 @@ export default async function DashboardPage({
 
   const selectedCampIdRaw = searchParams?.campId;
   const selectedCampId = typeof selectedCampIdRaw === "string" ? selectedCampIdRaw : undefined;
+  const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
   const selectedCamp = selectedCampId ? camps.find((camp) => camp.id === selectedCampId) : undefined;
+  const forcedSelectedCamp = scopedSelectedCampId ? camps.find((camp) => camp.id === scopedSelectedCampId) : undefined;
   const defaultFromDate = toInputDateValue(last30Days);
   const defaultToDate = toInputDateValue(todayDate);
-  const scopeCamps = selectedCamp ? [selectedCamp] : camps;
+  const scopeCamps = forcedSelectedCamp ? [forcedSelectedCamp] : selectedCamp ? [selectedCamp] : camps;
   const scopeCampIds = new Set(scopeCamps.map((camp) => camp.id));
   const recentReportsFiltered = recentReports.filter((report) => scopeCampIds.has(report.campId));
   const reports30DaysFiltered = reports30Days.filter((report) => scopeCampIds.has(report.campId));
@@ -160,6 +174,11 @@ export default async function DashboardPage({
     const wasteAvg = campReports.length > 0 ? campReports.reduce((sum, report) => sum + report.wasteFillPercent, 0) / campReports.length : 0;
     const chlorineAvg = campReports.length > 0 ? campReports.reduce((sum, report) => sum + report.chlorineLevel, 0) / campReports.length : 0;
     const phAvg = campReports.length > 0 ? campReports.reduce((sum, report) => sum + report.phLevel, 0) / campReports.length : 0;
+    const first = ordered[0];
+    const generator1UseMonth = first && last ? Math.max(0, last.generator1Hours - first.generator1Hours) : 0;
+    const generator2UseMonth = first && last ? Math.max(0, last.generator2Hours - first.generator2Hours) : 0;
+    const lastGeneratorDiff = Math.abs(generator1UseMonth - generator2UseMonth);
+    const internetIssues = campReports.filter((report) => report.internetStatus !== "FUNCIONANDO").length;
 
     return {
       id: camp.id,
@@ -176,13 +195,28 @@ export default async function DashboardPage({
       peopleDelta: last && prev ? last.peopleCount - prev.peopleCount : 0,
       wasteAvg,
       chlorineAvg,
-      phAvg
+      phAvg,
+      lastGeneratorDiff,
+      internetIssues,
+      generator1UseMonth,
+      generator2UseMonth
     };
   });
 
   const reportedCampIdsToday = new Set(reportsTodayFiltered.map((report) => report.campId));
   const missingCampsToday = scopeCamps.filter((camp) => !reportedCampIdsToday.has(camp.id));
   const dailyCompliance = scopeCamps.length > 0 ? Math.round((reportsTodayFiltered.length / scopeCamps.length) * 100) : 0;
+  const generatorAlerts = campRows
+    .filter((row) => row.lastGeneratorDiff > 30)
+    .map((row) => `${row.name}: diferencia horómetros G1/G2 ${row.lastGeneratorDiff.toFixed(2)}h (>30h)`);
+  const internetAlerts = campRows
+    .filter((row) => row.internetIssues > 0)
+    .map((row) => `${row.name}: ${row.internetIssues} reporte(s) con internet con interrupciones/no funciona`);
+  const notificationItems = [
+    ...missingCampsToday.map((camp) => ({ text: `Falta informe diario hoy: ${camp.name}`, severity: "error" as const })),
+    ...generatorAlerts.map((text) => ({ text, severity: "warning" as const })),
+    ...internetAlerts.map((text) => ({ text, severity: "warning" as const }))
+  ];
 
   return (
     <main>
@@ -195,11 +229,12 @@ export default async function DashboardPage({
           </div>
           <h1>Panel de Campamentos</h1>
           <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesión: {user.name} ({user.role}){selectedCamp ? ` · Vista: ${selectedCamp.name}` : " · Vista: General"}
+            Sesión: {user.name} ({user.role}){forcedSelectedCamp ? ` · Vista: ${forcedSelectedCamp.name}` : selectedCamp ? ` · Vista: ${selectedCamp.name}` : " · Vista: General"}
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <NotificationBell items={notificationItems} />
           <form action={logoutAction}>
             <button className="danger" type="submit">
               Cerrar sesión
@@ -208,59 +243,67 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <OpsNav active="dashboard" showLoadSection={false} />
+      <OpsNav active="dashboard" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <form method="get" className="grid two" style={{ alignItems: "end" }}>
-          <div>
-            <label htmlFor="campId">Vista del dashboard</label>
-            <select id="campId" name="campId" defaultValue={selectedCamp?.id ?? "general"}>
-              <option value="general">General (todos los campamentos)</option>
-              {camps.map((camp) => (
-                <option key={camp.id} value={camp.id}>
-                  {camp.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <button type="submit">Aplicar vista</button>
-          </div>
-        </form>
-      </div>
+      {canSeeAdminSections ? (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <form method="get" className="grid two" style={{ alignItems: "end" }}>
+            <div>
+              <label htmlFor="campId">Vista del dashboard</label>
+              <select id="campId" name="campId" defaultValue={forcedSelectedCamp?.id ?? selectedCamp?.id ?? "general"}>
+                <option value="general">General (todos los campamentos)</option>
+                {camps.map((camp) => (
+                  <option key={camp.id} value={camp.id}>
+                    {camp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <button type="submit">Aplicar vista</button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <strong>Vista supervisor:</strong> {forcedSelectedCamp?.name ?? "Campamento no asignado"}
+        </div>
+      )}
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Descargar información</h2>
-        <form method="get" action="/api/reportes/export" className="grid two" style={{ alignItems: "end" }}>
-          <div>
-            <label htmlFor="from">Desde</label>
-            <input id="from" name="from" type="date" defaultValue={defaultFromDate} />
-          </div>
-          <div>
-            <label htmlFor="to">Hasta</label>
-            <input id="to" name="to" type="date" defaultValue={defaultToDate} />
-          </div>
-          <div>
-            <label htmlFor="exportCampId">Campamento</label>
-            <select id="exportCampId" name="campId" defaultValue={selectedCamp?.id ?? "general"}>
-              <option value="general">Todos los campamentos</option>
-              {camps.map((camp) => (
-                <option key={camp.id} value={camp.id}>
-                  {camp.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" name="format" value="csv">
-              Descargar CSV
-            </button>
-            <button type="submit" name="format" value="xls" className="secondary">
-              Descargar Excel
-            </button>
-          </div>
-        </form>
-      </div>
+      {canSeeAdminSections ? (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Descargar información</h2>
+          <form method="get" action="/api/reportes/export" className="grid two" style={{ alignItems: "end" }}>
+            <div>
+              <label htmlFor="from">Desde</label>
+              <input id="from" name="from" type="date" defaultValue={defaultFromDate} />
+            </div>
+            <div>
+              <label htmlFor="to">Hasta</label>
+              <input id="to" name="to" type="date" defaultValue={defaultToDate} />
+            </div>
+            <div>
+              <label htmlFor="exportCampId">Campamento</label>
+              <select id="exportCampId" name="campId" defaultValue={forcedSelectedCamp?.id ?? selectedCamp?.id ?? "general"}>
+                <option value="general">Todos los campamentos</option>
+                {camps.map((camp) => (
+                  <option key={camp.id} value={camp.id}>
+                    {camp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="submit" name="format" value="csv">
+                Descargar CSV
+              </button>
+              <button type="submit" name="format" value="xls" className="secondary">
+                Descargar Excel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       <div className="grid two" style={{ marginBottom: 16 }}>
         <div className="metric">
@@ -350,6 +393,10 @@ export default async function DashboardPage({
               <th>Basura prom.</th>
               <th>Cloro prom.</th>
               <th>pH prom.</th>
+              <th>Uso G1 mes (h)</th>
+              <th>Uso G2 mes (h)</th>
+              <th>Diferencia G1-G2</th>
+              <th>Internet con incidentes</th>
               <th>Cobertura comidas</th>
               <th>Tendencia personas</th>
             </tr>
@@ -369,6 +416,10 @@ export default async function DashboardPage({
                 <td>{row.wasteAvg.toFixed(0)}%</td>
                 <td>{row.chlorineAvg.toFixed(2)}</td>
                 <td>{row.phAvg.toFixed(2)}</td>
+                <td>{row.generator1UseMonth.toFixed(2)}</td>
+                <td>{row.generator2UseMonth.toFixed(2)}</td>
+                <td className={row.lastGeneratorDiff > 30 ? "warn" : ""}>{row.lastGeneratorDiff.toFixed(2)}h</td>
+                <td className={row.internetIssues > 0 ? "warn" : ""}>{row.internetIssues}</td>
                 <td>
                   <div className="progress-cell">
                     <div className="progress-track">
@@ -479,6 +530,10 @@ export default async function DashboardPage({
               <th>Alojamientos</th>
               <th>Lectura medidor</th>
               <th>Consumo medidor</th>
+              <th>Horómetro G1</th>
+              <th>Horómetro G2</th>
+              <th>Diferencia G1-G2</th>
+              <th>Internet</th>
               <th>Agua gastada</th>
               <th>Combustible</th>
               <th>Basura</th>
@@ -499,6 +554,14 @@ export default async function DashboardPage({
                 <td>{report.lodgingCount}</td>
                 <td>{report.meterReading.toFixed(2)}</td>
                 <td>{(meterConsumptionByReportId.get(report.id) ?? 0).toFixed(2)}</td>
+                <td>{report.generator1Hours.toFixed(2)}</td>
+                <td>{report.generator2Hours.toFixed(2)}</td>
+                <td className={Math.abs(report.generator1Hours - report.generator2Hours) > 30 ? "warn" : ""}>
+                  {Math.abs(report.generator1Hours - report.generator2Hours).toFixed(2)}h
+                </td>
+                <td className={report.internetStatus === "FUNCIONANDO" ? "" : "warn"}>
+                  {report.internetStatus.replaceAll("_", " ")}
+                </td>
                 <td>{report.waterLiters} L</td>
                 <td>{report.fuelLiters} L</td>
                 <td>{report.wasteFillPercent}%</td>
@@ -507,12 +570,12 @@ export default async function DashboardPage({
                 <td>{report.createdBy.name}</td>
               </tr>
             ))}
-            {recentReportsFiltered.length === 0 ? (
-              <tr>
-                <td colSpan={15} style={{ color: "var(--muted)" }}>
-                  Aún no hay reportes cargados.
-                </td>
-              </tr>
+              {recentReportsFiltered.length === 0 ? (
+                <tr>
+                  <td colSpan={19} style={{ color: "var(--muted)" }}>
+                    Aún no hay reportes cargados.
+                  </td>
+                </tr>
             ) : null}
           </tbody>
         </table>

@@ -202,6 +202,10 @@ th {
   color: #b03a2e;
 }
 
+.warn {
+  color: #a66b00;
+}
+
 .progress-cell {
   display: flex;
   align-items: center;
@@ -336,6 +340,54 @@ th {
 
 .dot.fuel {
   background: #6c757d;
+}
+
+.notif-bell {
+  position: relative;
+}
+
+.notif-summary {
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 44px;
+  text-align: center;
+  font-size: 1.1rem;
+  user-select: none;
+}
+
+.notif-summary::-webkit-details-marker {
+  display: none;
+}
+
+.notif-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ff6b00;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.notif-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 320px;
+  z-index: 40;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 25px rgba(16, 33, 43, 0.15);
+  padding: 12px;
 }
 
 @media (max-width: 700px) {

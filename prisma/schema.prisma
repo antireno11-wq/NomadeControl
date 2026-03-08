@@ -18,6 +18,7 @@ model User {
   camp         Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
   sessions     Session[]
   reports      DailyReport[]
+  dailyTaskControls DailyTaskControl[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -35,9 +36,11 @@ model Camp {
   id        String        @id @default(cuid())
   name      String
   location  String?
+  capacityPeople Int      @default(0)
   isActive  Boolean       @default(true)
   users     User[]
   reports   DailyReport[]
+  dailyTaskControls DailyTaskControl[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -60,6 +63,9 @@ model DailyReport {
   meterReading          Float   @default(0)
   waterLiters           Int
   fuelLiters     Int
+  generator1Hours       Float   @default(0)
+  generator2Hours       Float   @default(0)
+  internetStatus        String  @default("FUNCIONANDO")
   wasteFillPercent      Int     @default(0)
   chlorineLevel         Float   @default(0)
   phLevel               Float   @default(7)
@@ -67,6 +73,22 @@ model DailyReport {
   notes          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@unique([campId, date])
+}
+
+model DailyTaskControl {
+  id                  String   @id @default(cuid())
+  date                DateTime
+  campId              String
+  camp                Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById         String
+  createdBy           User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  administrativeChecks Json
+  operationalChecks    Json
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@unique([campId, date])
 }
