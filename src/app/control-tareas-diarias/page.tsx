@@ -28,6 +28,38 @@ export default async function ControlTareasDiariasPage() {
     })
   ]);
 
+  const latestByCamp = new Map<string, (typeof recent)[number]>();
+  for (const row of recent) {
+    if (!latestByCamp.has(row.campId)) {
+      latestByCamp.set(row.campId, row);
+    }
+  }
+
+  const toChecksCount = (value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { done: 0, total: 0 };
+    }
+    const entries = Object.values(value as Record<string, unknown>);
+    const total = entries.length;
+    const done = entries.filter((entry) => entry === true).length;
+    return { done, total };
+  };
+
+  const semaphoreRows = camps.map((camp) => {
+    const latest = latestByCamp.get(camp.id);
+    if (!latest) {
+      return { campName: camp.name, status: "SIN REGISTRO", percent: 0, color: "#6c757d" };
+    }
+    const adminChecks = toChecksCount(latest.administrativeChecks);
+    const opChecks = toChecksCount(latest.operationalChecks);
+    const done = adminChecks.done + opChecks.done;
+    const total = adminChecks.total + opChecks.total;
+    const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+    const color = percent >= 90 ? "#0d8a3b" : percent >= 70 ? "#f39c12" : "#c0392b";
+    const status = percent >= 90 ? "VERDE" : percent >= 70 ? "AMARILLO" : "ROJO";
+    return { campName: camp.name, status, percent, color };
+  });
+
   return (
     <main>
       <div className="header">
@@ -59,6 +91,20 @@ export default async function ControlTareasDiariasPage() {
           Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
         </div>
       ) : null}
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Semáforo de cumplimiento</h2>
+        <div className="grid two">
+          {semaphoreRows.map((row) => (
+            <div key={row.campName} className="metric">
+              <div className="label">{row.campName}</div>
+              <div className="value" style={{ color: row.color }}>
+                {row.status} ({row.percent}%)
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="grid two">
         {camps.length > 0 ? (
