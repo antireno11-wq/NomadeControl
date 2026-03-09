@@ -14,12 +14,18 @@ model User {
   passwordHash String
   role         String
   isActive     Boolean      @default(true)
+  phone        String?
+  profilePhotoUrl String?
+  positionTitle String?
+  emergencyContactName String?
+  emergencyContactPhone String?
   campId       String?
   camp         Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
   sessions     Session[]
   reports      DailyReport[]
   dailyTaskControls DailyTaskControl[]
   stockMovements   StockMovement[]
+  staffMembers     StaffMember[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -44,6 +50,7 @@ model Camp {
   dailyTaskControls DailyTaskControl[]
   stockMovements    StockMovement[]
   inventoryItems    InventoryItem[]
+  staffMembers      StaffMember[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -131,4 +138,22 @@ model InventoryItem {
 
   @@index([campId, isActive, category])
   @@unique([campId, normalizedName, unit])
+}
+
+
+model StaffMember {
+  id             String   @id @default(cuid())
+  campId         String
+  camp           Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  fullName       String
+  role           String?
+  shiftStartDate DateTime
+  isActive       Boolean  @default(true)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([campId, isActive])
 }
