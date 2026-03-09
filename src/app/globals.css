@@ -1,12 +1,13 @@
-:root {
-  --bg: #f3f6f8;
+ :root {
+  --bg: #eef6f7;
   --surface: #ffffff;
-  --text: #10212b;
-  --muted: #5e6d76;
-  --accent: #0b7a75;
-  --accent-2: #0a5f5b;
-  --danger: #b03a2e;
-  --border: #d6e0e5;
+  --text: #08323a;
+  --muted: #3d6b74;
+  --accent: #ff6300;
+  --accent-2: #e05500;
+  --danger: #c5441a;
+  --border: #cfe3e6;
+  --teal: #006878;
 }
 
 * {
@@ -16,7 +17,7 @@
 body {
   margin: 0;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: radial-gradient(circle at top, #e3eff3 0%, var(--bg) 45%, #eef2f4 100%);
+  background: radial-gradient(circle at top, #dff1f3 0%, var(--bg) 42%, #eef6f7 100%);
   color: var(--text);
 }
 
@@ -63,8 +64,8 @@ a {
 }
 
 .menu-item.active {
-  background: #dff0f2;
-  color: #0b5f5a;
+  background: #dff3f6;
+  color: var(--teal);
 }
 
 .grid {
@@ -178,7 +179,7 @@ th {
 }
 
 .metric {
-  background: #f8fcfd;
+  background: #f6fbfc;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
@@ -223,7 +224,7 @@ th {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0b7a75, #0da9a2);
+  background: linear-gradient(90deg, var(--teal), #00a6b6);
 }
 
 .report-section {
@@ -285,23 +286,23 @@ th {
 }
 
 .chart-bar.people {
-  background: linear-gradient(180deg, #0b7a75, #0a5f5b);
+  background: linear-gradient(180deg, var(--teal), #0093a8);
 }
 
 .chart-bar.meals {
-  background: #1f8f8a;
+  background: #00a6b6;
 }
 
 .chart-bar.snacks {
-  background: #ff6b00;
+  background: #ff7b2f;
 }
 
 .chart-bar.water {
-  background: #2480c5;
+  background: var(--teal);
 }
 
 .chart-bar.fuel {
-  background: #6c757d;
+  background: #ff6300;
 }
 
 .chart-label {
@@ -327,7 +328,7 @@ th {
 }
 
 .dot.meals {
-  background: #1f8f8a;
+  background: #00a6b6;
 }
 
 .dot.snacks {
@@ -335,11 +336,11 @@ th {
 }
 
 .dot.water {
-  background: #2480c5;
+  background: var(--teal);
 }
 
 .dot.fuel {
-  background: #6c757d;
+  background: #ff6300;
 }
 
 .notif-bell {

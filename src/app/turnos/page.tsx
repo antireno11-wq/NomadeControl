@@ -8,10 +8,6 @@ import { OpsNav } from "@/components/ops-nav";
 import { StaffForm } from "./staff-form";
 import { toggleShiftDayAction } from "./actions";
 
-const ON_DAYS = 14;
-const OFF_DAYS = 14;
-const CYCLE_DAYS = ON_DAYS + OFF_DAYS;
-
 function toUtcDateOnly(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
@@ -22,24 +18,34 @@ function daysBetween(dateA: Date, dateB: Date) {
   return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function derivedStatus(startDate: Date, day: Date) {
-  const diff = daysBetween(day, startDate);
-  const mod = ((diff % CYCLE_DAYS) + CYCLE_DAYS) % CYCLE_DAYS;
-  return mod < ON_DAYS ? "TRABAJA" : "DESCANSO";
+function addDays(base: Date, days: number) {
+  const d = new Date(base);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
 }
 
-function shortStatus(status: string) {
-  if (status === "TRABAJA") return "T";
-  if (status === "DESCANSO") return "D";
-  if (status === "LICENCIA") return "L";
-  return "-";
+function workBlockStartForToday(shiftStartDate: Date, workDays: number, offDays: number, today: Date) {
+  const cycle = workDays + offDays;
+  const diff = daysBetween(today, shiftStartDate);
+
+  if (diff < 0) return toUtcDateOnly(shiftStartDate);
+
+  const cycleIndex = Math.floor(diff / cycle);
+  const dayInCycle = diff % cycle;
+
+  if (dayInCycle < workDays) {
+    return addDays(toUtcDateOnly(shiftStartDate), cycleIndex * cycle);
+  }
+
+  return addDays(toUtcDateOnly(shiftStartDate), (cycleIndex + 1) * cycle);
 }
 
 function statusClass(status: string) {
-  if (status === "TRABAJA") return "up";
-  if (status === "DESCANSO") return "warn";
-  if (status === "LICENCIA") return "danger";
-  return "";
+  return status === "TRABAJA" ? "up" : "warn";
+}
+
+function statusShort(status: string) {
+  return status === "TRABAJA" ? "T" : "A";
 }
 
 export default async function TurnosPage() {
@@ -48,10 +54,6 @@ export default async function TurnosPage() {
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
   const today = new Date();
-  const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  const monthEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0));
-  const daysInMonth = monthEnd.getUTCDate();
-  const monthDays = Array.from({ length: daysInMonth }, (_, i) => new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), i + 1)));
 
   const [camps, staff] = await Promise.all([
     db.camp.findMany({
@@ -68,18 +70,13 @@ export default async function TurnosPage() {
       },
       include: {
         camp: true,
-        shiftDays: {
-          where: {
-            date: {
-              gte: monthStart,
-              lte: monthEnd
-            }
-          }
-        }
+        shiftDays: true
       },
       orderBy: [{ camp: { name: "asc" } }, { fullName: "asc" }]
     })
   ]);
+
+  const maxWorkDays = Math.max(1, ...staff.map((m) => m.shiftWorkDays));
 
   return (
     <main>
@@ -119,25 +116,27 @@ export default async function TurnosPage() {
       {camps.length > 0 ? <StaffForm camps={camps.map((c) => ({ id: c.id, name: c.name }))} defaultDate={toInputDateValue(today)} /> : null}
 
       <div className="card" style={{ marginTop: 16, overflowX: "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Calendario mensual ({today.toLocaleDateString("es-CL", { month: "long", year: "numeric" })})</h2>
+        <h2 style={{ marginTop: 0 }}>Calendario por bloque de trabajo</h2>
         <div style={{ color: "var(--muted)", marginBottom: 10 }}>
-          Haz clic en cada día para rotar: <strong>T</strong> (trabaja), <strong>D</strong> (descanso), <strong>L</strong> (licencia),
-          y volver a automático 14x14.
+          Marca cada dia del bloque como <strong>Trabaja</strong> o <strong>Ausente</strong>.
         </div>
         <table>
           <thead>
             <tr>
               <th>Campamento</th>
               <th>Trabajador</th>
-              {monthDays.map((day) => (
-                <th key={day.toISOString()} style={{ minWidth: 42, textAlign: "center" }}>
-                  {day.getUTCDate()}
+              <th>Turno</th>
+              <th>Inicio bloque</th>
+              {Array.from({ length: maxWorkDays }, (_, i) => (
+                <th key={`day-${i + 1}`} style={{ minWidth: 46, textAlign: "center" }}>
+                  {i + 1}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {staff.map((member) => {
+              const blockStart = workBlockStartForToday(member.shiftStartDate, member.shiftWorkDays, member.shiftOffDays, today);
               const shiftMap = new Map(member.shiftDays.map((d) => [toInputDateValue(d.date), d.status]));
               return (
                 <tr key={member.id}>
@@ -146,22 +145,35 @@ export default async function TurnosPage() {
                     <div>{member.fullName}</div>
                     <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{member.role ?? "-"}</div>
                   </td>
-                  {monthDays.map((day) => {
-                    const dateValue = toInputDateValue(day);
-                    const explicitStatus = shiftMap.get(dateValue);
-                    const status = explicitStatus ?? derivedStatus(member.shiftStartDate, day);
+                  <td>{member.shiftPattern}</td>
+                  <td>{toInputDateValue(blockStart)}</td>
+                  {Array.from({ length: maxWorkDays }, (_, dayIndex) => {
+                    if (dayIndex >= member.shiftWorkDays) {
+                      return (
+                        <td key={`${member.id}-empty-${dayIndex}`} style={{ textAlign: "center", color: "var(--muted)" }}>
+                          -
+                        </td>
+                      );
+                    }
+
+                    const date = addDays(blockStart, dayIndex);
+                    const dateValue = toInputDateValue(date);
+                    const rawStatus = shiftMap.get(dateValue);
+                    const status = rawStatus === "AUSENTE" ? "AUSENTE" : "TRABAJA";
+
                     return (
                       <td key={`${member.id}-${dateValue}`} style={{ textAlign: "center" }}>
                         <form action={toggleShiftDayAction}>
                           <input type="hidden" name="staffMemberId" value={member.id} />
                           <input type="hidden" name="date" value={dateValue} />
+                          <input type="hidden" name="currentStatus" value={status} />
                           <button
                             type="submit"
                             className={statusClass(status)}
                             style={{ minWidth: 34, padding: "4px 0", fontWeight: 700 }}
-                            title={explicitStatus ? `${status} (manual)` : `${status} (auto 14x14)`}
+                            title={`${dateValue} · ${status}`}
                           >
-                            {shortStatus(status)}
+                            {statusShort(status)}
                           </button>
                         </form>
                       </td>
@@ -172,7 +184,7 @@ export default async function TurnosPage() {
             })}
             {staff.length === 0 ? (
               <tr>
-                <td colSpan={2 + daysInMonth} style={{ color: "var(--muted)" }}>
+                <td colSpan={4 + maxWorkDays} style={{ color: "var(--muted)" }}>
                   Aun no hay personal registrado en turnos.
                 </td>
               </tr>

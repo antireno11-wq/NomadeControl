@@ -153,6 +153,9 @@ model StaffMember {
   createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
   fullName       String
   role           String?
+  shiftPattern   String   @default("14x14")
+  shiftWorkDays  Int      @default(14)
+  shiftOffDays   Int      @default(14)
   shiftStartDate DateTime
   isActive       Boolean  @default(true)
   notes          String?

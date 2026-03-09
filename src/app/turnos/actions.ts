@@ -6,43 +6,29 @@ import { isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
 
+const patternToDays: Record<string, { work: number; off: number }> = {
+  "14x14": { work: 14, off: 14 },
+  "10x10": { work: 10, off: 10 },
+  "7x7": { work: 7, off: 7 },
+  "4x3": { work: 4, off: 3 }
+};
+
 const schema = z.object({
   campId: z.string().min(1),
   fullName: z.string().trim().min(2),
   role: z.string().trim().optional(),
+  shiftPattern: z.enum(["14x14", "10x10", "7x7", "4x3"]),
   shiftStartDate: z.string().min(1),
   notes: z.string().optional()
 });
 
 const toggleSchema = z.object({
   staffMemberId: z.string().min(1),
-  date: z.string().min(1)
+  date: z.string().min(1),
+  currentStatus: z.enum(["TRABAJA", "AUSENTE"])
 });
 
 export type StaffFormState = { error: string; success: string };
-
-const ON_DAYS = 14;
-const OFF_DAYS = 14;
-const CYCLE_DAYS = ON_DAYS + OFF_DAYS;
-
-function daysBetween(dateA: Date, dateB: Date) {
-  const a = new Date(Date.UTC(dateA.getUTCFullYear(), dateA.getUTCMonth(), dateA.getUTCDate()));
-  const b = new Date(Date.UTC(dateB.getUTCFullYear(), dateB.getUTCMonth(), dateB.getUTCDate()));
-  return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function derivedStatus(date: Date, shiftStartDate: Date) {
-  const diff = daysBetween(date, shiftStartDate);
-  const mod = ((diff % CYCLE_DAYS) + CYCLE_DAYS) % CYCLE_DAYS;
-  return mod < ON_DAYS ? "TRABAJA" : "DESCANSO";
-}
-
-function nextStatus(current: string) {
-  if (current === "TRABAJA") return "DESCANSO";
-  if (current === "DESCANSO") return "LICENCIA";
-  if (current === "LICENCIA") return "AUTO";
-  return "TRABAJA";
-}
 
 export async function saveStaffMemberAction(_: StaffFormState, formData: FormData): Promise<StaffFormState> {
   const user = await requireRole(OPERATION_ROLES);
@@ -51,6 +37,7 @@ export async function saveStaffMemberAction(_: StaffFormState, formData: FormDat
     campId: formData.get("campId"),
     fullName: formData.get("fullName"),
     role: String(formData.get("role") ?? ""),
+    shiftPattern: formData.get("shiftPattern"),
     shiftStartDate: formData.get("shiftStartDate"),
     notes: String(formData.get("notes") ?? "")
   });
@@ -70,12 +57,17 @@ export async function saveStaffMemberAction(_: StaffFormState, formData: FormDat
     }
   }
 
+  const rule = patternToDays[payload.shiftPattern];
+
   await db.staffMember.create({
     data: {
       campId: payload.campId,
       createdById: user.id,
       fullName: payload.fullName,
       role: payload.role || null,
+      shiftPattern: payload.shiftPattern,
+      shiftWorkDays: rule.work,
+      shiftOffDays: rule.off,
       shiftStartDate: normalizeDateOnly(payload.shiftStartDate),
       notes: payload.notes || null,
       isActive: true
@@ -91,7 +83,8 @@ export async function toggleShiftDayAction(formData: FormData) {
 
   const parsed = toggleSchema.safeParse({
     staffMemberId: formData.get("staffMemberId"),
-    date: formData.get("date")
+    date: formData.get("date"),
+    currentStatus: formData.get("currentStatus")
   });
 
   if (!parsed.success) return;
@@ -100,45 +93,31 @@ export async function toggleShiftDayAction(formData: FormData) {
   const date = normalizeDateOnly(payload.date);
 
   const member = await db.staffMember.findUnique({
-    where: { id: payload.staffMemberId },
-    include: { camp: true }
+    where: { id: payload.staffMemberId }
   });
 
   if (!member || !member.isActive) return;
 
   if (isSupervisorRole(user.role)) {
-    if (!user.campId || member.campId !== user.campId) {
-      return;
-    }
+    if (!user.campId || member.campId !== user.campId) return;
   }
 
-  const existing = await db.staffShiftDay.findUnique({
+  const nextStatus = payload.currentStatus === "TRABAJA" ? "AUSENTE" : "TRABAJA";
+
+  await db.staffShiftDay.upsert({
     where: {
       staffMemberId_date: {
         staffMemberId: member.id,
         date
       }
+    },
+    update: { status: nextStatus },
+    create: {
+      staffMemberId: member.id,
+      date,
+      status: nextStatus
     }
   });
-
-  const currentStatus = existing?.status ?? derivedStatus(date, member.shiftStartDate);
-  const next = nextStatus(currentStatus);
-
-  if (next === "AUTO") {
-    if (existing) {
-      await db.staffShiftDay.delete({ where: { id: existing.id } });
-    }
-  } else if (existing) {
-    await db.staffShiftDay.update({ where: { id: existing.id }, data: { status: next } });
-  } else {
-    await db.staffShiftDay.create({
-      data: {
-        staffMemberId: member.id,
-        date,
-        status: next
-      }
-    });
-  }
 
   revalidatePath("/turnos");
 }

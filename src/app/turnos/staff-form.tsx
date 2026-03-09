@@ -17,7 +17,7 @@ export function StaffForm({ camps, defaultDate }: { camps: CampOption[]; default
 
   return (
     <form action={formAction} className="card grid">
-      <h2 style={{ margin: 0 }}>Control de turnos 14x14</h2>
+      <h2 style={{ margin: 0 }}>Configuración de turnos</h2>
       <div className="grid two">
         <div>
           <label htmlFor="campId">Campamento</label>
@@ -27,6 +27,15 @@ export function StaffForm({ camps, defaultDate }: { camps: CampOption[]; default
                 {camp.name}
               </option>
             ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="shiftPattern">Tipo de turno</label>
+          <select id="shiftPattern" name="shiftPattern" defaultValue="14x14" required>
+            <option value="14x14">14x14</option>
+            <option value="10x10">10x10</option>
+            <option value="7x7">7x7</option>
+            <option value="4x3">4x3</option>
           </select>
         </div>
         <div>

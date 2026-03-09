@@ -23,8 +23,8 @@ export default async function MiPerfilPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/turnos" className="menu-item">
-            Volver a turnos
+          <Link href="/" className="menu-item">
+            Inicio
           </Link>
           <form action={logoutAction}>
             <button className="danger" type="submit">
