@@ -1,14 +1,13 @@
 import Link from "next/link";
 
-export type NavKey = "dashboard" | "carga" | "tareas" | "turnos" | "perfil" | "bodega" | "hsec" | "administracion";
+export type NavKey = "dashboard" | "carga" | "tareas" | "turnos" | "bodega" | "hsec" | "administracion";
 
 const navItems: Array<{ key: NavKey; href: string; label: string; adminOnly?: boolean }> = [
   { key: "dashboard", href: "/dashboard", label: "Dashboard" },
   { key: "carga", href: "/carga-diaria", label: "Informe diario" },
   { key: "tareas", href: "/control-tareas-diarias", label: "Control de tareas diarias" },
-  { key: "turnos", href: "/turnos", label: "Turnos 14x14" },
-  { key: "perfil", href: "/mi-perfil", label: "Mi perfil" },
-  { key: "bodega", href: "/bodega", label: "Bodega" },
+  { key: "turnos", href: "/turnos", label: "Turnos" },
+    { key: "bodega", href: "/bodega", label: "Bodega" },
   { key: "administracion", href: "/administracion", label: "Administración", adminOnly: true }
 ];
 

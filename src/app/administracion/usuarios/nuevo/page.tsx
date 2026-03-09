@@ -24,6 +24,9 @@ export default async function NuevoUsuarioPage() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/mi-perfil" className="menu-item">
+            Mi perfil
+          </Link>
           <Link href="/administracion">
             <button type="button" className="secondary">Volver a administración</button>
           </Link>

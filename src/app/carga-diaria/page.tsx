@@ -61,6 +61,9 @@ export default async function CargaDiariaPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/mi-perfil" className="menu-item">
+            Mi perfil
+          </Link>
           <NotificationBell items={notificationItems} />
           <form action={logoutAction}>
             <button className="danger" type="submit">

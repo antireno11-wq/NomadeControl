@@ -11,6 +11,10 @@ type ProfileDefaults = {
   profilePhotoUrl: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
+  nationalId: string;
+  address: string;
+  city: string;
+  healthProvider: string;
 };
 
 const initialState: ProfileFormState = { error: "", success: "" };
@@ -24,7 +28,7 @@ export function ProfileForm({ defaults }: { defaults: ProfileDefaults }) {
   const [state, formAction] = useFormState(saveProfileAction, initialState);
 
   return (
-    <form action={formAction} className="card grid" style={{ maxWidth: 760 }}>
+    <form action={formAction} className="card grid" style={{ maxWidth: 860 }}>
       <h2 style={{ margin: 0 }}>Datos del supervisor</h2>
 
       <div className="grid two">
@@ -43,6 +47,22 @@ export function ProfileForm({ defaults }: { defaults: ProfileDefaults }) {
         <div>
           <label htmlFor="phone">Telefono</label>
           <input id="phone" name="phone" defaultValue={defaults.phone} placeholder="+56 9 ..." />
+        </div>
+        <div>
+          <label htmlFor="nationalId">RUT / Identificacion</label>
+          <input id="nationalId" name="nationalId" defaultValue={defaults.nationalId} placeholder="12.345.678-9" />
+        </div>
+        <div>
+          <label htmlFor="healthProvider">Prevision / Salud</label>
+          <input id="healthProvider" name="healthProvider" defaultValue={defaults.healthProvider} placeholder="Fonasa, Isapre..." />
+        </div>
+        <div>
+          <label htmlFor="city">Ciudad</label>
+          <input id="city" name="city" defaultValue={defaults.city} />
+        </div>
+        <div>
+          <label htmlFor="address">Direccion</label>
+          <input id="address" name="address" defaultValue={defaults.address} />
         </div>
       </div>
 

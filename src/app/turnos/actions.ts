@@ -14,7 +14,35 @@ const schema = z.object({
   notes: z.string().optional()
 });
 
+const toggleSchema = z.object({
+  staffMemberId: z.string().min(1),
+  date: z.string().min(1)
+});
+
 export type StaffFormState = { error: string; success: string };
+
+const ON_DAYS = 14;
+const OFF_DAYS = 14;
+const CYCLE_DAYS = ON_DAYS + OFF_DAYS;
+
+function daysBetween(dateA: Date, dateB: Date) {
+  const a = new Date(Date.UTC(dateA.getUTCFullYear(), dateA.getUTCMonth(), dateA.getUTCDate()));
+  const b = new Date(Date.UTC(dateB.getUTCFullYear(), dateB.getUTCMonth(), dateB.getUTCDate()));
+  return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function derivedStatus(date: Date, shiftStartDate: Date) {
+  const diff = daysBetween(date, shiftStartDate);
+  const mod = ((diff % CYCLE_DAYS) + CYCLE_DAYS) % CYCLE_DAYS;
+  return mod < ON_DAYS ? "TRABAJA" : "DESCANSO";
+}
+
+function nextStatus(current: string) {
+  if (current === "TRABAJA") return "DESCANSO";
+  if (current === "DESCANSO") return "LICENCIA";
+  if (current === "LICENCIA") return "AUTO";
+  return "TRABAJA";
+}
 
 export async function saveStaffMemberAction(_: StaffFormState, formData: FormData): Promise<StaffFormState> {
   const user = await requireRole(OPERATION_ROLES);
@@ -56,4 +84,61 @@ export async function saveStaffMemberAction(_: StaffFormState, formData: FormDat
 
   revalidatePath("/turnos");
   return { error: "", success: "Personal agregado al control de turnos." };
+}
+
+export async function toggleShiftDayAction(formData: FormData) {
+  const user = await requireRole(OPERATION_ROLES);
+
+  const parsed = toggleSchema.safeParse({
+    staffMemberId: formData.get("staffMemberId"),
+    date: formData.get("date")
+  });
+
+  if (!parsed.success) return;
+
+  const payload = parsed.data;
+  const date = normalizeDateOnly(payload.date);
+
+  const member = await db.staffMember.findUnique({
+    where: { id: payload.staffMemberId },
+    include: { camp: true }
+  });
+
+  if (!member || !member.isActive) return;
+
+  if (isSupervisorRole(user.role)) {
+    if (!user.campId || member.campId !== user.campId) {
+      return;
+    }
+  }
+
+  const existing = await db.staffShiftDay.findUnique({
+    where: {
+      staffMemberId_date: {
+        staffMemberId: member.id,
+        date
+      }
+    }
+  });
+
+  const currentStatus = existing?.status ?? derivedStatus(date, member.shiftStartDate);
+  const next = nextStatus(currentStatus);
+
+  if (next === "AUTO") {
+    if (existing) {
+      await db.staffShiftDay.delete({ where: { id: existing.id } });
+    }
+  } else if (existing) {
+    await db.staffShiftDay.update({ where: { id: existing.id }, data: { status: next } });
+  } else {
+    await db.staffShiftDay.create({
+      data: {
+        staffMemberId: member.id,
+        date,
+        status: next
+      }
+    });
+  }
+
+  revalidatePath("/turnos");
 }

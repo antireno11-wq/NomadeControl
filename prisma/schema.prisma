@@ -19,6 +19,10 @@ model User {
   positionTitle String?
   emergencyContactName String?
   emergencyContactPhone String?
+  nationalId    String?
+  address       String?
+  city          String?
+  healthProvider String?
   campId       String?
   camp         Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
   sessions     Session[]
@@ -154,6 +158,22 @@ model StaffMember {
   notes          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  shiftDays      StaffShiftDay[]
 
   @@index([campId, isActive])
+}
+
+
+model StaffShiftDay {
+  id            String      @id @default(cuid())
+  staffMemberId String
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  date          DateTime
+  status        String
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([staffMemberId, date])
+  @@index([date, status])
 }

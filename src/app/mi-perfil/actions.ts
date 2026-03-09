@@ -11,7 +11,11 @@ const profileSchema = z.object({
   positionTitle: z.string().trim().optional(),
   profilePhotoUrl: z.string().trim().url().or(z.literal("")).optional(),
   emergencyContactName: z.string().trim().optional(),
-  emergencyContactPhone: z.string().trim().optional()
+  emergencyContactPhone: z.string().trim().optional(),
+  nationalId: z.string().trim().optional(),
+  address: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  healthProvider: z.string().trim().optional()
 });
 
 export type ProfileFormState = { error: string; success: string };
@@ -25,7 +29,11 @@ export async function saveProfileAction(_: ProfileFormState, formData: FormData)
     positionTitle: String(formData.get("positionTitle") ?? ""),
     profilePhotoUrl: String(formData.get("profilePhotoUrl") ?? ""),
     emergencyContactName: String(formData.get("emergencyContactName") ?? ""),
-    emergencyContactPhone: String(formData.get("emergencyContactPhone") ?? "")
+    emergencyContactPhone: String(formData.get("emergencyContactPhone") ?? ""),
+    nationalId: String(formData.get("nationalId") ?? ""),
+    address: String(formData.get("address") ?? ""),
+    city: String(formData.get("city") ?? ""),
+    healthProvider: String(formData.get("healthProvider") ?? "")
   });
 
   if (!parsed.success) {
@@ -42,7 +50,11 @@ export async function saveProfileAction(_: ProfileFormState, formData: FormData)
       positionTitle: payload.positionTitle || null,
       profilePhotoUrl: payload.profilePhotoUrl || null,
       emergencyContactName: payload.emergencyContactName || null,
-      emergencyContactPhone: payload.emergencyContactPhone || null
+      emergencyContactPhone: payload.emergencyContactPhone || null,
+      nationalId: payload.nationalId || null,
+      address: payload.address || null,
+      city: payload.city || null,
+      healthProvider: payload.healthProvider || null
     }
   });
 

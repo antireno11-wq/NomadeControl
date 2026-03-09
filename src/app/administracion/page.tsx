@@ -31,6 +31,9 @@ export default async function AdministracionPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/mi-perfil" className="menu-item">
+            Mi perfil
+          </Link>
           <form action={logoutAction}>
             <button className="danger" type="submit">
               Cerrar sesión

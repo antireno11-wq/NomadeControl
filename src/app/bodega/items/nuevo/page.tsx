@@ -50,6 +50,9 @@ export default async function NewBodegaItemPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/mi-perfil" className="menu-item">
+            Mi perfil
+          </Link>
           <Link href="/bodega" className="menu-item">
             Volver a bodega
           </Link>

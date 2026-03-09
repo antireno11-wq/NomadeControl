@@ -1,13 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { logoutAction } from "@/app/dashboard/actions";
-import { OpsNav } from "@/components/ops-nav";
 import { ProfileForm } from "./profile-form";
 
 export default async function MiPerfilPage() {
   const user = await requireRole(OPERATION_ROLES);
-  const canSeeAdminSections = isAdminRole(user.role);
 
   return (
     <main>
@@ -25,6 +23,9 @@ export default async function MiPerfilPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/turnos" className="menu-item">
+            Volver a turnos
+          </Link>
           <form action={logoutAction}>
             <button className="danger" type="submit">
               Cerrar sesion
@@ -32,8 +33,6 @@ export default async function MiPerfilPage() {
           </form>
         </div>
       </div>
-
-      <OpsNav active="perfil" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
 
       <ProfileForm
         defaults={{
@@ -43,7 +42,11 @@ export default async function MiPerfilPage() {
           positionTitle: user.positionTitle ?? "",
           profilePhotoUrl: user.profilePhotoUrl ?? "",
           emergencyContactName: user.emergencyContactName ?? "",
-          emergencyContactPhone: user.emergencyContactPhone ?? ""
+          emergencyContactPhone: user.emergencyContactPhone ?? "",
+          nationalId: user.nationalId ?? "",
+          address: user.address ?? "",
+          city: user.city ?? "",
+          healthProvider: user.healthProvider ?? ""
         }}
       />
     </main>
