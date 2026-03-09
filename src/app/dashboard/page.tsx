@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     }),
     db.dailyReport.findMany({
       where: campFilter ? { campId: campFilter } : undefined,
-      take: 12,
+      take: 16,
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
     })
@@ -75,10 +75,45 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       acc.meals += r.breakfastCount + r.lunchCount + r.dinnerCount;
       acc.water += r.waterLiters;
       acc.fuel += r.fuelLiters;
+      acc.waste += r.wasteFillPercent;
+      acc.chlorine += r.chlorineLevel;
+      acc.ph += r.phLevel;
+      if (r.internetStatus !== "FUNCIONANDO") acc.internetIssues += 1;
       return acc;
     },
-    { people: 0, meals: 0, water: 0, fuel: 0 }
+    { people: 0, meals: 0, water: 0, fuel: 0, waste: 0, chlorine: 0, ph: 0, internetIssues: 0 }
   );
+
+  const reportsCount = reportsScoped.length;
+  const wasteAvg = reportsCount > 0 ? totals.waste / reportsCount : 0;
+  const chlorineAvg = reportsCount > 0 ? totals.chlorine / reportsCount : 0;
+  const phAvg = reportsCount > 0 ? totals.ph / reportsCount : 0;
+
+  const byCamp = new Map<string, typeof reportsScoped>();
+  for (const report of reportsScoped) {
+    const list = byCamp.get(report.campId) ?? [];
+    list.push(report);
+    byCamp.set(report.campId, list);
+  }
+
+  const generatorRows = scopeCamps.map((camp) => {
+    const list = [...(byCamp.get(camp.id) ?? [])].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const first = list[0];
+    const last = list[list.length - 1];
+    const g1Use = first && last ? Math.max(0, last.generator1Hours - first.generator1Hours) : 0;
+    const g2Use = first && last ? Math.max(0, last.generator2Hours - first.generator2Hours) : 0;
+    return {
+      id: camp.id,
+      name: camp.name,
+      g1Use,
+      g2Use,
+      diff: Math.abs(g1Use - g2Use)
+    };
+  });
+
+  const totalG1Use = generatorRows.reduce((sum, row) => sum + row.g1Use, 0);
+  const totalG2Use = generatorRows.reduce((sum, row) => sum + row.g2Use, 0);
+  const totalGeneratorDiff = Math.abs(totalG1Use - totalG2Use);
 
   const maxPeople = Math.max(1, ...chartDays.map((d) => d.people));
   const maxRes = Math.max(1, ...chartDays.map((d) => Math.max(d.meals, d.water, d.fuel)));
@@ -86,10 +121,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const reportedCampIdsToday = new Set(reportsTodayScoped.map((r) => r.campId));
   const missingCampsToday = scopeCamps.filter((c) => !reportedCampIdsToday.has(c.id));
 
-  const notificationItems = missingCampsToday.map((camp) => ({
-    text: `Falta informe diario hoy: ${camp.name}`,
-    severity: "error" as const
-  }));
+  const notificationItems = [
+    ...missingCampsToday.map((camp) => ({ text: `Falta informe diario hoy: ${camp.name}`, severity: "error" as const })),
+    ...generatorRows
+      .filter((row) => row.diff > 30)
+      .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
+  ];
 
   const defaultFromDate = toInputDateValue(last30Days);
   const defaultToDate = toInputDateValue(todayDate);
@@ -183,22 +220,44 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       </div>
 
       <div className="grid two" style={{ marginBottom: 16 }}>
-        <div className="metric">
-          <div className="label">Personas acumuladas (30 días)</div>
-          <div className="value">{totals.people}</div>
-        </div>
-        <div className="metric">
-          <div className="label">Raciones acumuladas (30 días)</div>
-          <div className="value">{totals.meals}</div>
-        </div>
-        <div className="metric">
-          <div className="label">Agua acumulada (30 días)</div>
-          <div className="value">{totals.water} L</div>
-        </div>
-        <div className="metric">
-          <div className="label">Combustible acumulado (30 días)</div>
-          <div className="value">{totals.fuel} L</div>
-        </div>
+        <div className="metric"><div className="label">Personas acumuladas (30 días)</div><div className="value">{totals.people}</div></div>
+        <div className="metric"><div className="label">Raciones acumuladas (30 días)</div><div className="value">{totals.meals}</div></div>
+        <div className="metric"><div className="label">Agua acumulada (30 días)</div><div className="value">{totals.water} L</div></div>
+        <div className="metric"><div className="label">Combustible acumulado (30 días)</div><div className="value">{totals.fuel} L</div></div>
+        <div className="metric"><div className="label">Horas generador 1 (30 días)</div><div className="value">{totalG1Use.toFixed(1)} h</div></div>
+        <div className="metric"><div className="label">Horas generador 2 (30 días)</div><div className="value">{totalG2Use.toFixed(1)} h</div></div>
+        <div className="metric"><div className="label">Diferencia G1/G2 total</div><div className={`value ${totalGeneratorDiff > 30 ? "warn" : ""}`}>{totalGeneratorDiff.toFixed(1)} h</div></div>
+        <div className="metric"><div className="label">Internet con incidentes</div><div className="value">{totals.internetIssues}</div></div>
+        <div className="metric"><div className="label">Basura promedio</div><div className="value">{wasteAvg.toFixed(0)}%</div></div>
+        <div className="metric"><div className="label">Cloro promedio</div><div className="value">{chlorineAvg.toFixed(2)}</div></div>
+        <div className="metric"><div className="label">pH promedio</div><div className="value">{phAvg.toFixed(2)}</div></div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16, overflowX: "auto" }}>
+        <h2 style={{ marginTop: 0 }}>Generadores por campamento (30 días)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Campamento</th>
+              <th>Horas G1</th>
+              <th>Horas G2</th>
+              <th>Diferencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {generatorRows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.name}</td>
+                <td>{row.g1Use.toFixed(1)} h</td>
+                <td>{row.g2Use.toFixed(1)} h</td>
+                <td className={row.diff > 30 ? "warn" : ""}>{row.diff.toFixed(1)} h</td>
+              </tr>
+            ))}
+            {generatorRows.length === 0 ? (
+              <tr><td colSpan={4} style={{ color: "var(--muted)" }}>Sin datos de generadores.</td></tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -227,9 +286,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <select id="exportCampId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
                 <option value="general">Todos</option>
                 {camps.map((camp) => (
-                  <option key={camp.id} value={camp.id}>
-                    {camp.name}
-                  </option>
+                  <option key={camp.id} value={camp.id}>{camp.name}</option>
                 ))}
               </select>
             </div>
@@ -250,6 +307,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <th>Campamento</th>
               <th>Personas</th>
               <th>Comidas</th>
+              <th>G1</th>
+              <th>G2</th>
               <th>Agua</th>
               <th>Combustible</th>
               <th>Operador</th>
@@ -262,6 +321,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 <td>{report.camp.name}</td>
                 <td>{report.peopleCount}</td>
                 <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
+                <td>{report.generator1Hours.toFixed(1)} h</td>
+                <td>{report.generator2Hours.toFixed(1)} h</td>
                 <td>{report.waterLiters} L</td>
                 <td>{report.fuelLiters} L</td>
                 <td>{report.createdBy.name}</td>
@@ -269,7 +330,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             ))}
             {recentReportsScoped.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ color: "var(--muted)" }}>Aún no hay reportes cargados.</td>
+                <td colSpan={9} style={{ color: "var(--muted)" }}>Aún no hay reportes cargados.</td>
               </tr>
             ) : null}
           </tbody>
