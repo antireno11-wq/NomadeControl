@@ -1,10 +1,10 @@
+import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "./actions";
-import { OpsNav } from "@/components/ops-nav";
 import { NotificationBell } from "@/components/notification-bell";
 
 export default async function DashboardPage({ searchParams }: { searchParams?: { campId?: string | string[] } }) {
@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     }),
     db.dailyReport.findMany({
       where: campFilter ? { campId: campFilter } : undefined,
-      take: 16,
+      take: 10,
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
     }),
@@ -65,47 +65,56 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
   const byDay = new Map<string, { date: string; people: number; meals: number; water: number; fuel: number }>();
   for (const report of reportsScoped) {
-    const d = toInputDateValue(report.date);
-    const row = byDay.get(d) ?? { date: d, people: 0, meals: 0, water: 0, fuel: 0 };
+    const dateKey = toInputDateValue(report.date);
+    const row = byDay.get(dateKey) ?? { date: dateKey, people: 0, meals: 0, water: 0, fuel: 0 };
     row.people += report.peopleCount;
     row.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
     row.water += report.waterLiters;
     row.fuel += report.fuelLiters;
-    byDay.set(d, row);
+    byDay.set(dateKey, row);
   }
 
-  const dailySeries = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));
-  const chartDays = dailySeries.slice(-14);
+  const chartDays = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-12);
+  const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
+  const maxResources = Math.max(1, ...chartDays.map((day) => Math.max(day.meals, day.water, day.fuel)));
 
   const totals = reportsScoped.reduce(
-    (acc, r) => {
-      acc.people += r.peopleCount;
-      acc.meals += r.breakfastCount + r.lunchCount + r.dinnerCount;
-      acc.water += r.waterLiters;
-      acc.fuel += r.fuelLiters;
-      acc.waste += r.wasteFillPercent;
-      acc.chlorine += r.chlorineLevel;
-      acc.ph += r.phLevel;
-      if (r.internetStatus !== "FUNCIONANDO") acc.internetIssues += 1;
+    (acc, report) => {
+      acc.people += report.peopleCount;
+      acc.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
+      acc.water += report.waterLiters;
+      acc.fuel += report.fuelLiters;
+      acc.waste += report.wasteFillPercent;
+      if (report.internetStatus !== "FUNCIONANDO") acc.internetIssues += 1;
       return acc;
     },
-    { people: 0, meals: 0, water: 0, fuel: 0, waste: 0, chlorine: 0, ph: 0, internetIssues: 0 }
+    { people: 0, meals: 0, water: 0, fuel: 0, waste: 0, internetIssues: 0 }
   );
 
   const reportsCount = reportsScoped.length;
   const wasteAvg = reportsCount > 0 ? totals.waste / reportsCount : 0;
-  const chlorineAvg = reportsCount > 0 ? totals.chlorine / reportsCount : 0;
-  const phAvg = reportsCount > 0 ? totals.ph / reportsCount : 0;
 
-  const byCamp = new Map<string, typeof reportsScoped>();
-  for (const report of reportsScoped) {
-    const list = byCamp.get(report.campId) ?? [];
-    list.push(report);
-    byCamp.set(report.campId, list);
-  }
+  const reportsTodayByCamp = new Map(reportsTodayScoped.map((report) => [report.campId, report] as const));
+  const taskSummaryByCamp = new Map(
+    taskControlsTodayScoped.map((control) => {
+      const adminValues = Object.values((control.administrativeChecks as Record<string, unknown>) ?? {});
+      const opValues = Object.values((control.operationalChecks as Record<string, unknown>) ?? {});
+      const total = adminValues.length + opValues.length;
+      const done = [...adminValues, ...opValues].filter((value) => value === true).length;
+      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+      return [control.campId, { done, total, percent }] as const;
+    })
+  );
+
+  const reportedCampIdsToday = new Set(reportsTodayScoped.map((r) => r.campId));
+  const missingCampsToday = scopeCamps.filter((camp) => !reportedCampIdsToday.has(camp.id));
+  const taskControlCampIdsToday = new Set(taskControlsTodayScoped.map((r) => r.campId));
+  const missingTaskControlsToday = scopeCamps.filter((camp) => !taskControlCampIdsToday.has(camp.id));
 
   const generatorRows = scopeCamps.map((camp) => {
-    const list = [...(byCamp.get(camp.id) ?? [])].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const list = reportsScoped
+      .filter((report) => report.campId === camp.id)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
     const first = list[0];
     const last = list[list.length - 1];
     const g1Use = first && last ? Math.max(0, last.generator1Hours - first.generator1Hours) : 0;
@@ -123,24 +132,22 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const totalG2Use = generatorRows.reduce((sum, row) => sum + row.g2Use, 0);
   const totalGeneratorDiff = Math.abs(totalG1Use - totalG2Use);
 
-  const maxPeople = Math.max(1, ...chartDays.map((d) => d.people));
-  const maxRes = Math.max(1, ...chartDays.map((d) => Math.max(d.meals, d.water, d.fuel)));
+  const reportCompletion = scopeCamps.length > 0 ? Math.round((reportsTodayScoped.length / scopeCamps.length) * 100) : 0;
+  const taskCompletion = scopeCamps.length > 0 ? Math.round((taskControlsTodayScoped.length / scopeCamps.length) * 100) : 0;
+  const avgTaskCompletion =
+    taskControlsTodayScoped.length > 0
+      ? Math.round(
+          Array.from(taskSummaryByCamp.values()).reduce((sum, summary) => sum + summary.percent, 0) / taskControlsTodayScoped.length
+        )
+      : 0;
 
-  const reportedCampIdsToday = new Set(reportsTodayScoped.map((r) => r.campId));
-  const missingCampsToday = scopeCamps.filter((c) => !reportedCampIdsToday.has(c.id));
-  const taskControlCampIdsToday = new Set(taskControlsTodayScoped.map((r) => r.campId));
-  const missingTaskControlsToday = scopeCamps.filter((c) => !taskControlCampIdsToday.has(c.id));
-
-  const taskSummaryByCamp = new Map(
-    taskControlsTodayScoped.map((control) => {
-      const adminValues = Object.values((control.administrativeChecks as Record<string, unknown>) ?? {});
-      const opValues = Object.values((control.operationalChecks as Record<string, unknown>) ?? {});
-      const total = adminValues.length + opValues.length;
-      const done = [...adminValues, ...opValues].filter((value) => value === true).length;
-      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
-      return [control.campId, { control, total, done, percent }] as const;
-    })
+  const peopleToday = reportsTodayScoped.reduce((sum, report) => sum + report.peopleCount, 0);
+  const mealsToday = reportsTodayScoped.reduce(
+    (sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount,
+    0
   );
+  const waterToday = reportsTodayScoped.reduce((sum, report) => sum + report.waterLiters, 0);
+  const fuelToday = reportsTodayScoped.reduce((sum, report) => sum + report.fuelLiters, 0);
 
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario hoy: ${camp.name}`, severity: "error" as const })),
@@ -150,310 +157,308 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
   ];
 
-  const defaultFromDate = toInputDateValue(last30Days);
-  const defaultToDate = toInputDateValue(todayDate);
+  const dashboardNavItems = [
+    { href: "/dashboard", label: "Dashboard", active: true },
+    { href: "/carga-diaria", label: "Informe diario", active: false },
+    { href: "/control-tareas-diarias", label: "Control tareas", active: false },
+    ...(canSeeAdminSections ? [{ href: "/administracion", label: "Administración", active: false }] : [])
+  ];
 
   return (
-    <main>
-      <div className="header">
-        <div>
-          <div className="brand-inline">
-            <Link href="/" aria-label="Ir al inicio">
-              <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
+    <main className="dashboard-shell">
+      <aside className="dashboard-sidebar">
+        <div className="dashboard-sidebar-card">
+          <Link href="/" aria-label="Ir al inicio" className="dashboard-brand">
+            <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={112} height={112} priority />
+            <div>
+              <strong>Nomade Control</strong>
+              <span>{scopedSelectedCampId ? scopeCamps[0]?.name ?? "Campamento" : "Vista general"}</span>
+            </div>
+          </Link>
+
+          <nav className="dashboard-nav">
+            {dashboardNavItems.map((item) => (
+              <Link key={item.href} href={item.href} className={`dashboard-nav-link ${item.active ? "active" : ""}`}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="dashboard-sidebar-footer">
+            <Link href="/mi-perfil" className="dashboard-mini-link">
+              Mi perfil
             </Link>
-          </div>
-          <h1>Dashboard</h1>
-          <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesion: {user.name} ({user.role})
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/mi-perfil" className="menu-item">
-            Mi perfil
-          </Link>
-          <NotificationBell items={notificationItems} />
-          <form action={logoutAction}>
-            <button className="danger" type="submit">
-              Cerrar sesion
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <OpsNav active="dashboard" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
-
-      {canSeeAdminSections ? (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <form method="get" className="grid two" style={{ alignItems: "end" }}>
-            <div>
-              <label htmlFor="campId">Vista</label>
-              <select id="campId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
-                <option value="general">General (todos)</option>
-                {camps.map((camp) => (
-                  <option key={camp.id} value={camp.id}>
-                    {camp.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <button type="submit">Aplicar</button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-
-      <div className="hero-panel" style={{ marginBottom: 16 }}>
-        <div>
-          <div className="hero-kicker">Resumen del día</div>
-          <h2 style={{ marginTop: 0, marginBottom: 8 }}>Estado diario de operación y tareas</h2>
-          <div style={{ color: "var(--muted)", maxWidth: 760 }}>
-            Aquí ves el estado de los informes diarios y del control de tareas. La carga se hace por separado en
-            <strong> Informe diario</strong> y <strong>Control de tareas diarias</strong>.
+            <form action={logoutAction}>
+              <button className="danger" type="submit">
+                Cerrar sesión
+              </button>
+            </form>
           </div>
         </div>
-        <div className="action-grid" style={{ marginTop: 16 }}>
-          <Link href="/carga-diaria" className="action-card">
-            <strong>Ir a Informe diario</strong>
-            <span>Cargar consumos, agua, combustible, generadores e internet.</span>
-          </Link>
-          <Link href="/control-tareas-diarias" className="action-card">
-            <strong>Ir a Control de tareas</strong>
-            <span>Registrar checklist y cumplimiento diario del campamento.</span>
-          </Link>
-        </div>
-      </div>
+      </aside>
 
-      <div className="grid two" style={{ marginBottom: 16 }}>
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Informe diario de hoy</h2>
-          <div className="summary-grid">
-            <div className="metric">
-              <div className="label">Campamentos con informe</div>
-              <div className="value">{reportsTodayScoped.length}</div>
-            </div>
-            <div className="metric">
-              <div className="label">Campamentos pendientes</div>
-              <div className="value">{missingCampsToday.length}</div>
+      <section className="dashboard-main">
+        <div className="dashboard-topbar">
+          <div>
+            <h1>Dashboard</h1>
+            <div className="dashboard-subline">
+              <span className="dashboard-chip">{toInputDateValue(todayDate)}</span>
+              <span className="dashboard-chip">30 días</span>
+              <span className="dashboard-chip">{user.role}</span>
             </div>
           </div>
-          <div className="summary-list">
-            {scopeCamps.map((camp) => {
-              const report = reportsTodayScoped.find((row) => row.campId === camp.id);
-              return (
-                <div key={camp.id} className="summary-row">
-                  <div>
+          <div className="dashboard-topbar-actions">
+            {canSeeAdminSections ? (
+              <form method="get" className="dashboard-filter">
+                <select id="campId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
+                  <option value="general">Todos</option>
+                  {camps.map((camp) => (
+                    <option key={camp.id} value={camp.id}>
+                      {camp.name}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit">Ver</button>
+              </form>
+            ) : null}
+            <NotificationBell items={notificationItems} />
+            <div className="dashboard-user">{user.name}</div>
+          </div>
+        </div>
+
+        <div className="dashboard-kpi-grid">
+          <div className="dashboard-kpi accent">
+            <div className="dashboard-kpi-label">Informes hoy</div>
+            <div className="dashboard-kpi-value">{reportsTodayScoped.length}</div>
+            <div className="dashboard-kpi-meta">{missingCampsToday.length} pendientes</div>
+          </div>
+          <div className="dashboard-kpi teal">
+            <div className="dashboard-kpi-label">Tareas hoy</div>
+            <div className="dashboard-kpi-value">{taskControlsTodayScoped.length}</div>
+            <div className="dashboard-kpi-meta">{missingTaskControlsToday.length} pendientes</div>
+          </div>
+          <div className="dashboard-kpi">
+            <div className="dashboard-kpi-label">Personas hoy</div>
+            <div className="dashboard-kpi-value">{peopleToday}</div>
+            <div className="dashboard-kpi-meta">{mealsToday} raciones</div>
+          </div>
+          <div className="dashboard-kpi">
+            <div className="dashboard-kpi-label">Generadores</div>
+            <div className="dashboard-kpi-value">{totalGeneratorDiff.toFixed(1)}h</div>
+            <div className="dashboard-kpi-meta">diferencia total</div>
+          </div>
+        </div>
+
+        <div className="dashboard-core-grid">
+          <section className="dashboard-panel dashboard-panel-large">
+            <div className="dashboard-panel-header">
+              <h2>Resumen diario</h2>
+              <div className="dashboard-mini-stats">
+                <span>{waterToday} L agua</span>
+                <span>{fuelToday} L combustible</span>
+              </div>
+            </div>
+
+            <div className="dashboard-ring-grid">
+              <div className="dashboard-ring-card">
+                <RingCard
+                  label="Informe diario"
+                  value={reportCompletion}
+                  color="var(--accent)"
+                  helper={`${reportsTodayScoped.length}/${scopeCamps.length || 0}`}
+                />
+              </div>
+              <div className="dashboard-ring-card">
+                <RingCard
+                  label="Control tareas"
+                  value={taskCompletion}
+                  color="var(--teal)"
+                  helper={`${taskControlsTodayScoped.length}/${scopeCamps.length || 0}`}
+                />
+              </div>
+              <div className="dashboard-ring-card">
+                <RingCard label="Cumplimiento" value={avgTaskCompletion} color="#21a179" helper="promedio" />
+              </div>
+              <div className="dashboard-mini-stack">
+                <div className="dashboard-mini-metric">
+                  <span>G1</span>
+                  <strong>{totalG1Use.toFixed(1)}h</strong>
+                </div>
+                <div className="dashboard-mini-metric">
+                  <span>G2</span>
+                  <strong>{totalG2Use.toFixed(1)}h</strong>
+                </div>
+                <div className="dashboard-mini-metric">
+                  <span>Internet</span>
+                  <strong>{totals.internetIssues}</strong>
+                </div>
+                <div className="dashboard-mini-metric">
+                  <span>Basura</span>
+                  <strong>{wasteAvg.toFixed(0)}%</strong>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Campamentos</h2>
+              <span className="dashboard-chip small">{scopeCamps.length}</span>
+            </div>
+            <div className="dashboard-status-list">
+              {scopeCamps.map((camp) => {
+                const report = reportsTodayByCamp.get(camp.id);
+                const task = taskSummaryByCamp.get(camp.id);
+                return (
+                  <div key={camp.id} className="dashboard-status-row">
                     <strong>{camp.name}</strong>
-                    <div style={{ color: "var(--muted)" }}>
-                      {report
-                        ? `${report.peopleCount} personas · ${report.breakfastCount + report.lunchCount + report.dinnerCount} comidas · ${report.fuelLiters} L combustible`
-                        : "Sin informe cargado hoy"}
+                    <div className="dashboard-status-tags">
+                      <span className={`status-pill ${report ? "ok" : "danger"}`}>Inf</span>
+                      <span className={`status-pill ${task ? "ok" : "warn"}`}>{task ? `${task.percent}%` : "Task"}</span>
                     </div>
                   </div>
-                  <span className={report ? "status-pill ok" : "status-pill danger"}>
-                    {report ? "Cargado" : "Pendiente"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
 
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Control de tareas de hoy</h2>
-          <div className="summary-grid">
-            <div className="metric">
-              <div className="label">Campamentos con control</div>
-              <div className="value">{taskControlsTodayScoped.length}</div>
+        <div className="dashboard-chart-grid">
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Personas</h2>
+              <span className="dashboard-chip small">12 días</span>
             </div>
-            <div className="metric">
-              <div className="label">Campamentos pendientes</div>
-              <div className="value">{missingTaskControlsToday.length}</div>
-            </div>
-          </div>
-          <div className="summary-list">
-            {scopeCamps.map((camp) => {
-              const summary = taskSummaryByCamp.get(camp.id);
-              return (
-                <div key={camp.id} className="summary-row">
-                  <div>
-                    <strong>{camp.name}</strong>
-                    <div style={{ color: "var(--muted)" }}>
-                      {summary ? `${summary.done}/${summary.total} tareas completadas` : "Sin control cargado hoy"}
-                    </div>
+            <div className="chart-grid compact">
+              {chartDays.map((day) => (
+                <div key={`p-${day.date}`} className="chart-col">
+                  <div className="chart-track tall">
+                    <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
                   </div>
-                  <span className={summary ? "status-pill ok" : "status-pill warn"}>
-                    {summary ? `${summary.percent}%` : "Pendiente"}
-                  </span>
+                  <div className="chart-label">{day.date.slice(5)}</div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+              ))}
+            </div>
+          </section>
 
-      <div className="grid two" style={{ marginBottom: 16 }}>
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Personas (14 días)</h2>
-          <div className="chart-grid">
-            {chartDays.map((day) => (
-              <div key={`p-${day.date}`} className="chart-col">
-                <div className="chart-value">{day.people}</div>
-                <div className="chart-track">
-                  <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
-                </div>
-                <div className="chart-label">{day.date.slice(5)}</div>
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Consumos</h2>
+              <div className="chart-legend compact">
+                <span>
+                  <i className="dot meals" /> C
+                </span>
+                <span>
+                  <i className="dot water" /> A
+                </span>
+                <span>
+                  <i className="dot fuel" /> F
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Consumos (14 días)</h2>
-          <div className="chart-grid">
-            {chartDays.map((day) => (
-              <div key={`c-${day.date}`} className="chart-col">
-                <div className="chart-stack">
-                  <div className="chart-bar meals" style={{ height: `${(day.meals / maxRes) * 100}%` }} />
-                  <div className="chart-bar water" style={{ height: `${(day.water / maxRes) * 100}%` }} />
-                  <div className="chart-bar fuel" style={{ height: `${(day.fuel / maxRes) * 100}%` }} />
+            </div>
+            <div className="chart-grid compact">
+              {chartDays.map((day) => (
+                <div key={`c-${day.date}`} className="chart-col">
+                  <div className="chart-stack tall">
+                    <div className="chart-bar meals" style={{ height: `${(day.meals / maxResources) * 100}%` }} />
+                    <div className="chart-bar water" style={{ height: `${(day.water / maxResources) * 100}%` }} />
+                    <div className="chart-bar fuel" style={{ height: `${(day.fuel / maxResources) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
                 </div>
-                <div className="chart-label">{day.date.slice(5)}</div>
-              </div>
-            ))}
-          </div>
-          <div className="chart-legend">
-            <span><i className="dot meals" /> Comidas</span>
-            <span><i className="dot water" /> Agua</span>
-            <span><i className="dot fuel" /> Combustible</span>
-          </div>
+              ))}
+            </div>
+          </section>
         </div>
-      </div>
 
-      <div className="grid two" style={{ marginBottom: 16 }}>
-        <div className="metric"><div className="label">Personas acumuladas (30 días)</div><div className="value">{totals.people}</div></div>
-        <div className="metric"><div className="label">Raciones acumuladas (30 días)</div><div className="value">{totals.meals}</div></div>
-        <div className="metric"><div className="label">Agua acumulada (30 días)</div><div className="value">{totals.water} L</div></div>
-        <div className="metric"><div className="label">Combustible acumulado (30 días)</div><div className="value">{totals.fuel} L</div></div>
-        <div className="metric"><div className="label">Horas generador 1 (30 días)</div><div className="value">{totalG1Use.toFixed(1)} h</div></div>
-        <div className="metric"><div className="label">Horas generador 2 (30 días)</div><div className="value">{totalG2Use.toFixed(1)} h</div></div>
-        <div className="metric"><div className="label">Diferencia G1/G2 total</div><div className={`value ${totalGeneratorDiff > 30 ? "warn" : ""}`}>{totalGeneratorDiff.toFixed(1)} h</div></div>
-        <div className="metric"><div className="label">Internet con incidentes</div><div className="value">{totals.internetIssues}</div></div>
-        <div className="metric"><div className="label">Basura promedio</div><div className="value">{wasteAvg.toFixed(0)}%</div></div>
-        <div className="metric"><div className="label">Cloro promedio</div><div className="value">{chlorineAvg.toFixed(2)}</div></div>
-        <div className="metric"><div className="label">pH promedio</div><div className="value">{phAvg.toFixed(2)}</div></div>
-      </div>
+        <div className="dashboard-bottom-grid">
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Generadores</h2>
+              <span className={`dashboard-chip small ${totalGeneratorDiff > 30 ? "warn" : ""}`}>{totalGeneratorDiff.toFixed(1)}h</span>
+            </div>
+            <div className="dashboard-generator-list">
+              {generatorRows.map((row) => (
+                <div key={row.id} className="dashboard-generator-row">
+                  <div>
+                    <strong>{row.name}</strong>
+                    <span>
+                      G1 {row.g1Use.toFixed(1)}h / G2 {row.g2Use.toFixed(1)}h
+                    </span>
+                  </div>
+                  <span className={`status-pill ${row.diff > 30 ? "warn" : "ok"}`}>{row.diff.toFixed(1)}h</span>
+                </div>
+              ))}
+              {generatorRows.length === 0 ? <div className="section-caption">Sin datos.</div> : null}
+            </div>
+          </section>
 
-      <div className="card" style={{ marginBottom: 16, overflowX: "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Generadores por campamento (30 días)</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Campamento</th>
-              <th>Horas G1</th>
-              <th>Horas G2</th>
-              <th>Diferencia</th>
-            </tr>
-          </thead>
-          <tbody>
-            {generatorRows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.name}</td>
-                <td>{row.g1Use.toFixed(1)} h</td>
-                <td>{row.g2Use.toFixed(1)} h</td>
-                <td className={row.diff > 30 ? "warn" : ""}>{row.diff.toFixed(1)} h</td>
-              </tr>
-            ))}
-            {generatorRows.length === 0 ? (
-              <tr><td colSpan={4} style={{ color: "var(--muted)" }}>Sin datos de generadores.</td></tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Alertas del día</h2>
-        {missingCampsToday.length > 0 || missingTaskControlsToday.length > 0 ? (
-          <div className="grid">
-            {missingCampsToday.length > 0 ? (
-              <div className="alert error">Faltan informes hoy de: {missingCampsToday.map((camp) => camp.name).join(", ")}</div>
-            ) : null}
-            {missingTaskControlsToday.length > 0 ? (
-              <div className="alert error">Faltan controles de tareas hoy de: {missingTaskControlsToday.map((camp) => camp.name).join(", ")}</div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="alert success">Todos los campamentos tienen informe diario y control de tareas cargados hoy.</div>
-        )}
-      </div>
-
-      {canSeeAdminSections ? (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <h2 style={{ marginTop: 0 }}>Descargar información</h2>
-          <form method="get" action="/api/reportes/export" className="grid two" style={{ alignItems: "end" }}>
-            <div>
-              <label htmlFor="from">Desde</label>
-              <input id="from" name="from" type="date" defaultValue={defaultFromDate} />
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="dashboard-panel-header">
+              <h2>Últimos informes</h2>
+              <Link href="/carga-diaria" className="dashboard-mini-link">
+                Cargar
+              </Link>
             </div>
-            <div>
-              <label htmlFor="to">Hasta</label>
-              <input id="to" name="to" type="date" defaultValue={defaultToDate} />
+            <div className="dashboard-table-wrap">
+              <table className="dashboard-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Campamento</th>
+                    <th>Pers.</th>
+                    <th>Com.</th>
+                    <th>G1</th>
+                    <th>G2</th>
+                    <th>Operador</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentReportsScoped.map((report) => (
+                    <tr key={report.id}>
+                      <td>{toInputDateValue(report.date)}</td>
+                      <td>{report.camp.name}</td>
+                      <td>{report.peopleCount}</td>
+                      <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
+                      <td>{report.generator1Hours.toFixed(1)}</td>
+                      <td>{report.generator2Hours.toFixed(1)}</td>
+                      <td>{report.createdBy.name}</td>
+                    </tr>
+                  ))}
+                  {recentReportsScoped.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ color: "var(--muted)" }}>
+                        Sin registros.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
-            <div>
-              <label htmlFor="exportCampId">Campamento</label>
-              <select id="exportCampId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
-                <option value="general">Todos</option>
-                {camps.map((camp) => (
-                  <option key={camp.id} value={camp.id}>{camp.name}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="submit" name="format" value="csv">CSV</button>
-              <button type="submit" name="format" value="xls" className="secondary">Excel</button>
-            </div>
-          </form>
+          </section>
         </div>
-      ) : null}
-
-      <div className="card" style={{ overflowX: "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Últimos informes diarios</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Campamento</th>
-              <th>Personas</th>
-              <th>Comidas</th>
-              <th>G1</th>
-              <th>G2</th>
-              <th>Agua</th>
-              <th>Combustible</th>
-              <th>Operador</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentReportsScoped.map((report) => (
-              <tr key={report.id}>
-                <td>{toInputDateValue(report.date)}</td>
-                <td>{report.camp.name}</td>
-                <td>{report.peopleCount}</td>
-                <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
-                <td>{report.generator1Hours.toFixed(1)} h</td>
-                <td>{report.generator2Hours.toFixed(1)} h</td>
-                <td>{report.waterLiters} L</td>
-                <td>{report.fuelLiters} L</td>
-                <td>{report.createdBy.name}</td>
-              </tr>
-            ))}
-            {recentReportsScoped.length === 0 ? (
-              <tr>
-                <td colSpan={9} style={{ color: "var(--muted)" }}>Aún no hay reportes cargados.</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      </section>
     </main>
+  );
+}
+
+function RingCard({ label, value, color, helper }: { label: string; value: number; color: string; helper: string }) {
+  const style = {
+    "--ring-color": color,
+    "--ring-value": `${Math.max(0, Math.min(100, value))}%`
+  } as CSSProperties;
+
+  return (
+    <>
+      <div className="dashboard-ring" style={style}>
+        <div>
+          <strong>{value}%</strong>
+        </div>
+      </div>
+      <div className="dashboard-ring-text">
+        <span>{label}</span>
+        <small>{helper}</small>
+      </div>
+    </>
   );
 }
