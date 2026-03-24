@@ -39,6 +39,124 @@ a {
   box-shadow: 0 10px 30px rgba(16, 33, 43, 0.06);
 }
 
+.hero-panel {
+  background:
+    linear-gradient(135deg, rgba(0, 104, 120, 0.08), rgba(255, 99, 0, 0.08)),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 12px 35px rgba(16, 33, 43, 0.08);
+}
+
+.hero-kicker {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--teal);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 8px 22px rgba(16, 33, 43, 0.05);
+}
+
+.action-card strong {
+  color: var(--text);
+}
+
+.action-card span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.action-card:hover {
+  border-color: rgba(255, 99, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.summary-list {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8fcfc;
+  padding: 12px 14px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill.ok {
+  background: #e8f7ef;
+  color: #146c3d;
+}
+
+.status-pill.warn {
+  background: #fff4dc;
+  color: #9a6300;
+}
+
+.status-pill.danger {
+  background: #fce9e8;
+  color: #9e2f23;
+}
+
+.page-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.table-card {
+  overflow-x: auto;
+}
+
+.section-caption {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .top-menu {
   display: flex;
   flex-wrap: wrap;

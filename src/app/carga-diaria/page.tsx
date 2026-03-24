@@ -13,7 +13,10 @@ export default async function CargaDiariaPage() {
   const canSeeAdminSections = isAdminRole(user.role);
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
-  const [camps, recentReports] = await Promise.all([
+  const today = new Date();
+  const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+
+  const [camps, recentReports, reportsToday] = await Promise.all([
     db.camp.findMany({
       where: {
         isActive: true,
@@ -26,8 +29,18 @@ export default async function CargaDiariaPage() {
       take: 15,
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
+    }),
+    db.dailyReport.findMany({
+      where: {
+        ...(campFilter ? { campId: campFilter } : {}),
+        date: todayDate
+      },
+      include: { camp: true }
     })
   ]);
+
+  const reportedCampIdsToday = new Set(reportsToday.map((report) => report.campId));
+  const missingCampsToday = camps.filter((camp) => !reportedCampIdsToday.has(camp.id));
   const notificationItems = [
     ...recentReports
       .filter((report) => Math.abs(report.generator1Hours - report.generator2Hours) > 30)
@@ -75,17 +88,67 @@ export default async function CargaDiariaPage() {
 
       <OpsNav active="carga" showAdminSections={canSeeAdminSections} />
 
-      {!canSeeAdminSections && !user.campId ? (
-        <div className="alert error" style={{ marginBottom: 16 }}>
-          Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
+      <div className="page-stack">
+        {!canSeeAdminSections && !user.campId ? (
+          <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
+        ) : null}
+
+        <div className="hero-panel">
+          <div className="hero-kicker">Carga principal</div>
+          <h2 style={{ marginTop: 0, marginBottom: 8 }}>Informe diario de consumos y operación</h2>
+          <div className="section-caption">
+            Esta pantalla es solo para registrar el informe diario. El historial queda separado más abajo para que no se mezcle con la carga.
+          </div>
+          <div className="action-grid" style={{ marginTop: 16 }}>
+            <div className="action-card">
+              <strong>Campos exigibles diarios</strong>
+              <span>
+                Desayuno, almuerzo, cena, colación simple, colación de reemplazo, botellas de agua, alojamientos,
+                lectura de medidor, agua gastada, basura, cloro y pH.
+              </span>
+            </div>
+            <Link href="/dashboard" className="action-card">
+              <strong>Volver al dashboard</strong>
+              <span>Revisa el resumen diario y el estado general del campamento.</span>
+            </Link>
+          </div>
         </div>
-      ) : null}
 
-      <div className="alert error" style={{ marginBottom: 16 }}>
-        Campos exigibles diarios: desayuno, almuerzo, cena, colación simple, colación de reemplazo, botellas de agua, alojamientos, lectura de medidor, agua gastada, basura, cloro y pH.
-      </div>
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Estado de carga de hoy</h2>
+          <div className="summary-grid">
+            <div className="metric">
+              <div className="label">Campamentos con informe hoy</div>
+              <div className="value">{reportsToday.length}</div>
+            </div>
+            <div className="metric">
+              <div className="label">Campamentos pendientes</div>
+              <div className="value">{missingCampsToday.length}</div>
+            </div>
+          </div>
+          <div className="summary-list">
+            {camps.map((camp) => {
+              const report = reportsToday.find((row) => row.campId === camp.id);
+              return (
+                <div key={camp.id} className="summary-row">
+                  <div>
+                    <strong>{camp.name}</strong>
+                    <div style={{ color: "var(--muted)" }}>
+                      {report
+                        ? `${report.peopleCount} personas · ${report.breakfastCount + report.lunchCount + report.dinnerCount} comidas`
+                        : "Todavía no hay informe cargado hoy"}
+                    </div>
+                  </div>
+                  <span className={report ? "status-pill ok" : "status-pill danger"}>
+                    {report ? "Cargado" : "Pendiente"}
+                  </span>
+                </div>
+              );
+            })}
+            {camps.length === 0 ? <div className="alert error">No hay campamento asignado o activo para este usuario.</div> : null}
+          </div>
+        </div>
 
-      <div className="grid two">
         {camps.length > 0 ? (
           <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
         ) : (
@@ -95,8 +158,11 @@ export default async function CargaDiariaPage() {
           </div>
         )}
 
-        <div className="card" style={{ overflowX: "auto" }}>
-          <h2 style={{ marginTop: 0 }}>Últimas cargas</h2>
+        <div className="card table-card">
+          <h2 style={{ marginTop: 0 }}>Historial reciente de informes</h2>
+          <div className="section-caption" style={{ marginBottom: 10 }}>
+            Este bloque es solo de consulta. La carga se hace en el formulario superior.
+          </div>
           <table>
             <thead>
               <tr>
@@ -142,7 +208,7 @@ export default async function CargaDiariaPage() {
               {recentReports.length === 0 ? (
                 <tr>
                   <td colSpan={16} style={{ color: "var(--muted)" }}>
-                    Aún no hay cargas registradas.
+                    Aún no hay informes registrados.
                   </td>
                 </tr>
               ) : null}

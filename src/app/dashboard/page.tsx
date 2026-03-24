@@ -17,7 +17,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const last30Days = new Date(today);
   last30Days.setDate(last30Days.getDate() - 30);
 
-  const [camps, reports30Days, reportsToday, recentReports] = await Promise.all([
+  const [camps, reports30Days, reportsToday, recentReports, taskControlsToday] = await Promise.all([
     db.camp.findMany({
       where: { isActive: true, ...(campFilter ? { id: campFilter } : {}) },
       orderBy: { name: "asc" }
@@ -42,6 +42,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       take: 16,
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
+    }),
+    db.dailyTaskControl.findMany({
+      where: {
+        ...(campFilter ? { campId: campFilter } : {}),
+        date: todayDate
+      },
+      include: { camp: true, createdBy: true }
     })
   ]);
 
@@ -54,6 +61,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const reportsScoped = reports30Days.filter((r) => scopeCampIds.has(r.campId));
   const reportsTodayScoped = reportsToday.filter((r) => scopeCampIds.has(r.campId));
   const recentReportsScoped = recentReports.filter((r) => scopeCampIds.has(r.campId));
+  const taskControlsTodayScoped = taskControlsToday.filter((r) => scopeCampIds.has(r.campId));
 
   const byDay = new Map<string, { date: string; people: number; meals: number; water: number; fuel: number }>();
   for (const report of reportsScoped) {
@@ -120,9 +128,23 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
   const reportedCampIdsToday = new Set(reportsTodayScoped.map((r) => r.campId));
   const missingCampsToday = scopeCamps.filter((c) => !reportedCampIdsToday.has(c.id));
+  const taskControlCampIdsToday = new Set(taskControlsTodayScoped.map((r) => r.campId));
+  const missingTaskControlsToday = scopeCamps.filter((c) => !taskControlCampIdsToday.has(c.id));
+
+  const taskSummaryByCamp = new Map(
+    taskControlsTodayScoped.map((control) => {
+      const adminValues = Object.values((control.administrativeChecks as Record<string, unknown>) ?? {});
+      const opValues = Object.values((control.operationalChecks as Record<string, unknown>) ?? {});
+      const total = adminValues.length + opValues.length;
+      const done = [...adminValues, ...opValues].filter((value) => value === true).length;
+      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+      return [control.campId, { control, total, done, percent }] as const;
+    })
+  );
 
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario hoy: ${camp.name}`, severity: "error" as const })),
+    ...missingTaskControlsToday.map((camp) => ({ text: `Falta control de tareas hoy: ${camp.name}`, severity: "warning" as const })),
     ...generatorRows
       .filter((row) => row.diff > 30)
       .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
@@ -180,6 +202,95 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           </form>
         </div>
       ) : null}
+
+      <div className="hero-panel" style={{ marginBottom: 16 }}>
+        <div>
+          <div className="hero-kicker">Resumen del día</div>
+          <h2 style={{ marginTop: 0, marginBottom: 8 }}>Estado diario de operación y tareas</h2>
+          <div style={{ color: "var(--muted)", maxWidth: 760 }}>
+            Aquí ves el estado de los informes diarios y del control de tareas. La carga se hace por separado en
+            <strong> Informe diario</strong> y <strong>Control de tareas diarias</strong>.
+          </div>
+        </div>
+        <div className="action-grid" style={{ marginTop: 16 }}>
+          <Link href="/carga-diaria" className="action-card">
+            <strong>Ir a Informe diario</strong>
+            <span>Cargar consumos, agua, combustible, generadores e internet.</span>
+          </Link>
+          <Link href="/control-tareas-diarias" className="action-card">
+            <strong>Ir a Control de tareas</strong>
+            <span>Registrar checklist y cumplimiento diario del campamento.</span>
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid two" style={{ marginBottom: 16 }}>
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Informe diario de hoy</h2>
+          <div className="summary-grid">
+            <div className="metric">
+              <div className="label">Campamentos con informe</div>
+              <div className="value">{reportsTodayScoped.length}</div>
+            </div>
+            <div className="metric">
+              <div className="label">Campamentos pendientes</div>
+              <div className="value">{missingCampsToday.length}</div>
+            </div>
+          </div>
+          <div className="summary-list">
+            {scopeCamps.map((camp) => {
+              const report = reportsTodayScoped.find((row) => row.campId === camp.id);
+              return (
+                <div key={camp.id} className="summary-row">
+                  <div>
+                    <strong>{camp.name}</strong>
+                    <div style={{ color: "var(--muted)" }}>
+                      {report
+                        ? `${report.peopleCount} personas · ${report.breakfastCount + report.lunchCount + report.dinnerCount} comidas · ${report.fuelLiters} L combustible`
+                        : "Sin informe cargado hoy"}
+                    </div>
+                  </div>
+                  <span className={report ? "status-pill ok" : "status-pill danger"}>
+                    {report ? "Cargado" : "Pendiente"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Control de tareas de hoy</h2>
+          <div className="summary-grid">
+            <div className="metric">
+              <div className="label">Campamentos con control</div>
+              <div className="value">{taskControlsTodayScoped.length}</div>
+            </div>
+            <div className="metric">
+              <div className="label">Campamentos pendientes</div>
+              <div className="value">{missingTaskControlsToday.length}</div>
+            </div>
+          </div>
+          <div className="summary-list">
+            {scopeCamps.map((camp) => {
+              const summary = taskSummaryByCamp.get(camp.id);
+              return (
+                <div key={camp.id} className="summary-row">
+                  <div>
+                    <strong>{camp.name}</strong>
+                    <div style={{ color: "var(--muted)" }}>
+                      {summary ? `${summary.done}/${summary.total} tareas completadas` : "Sin control cargado hoy"}
+                    </div>
+                  </div>
+                  <span className={summary ? "status-pill ok" : "status-pill warn"}>
+                    {summary ? `${summary.percent}%` : "Pendiente"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       <div className="grid two" style={{ marginBottom: 16 }}>
         <div className="card">
@@ -261,11 +372,18 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Control diario</h2>
-        {missingCampsToday.length > 0 ? (
-          <div className="alert error">Faltan informes hoy de: {missingCampsToday.map((camp) => camp.name).join(", ")}</div>
+        <h2 style={{ marginTop: 0 }}>Alertas del día</h2>
+        {missingCampsToday.length > 0 || missingTaskControlsToday.length > 0 ? (
+          <div className="grid">
+            {missingCampsToday.length > 0 ? (
+              <div className="alert error">Faltan informes hoy de: {missingCampsToday.map((camp) => camp.name).join(", ")}</div>
+            ) : null}
+            {missingTaskControlsToday.length > 0 ? (
+              <div className="alert error">Faltan controles de tareas hoy de: {missingTaskControlsToday.map((camp) => camp.name).join(", ")}</div>
+            ) : null}
+          </div>
         ) : (
-          <div className="alert success">Todos los campamentos cargaron su informe de hoy.</div>
+          <div className="alert success">Todos los campamentos tienen informe diario y control de tareas cargados hoy.</div>
         )}
       </div>
 
@@ -299,7 +417,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       ) : null}
 
       <div className="card" style={{ overflowX: "auto" }}>
-        <h2 style={{ marginTop: 0 }}>Últimos reportes</h2>
+        <h2 style={{ marginTop: 0 }}>Últimos informes diarios</h2>
         <table>
           <thead>
             <tr>
