@@ -1,15 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
-import { logoutAction } from "@/app/dashboard/actions";
-import { OpsNav } from "@/components/ops-nav";
+import { AppShell } from "@/components/app-shell";
 import { TasksForm } from "./tasks-form";
 
 export default async function ControlTareasDiariasPage() {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const canEdit = !canSeeAdminSections;
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
@@ -74,37 +73,16 @@ export default async function ControlTareasDiariasPage() {
   }
 
   return (
-    <main>
-      <div className="header">
-        <div>
-          <div className="brand-inline">
-            <Link href="/" aria-label="Ir al inicio">
-              <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
-            </Link>
-          </div>
-          <h1>Control de tareas diarias</h1>
-          <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesión: {user.name} ({user.role})
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/mi-perfil" className="menu-item">
-            Mi perfil
-          </Link>
-          <form action={logoutAction}>
-            <button className="danger" type="submit">
-              Cerrar sesión
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <OpsNav active="tareas" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
-
+    <AppShell title="Control de tareas" user={user} activeNav="tareas" showAdminSections={canSeeAdminSections}>
       <div className="page-stack">
         {!canSeeAdminSections && !user.campId ? (
           <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
+        ) : null}
+
+        {canSeeAdminSections ? (
+          <div className="alert success">
+            Vista solo lectura. Como administrador puedes revisar cumplimiento y controles cargados, pero no editarlos.
+          </div>
         ) : null}
 
         <div className="hero-panel">
@@ -174,13 +152,38 @@ export default async function ControlTareasDiariasPage() {
           </div>
         </div>
 
-        {camps.length > 0 ? (
+        {canEdit && camps.length > 0 ? (
           <TasksForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
-        ) : (
+        ) : canEdit ? (
           <div className="card">
             <div className="alert error">No hay campamento disponible para registrar tareas.</div>
           </div>
-        )}
+        ) : null}
+
+        {canSeeAdminSections ? (
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Resumen ejecutivo</h2>
+            <div className="summary-grid">
+              <div className="metric">
+                <div className="label">Controles cargados</div>
+                <div className="value">{todayControls.length}</div>
+              </div>
+              <div className="metric">
+                <div className="label">Pendientes</div>
+                <div className="value">{Math.max(camps.length - todayControls.length, 0)}</div>
+              </div>
+              <div className="metric">
+                <div className="label">Semáforo promedio</div>
+                <div className="value">
+                  {semaphoreRows.length > 0
+                    ? Math.round(semaphoreRows.reduce((sum, row) => sum + row.percent, 0) / semaphoreRows.length)
+                    : 0}
+                  %
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="card table-card">
           <h2 style={{ marginTop: 0 }}>Historial reciente de controles</h2>
@@ -214,6 +217,6 @@ export default async function ControlTareasDiariasPage() {
           </table>
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

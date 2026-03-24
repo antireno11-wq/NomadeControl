@@ -1,16 +1,15 @@
 import Link from "next/link";
-import Image from "next/image";
-import { isAdminRole, requireRole, SUPERVISOR_ROLES } from "@/lib/auth";
+import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
-import { logoutAction } from "@/app/dashboard/actions";
 import { ReportForm } from "@/app/dashboard/report-form";
-import { OpsNav } from "@/components/ops-nav";
 import { NotificationBell } from "@/components/notification-bell";
+import { AppShell } from "@/components/app-shell";
 
 export default async function CargaDiariaPage() {
-  const user = await requireRole(SUPERVISOR_ROLES);
+  const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const canEdit = !canSeeAdminSections;
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
   const today = new Date();
@@ -59,60 +58,23 @@ export default async function CargaDiariaPage() {
   ];
 
   return (
-    <main>
-      <div className="header">
-        <div>
-          <div className="brand-inline">
-            <Link href="/" aria-label="Ir al inicio">
-              <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
-            </Link>
-          </div>
-          <h1>Informe diario de consumos</h1>
-          <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesión: {user.name} ({user.role})
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/mi-perfil" className="menu-item">
-            Mi perfil
-          </Link>
-          <NotificationBell items={notificationItems} />
-          <form action={logoutAction}>
-            <button className="danger" type="submit">
-              Cerrar sesión
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <OpsNav active="carga" showAdminSections={canSeeAdminSections} />
-
+    <AppShell
+      title="Informe diario"
+      user={user}
+      activeNav="carga"
+      showAdminSections={canSeeAdminSections}
+      notifications={notificationItems}
+    >
       <div className="page-stack">
         {!canSeeAdminSections && !user.campId ? (
           <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
         ) : null}
 
-        <div className="hero-panel">
-          <div className="hero-kicker">Carga principal</div>
-          <h2 style={{ marginTop: 0, marginBottom: 8 }}>Informe diario de consumos y operación</h2>
-          <div className="section-caption">
-            Esta pantalla es solo para registrar el informe diario. El historial queda separado más abajo para que no se mezcle con la carga.
+        {canSeeAdminSections ? (
+          <div className="alert success">
+            Vista solo lectura. Como administrador puedes revisar resúmenes e historial, pero no editar el informe diario.
           </div>
-          <div className="action-grid" style={{ marginTop: 16 }}>
-            <div className="action-card">
-              <strong>Campos exigibles diarios</strong>
-              <span>
-                Desayuno, almuerzo, cena, colación simple, colación de reemplazo, botellas de agua, alojamientos,
-                lectura de medidor, agua gastada, basura, cloro y pH.
-              </span>
-            </div>
-            <Link href="/dashboard" className="action-card">
-              <strong>Volver al dashboard</strong>
-              <span>Revisa el resumen diario y el estado general del campamento.</span>
-            </Link>
-          </div>
-        </div>
+        ) : null}
 
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Estado de carga de hoy</h2>
@@ -149,14 +111,34 @@ export default async function CargaDiariaPage() {
           </div>
         </div>
 
-        {camps.length > 0 ? (
+        {canEdit && camps.length > 0 ? (
           <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
-        ) : (
+        ) : canEdit ? (
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Carga diaria</h2>
             <div className="alert error">No hay campamento asignado o activo para este usuario.</div>
           </div>
-        )}
+        ) : null}
+
+        {canSeeAdminSections ? (
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Resumen ejecutivo</h2>
+            <div className="summary-grid">
+              <div className="metric">
+                <div className="label">Personas registradas ayer</div>
+                <div className="value">{reportsToday.reduce((sum, report) => sum + report.peopleCount, 0)}</div>
+              </div>
+              <div className="metric">
+                <div className="label">Agua informada ayer</div>
+                <div className="value">{reportsToday.reduce((sum, report) => sum + report.waterLiters, 0)} L</div>
+              </div>
+              <div className="metric">
+                <div className="label">Combustible informado ayer</div>
+                <div className="value">{reportsToday.reduce((sum, report) => sum + report.fuelLiters, 0)} L</div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="card table-card">
           <h2 style={{ marginTop: 0 }}>Historial reciente de informes</h2>
@@ -216,6 +198,6 @@ export default async function CargaDiariaPage() {
           </table>
         </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

@@ -14,6 +14,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const dashboardDate = new Date(todayDate);
+  dashboardDate.setUTCDate(dashboardDate.getUTCDate() - 1);
   const last30Days = new Date(today);
   last30Days.setDate(last30Days.getDate() - 30);
 
@@ -33,7 +35,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     db.dailyReport.findMany({
       where: {
         ...(campFilter ? { campId: campFilter } : {}),
-        date: todayDate
+        date: dashboardDate
       },
       include: { camp: true }
     }),
@@ -46,7 +48,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     db.dailyTaskControl.findMany({
       where: {
         ...(campFilter ? { campId: campFilter } : {}),
-        date: todayDate
+        date: dashboardDate
       },
       include: { camp: true, createdBy: true }
     })
@@ -94,7 +96,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const reportsCount = reportsScoped.length;
   const wasteAvg = reportsCount > 0 ? totals.waste / reportsCount : 0;
 
-  const reportsTodayByCamp = new Map(reportsTodayScoped.map((report) => [report.campId, report] as const));
   const taskSummaryByCamp = new Map(
     taskControlsTodayScoped.map((control) => {
       const adminValues = Object.values((control.administrativeChecks as Record<string, unknown>) ?? {});
@@ -150,8 +151,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const fuelToday = reportsTodayScoped.reduce((sum, report) => sum + report.fuelLiters, 0);
 
   const notificationItems = [
-    ...missingCampsToday.map((camp) => ({ text: `Falta informe diario hoy: ${camp.name}`, severity: "error" as const })),
-    ...missingTaskControlsToday.map((camp) => ({ text: `Falta control de tareas hoy: ${camp.name}`, severity: "warning" as const })),
+    ...missingCampsToday.map((camp) => ({ text: `Falta informe diario ayer: ${camp.name}`, severity: "error" as const })),
+    ...missingTaskControlsToday.map((camp) => ({ text: `Falta control de tareas ayer: ${camp.name}`, severity: "warning" as const })),
     ...generatorRows
       .filter((row) => row.diff > 30)
       .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
@@ -159,8 +160,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
   const dashboardNavItems = [
     { href: "/dashboard", label: "Dashboard", active: true },
-    { href: "/carga-diaria", label: "Informe diario", active: false },
-    { href: "/control-tareas-diarias", label: "Control tareas", active: false },
+    ...(!canSeeAdminSections
+      ? [
+          { href: "/carga-diaria", label: "Informe diario", active: false },
+          { href: "/control-tareas-diarias", label: "Control tareas", active: false }
+        ]
+      : []),
     ...(canSeeAdminSections ? [{ href: "/administracion", label: "Administración", active: false }] : [])
   ];
 
@@ -201,15 +206,13 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         <div className="dashboard-topbar">
           <div>
             <h1>Dashboard</h1>
-            <div className="dashboard-subline">
-              <span className="dashboard-chip">{toInputDateValue(todayDate)}</span>
-              <span className="dashboard-chip">30 días</span>
-              <span className="dashboard-chip">{user.role}</span>
-            </div>
           </div>
           <div className="dashboard-topbar-actions">
             {canSeeAdminSections ? (
               <form method="get" className="dashboard-filter">
+                <label htmlFor="campId" className="sr-only">
+                  Campamento
+                </label>
                 <select id="campId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
                   <option value="general">Todos</option>
                   {camps.map((camp) => (
@@ -228,22 +231,22 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
         <div className="dashboard-kpi-grid">
           <div className="dashboard-kpi accent">
-            <div className="dashboard-kpi-label">Informes hoy</div>
+            <div className="dashboard-kpi-label">Informes ayer</div>
             <div className="dashboard-kpi-value">{reportsTodayScoped.length}</div>
             <div className="dashboard-kpi-meta">{missingCampsToday.length} pendientes</div>
           </div>
           <div className="dashboard-kpi teal">
-            <div className="dashboard-kpi-label">Tareas hoy</div>
+            <div className="dashboard-kpi-label">Tareas ayer</div>
             <div className="dashboard-kpi-value">{taskControlsTodayScoped.length}</div>
             <div className="dashboard-kpi-meta">{missingTaskControlsToday.length} pendientes</div>
           </div>
           <div className="dashboard-kpi">
-            <div className="dashboard-kpi-label">Personas hoy</div>
+            <div className="dashboard-kpi-label">Personas ayer</div>
             <div className="dashboard-kpi-value">{peopleToday}</div>
             <div className="dashboard-kpi-meta">{mealsToday} raciones</div>
           </div>
           <div className="dashboard-kpi">
-            <div className="dashboard-kpi-label">Generadores</div>
+            <div className="dashboard-kpi-label">Generadores ayer</div>
             <div className="dashboard-kpi-value">{totalGeneratorDiff.toFixed(1)}h</div>
             <div className="dashboard-kpi-meta">diferencia total</div>
           </div>
@@ -260,8 +263,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
 
             <div className="dashboard-ring-grid">
-              <div className="dashboard-ring-card">
-                <RingCard
+            <div className="dashboard-ring-card">
+              <RingCard
                   label="Informe diario"
                   value={reportCompletion}
                   color="var(--accent)"
@@ -297,28 +300,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <strong>{wasteAvg.toFixed(0)}%</strong>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Campamentos</h2>
-              <span className="dashboard-chip small">{scopeCamps.length}</span>
-            </div>
-            <div className="dashboard-status-list">
-              {scopeCamps.map((camp) => {
-                const report = reportsTodayByCamp.get(camp.id);
-                const task = taskSummaryByCamp.get(camp.id);
-                return (
-                  <div key={camp.id} className="dashboard-status-row">
-                    <strong>{camp.name}</strong>
-                    <div className="dashboard-status-tags">
-                      <span className={`status-pill ${report ? "ok" : "danger"}`}>Inf</span>
-                      <span className={`status-pill ${task ? "ok" : "warn"}`}>{task ? `${task.percent}%` : "Task"}</span>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </section>
         </div>
@@ -411,6 +392,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                     <th>G1</th>
                     <th>G2</th>
                     <th>Operador</th>
+                    <th>Detalle</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -423,11 +405,16 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                       <td>{report.generator1Hours.toFixed(1)}</td>
                       <td>{report.generator2Hours.toFixed(1)}</td>
                       <td>{report.createdBy.name}</td>
+                      <td>
+                        <Link href={`/informes/${report.id}`} className="dashboard-mini-link">
+                          Ver
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                   {recentReportsScoped.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ color: "var(--muted)" }}>
+                      <td colSpan={8} style={{ color: "var(--muted)" }}>
                         Sin registros.
                       </td>
                     </tr>
