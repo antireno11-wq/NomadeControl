@@ -1,49 +1,30 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { logoutAction } from "@/app/dashboard/actions";
-import { OpsNav } from "@/components/ops-nav";
-import { createCampAction, resetUserPasswordAction, updateUserAccessAction } from "./actions";
+import { AppShell } from "@/components/app-shell";
+import { createCampAction, deleteUserAction, resetUserPasswordAction, updateUserAccessAction } from "./actions";
 
 export default async function AdministracionPage() {
   const user = await requireRole(ADMIN_ROLES);
 
   const [users, camps, reports] = await Promise.all([
-    db.user.findMany({ include: { camp: true }, orderBy: [{ role: "asc" }, { name: "asc" }] }),
+    db.user.findMany({
+      where: {
+        NOT: {
+          email: {
+            endsWith: "@nomade.local"
+          }
+        }
+      },
+      include: { camp: true },
+      orderBy: [{ role: "asc" }, { name: "asc" }]
+    }),
     db.camp.findMany({ orderBy: { name: "asc" } }),
     db.dailyReport.count()
   ]);
 
   return (
-    <main>
-      <div className="header">
-        <div>
-          <div className="brand-inline">
-            <Link href="/" aria-label="Ir al inicio">
-              <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
-            </Link>
-          </div>
-          <h1>Administración</h1>
-          <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesión: {user.name} ({user.role})
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/mi-perfil" className="menu-item">
-            Mi perfil
-          </Link>
-          <form action={logoutAction}>
-            <button className="danger" type="submit">
-              Cerrar sesión
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <OpsNav active="administracion" showLoadSection={false} />
-
+    <AppShell title="Administración" user={user} activeNav="administracion" showAdminSections>
       <div className="grid two" style={{ marginBottom: 16 }}>
         <div className="metric">
           <div className="label">Usuarios</div>
@@ -56,6 +37,20 @@ export default async function AdministracionPage() {
         <div className="metric">
           <div className="label">Reportes históricos</div>
           <div className="value">{reports}</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Gestión de registros</h2>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              Usa una ventana aparte para revisar y borrar registros del sistema.
+            </div>
+          </div>
+          <Link href="/administracion/registros">
+            <button type="button" className="danger">Abrir administración de registros</button>
+          </Link>
         </div>
       </div>
 
@@ -134,6 +129,12 @@ export default async function AdministracionPage() {
                     <input name="newPassword" type="password" minLength={8} placeholder="Nueva clave" />
                     <button type="submit" className="secondary">Reset clave</button>
                   </form>
+                  {row.id !== user.id ? (
+                    <form action={deleteUserAction} style={{ marginTop: 8 }}>
+                      <input type="hidden" name="userId" value={row.id} />
+                      <button type="submit" className="danger">Borrar usuario</button>
+                    </form>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -164,6 +165,6 @@ export default async function AdministracionPage() {
           </tbody>
         </table>
       </div>
-    </main>
+    </AppShell>
   );
 }

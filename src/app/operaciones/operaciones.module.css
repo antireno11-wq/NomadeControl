@@ -1,0 +1,275 @@
+.main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: grid;
+  gap: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(18, 35, 46, 0.06);
+}
+
+.headerCard {
+  background: linear-gradient(145deg, #eaf9fb, #ffffff);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tabButton {
+  width: auto;
+  min-width: 140px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f7fbfc;
+  color: #355866;
+  font-weight: 600;
+}
+
+.tabButtonActive {
+  background: #d9f2f4;
+  color: #094451;
+  border-color: #91cbd1;
+}
+
+.filtersCard {
+  padding: 12px 14px;
+}
+
+.filtersGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: end;
+}
+
+.field {
+  margin-bottom: 0;
+}
+
+.field span {
+  display: block;
+  font-weight: 600;
+  color: #3d6b74;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.primaryButton,
+.secondaryButton,
+.deleteButton {
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.primaryButton {
+  width: auto;
+  background: #006878;
+  color: white;
+  padding: 10px 14px;
+}
+
+.primaryButton:hover {
+  background: #015563;
+}
+
+.secondaryButton {
+  width: auto;
+  background: #2f5260;
+  color: white;
+  padding: 10px 14px;
+}
+
+.secondaryButton:hover {
+  background: #223f4b;
+}
+
+.deleteButton {
+  width: auto;
+  background: #f7d9d6;
+  color: #8c251d;
+  border: 1px solid #e9b5b0;
+  padding: 8px 10px;
+}
+
+.deleteButton:hover {
+  background: #efc8c4;
+}
+
+.contentStack {
+  display: grid;
+  gap: 14px;
+}
+
+.metricsGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.metricCard {
+  border: 1px solid var(--border);
+  background: #f8fcfd;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.metricCard p {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.metricValueRow {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.metricValueRow strong {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sectionTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.sectionTitleRow h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 0.86rem;
+}
+
+.table th {
+  color: #385d67;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  background: #f5fbfc;
+  position: sticky;
+  top: 0;
+}
+
+.table input,
+.table select {
+  width: 100%;
+  min-width: 130px;
+  border: 1px solid #d2e6e8;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  padding: 8px;
+  background: white;
+}
+
+.readonlyCell {
+  display: inline-flex;
+  min-width: 56px;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #d2e6e8;
+  background: #f5fbfc;
+  font-weight: 700;
+}
+
+.emptyRow {
+  text-align: center;
+  color: #678894;
+  padding: 16px;
+}
+
+.semaforo {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.rojo {
+  color: #982f2b;
+  background: #fbe5e3;
+  border-color: #f4c7c3;
+}
+
+.amarillo {
+  color: #8a6408;
+  background: #fcf1d7;
+  border-color: #f0d8a2;
+}
+
+.verde {
+  color: #1a6e3a;
+  background: #e6f6ec;
+  border-color: #c5e9d2;
+}
+
+@media (max-width: 900px) {
+  .main {
+    padding: 14px 10px 26px;
+  }
+
+  .tabButton {
+    min-width: 120px;
+    padding: 8px 12px;
+  }
+
+  .table {
+    min-width: 880px;
+  }
+}

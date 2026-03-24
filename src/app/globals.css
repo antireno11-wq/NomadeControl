@@ -39,6 +39,18 @@ a {
   color: inherit;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -358,6 +370,10 @@ a {
 
 .dashboard-panel-large {
   grid-column: span 8;
+}
+
+.dashboard-core-grid > .dashboard-panel:only-child {
+  grid-column: span 12;
 }
 
 .dashboard-panel-wide {

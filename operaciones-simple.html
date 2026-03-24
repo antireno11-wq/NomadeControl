@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nomade Chile - Control Operacional (Simple)</title>
+  <style>
+    :root {
+      --bg: #f4f8fa;
+      --card: #ffffff;
+      --border: #d5e2e8;
+      --text: #16313b;
+      --muted: #4f6e79;
+      --primary: #0e6d7d;
+      --danger: #b63a2c;
+      --warn: #8a6500;
+      --ok: #1a6a39;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    h1, h2 { margin: 0; }
+    .sub { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .filters {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      align-items: end;
+    }
+    label { font-size: 13px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px; }
+    input, select, button {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+      background: #fff;
+    }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: 0;
+      font-weight: 600;
+      cursor: pointer;
+      width: auto;
+      padding: 8px 12px;
+    }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-muted { background: #2e4d58; }
+    .btn-danger { background: #f4d6d2; color: #7f241c; border: 1px solid #e6b7b2; }
+    .metrics {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .metric { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #f8fcfd; }
+    .metric .t { font-size: 13px; color: var(--muted); }
+    .metric .v { font-size: 26px; font-weight: 700; margin-top: 6px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 960px; }
+    th, td { border-bottom: 1px solid var(--border); padding: 6px; text-align: left; vertical-align: middle; font-size: 12px; }
+    th { background: #f2f8fa; color: #3f606b; }
+    td input, td select { min-width: 120px; font-size: 12px; padding: 6px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .rojo { color: var(--danger); background: #fbe8e5; border-color: #f2c8c1; }
+    .amarillo { color: var(--warn); background: #fcf3de; border-color: #efd8a6; }
+    .verde { color: var(--ok); background: #e6f5ec; border-color: #c4e6d0; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .small { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <h1>Control operacional campamentos</h1>
+      <p class="sub">Nomade Chile | Version super simple (1 archivo)</p>
+    </section>
+
+    <section class="card">
+      <div class="filters">
+        <div>
+          <label>Proyecto</label>
+          <select id="fProyecto"></select>
+        </div>
+        <div>
+          <label>Prioridad</label>
+          <select id="fPrioridad">
+            <option value="">Todas</option>
+            <option>Critica</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+        </div>
+        <div>
+          <label>Estado</label>
+          <select id="fEstado"></select>
+        </div>
+        <div class="btn-row">
+          <button id="btnReset" class="btn-muted" type="button">Limpiar filtros</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>Dashboard</h2><span class="small">Actualiza en vivo segun filtros</span></div>
+      <div class="metrics" id="metrics"></div>
+      <div class="table-wrap" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Proyecto</th><th>Brecha dotacion</th><th>Semaforo</th></tr></thead>
+          <tbody id="tablaBrechas"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>1) Obligaciones criticas</h2>
+        <button type="button" id="addObl">Agregar fila</button>
+      </div>
+      <div class="table-wrap"><table><thead>
+        <tr>
+          <th>Proyecto</th><th>Area</th><th>Obligacion</th><th>Criticidad</th><th>Responsable</th><th>Supervisor</th><th>Frecuencia</th><th>Tipo evidencia</th><th>Proxima revision</th><th>Estado</th><th>Semaforo</th><th></th>
+        </tr>
+      </thead><tbody id="tblObl"></tbody></table></div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>2) Hallazgos / pendientes</h2>
+        <button type="button" id="addHal">Agregar fila</button>
+      </div>
+      <div class="table-wrap"><table><thead>
+        <tr>
+          <th>Proyecto</th><th>Fecha deteccion</th><th>Area</th><th>Descripcion</th><th>Prioridad</th><th>Accion inmediata</th><th>Accion definitiva</th><th>Responsable</th><th>Fecha compromiso</th><th>Estado</th><th>Evidencia</th><th>Fecha cierre</th><th>Semaforo</th><th></th>
+        </tr>
+      </thead><tbody id="tblHal"></tbody></table></div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>3) Dotacion minima</h2>
+        <button type="button" id="addDot">Agregar fila</button>
+      </div>
+      <div class="table-wrap"><table><thead>
+        <tr>
+          <th>Proyecto</th><th>Ocupacion actual</th><th>Dotacion minima requerida</th><th>Dotacion real</th><th>Brecha</th><th>Comentario</th><th>Semaforo</th><th></th>
+        </tr>
+      </thead><tbody id="tblDot"></tbody></table></div>
+    </section>
+  </div>
+
+  <script>
+    const KEY = "nomade_simple_v1";
+    const today = () => new Date().toISOString().slice(0,10);
+    const addDays = d => { const x = new Date(); x.setDate(x.getDate()+d); return x.toISOString().slice(0,10); };
+    const uid = () => Math.random().toString(36).slice(2,10);
+    const safeNum = v => Number.isFinite(+v) ? +v : 0;
+    const dayDiff = date => {
+      if (!date) return 999;
+      const a = new Date(date + "T00:00:00");
+      const b = new Date(); b.setHours(0,0,0,0);
+      return Math.floor((a - b) / 86400000);
+    };
+    const semaforoTag = c => `<span class="badge ${c}"><span class="dot"></span>${c === "rojo" ? "Alto" : c === "amarillo" ? "Medio" : "Controlado"}</span>`;
+
+    const defaultData = {
+      obligaciones: [
+        { id: uid(), proyecto: "Quebrada Blanca", area: "HSEC", obligacion: "Control agua", criticidad: "Critica", responsable: "Valentina", supervisor: "Ramon", frecuencia: "Diaria", tipoEvidencia: "Checklist", fechaProximaRevision: addDays(1), estado: "En curso" },
+        { id: uid(), proyecto: "Sierra Norte", area: "Operaciones", obligacion: "Prueba generador", criticidad: "Alta", responsable: "Felipe", supervisor: "Daniela", frecuencia: "Semanal", tipoEvidencia: "Foto", fechaProximaRevision: addDays(-1), estado: "Pendiente" }
+      ],
+      hallazgos: [
+        { id: uid(), proyecto: "Quebrada Blanca", fechaDeteccion: addDays(-3), area: "Casino", descripcion: "Camara fria fuera de rango", prioridad: "Critica", accionInmediata: "Aislar", accionDefinitiva: "Mantencion", responsable: "Nicolas", fechaCompromiso: addDays(-1), estado: "Abierto", evidencia: "Foto", fechaCierre: "" },
+        { id: uid(), proyecto: "Atacama Sur", fechaDeteccion: addDays(-2), area: "Habitabilidad", descripcion: "Fuga ducha", prioridad: "Media", accionInmediata: "Cerrar llave", accionDefinitiva: "Cambio flexible", responsable: "Karen", fechaCompromiso: addDays(2), estado: "En seguimiento", evidencia: "Ticket", fechaCierre: "" }
+      ],
+      dotacion: [
+        { id: uid(), proyecto: "Quebrada Blanca", ocupacionActual: 218, dotacionMinimaRequerida: 22, dotacionReal: 19, brecha: 3, comentario: "Faltan 3" },
+        { id: uid(), proyecto: "Sierra Norte", ocupacionActual: 155, dotacionMinimaRequerida: 16, dotacionReal: 16, brecha: 0, comentario: "OK" }
+      ]
+    };
+
+    let state = load();
+    const $ = id => document.getElementById(id);
+
+    const prioridades = ["Critica", "Alta", "Media", "Baja"];
+    const estadosObl = ["Pendiente", "En curso", "Al dia", "Incumplida", "Cerrada"];
+    const estadosHal = ["Abierto", "En seguimiento", "Escalado", "Cerrado"];
+    const frecuencias = ["Diaria", "Semanal", "Quincenal", "Mensual", "Trimestral"];
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        return raw ? JSON.parse(raw) : defaultData;
+      } catch {
+        return defaultData;
+      }
+    }
+
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }
+
+    function getFiltros() {
+      return {
+        proyecto: $("fProyecto").value,
+        prioridad: $("fPrioridad").value,
+        estado: $("fEstado").value
+      };
+    }
+
+    function semaforoObl(o) {
+      if (o.estado === "Cerrada" || o.estado === "Al dia") return "verde";
+      if (o.estado === "Incumplida" || dayDiff(o.fechaProximaRevision) < 0) return "rojo";
+      if (dayDiff(o.fechaProximaRevision) <= 7) return "amarillo";
+      return "verde";
+    }
+
+    function semaforoHal(h) {
+      if (h.estado === "Cerrado") return "verde";
+      if (h.prioridad === "Critica" || dayDiff(h.fechaCompromiso) < 0) return "rojo";
+      if (h.prioridad === "Alta" || dayDiff(h.fechaCompromiso) <= 3) return "amarillo";
+      return "verde";
+    }
+
+    function semaforoDot(d) {
+      if (d.brecha > 0) return "rojo";
+      if (d.brecha === 0) return "verde";
+      return "amarillo";
+    }
+
+    function matchFilters(row, prioridadField) {
+      const f = getFiltros();
+      if (f.proyecto && row.proyecto !== f.proyecto) return false;
+      if (f.estado && row.estado !== undefined && row.estado !== f.estado) return false;
+      if (f.prioridad && prioridadField && row[prioridadField] !== f.prioridad) return false;
+      return true;
+    }
+
+    function renderFiltros() {
+      const proys = [...new Set([...state.obligaciones, ...state.hallazgos, ...state.dotacion].map(x => x.proyecto).filter(Boolean))].sort();
+      const ests = [...new Set([...state.obligaciones.map(x => x.estado), ...state.hallazgos.map(x => x.estado), "Con brecha", "Sin brecha"])];
+      const pSel = $("fProyecto");
+      const eSel = $("fEstado");
+      const prevP = pSel.value;
+      const prevE = eSel.value;
+      pSel.innerHTML = `<option value="">Todos</option>` + proys.map(p => `<option>${p}</option>`).join("");
+      eSel.innerHTML = `<option value="">Todos</option>` + ests.map(e => `<option>${e}</option>`).join("");
+      if (proys.includes(prevP)) pSel.value = prevP;
+      if (ests.includes(prevE)) eSel.value = prevE;
+    }
+
+    function renderDashboard() {
+      const ob = state.obligaciones.filter(o => matchFilters(o, "criticidad"));
+      const ha = state.hallazgos.filter(h => matchFilters(h, "prioridad"));
+      const dt = state.dotacion.filter(d => {
+        const f = getFiltros();
+        if (f.proyecto && d.proyecto !== f.proyecto) return false;
+        if (f.estado) {
+          const st = d.brecha > 0 ? "Con brecha" : "Sin brecha";
+          if (st !== f.estado) return false;
+        }
+        return true;
+      });
+
+      const m = [
+        ["Pendientes criticos abiertos", ha.filter(x => x.prioridad === "Critica" && x.estado !== "Cerrado").length, "rojo"],
+        ["Pendientes vencidos", ha.filter(x => x.estado !== "Cerrado" && dayDiff(x.fechaCompromiso) < 0).length, "amarillo"],
+        ["Obligaciones sin revision vigente", ob.filter(x => x.estado !== "Cerrada" && dayDiff(x.fechaProximaRevision) < 0).length, "rojo"],
+        ["Brecha total dotacion", dt.reduce((a,b)=>a+Math.max(0,b.brecha),0), "verde"]
+      ];
+      $("metrics").innerHTML = m.map(([t,v,c]) => `<div class="metric"><div class="t">${t}</div><div class="v">${v}</div>${semaforoTag(c)}</div>`).join("");
+
+      const grp = {};
+      dt.forEach(d => { grp[d.proyecto] = (grp[d.proyecto] || 0) + Math.max(0,d.brecha); });
+      const rows = Object.entries(grp).sort((a,b)=>b[1]-a[1]);
+      $("tablaBrechas").innerHTML = rows.length ? rows.map(([p,b]) => `<tr><td>${p}</td><td>${b}</td><td>${semaforoTag(b>0?"rojo":"verde")}</td></tr>`).join("") : `<tr><td colspan="3">Sin datos para filtros.</td></tr>`;
+    }
+
+    function cellInput(value, oninputPrefix, type = "text") {
+      return `<input type="${type}" value="${String(value ?? "").replaceAll('\"','&quot;')}" oninput="${oninputPrefix}this.value)">`;
+    }
+
+    window.updateObl = function(id, field, value) {
+      state.obligaciones = state.obligaciones.map(x => x.id === id ? { ...x, [field]: value } : x);
+      save(); render();
+    }
+    window.delObl = function(id) {
+      state.obligaciones = state.obligaciones.filter(x => x.id !== id);
+      save(); render();
+    }
+    function renderObl() {
+      const rows = state.obligaciones.filter(o => matchFilters(o, "criticidad"));
+      $("tblObl").innerHTML = rows.length ? rows.map(o => {
+        const sem = semaforoObl(o);
+        return `<tr>
+          <td>${cellInput(o.proyecto, `updateObl('${o.id}','proyecto',`)}</td>
+          <td>${cellInput(o.area, `updateObl('${o.id}','area',`)}</td>
+          <td>${cellInput(o.obligacion, `updateObl('${o.id}','obligacion',`)}</td>
+          <td>${selectHtml(prioridades, o.criticidad, `updateObl('${o.id}','criticidad',this.value)`)}</td>
+          <td>${cellInput(o.responsable, `updateObl('${o.id}','responsable',`)}</td>
+          <td>${cellInput(o.supervisor, `updateObl('${o.id}','supervisor',`)}</td>
+          <td>${selectHtml(frecuencias, o.frecuencia, `updateObl('${o.id}','frecuencia',this.value)`)}</td>
+          <td>${cellInput(o.tipoEvidencia, `updateObl('${o.id}','tipoEvidencia',`)}</td>
+          <td>${cellInput(o.fechaProximaRevision, `updateObl('${o.id}','fechaProximaRevision',`, "date")}</td>
+          <td>${selectHtml(estadosObl, o.estado, `updateObl('${o.id}','estado',this.value)`)}</td>
+          <td>${semaforoTag(sem)}</td>
+          <td><button class="btn-danger" onclick="delObl('${o.id}')">Eliminar</button></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="12">Sin filas.</td></tr>`;
+    }
+
+    window.updateHal = function(id, field, value) {
+      state.hallazgos = state.hallazgos.map(x => x.id === id ? { ...x, [field]: value } : x);
+      save(); render();
+    }
+    window.delHal = function(id) {
+      state.hallazgos = state.hallazgos.filter(x => x.id !== id);
+      save(); render();
+    }
+    function renderHal() {
+      const rows = state.hallazgos.filter(h => matchFilters(h, "prioridad"));
+      $("tblHal").innerHTML = rows.length ? rows.map(h => {
+        const sem = semaforoHal(h);
+        return `<tr>
+          <td>${cellInput(h.proyecto, `updateHal('${h.id}','proyecto',`)}</td>
+          <td>${cellInput(h.fechaDeteccion, `updateHal('${h.id}','fechaDeteccion',`, "date")}</td>
+          <td>${cellInput(h.area, `updateHal('${h.id}','area',`)}</td>
+          <td>${cellInput(h.descripcion, `updateHal('${h.id}','descripcion',`)}</td>
+          <td>${selectHtml(prioridades, h.prioridad, `updateHal('${h.id}','prioridad',this.value)`)}</td>
+          <td>${cellInput(h.accionInmediata, `updateHal('${h.id}','accionInmediata',`)}</td>
+          <td>${cellInput(h.accionDefinitiva, `updateHal('${h.id}','accionDefinitiva',`)}</td>
+          <td>${cellInput(h.responsable, `updateHal('${h.id}','responsable',`)}</td>
+          <td>${cellInput(h.fechaCompromiso, `updateHal('${h.id}','fechaCompromiso',`, "date")}</td>
+          <td>${selectHtml(estadosHal, h.estado, `updateHal('${h.id}','estado',this.value)`)}</td>
+          <td>${cellInput(h.evidencia, `updateHal('${h.id}','evidencia',`)}</td>
+          <td>${cellInput(h.fechaCierre, `updateHal('${h.id}','fechaCierre',`, "date")}</td>
+          <td>${semaforoTag(sem)}</td>
+          <td><button class="btn-danger" onclick="delHal('${h.id}')">Eliminar</button></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="14">Sin filas.</td></tr>`;
+    }
+
+    window.updateDot = function(id, field, value) {
+      state.dotacion = state.dotacion.map(x => {
+        if (x.id !== id) return x;
+        const next = { ...x, [field]: field.includes("ocupacion") || field.includes("dotacion") ? safeNum(value) : value };
+        next.brecha = safeNum(next.dotacionMinimaRequerida) - safeNum(next.dotacionReal);
+        return next;
+      });
+      save(); render();
+    }
+    window.delDot = function(id) {
+      state.dotacion = state.dotacion.filter(x => x.id !== id);
+      save(); render();
+    }
+    function renderDot() {
+      const f = getFiltros();
+      const rows = state.dotacion.filter(d => {
+        if (f.proyecto && d.proyecto !== f.proyecto) return false;
+        if (f.estado) {
+          const s = d.brecha > 0 ? "Con brecha" : "Sin brecha";
+          if (s !== f.estado) return false;
+        }
+        return true;
+      });
+      $("tblDot").innerHTML = rows.length ? rows.map(d => {
+        const sem = semaforoDot(d);
+        return `<tr>
+          <td>${cellInput(d.proyecto, `updateDot('${d.id}','proyecto',`)}</td>
+          <td>${cellInput(d.ocupacionActual, `updateDot('${d.id}','ocupacionActual',`, "number")}</td>
+          <td>${cellInput(d.dotacionMinimaRequerida, `updateDot('${d.id}','dotacionMinimaRequerida',`, "number")}</td>
+          <td>${cellInput(d.dotacionReal, `updateDot('${d.id}','dotacionReal',`, "number")}</td>
+          <td>${d.brecha}</td>
+          <td>${cellInput(d.comentario, `updateDot('${d.id}','comentario',`)}</td>
+          <td>${semaforoTag(sem)}</td>
+          <td><button class="btn-danger" onclick="delDot('${d.id}')">Eliminar</button></td>
+        </tr>`;
+      }).join("") : `<tr><td colspan="8">Sin filas.</td></tr>`;
+    }
+
+    function selectHtml(options, selected, onChange) {
+      return `<select onchange="${onChange}">${options.map(o => `<option ${o===selected?"selected":""}>${o}</option>`).join("")}</select>`;
+    }
+
+    function render() {
+      renderFiltros();
+      renderDashboard();
+      renderObl();
+      renderHal();
+      renderDot();
+    }
+
+    $("fProyecto").addEventListener("change", render);
+    $("fPrioridad").addEventListener("change", render);
+    $("fEstado").addEventListener("change", render);
+
+    $("btnReset").onclick = () => {
+      $("fProyecto").value = "";
+      $("fPrioridad").value = "";
+      $("fEstado").value = "";
+      render();
+    };
+
+    $("addObl").onclick = () => {
+      state.obligaciones.unshift({ id: uid(), proyecto: "", area: "", obligacion: "", criticidad: "Media", responsable: "", supervisor: "", frecuencia: "Semanal", tipoEvidencia: "", fechaProximaRevision: today(), estado: "Pendiente" });
+      save(); render();
+    };
+
+    $("addHal").onclick = () => {
+      state.hallazgos.unshift({ id: uid(), proyecto: "", fechaDeteccion: today(), area: "", descripcion: "", prioridad: "Media", accionInmediata: "", accionDefinitiva: "", responsable: "", fechaCompromiso: today(), estado: "Abierto", evidencia: "", fechaCierre: "" });
+      save(); render();
+    };
+
+    $("addDot").onclick = () => {
+      state.dotacion.unshift({ id: uid(), proyecto: "", ocupacionActual: 0, dotacionMinimaRequerida: 0, dotacionReal: 0, brecha: 0, comentario: "" });
+      save(); render();
+    };
+
+    render();
+  </script>
+</body>
+</html>

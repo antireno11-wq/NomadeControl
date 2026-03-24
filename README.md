@@ -1,88 +1,57 @@
-# NomadeControl
+# Nómade Chile | Control Operacional (base simple)
 
-App web para registrar reportes diarios por campamento y supervisar desde una oficina central.
+Aplicacion web interna para control operacional de campamentos.
 
-## Funcionalidades iniciales
-- Usuarios con roles `ADMINISTRADOR` y `SUPERVISOR`.
-- Registro diario por campamento:
-  - Personas en campamento
-  - Desayunos, almuerzos y cenas entregadas
-  - Agua (litros)
-  - Combustible (litros)
-  - Observaciones
-- Dashboard con últimos reportes y totales rápidos.
-- Endpoint de exportación JSON para admin: `GET /api/reportes`.
+Objetivo: evitar que compromisos criticos queden sin responsable, seguimiento o cierre, y detectar riesgos antes de que escalen.
 
-## Stack
-- Next.js 14 (App Router)
-- Prisma ORM
-- PostgreSQL (Railway / producción)
-- Railway para despliegue
+## Stack propuesto (simple y mantenible)
+- Next.js 14 + React 18 + TypeScript
+- CSS Modules (sin librerias UI)
+- Persistencia local con `localStorage` (sin backend para esta base)
 
-## 1. Configuración local
+Por que este stack para la base:
+- Ya esta instalado en este repo.
+- Corre local con `npm run dev`.
+- Facil de evolucionar luego a API + BD sin reescribir UI.
+
+## Modulos incluidos
+1. Obligaciones criticas
+2. Hallazgos / pendientes
+3. Dotacion minima
+4. Dashboard
+
+## Funcionalidades incluidas
+- Tablas editables inline (inputs/select/fecha)
+- Agregar y eliminar filas
+- Filtros globales por proyecto, prioridad y estado
+- Vista inline de los 4 modulos (sin cambiar de pestaña)
+- Semaforo rojo/amarillo/verde en tablas y dashboard
+- Dashboard con:
+  - pendientes criticos abiertos
+  - pendientes vencidos
+  - obligaciones sin revision vigente
+  - brechas de dotacion por proyecto
+- Datos demo iniciales
+- Guardado automatico en navegador (`localStorage`)
+
+## Ejecutar local
+Desde `campamentos-control`:
+
 ```bash
-cp .env.example .env
 npm install
-npm run prisma:generate
-npm run prisma:migrate -- --name init
-npm run prisma:seed
 npm run dev
 ```
 
-Abrir: [http://localhost:3000](http://localhost:3000)
+Abrir en navegador:
+- `http://localhost:3000/operaciones`
+- `http://localhost:3000/` redirige automaticamente a `operaciones`
 
-### Usuarios semilla
-- `administrador@campamentos.local` / `Admin1234`
-- `supervisor@campamentos.local` / `Supervisor1234`
+## Archivos clave
+- `src/app/operaciones/page.tsx`
+- `src/app/operaciones/operaciones-app.tsx`
+- `src/app/operaciones/operaciones.module.css`
+- `src/app/page.tsx`
 
-## 2. Crear repositorio nuevo en GitHub
-Desde la carpeta `campamentos-control`:
-```bash
-git init
-git add .
-git commit -m "init campamentos-control"
-git branch -M main
-git remote add origin <TU_REPO_GITHUB_URL>
-git push -u origin main
-```
-
-## 3. Desplegar en Railway
-1. Crear proyecto en Railway desde tu repo de GitHub.
-2. Variables de entorno mínimas:
-   - `DATABASE_URL`
-   - `SESSION_COOKIE_NAME=camp_session`
-   - `SEED_ADMIN_EMAIL`
-   - `SEED_ADMIN_PASSWORD`
-   - `APP_URL`
-   - `RESEND_API_KEY`
-   - `RESEND_FROM_EMAIL`
-3. En producción usa Postgres de Railway y actualiza `DATABASE_URL`.
-4. Ejecutar migraciones con `npx prisma migrate deploy` en el proceso de despliegue.
-
-## Envío de correo al crear usuario
-En Administración, al crear usuario puedes activar `Enviar credenciales por correo`.
-Para que funcione, configura en Railway:
-- `RESEND_API_KEY`
-- `RESEND_FROM_EMAIL`
-- `APP_URL` (URL pública de tu app)
-
-## Login con Google (OAuth)
-La plataforma permite `Continuar con Google` en login para usuarios ya registrados.
-Variables requeridas:
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI`
-- `APP_URL`
-
-En Google Cloud Console:
-1. Crea credenciales OAuth 2.0 (Web application).
-2. Authorized redirect URI:
-   - Local: `http://localhost:3000/api/auth/google/callback`
-   - Producción: `https://nomadecontrol-production.up.railway.app/api/auth/google/callback`
-3. Copia Client ID/Secret en Railway Variables.
-
-## 4. Siguientes mejoras sugeridas
-- Catálogo dinámico de "otros consumos" (no solo agua/combustible).
-- Histórico con filtros por rango de fechas y por campamento.
-- Exportación a Excel/PDF.
-- Auditoría de cambios por usuario.
+## Nota de esta version base
+Esta version prioriza simplicidad operacional local.
+Siguiente paso recomendado cuando valides el flujo: mover persistencia a API + base de datos y agregar autenticacion por roles.

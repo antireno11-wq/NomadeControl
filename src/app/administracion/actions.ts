@@ -29,10 +29,19 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8)
 });
 
+const deleteUserSchema = z.object({
+  userId: z.string().min(1)
+});
+
 const createCampSchema = z.object({
   name: z.string().trim().min(2),
   location: z.string().trim().optional(),
   capacityPeople: z.coerce.number().int().min(0)
+});
+
+const deleteRecordSchema = z.object({
+  recordType: z.enum(["dailyReport", "dailyTaskControl", "stockMovement", "staffMember"]),
+  recordId: z.string().min(1)
 });
 
 function normalizedCampIdForRole(role: "ADMINISTRADOR" | "SUPERVISOR", campId?: string) {
@@ -185,6 +194,76 @@ export async function resetUserPasswordAction(formData: FormData) {
   revalidatePath("/administracion");
 }
 
+export async function deleteUserAction(formData: FormData) {
+  const currentUser = await requireRole(ADMIN_ROLES);
+
+  const parsed = deleteUserSchema.safeParse({
+    userId: formData.get("userId")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Usuario inválido.");
+  }
+
+  const { userId } = parsed.data;
+
+  if (userId === currentUser.id) {
+    throw new Error("No puedes borrar tu propio usuario.");
+  }
+
+  const targetUser = await db.user.findUnique({
+    where: { id: userId },
+    include: {
+      _count: {
+        select: {
+          reports: true,
+          dailyTaskControls: true,
+          stockMovements: true,
+          staffMembers: true,
+          sessions: true
+        }
+      }
+    }
+  });
+
+  if (!targetUser) {
+    throw new Error("Usuario no encontrado.");
+  }
+
+  await db.session.deleteMany({ where: { userId } });
+
+  const relatedRecordsCount =
+    targetUser._count.reports +
+    targetUser._count.dailyTaskControls +
+    targetUser._count.stockMovements +
+    targetUser._count.staffMembers;
+
+  if (relatedRecordsCount === 0) {
+    await db.user.delete({ where: { id: userId } });
+  } else {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        name: `Usuario eliminado ${targetUser.id.slice(0, 6)}`,
+        email: `deleted+${targetUser.id}@nomade.local`,
+        isActive: false,
+        campId: null,
+        phone: null,
+        profilePhotoUrl: null,
+        positionTitle: null,
+        emergencyContactName: null,
+        emergencyContactPhone: null,
+        nationalId: null,
+        address: null,
+        city: null,
+        healthProvider: null
+      }
+    });
+  }
+
+  revalidatePath("/administracion");
+}
+
 export async function createCampAction(formData: FormData) {
   await requireRole(ADMIN_ROLES);
 
@@ -211,4 +290,43 @@ export async function createCampAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
+}
+
+export async function deleteRecordAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+
+  const parsed = deleteRecordSchema.safeParse({
+    recordType: formData.get("recordType"),
+    recordId: formData.get("recordId")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Registro inválido para borrar.");
+  }
+
+  const { recordType, recordId } = parsed.data;
+
+  if (recordType === "dailyReport") {
+    await db.dailyReport.delete({ where: { id: recordId } });
+    revalidatePath("/dashboard");
+    revalidatePath("/carga-diaria");
+  }
+
+  if (recordType === "dailyTaskControl") {
+    await db.dailyTaskControl.delete({ where: { id: recordId } });
+    revalidatePath("/control-tareas-diarias");
+  }
+
+  if (recordType === "stockMovement") {
+    await db.stockMovement.delete({ where: { id: recordId } });
+    revalidatePath("/bodega");
+  }
+
+  if (recordType === "staffMember") {
+    await db.staffMember.delete({ where: { id: recordId } });
+    revalidatePath("/turnos");
+  }
+
+  revalidatePath("/administracion");
+  revalidatePath("/administracion/registros");
 }
