@@ -372,16 +372,16 @@ a {
   grid-column: span 8;
 }
 
-.dashboard-core-grid > .dashboard-panel:only-child {
-  grid-column: span 12;
-}
-
 .dashboard-panel-wide {
   grid-column: span 8;
 }
 
 .dashboard-core-grid > .dashboard-panel:last-child {
   grid-column: span 4;
+}
+
+.dashboard-core-grid > .dashboard-panel:only-child {
+  grid-column: 1 / -1;
 }
 
 .dashboard-chart-grid > .dashboard-panel,
@@ -415,7 +415,7 @@ a {
 
 .dashboard-ring-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
 }
 
@@ -467,6 +467,7 @@ a {
 
 .dashboard-mini-stack {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -964,6 +965,10 @@ th {
   }
 
   .dashboard-ring-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-mini-stack {
     grid-template-columns: 1fr;
   }
 
