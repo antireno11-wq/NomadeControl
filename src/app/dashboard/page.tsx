@@ -9,6 +9,9 @@ import { NotificationBell } from "@/components/notification-bell";
 export default async function DashboardPage({ searchParams }: { searchParams?: { campId?: string | string[] } }) {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const selectedCampIdRaw = searchParams?.campId;
+  const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
+  const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
   const today = new Date();
@@ -20,7 +23,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const last30Days = new Date(today);
   last30Days.setDate(last30Days.getDate() - 30);
 
-  const [camps, reports30Days, reportsToday, recentReports, taskControlsToday] = await Promise.all([
+  const [camps, reports30Days, reportsToday, recentReports, taskControlsToday, campShiftUsers] = await Promise.all([
     db.camp.findMany({
       where: { isActive: true, ...(campFilter ? { id: campFilter } : {}) },
       orderBy: { name: "asc" }
@@ -52,12 +55,26 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         date: dashboardDate
       },
       include: { camp: true, createdBy: true }
+    }),
+    db.user.findMany({
+      where: {
+        isActive: true,
+        role: { in: ["SUPERVISOR", "OPERADOR"] },
+        shiftStartDate: { not: null },
+        ...(scopedSelectedCampId ? { campId: scopedSelectedCampId } : {})
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        campId: true,
+        shiftPattern: true,
+        shiftWorkDays: true,
+        shiftOffDays: true,
+        shiftStartDate: true
+      }
     })
   ]);
-
-  const selectedCampIdRaw = searchParams?.campId;
-  const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
-  const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
   const scopeCamps = scopedSelectedCampId ? camps.filter((c) => c.id === scopedSelectedCampId) : camps;
   const scopeCampIds = new Set(scopeCamps.map((c) => c.id));
 
@@ -72,44 +89,36 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       date: string;
       people: number;
       meals: number;
-      breakfast: number;
-      lunch: number;
-      dinner: number;
-      snacks: number;
+      foodServices: number;
       water: number;
       fuel: number;
     }
   >();
   for (const report of reportsScoped) {
+    const foodServices =
+      report.breakfastCount +
+      report.lunchCount +
+      report.dinnerCount +
+      report.snackSimpleCount +
+      report.snackReplacementCount;
     const dateKey = toInputDateValue(report.date);
     const row = byDay.get(dateKey) ?? {
       date: dateKey,
       people: 0,
       meals: 0,
-      breakfast: 0,
-      lunch: 0,
-      dinner: 0,
-      snacks: 0,
+      foodServices: 0,
       water: 0,
       fuel: 0
     };
     row.people += report.peopleCount;
     row.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
-    row.breakfast += report.breakfastCount;
-    row.lunch += report.lunchCount;
-    row.dinner += report.dinnerCount;
-    row.snacks += report.snackSimpleCount + report.snackReplacementCount;
+    row.foodServices += foodServices;
     row.water += report.waterLiters;
     row.fuel += report.fuelLiters;
     byDay.set(dateKey, row);
   }
 
-  const chartDays = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-12);
-  const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
-  const maxFoodServices = Math.max(
-    1,
-    ...chartDays.map((day) => day.breakfast + day.lunch + day.dinner + day.snacks)
-  );
+  const defaultChartDays = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
 
   const totals = reportsScoped.reduce(
     (acc, report) => {
@@ -148,6 +157,53 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       diff: Math.abs(g1Use - g2Use)
     };
   });
+
+  const shiftCampId = scopedSelectedCampId ?? (canSeeAdminSections && scopeCamps.length === 1 ? scopeCamps[0]?.id : null);
+  const shiftOwner =
+    !canSeeAdminSections && user.shiftStartDate
+      ? {
+          name: user.name,
+          shiftPattern: user.shiftPattern ?? "14x14",
+          shiftWorkDays: user.shiftWorkDays ?? 14,
+          shiftOffDays: user.shiftOffDays ?? 14,
+          shiftStartDate: user.shiftStartDate
+        }
+      : shiftCampId
+        ? campShiftUsers.find((candidate) => candidate.campId === shiftCampId) ?? null
+        : null;
+
+  let chartDays = defaultChartDays;
+  let peopleChartLabel = defaultChartDays.length > 0 ? `Últimos ${defaultChartDays.length} días` : "Sin turno";
+
+  if (shiftOwner?.shiftStartDate && shiftOwner.shiftWorkDays && shiftOwner.shiftOffDays) {
+    const millisPerDay = 24 * 60 * 60 * 1000;
+    const shiftStart = new Date(
+      Date.UTC(
+        shiftOwner.shiftStartDate.getUTCFullYear(),
+        shiftOwner.shiftStartDate.getUTCMonth(),
+        shiftOwner.shiftStartDate.getUTCDate()
+      )
+    );
+    const elapsedDays = Math.max(0, Math.floor((dashboardDate.getTime() - shiftStart.getTime()) / millisPerDay));
+    const cycleLength = shiftOwner.shiftWorkDays + shiftOwner.shiftOffDays;
+    const cycleIndex = cycleLength > 0 ? elapsedDays % cycleLength : 0;
+
+    if (cycleIndex < shiftOwner.shiftWorkDays) {
+      const cycleStart = new Date(shiftStart);
+      cycleStart.setUTCDate(cycleStart.getUTCDate() + elapsedDays - cycleIndex);
+      const cycleStartKey = toInputDateValue(cycleStart);
+      chartDays = Array.from(byDay.values())
+        .filter((day) => day.date >= cycleStartKey && day.date <= toInputDateValue(dashboardDate))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      peopleChartLabel = `${shiftOwner.shiftPattern ?? "14x14"} · quedan ${shiftOwner.shiftWorkDays - (cycleIndex + 1)} días`;
+    } else {
+      peopleChartLabel = `${shiftOwner.shiftPattern ?? "14x14"} · descanso`;
+    }
+  }
+
+  const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
+  const maxFoodServices = Math.max(1, ...chartDays.map((day) => day.foodServices));
+  const totalFoodServices = chartDays.reduce((sum, day) => sum + day.foodServices, 0);
 
   const totalG1Use = generatorRows.reduce((sum, row) => sum + row.g1Use, 0);
   const totalG2Use = generatorRows.reduce((sum, row) => sum + row.g2Use, 0);
@@ -333,8 +389,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         <div className="dashboard-chart-grid">
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
-              <h2>Personas</h2>
-              <span className="dashboard-chip small">12 días</span>
+              <h2>Personas por turno</h2>
+              <span className="dashboard-chip small">{peopleChartLabel}</span>
             </div>
             <div className="chart-grid compact">
               {chartDays.map((day) => (
@@ -350,30 +406,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
-              <h2>Servicios de alimentación</h2>
-              <div className="chart-legend compact">
-                <span>
-                  <i className="dot breakfast" /> Desayuno
-                </span>
-                <span>
-                  <i className="dot lunch" /> Almuerzo
-                </span>
-                <span>
-                  <i className="dot dinner" /> Cena
-                </span>
-                <span>
-                  <i className="dot snacks" /> Colaciones
-                </span>
-              </div>
+              <h2>Servicios entregados</h2>
+              <span className="dashboard-chip small">{totalFoodServices} total</span>
             </div>
             <div className="chart-grid compact">
               {chartDays.map((day) => (
                 <div key={`c-${day.date}`} className="chart-col">
-                  <div className="chart-stack tall">
-                    <div className="chart-bar breakfast" style={{ height: `${(day.breakfast / maxFoodServices) * 100}%` }} />
-                    <div className="chart-bar lunch" style={{ height: `${(day.lunch / maxFoodServices) * 100}%` }} />
-                    <div className="chart-bar dinner" style={{ height: `${(day.dinner / maxFoodServices) * 100}%` }} />
-                    <div className="chart-bar snacks" style={{ height: `${(day.snacks / maxFoodServices) * 100}%` }} />
+                  <div className="chart-track tall">
+                    <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
                   </div>
                   <div className="chart-label">{day.date.slice(5)}</div>
                 </div>

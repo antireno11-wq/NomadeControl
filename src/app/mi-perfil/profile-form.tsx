@@ -15,6 +15,8 @@ type ProfileDefaults = {
   address: string;
   city: string;
   healthProvider: string;
+  shiftPattern: string;
+  shiftStartDate: string;
 };
 
 const initialState: ProfileFormState = { error: "", success: "" };
@@ -63,6 +65,20 @@ export function ProfileForm({ defaults }: { defaults: ProfileDefaults }) {
         <div>
           <label htmlFor="address">Direccion</label>
           <input id="address" name="address" defaultValue={defaults.address} />
+        </div>
+        <div>
+          <label htmlFor="shiftPattern">Tipo de turno</label>
+          <select id="shiftPattern" name="shiftPattern" defaultValue={defaults.shiftPattern}>
+            <option value="">Sin definir</option>
+            <option value="14x14">14x14</option>
+            <option value="10x10">10x10</option>
+            <option value="7x7">7x7</option>
+            <option value="4x3">4x3</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="shiftStartDate">Inicio del turno</label>
+          <input id="shiftStartDate" name="shiftStartDate" type="date" defaultValue={defaults.shiftStartDate} />
         </div>
       </div>
 

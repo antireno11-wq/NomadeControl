@@ -23,6 +23,10 @@ model User {
   address       String?
   city          String?
   healthProvider String?
+  shiftPattern  String?
+  shiftWorkDays Int?
+  shiftOffDays  Int?
+  shiftStartDate DateTime?
   campId       String?
   camp         Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
   sessions     Session[]

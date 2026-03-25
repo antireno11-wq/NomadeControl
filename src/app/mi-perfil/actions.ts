@@ -15,8 +15,17 @@ const profileSchema = z.object({
   nationalId: z.string().trim().optional(),
   address: z.string().trim().optional(),
   city: z.string().trim().optional(),
-  healthProvider: z.string().trim().optional()
+  healthProvider: z.string().trim().optional(),
+  shiftPattern: z.enum(["", "14x14", "10x10", "7x7", "4x3"]).optional(),
+  shiftStartDate: z.string().trim().optional()
 });
+
+const shiftRules = {
+  "14x14": { work: 14, off: 14 },
+  "10x10": { work: 10, off: 10 },
+  "7x7": { work: 7, off: 7 },
+  "4x3": { work: 4, off: 3 }
+} as const;
 
 export type ProfileFormState = { error: string; success: string };
 
@@ -33,7 +42,9 @@ export async function saveProfileAction(_: ProfileFormState, formData: FormData)
     nationalId: String(formData.get("nationalId") ?? ""),
     address: String(formData.get("address") ?? ""),
     city: String(formData.get("city") ?? ""),
-    healthProvider: String(formData.get("healthProvider") ?? "")
+    healthProvider: String(formData.get("healthProvider") ?? ""),
+    shiftPattern: String(formData.get("shiftPattern") ?? ""),
+    shiftStartDate: String(formData.get("shiftStartDate") ?? "")
   });
 
   if (!parsed.success) {
@@ -41,6 +52,9 @@ export async function saveProfileAction(_: ProfileFormState, formData: FormData)
   }
 
   const payload = parsed.data;
+  const normalizedShiftPattern = payload.shiftPattern || null;
+  const shiftRule = normalizedShiftPattern ? shiftRules[normalizedShiftPattern as keyof typeof shiftRules] : null;
+  const shiftStartDate = normalizedShiftPattern && payload.shiftStartDate ? new Date(`${payload.shiftStartDate}T00:00:00.000Z`) : null;
 
   await db.user.update({
     where: { id: user.id },
@@ -54,7 +68,11 @@ export async function saveProfileAction(_: ProfileFormState, formData: FormData)
       nationalId: payload.nationalId || null,
       address: payload.address || null,
       city: payload.city || null,
-      healthProvider: payload.healthProvider || null
+      healthProvider: payload.healthProvider || null,
+      shiftPattern: normalizedShiftPattern,
+      shiftWorkDays: shiftRule?.work ?? null,
+      shiftOffDays: shiftRule?.off ?? null,
+      shiftStartDate
     }
   });
 

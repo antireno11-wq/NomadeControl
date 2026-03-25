@@ -1,6 +1,7 @@
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { ProfileForm } from "./profile-form";
+import { toInputDateValue } from "@/lib/report-utils";
 
 export default async function MiPerfilPage() {
   const user = await requireRole(OPERATION_ROLES);
@@ -19,7 +20,9 @@ export default async function MiPerfilPage() {
           nationalId: user.nationalId ?? "",
           address: user.address ?? "",
           city: user.city ?? "",
-          healthProvider: user.healthProvider ?? ""
+          healthProvider: user.healthProvider ?? "",
+          shiftPattern: user.shiftPattern ?? "",
+          shiftStartDate: user.shiftStartDate ? toInputDateValue(user.shiftStartDate) : ""
         }}
       />
     </AppShell>
