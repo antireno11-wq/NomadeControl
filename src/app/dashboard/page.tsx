@@ -66,12 +66,39 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const recentReportsScoped = recentReports.filter((r) => scopeCampIds.has(r.campId));
   const taskControlsTodayScoped = taskControlsToday.filter((r) => scopeCampIds.has(r.campId));
 
-  const byDay = new Map<string, { date: string; people: number; meals: number; water: number; fuel: number }>();
+  const byDay = new Map<
+    string,
+    {
+      date: string;
+      people: number;
+      meals: number;
+      breakfast: number;
+      lunch: number;
+      dinner: number;
+      snacks: number;
+      water: number;
+      fuel: number;
+    }
+  >();
   for (const report of reportsScoped) {
     const dateKey = toInputDateValue(report.date);
-    const row = byDay.get(dateKey) ?? { date: dateKey, people: 0, meals: 0, water: 0, fuel: 0 };
+    const row = byDay.get(dateKey) ?? {
+      date: dateKey,
+      people: 0,
+      meals: 0,
+      breakfast: 0,
+      lunch: 0,
+      dinner: 0,
+      snacks: 0,
+      water: 0,
+      fuel: 0
+    };
     row.people += report.peopleCount;
     row.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
+    row.breakfast += report.breakfastCount;
+    row.lunch += report.lunchCount;
+    row.dinner += report.dinnerCount;
+    row.snacks += report.snackSimpleCount + report.snackReplacementCount;
     row.water += report.waterLiters;
     row.fuel += report.fuelLiters;
     byDay.set(dateKey, row);
@@ -79,7 +106,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
   const chartDays = Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-12);
   const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
-  const maxResources = Math.max(1, ...chartDays.map((day) => Math.max(day.meals, day.water, day.fuel)));
+  const maxFoodServices = Math.max(
+    1,
+    ...chartDays.map((day) => day.breakfast + day.lunch + day.dinner + day.snacks)
+  );
 
   const totals = reportsScoped.reduce(
     (acc, report) => {
@@ -320,16 +350,19 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
-              <h2>Consumos</h2>
+              <h2>Servicios de alimentación</h2>
               <div className="chart-legend compact">
                 <span>
-                  <i className="dot meals" /> C
+                  <i className="dot breakfast" /> Desayuno
                 </span>
                 <span>
-                  <i className="dot water" /> A
+                  <i className="dot lunch" /> Almuerzo
                 </span>
                 <span>
-                  <i className="dot fuel" /> F
+                  <i className="dot dinner" /> Cena
+                </span>
+                <span>
+                  <i className="dot snacks" /> Colaciones
                 </span>
               </div>
             </div>
@@ -337,9 +370,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               {chartDays.map((day) => (
                 <div key={`c-${day.date}`} className="chart-col">
                   <div className="chart-stack tall">
-                    <div className="chart-bar meals" style={{ height: `${(day.meals / maxResources) * 100}%` }} />
-                    <div className="chart-bar water" style={{ height: `${(day.water / maxResources) * 100}%` }} />
-                    <div className="chart-bar fuel" style={{ height: `${(day.fuel / maxResources) * 100}%` }} />
+                    <div className="chart-bar breakfast" style={{ height: `${(day.breakfast / maxFoodServices) * 100}%` }} />
+                    <div className="chart-bar lunch" style={{ height: `${(day.lunch / maxFoodServices) * 100}%` }} />
+                    <div className="chart-bar dinner" style={{ height: `${(day.dinner / maxFoodServices) * 100}%` }} />
+                    <div className="chart-bar snacks" style={{ height: `${(day.snacks / maxFoodServices) * 100}%` }} />
                   </div>
                   <div className="chart-label">{day.date.slice(5)}</div>
                 </div>

@@ -883,6 +883,22 @@ th {
   background: #00a6b6;
 }
 
+.chart-bar.breakfast {
+  background: #ffb703;
+}
+
+.chart-bar.lunch {
+  background: #ff7b2f;
+}
+
+.chart-bar.dinner {
+  background: #006878;
+}
+
+.chart-bar.snacks {
+  background: #8ecae6;
+}
+
 .chart-bar.snacks {
   background: #ff7b2f;
 }
@@ -919,6 +935,22 @@ th {
 
 .dot.meals {
   background: #00a6b6;
+}
+
+.dot.breakfast {
+  background: #ffb703;
+}
+
+.dot.lunch {
+  background: #ff7b2f;
+}
+
+.dot.dinner {
+  background: #006878;
+}
+
+.dot.snacks {
+  background: #8ecae6;
 }
 
 .dot.snacks {
