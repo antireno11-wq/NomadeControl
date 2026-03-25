@@ -130,6 +130,28 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
             </select>
           </div>
           <div>
+            <label htmlFor="blackWaterRemoved">Retiro aguas negras realizado</label>
+            <select id="blackWaterRemoved" name="blackWaterRemoved" defaultValue="NO">
+              <option value="NO">No</option>
+              <option value="SI">Si</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="blackWaterRemovedM3">Aguas negras retiradas (m3)</label>
+            <input id="blackWaterRemovedM3" name="blackWaterRemovedM3" type="number" min={0} step="0.01" defaultValue={0} required />
+          </div>
+          <div>
+            <label htmlFor="potableWaterDelivered">Ingreso agua potable realizado</label>
+            <select id="potableWaterDelivered" name="potableWaterDelivered" defaultValue="NO">
+              <option value="NO">No</option>
+              <option value="SI">Si</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="potableWaterDeliveredM3">Agua potable ingresada (m3)</label>
+            <input id="potableWaterDeliveredM3" name="potableWaterDeliveredM3" type="number" min={0} step="0.01" defaultValue={0} required />
+          </div>
+          <div>
             <label htmlFor="wasteFillPercent">Llenado contenedor basura ({wasteFillPercent}%)</label>
             <input
               id="wasteFillPercent"

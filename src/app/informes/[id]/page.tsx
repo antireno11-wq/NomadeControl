@@ -82,6 +82,10 @@ export default async function InformeDetallePage({ params }: { params: { id: str
                 <tr><th>Agua gastada</th><td>{report.waterLiters} L</td></tr>
                 <tr><th>Combustible</th><td>{report.fuelLiters} L</td></tr>
                 <tr><th>Internet</th><td>{report.internetStatus.replaceAll("_", " ")}</td></tr>
+                <tr><th>Retiro aguas negras</th><td>{report.blackWaterRemoved ? "Si" : "No"}</td></tr>
+                <tr><th>Aguas negras retiradas</th><td>{report.blackWaterRemovedM3.toFixed(2)} m3</td></tr>
+                <tr><th>Ingreso agua potable</th><td>{report.potableWaterDelivered ? "Si" : "No"}</td></tr>
+                <tr><th>Agua potable ingresada</th><td>{report.potableWaterDeliveredM3.toFixed(2)} m3</td></tr>
                 <tr><th>Basura</th><td>{report.wasteFillPercent}%</td></tr>
               </tbody>
             </table>
