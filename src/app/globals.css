@@ -440,6 +440,41 @@ a {
   border: 1px solid var(--border);
 }
 
+.dashboard-status-card {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  min-height: 160px;
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: #f8fbfc;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.dashboard-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  font-size: 2rem;
+  font-weight: 800;
+  background: #eef5f6;
+}
+
+.dashboard-status-icon.ok {
+  color: #146c3d;
+  background: #e8f7ef;
+}
+
+.dashboard-status-icon.warn {
+  color: #9a6300;
+  background: #fff4dc;
+}
+
 .dashboard-focus-label {
   color: var(--muted);
   font-size: 0.82rem;

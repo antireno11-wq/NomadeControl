@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
@@ -124,7 +123,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const totalG2Use = generatorRows.reduce((sum, row) => sum + row.g2Use, 0);
   const totalGeneratorDiff = Math.abs(totalG1Use - totalG2Use);
 
-  const reportCompletion = scopeCamps.length > 0 ? Math.round((reportsTodayScoped.length / scopeCamps.length) * 100) : 0;
 
   const peopleToday = reportsTodayScoped.reduce((sum, report) => sum + report.peopleCount, 0);
   const mealsToday = reportsTodayScoped.reduce(
@@ -141,6 +139,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const waterDiff = waterToday - previousDayWater;
   const peopleDiffLabel = peopleDiff === 0 ? "Sin cambio" : `${peopleDiff > 0 ? "+" : ""}${peopleDiff}`;
   const waterDiffLabel = waterDiff === 0 ? "Sin cambio" : `${waterDiff > 0 ? "+" : ""}${waterDiff} L`;
+  const reportSubmitted = scopeCamps.length > 0 && missingCampsToday.length === 0;
+  const tasksSubmitted = scopeCamps.length > 0 && missingTaskControlsToday.length === 0;
 
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario ayer: ${camp.name}`, severity: "error" as const })),
@@ -255,13 +255,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
 
             <div className="dashboard-ring-grid">
-              <div className="dashboard-ring-card">
-                <RingCard
-                  label="Informe diario"
-                  value={reportCompletion}
-                  color="var(--accent)"
-                  helper={`${reportsTodayScoped.length}/${scopeCamps.length || 0}`}
-                />
+              <div className="dashboard-status-card">
+                <span className="dashboard-focus-label">Informe diario</span>
+                <strong className={`dashboard-status-icon ${reportSubmitted ? "ok" : "warn"}`}>
+                  {reportSubmitted ? "✓" : "!"}
+                </strong>
+                <small className="dashboard-focus-meta">
+                  {reportsTodayScoped.length}/{scopeCamps.length || 0} cargados
+                </small>
               </div>
               <div className="dashboard-focus-card">
                 <span className="dashboard-focus-label">Agua ayer</span>
@@ -287,8 +288,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <strong>{totalG2Use.toFixed(1)}h</strong>
                 </div>
                 <div className="dashboard-mini-metric">
-                  <span>Internet</span>
-                  <strong>{totals.internetIssues}</strong>
+                  <span>Control tareas</span>
+                  <strong className={tasksSubmitted ? "up" : "warn"}>{tasksSubmitted ? "✓" : "!"}</strong>
                 </div>
                 <div className="dashboard-mini-metric">
                   <span>Basura</span>
@@ -421,26 +422,5 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         </div>
       </section>
     </main>
-  );
-}
-
-function RingCard({ label, value, color, helper }: { label: string; value: number; color: string; helper: string }) {
-  const style = {
-    "--ring-color": color,
-    "--ring-value": `${Math.max(0, Math.min(100, value))}%`
-  } as CSSProperties;
-
-  return (
-    <>
-      <div className="dashboard-ring" style={style}>
-        <div>
-          <strong>{value}%</strong>
-        </div>
-      </div>
-      <div className="dashboard-ring-text">
-        <span>{label}</span>
-        <small>{helper}</small>
-      </div>
-    </>
   );
 }
