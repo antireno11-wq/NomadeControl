@@ -580,6 +580,16 @@ a {
   font-size: 0.8rem;
 }
 
+.dashboard-generator-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.dashboard-generator-row > div strong {
+  display: block;
+  line-height: 1.2;
+}
+
 .dashboard-table-wrap {
   overflow-x: auto;
 }
