@@ -16,6 +16,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
   const dashboardDate = new Date(todayDate);
   dashboardDate.setUTCDate(dashboardDate.getUTCDate() - 1);
+  const previousDashboardDate = new Date(dashboardDate);
+  previousDashboardDate.setUTCDate(previousDashboardDate.getUTCDate() - 1);
   const last30Days = new Date(today);
   last30Days.setDate(last30Days.getDate() - 30);
 
@@ -96,17 +98,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const reportsCount = reportsScoped.length;
   const wasteAvg = reportsCount > 0 ? totals.waste / reportsCount : 0;
 
-  const taskSummaryByCamp = new Map(
-    taskControlsTodayScoped.map((control) => {
-      const adminValues = Object.values((control.administrativeChecks as Record<string, unknown>) ?? {});
-      const opValues = Object.values((control.operationalChecks as Record<string, unknown>) ?? {});
-      const total = adminValues.length + opValues.length;
-      const done = [...adminValues, ...opValues].filter((value) => value === true).length;
-      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
-      return [control.campId, { done, total, percent }] as const;
-    })
-  );
-
   const reportedCampIdsToday = new Set(reportsTodayScoped.map((r) => r.campId));
   const missingCampsToday = scopeCamps.filter((camp) => !reportedCampIdsToday.has(camp.id));
   const taskControlCampIdsToday = new Set(taskControlsTodayScoped.map((r) => r.campId));
@@ -134,13 +125,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const totalGeneratorDiff = Math.abs(totalG1Use - totalG2Use);
 
   const reportCompletion = scopeCamps.length > 0 ? Math.round((reportsTodayScoped.length / scopeCamps.length) * 100) : 0;
-  const taskCompletion = scopeCamps.length > 0 ? Math.round((taskControlsTodayScoped.length / scopeCamps.length) * 100) : 0;
-  const avgTaskCompletion =
-    taskControlsTodayScoped.length > 0
-      ? Math.round(
-          Array.from(taskSummaryByCamp.values()).reduce((sum, summary) => sum + summary.percent, 0) / taskControlsTodayScoped.length
-        )
-      : 0;
 
   const peopleToday = reportsTodayScoped.reduce((sum, report) => sum + report.peopleCount, 0);
   const mealsToday = reportsTodayScoped.reduce(
@@ -149,6 +133,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   );
   const waterToday = reportsTodayScoped.reduce((sum, report) => sum + report.waterLiters, 0);
   const fuelToday = reportsTodayScoped.reduce((sum, report) => sum + report.fuelLiters, 0);
+  const previousDayKey = toInputDateValue(previousDashboardDate);
+  const previousDaySeries = byDay.get(previousDayKey);
+  const previousDayPeople = previousDaySeries?.people ?? 0;
+  const previousDayWater = previousDaySeries?.water ?? 0;
+  const peopleDiff = peopleToday - previousDayPeople;
+  const waterDiff = waterToday - previousDayWater;
+  const peopleDiffLabel = peopleDiff === 0 ? "Sin cambio" : `${peopleDiff > 0 ? "+" : ""}${peopleDiff}`;
+  const waterDiffLabel = waterDiff === 0 ? "Sin cambio" : `${waterDiff > 0 ? "+" : ""}${waterDiff} L`;
 
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario ayer: ${camp.name}`, severity: "error" as const })),
@@ -263,24 +255,27 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
 
             <div className="dashboard-ring-grid">
-            <div className="dashboard-ring-card">
-              <RingCard
+              <div className="dashboard-ring-card">
+                <RingCard
                   label="Informe diario"
                   value={reportCompletion}
                   color="var(--accent)"
                   helper={`${reportsTodayScoped.length}/${scopeCamps.length || 0}`}
                 />
               </div>
-              <div className="dashboard-ring-card">
-                <RingCard
-                  label="Control tareas"
-                  value={taskCompletion}
-                  color="var(--teal)"
-                  helper={`${taskControlsTodayScoped.length}/${scopeCamps.length || 0}`}
-                />
+              <div className="dashboard-focus-card">
+                <span className="dashboard-focus-label">Agua ayer</span>
+                <strong className="dashboard-focus-value">{waterToday} L</strong>
+                <small className={`dashboard-focus-meta ${waterDiff === 0 ? "" : waterDiff > 0 ? "warn" : "up"}`}>
+                  {waterDiffLabel} vs {previousDayKey}
+                </small>
               </div>
-              <div className="dashboard-ring-card">
-                <RingCard label="Cumplimiento" value={avgTaskCompletion} color="#21a179" helper="promedio" />
+              <div className="dashboard-focus-card">
+                <span className="dashboard-focus-label">Huéspedes</span>
+                <strong className="dashboard-focus-value">{peopleDiffLabel}</strong>
+                <small className={`dashboard-focus-meta ${peopleDiff === 0 ? "" : peopleDiff > 0 ? "up" : "warn"}`}>
+                  vs {previousDayPeople} el {previousDayKey}
+                </small>
               </div>
               <div className="dashboard-mini-stack">
                 <div className="dashboard-mini-metric">

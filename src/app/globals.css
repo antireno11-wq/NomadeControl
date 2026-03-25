@@ -429,6 +429,33 @@ a {
   border: 1px solid var(--border);
 }
 
+.dashboard-focus-card {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 160px;
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: #f8fbfc;
+  border: 1px solid var(--border);
+}
+
+.dashboard-focus-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.dashboard-focus-value {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.dashboard-focus-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .dashboard-ring {
   width: 102px;
   height: 102px;
