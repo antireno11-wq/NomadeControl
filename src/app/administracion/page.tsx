@@ -2,9 +2,13 @@ import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, deleteUserAction, updateCampAction, updateUserAccessAction } from "./actions";
+import { createCampAction, deleteCampAction, deleteUserAction, updateCampAction, updateUserAccessAction } from "./actions";
 
-export default async function AdministracionPage() {
+export default async function AdministracionPage({
+  searchParams
+}: {
+  searchParams?: { campStatus?: string | string[] };
+}) {
   const user = await requireRole(ADMIN_ROLES);
 
   const [users, camps, reports] = await Promise.all([
@@ -23,8 +27,23 @@ export default async function AdministracionPage() {
     db.dailyReport.count()
   ]);
 
+  const campStatusRaw = searchParams?.campStatus;
+  const campStatus = typeof campStatusRaw === "string" ? campStatusRaw : "";
+  const campAlert =
+    campStatus === "deleted"
+      ? { type: "success", text: "Campamento eliminado correctamente." }
+      : campStatus === "blocked"
+        ? { type: "error", text: "No se puede eliminar el campamento porque tiene datos o usuarios asociados." }
+        : campStatus === "not-found"
+          ? { type: "error", text: "Campamento no encontrado." }
+          : campStatus === "invalid"
+            ? { type: "error", text: "Solicitud inválida para eliminar campamento." }
+            : null;
+
   return (
     <AppShell title="Administración" user={user} activeNav="administracion" showAdminSections>
+      {campAlert ? <div className={`alert ${campAlert.type === "success" ? "success" : "error"}`} style={{ marginBottom: 16 }}>{campAlert.text}</div> : null}
+
       <div className="admin-metrics-grid" style={{ marginBottom: 16 }}>
         <div className="metric">
           <div className="label">Usuarios</div>
@@ -169,6 +188,12 @@ export default async function AdministracionPage() {
                     </label>
                     <button type="submit" className="secondary">Guardar</button>
                   </form>
+                  <div className="admin-user-secondary-actions" style={{ marginTop: 10 }}>
+                    <form action={deleteCampAction}>
+                      <input type="hidden" name="campId" value={camp.id} />
+                      <button type="submit" className="danger">Eliminar campamento</button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}

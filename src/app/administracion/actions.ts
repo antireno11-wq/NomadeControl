@@ -48,6 +48,10 @@ const updateCampSchema = z.object({
   isActive: z.string().optional()
 });
 
+const deleteCampSchema = z.object({
+  campId: z.string().min(1)
+});
+
 const deleteRecordSchema = z.object({
   recordType: z.enum(["dailyReport", "dailyTaskControl", "stockMovement", "staffMember"]),
   recordId: z.string().min(1)
@@ -332,6 +336,59 @@ export async function updateCampAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
+}
+
+export async function deleteCampAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+
+  const parsed = deleteCampSchema.safeParse({
+    campId: formData.get("campId")
+  });
+
+  if (!parsed.success) {
+    redirect("/administracion?campStatus=invalid");
+  }
+
+  const { campId } = parsed.data;
+
+  const camp = await db.camp.findUnique({
+    where: { id: campId },
+    include: {
+      _count: {
+        select: {
+          users: true,
+          reports: true,
+          dailyTaskControls: true,
+          stockMovements: true,
+          inventoryItems: true,
+          staffMembers: true
+        }
+      }
+    }
+  });
+
+  if (!camp) {
+    redirect("/administracion?campStatus=not-found");
+  }
+
+  const relatedRecordsCount =
+    camp._count.users +
+    camp._count.reports +
+    camp._count.dailyTaskControls +
+    camp._count.stockMovements +
+    camp._count.inventoryItems +
+    camp._count.staffMembers;
+
+  if (relatedRecordsCount > 0) {
+    redirect("/administracion?campStatus=blocked");
+  }
+
+  await db.camp.delete({ where: { id: campId } });
+
+  revalidatePath("/administracion");
+  revalidatePath("/dashboard");
+  revalidatePath("/carga-diaria");
+  redirect("/administracion?campStatus=deleted");
 }
 
 export async function deleteRecordAction(formData: FormData) {
