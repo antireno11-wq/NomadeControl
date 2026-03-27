@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, deleteCampAction, deleteUserAction, updateCampAction, updateUserAccessAction } from "./actions";
+import { createCampAction, deleteCampAction, deleteUserAction, updateUserAccessAction } from "./actions";
 
 export default async function AdministracionPage({
   searchParams
@@ -176,19 +176,15 @@ export default async function AdministracionPage({
           <tbody>
             {camps.map((camp) => (
               <tr key={camp.id}>
-                <td colSpan={5}>
-                  <form action={updateCampAction} className="admin-camp-form">
-                    <input type="hidden" name="campId" value={camp.id} />
-                    <input name="name" defaultValue={camp.name} placeholder="Nombre" />
-                    <input name="location" defaultValue={camp.location ?? ""} placeholder="Ubicación" />
-                    <input name="capacityPeople" type="number" min={0} defaultValue={camp.capacityPeople} />
-                    <label className="admin-inline-checkbox">
-                      <input type="checkbox" name="isActive" defaultChecked={camp.isActive} style={{ width: "auto", padding: 0 }} />
-                      Activo
-                    </label>
-                    <button type="submit" className="secondary">Guardar</button>
-                  </form>
-                  <div className="admin-user-secondary-actions" style={{ marginTop: 10 }}>
+                <td>{camp.name}</td>
+                <td>{camp.location ?? "-"}</td>
+                <td>{camp.capacityPeople}</td>
+                <td>{camp.isActive ? "Sí" : "No"}</td>
+                <td>
+                  <div className="admin-user-secondary-actions" style={{ marginTop: 0 }}>
+                    <Link href={`/administracion/campamentos/${camp.id}`}>
+                      <button type="button" className="secondary">Editar</button>
+                    </Link>
                     <form action={deleteCampAction}>
                       <input type="hidden" name="campId" value={camp.id} />
                       <button type="submit" className="danger">Eliminar campamento</button>
