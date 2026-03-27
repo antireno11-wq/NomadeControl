@@ -90,7 +90,7 @@ export async function createUserAction(
       role: formData.get("role"),
       campId: formData.get("campId"),
       password: formData.get("password"),
-      sendWelcomeEmail: formData.get("sendWelcomeEmail")
+      sendWelcomeEmail: formData.get("sendWelcomeEmail") ?? undefined
     });
 
     if (!parsed.success) return { error: "Datos inválidos para crear usuario.", success: "" };
