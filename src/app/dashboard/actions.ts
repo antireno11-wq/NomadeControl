@@ -19,7 +19,6 @@ const reportSchema = z.object({
   waterBottleCount: z.coerce.number().int().min(0),
   lodgingCount: z.coerce.number().int().min(0),
   meterReading: z.coerce.number().min(0),
-  waterLiters: z.coerce.number().int().min(0),
   fuelLiters: z.coerce.number().int().min(0),
   generator1Hours: z.coerce.number().min(0),
   generator2Hours: z.coerce.number().min(0),
@@ -63,7 +62,6 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     waterBottleCount: formData.get("waterBottleCount"),
     lodgingCount: formData.get("lodgingCount"),
     meterReading: formData.get("meterReading"),
-    waterLiters: formData.get("waterLiters"),
     fuelLiters: formData.get("fuelLiters"),
     generator1Hours: formData.get("generator1Hours"),
     generator2Hours: formData.get("generator2Hours"),
@@ -104,6 +102,26 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     }
   }
 
+  const previousReport = await db.dailyReport.findFirst({
+    where: {
+      campId: payload.campId,
+      date: { lt: date }
+    },
+    orderBy: { date: "desc" },
+    select: { meterReading: true, date: true }
+  });
+
+  if (previousReport && payload.meterReading < previousReport.meterReading) {
+    return {
+      error: `La lectura del medidor no puede ser menor a la del ${previousReport.date.toISOString().slice(0, 10)}.`,
+      success: ""
+    };
+  }
+
+  const computedWaterLiters = previousReport
+    ? Math.max(0, Math.round(payload.meterReading - previousReport.meterReading))
+    : 0;
+
   await db.dailyReport.upsert({
     where: {
       campId_date: {
@@ -121,7 +139,7 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
       waterBottleCount: payload.waterBottleCount,
       lodgingCount: payload.lodgingCount,
       meterReading: payload.meterReading,
-      waterLiters: payload.waterLiters,
+      waterLiters: computedWaterLiters,
       fuelLiters: payload.fuelLiters,
       generator1Hours: payload.generator1Hours,
       generator2Hours: payload.generator2Hours,
@@ -148,7 +166,7 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
       waterBottleCount: payload.waterBottleCount,
       lodgingCount: payload.lodgingCount,
       meterReading: payload.meterReading,
-      waterLiters: payload.waterLiters,
+      waterLiters: computedWaterLiters,
       fuelLiters: payload.fuelLiters,
       generator1Hours: payload.generator1Hours,
       generator2Hours: payload.generator2Hours,

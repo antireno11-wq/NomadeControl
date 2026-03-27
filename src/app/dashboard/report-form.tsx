@@ -124,10 +124,6 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
             <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Consumos</h4>
             <div className="grid">
               <div>
-                <label htmlFor="waterLiters">Agua gastada (litros)</label>
-                <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
-              </div>
-              <div>
                 <label htmlFor="fuelLiters">Combustible (litros)</label>
                 <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
               </div>

@@ -161,7 +161,7 @@ export default async function CargaDiariaPage() {
                 <th>Internet</th>
                 <th>Aguas negras</th>
                 <th>Agua potable</th>
-                <th>Agua gastada</th>
+                <th>Agua gastada calc.</th>
                 <th>Combustible</th>
                 <th>Basura</th>
                 <th>Cloro</th>

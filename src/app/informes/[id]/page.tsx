@@ -79,7 +79,7 @@ export default async function InformeDetallePage({ params }: { params: { id: str
             <table>
               <tbody>
                 <tr><th>Lectura medidor</th><td>{report.meterReading.toFixed(2)}</td></tr>
-                <tr><th>Agua gastada</th><td>{report.waterLiters} L</td></tr>
+                <tr><th>Agua gastada (calculada)</th><td>{report.waterLiters} L</td></tr>
                 <tr><th>Combustible</th><td>{report.fuelLiters} L</td></tr>
                 <tr><th>Internet</th><td>{report.internetStatus.replaceAll("_", " ")}</td></tr>
                 <tr><th>Retiro aguas negras</th><td>{report.blackWaterRemoved ? "Si" : "No"}</td></tr>
