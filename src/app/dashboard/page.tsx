@@ -308,22 +308,22 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         </div>
 
         <div className="dashboard-kpi-grid">
-          <div className="dashboard-kpi accent">
+          <div className="dashboard-kpi accent" title={`${reportsTodayScoped.length} informes cargados ayer · ${missingCampsToday.length} pendientes`}>
             <div className="dashboard-kpi-label">Informes ayer</div>
             <div className="dashboard-kpi-value">{reportsTodayScoped.length}</div>
             <div className="dashboard-kpi-meta">{missingCampsToday.length} pendientes</div>
           </div>
-          <div className="dashboard-kpi teal">
+          <div className="dashboard-kpi teal" title={`${taskControlsTodayScoped.length} controles cargados ayer · ${missingTaskControlsToday.length} pendientes`}>
             <div className="dashboard-kpi-label">Tareas ayer</div>
             <div className="dashboard-kpi-value">{taskControlsTodayScoped.length}</div>
             <div className="dashboard-kpi-meta">{missingTaskControlsToday.length} pendientes</div>
           </div>
-          <div className="dashboard-kpi">
+          <div className="dashboard-kpi" title={`${peopleToday} personas registradas ayer · ${mealsToday} raciones entregadas`}>
             <div className="dashboard-kpi-label">Personas ayer</div>
             <div className="dashboard-kpi-value">{peopleToday}</div>
             <div className="dashboard-kpi-meta">{mealsToday} raciones</div>
           </div>
-          <div className="dashboard-kpi">
+          <div className="dashboard-kpi" title={`Diferencia total entre generadores: ${totalGeneratorDiff.toFixed(1)} horas`}>
             <div className="dashboard-kpi-label">Generadores ayer</div>
             <div className="dashboard-kpi-value">{totalGeneratorDiff.toFixed(1)}h</div>
             <div className="dashboard-kpi-meta">diferencia total</div>
@@ -341,7 +341,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
 
             <div className="dashboard-ring-grid">
-              <div className="dashboard-status-card">
+              <div className="dashboard-status-card" title={`${reportsTodayScoped.length} de ${scopeCamps.length || 0} informes cargados ayer`}>
                 <span className="dashboard-focus-label">Informe diario</span>
                 <strong className={`dashboard-status-icon ${reportSubmitted ? "ok" : "warn"}`}>
                   {reportSubmitted ? "✓" : "!"}
@@ -350,14 +350,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   {reportsTodayScoped.length}/{scopeCamps.length || 0} cargados
                 </small>
               </div>
-              <div className="dashboard-focus-card">
+              <div className="dashboard-focus-card" title={`Agua ayer: ${waterToday} L · Variación: ${waterDiffLabel}`}>
                 <span className="dashboard-focus-label">Agua ayer</span>
                 <strong className="dashboard-focus-value">{waterToday} L</strong>
                 <small className={`dashboard-focus-meta ${waterDiff === 0 ? "" : waterDiff > 0 ? "warn" : "up"}`}>
                   {waterDiffLabel} vs {previousDayKey}
                 </small>
               </div>
-              <div className="dashboard-focus-card">
+              <div className="dashboard-focus-card" title={`Variación huéspedes: ${peopleDiffLabel} · Día anterior: ${previousDayPeople}`}>
                 <span className="dashboard-focus-label">Huéspedes</span>
                 <strong className="dashboard-focus-value">{peopleDiffLabel}</strong>
                 <small className={`dashboard-focus-meta ${peopleDiff === 0 ? "" : peopleDiff > 0 ? "up" : "warn"}`}>
@@ -365,19 +365,19 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 </small>
               </div>
               <div className="dashboard-mini-stack">
-                <div className="dashboard-mini-metric">
+                <div className="dashboard-mini-metric" title={`Uso generador 1: ${totalG1Use.toFixed(1)} horas`}>
                   <span>G1</span>
                   <strong>{totalG1Use.toFixed(1)}h</strong>
                 </div>
-                <div className="dashboard-mini-metric">
+                <div className="dashboard-mini-metric" title={`Uso generador 2: ${totalG2Use.toFixed(1)} horas`}>
                   <span>G2</span>
                   <strong>{totalG2Use.toFixed(1)}h</strong>
                 </div>
-                <div className="dashboard-mini-metric">
+                <div className="dashboard-mini-metric" title={tasksSubmitted ? "Control de tareas cargado" : "Control de tareas pendiente"}>
                   <span>Control tareas</span>
                   <strong className={tasksSubmitted ? "up" : "warn"}>{tasksSubmitted ? "✓" : "!"}</strong>
                 </div>
-                <div className="dashboard-mini-metric">
+                <div className="dashboard-mini-metric" title={`Promedio llenado basura: ${wasteAvg.toFixed(0)}%`}>
                   <span>Basura</span>
                   <strong>{wasteAvg.toFixed(0)}%</strong>
                 </div>
@@ -394,7 +394,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="chart-grid compact">
               {chartDays.map((day) => (
-                <div key={`p-${day.date}`} className="chart-col">
+                <div key={`p-${day.date}`} className="chart-col" title={`${day.date}: ${day.people} personas`}>
                   <div className="chart-track tall">
                     <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
                   </div>
@@ -411,7 +411,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="chart-grid compact">
               {chartDays.map((day) => (
-                <div key={`c-${day.date}`} className="chart-col">
+                <div key={`c-${day.date}`} className="chart-col" title={`${day.date}: ${day.foodServices} servicios entregados`}>
                   <div className="chart-track tall">
                     <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
                   </div>
@@ -430,7 +430,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="dashboard-generator-list">
               {generatorRows.map((row) => (
-                <div key={row.id} className="dashboard-generator-row">
+                <div
+                  key={row.id}
+                  className="dashboard-generator-row"
+                  title={`${row.name}: G1 ${row.g1Use.toFixed(1)}h, G2 ${row.g2Use.toFixed(1)}h, diferencia ${row.diff.toFixed(1)}h`}
+                >
                   <div>
                     <strong>{row.name}</strong>
                     <span>
