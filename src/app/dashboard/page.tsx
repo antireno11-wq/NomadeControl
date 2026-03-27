@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { toInputDateValue } from "@/lib/report-utils";
+import { resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
 import { logoutAction } from "./actions";
 import { NotificationBell } from "@/components/notification-bell";
 
@@ -83,6 +83,16 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const recentReportsScoped = recentReports.filter((r) => scopeCampIds.has(r.campId));
   const taskControlsTodayScoped = taskControlsToday.filter((r) => scopeCampIds.has(r.campId));
 
+  const waterByReportId = new Map<string, number>();
+  const previousReportByCamp = new Map<string, { meterReading: number; waterLiters: number }>();
+
+  for (const report of reportsScoped.slice().sort((a, b) => a.date.getTime() - b.date.getTime())) {
+    const previousReport = previousReportByCamp.get(report.campId);
+    const computedWaterLiters = resolveWaterLiters(report, previousReport);
+    waterByReportId.set(report.id, computedWaterLiters);
+    previousReportByCamp.set(report.campId, report);
+  }
+
   const byDay = new Map<
     string,
     {
@@ -110,10 +120,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       water: 0,
       fuel: 0
     };
+    const computedWaterLiters = waterByReportId.get(report.id) ?? report.waterLiters;
     row.people += report.peopleCount;
     row.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
     row.foodServices += foodServices;
-    row.water += report.waterLiters;
+    row.water += computedWaterLiters;
     row.fuel += report.fuelLiters;
     byDay.set(dateKey, row);
   }
@@ -124,7 +135,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     (acc, report) => {
       acc.people += report.peopleCount;
       acc.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
-      acc.water += report.waterLiters;
+      acc.water += waterByReportId.get(report.id) ?? report.waterLiters;
       acc.fuel += report.fuelLiters;
       acc.waste += report.wasteFillPercent;
       if (report.internetStatus !== "FUNCIONANDO") acc.internetIssues += 1;
@@ -215,7 +226,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     (sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount,
     0
   );
-  const waterToday = reportsTodayScoped.reduce((sum, report) => sum + report.waterLiters, 0);
+  const waterToday = reportsTodayScoped.reduce((sum, report) => sum + (waterByReportId.get(report.id) ?? report.waterLiters), 0);
   const fuelToday = reportsTodayScoped.reduce((sum, report) => sum + report.fuelLiters, 0);
   const previousDayKey = toInputDateValue(previousDashboardDate);
   const previousDaySeries = byDay.get(previousDayKey);
