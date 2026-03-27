@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -192,6 +193,7 @@ export async function resetUserPasswordAction(formData: FormData) {
   });
 
   revalidatePath("/administracion");
+  redirect("/administracion");
 }
 
 export async function deleteUserAction(formData: FormData) {

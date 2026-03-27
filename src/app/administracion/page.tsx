@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, deleteUserAction, resetUserPasswordAction, updateUserAccessAction } from "./actions";
+import { createCampAction, deleteUserAction, updateUserAccessAction } from "./actions";
 
 export default async function AdministracionPage() {
   const user = await requireRole(ADMIN_ROLES);
@@ -125,11 +125,9 @@ export default async function AdministracionPage() {
                     <button type="submit" className="secondary">Guardar acceso</button>
                   </form>
                   <div className="admin-user-secondary-actions">
-                    <form action={resetUserPasswordAction} className="admin-user-reset-form">
-                      <input type="hidden" name="userId" value={row.id} />
-                      <input name="newPassword" type="password" minLength={8} placeholder="Nueva clave" />
-                      <button type="submit" className="secondary">Reset clave</button>
-                    </form>
+                    <Link href={`/administracion/usuarios/${row.id}/clave`}>
+                      <button type="button" className="secondary">Reset clave</button>
+                    </Link>
                     {row.id !== user.id ? (
                       <form action={deleteUserAction}>
                         <input type="hidden" name="userId" value={row.id} />
