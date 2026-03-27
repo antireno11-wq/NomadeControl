@@ -108,6 +108,9 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
           <div>
             <label htmlFor="meterReading">Lectura del medidor</label>
             <input id="meterReading" name="meterReading" type="number" min={0} step="0.01" defaultValue={0} required />
+            <div className="section-caption" style={{ marginTop: 6 }}>
+              El consumo de agua se calcula automáticamente con la diferencia contra la lectura anterior.
+            </div>
           </div>
           <div>
             <label htmlFor="internetStatus">Status internet</label>

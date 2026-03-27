@@ -129,7 +129,7 @@ export default async function CargaDiariaPage() {
                 <div className="value">{reportsToday.reduce((sum, report) => sum + report.peopleCount, 0)}</div>
               </div>
               <div className="metric">
-                <div className="label">Agua informada ayer</div>
+                <div className="label">Consumo agua ayer</div>
                 <div className="value">{reportsToday.reduce((sum, report) => sum + report.waterLiters, 0)} L</div>
               </div>
               <div className="metric">

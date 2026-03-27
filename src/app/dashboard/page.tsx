@@ -335,7 +335,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             <div className="dashboard-panel-header">
               <h2>Resumen diario</h2>
               <div className="dashboard-mini-stats">
-                <span title={`Agua registrada ayer: ${waterToday} L`}>{waterToday} L agua ayer</span>
+                <span title={`Consumo de agua calculado desde la diferencia del medidor: ${waterToday} L`}>
+                  {waterToday} L agua ayer
+                </span>
                 <span>{fuelToday} L combustible</span>
               </div>
             </div>
@@ -350,8 +352,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   {reportsTodayScoped.length}/{scopeCamps.length || 0} cargados
                 </small>
               </div>
-              <div className="dashboard-focus-card" title={`Agua ayer: ${waterToday} L · Variación: ${waterDiffLabel}`}>
-                <span className="dashboard-focus-label">Agua ayer</span>
+              <div
+                className="dashboard-focus-card"
+                title={`Consumo de agua calculado desde el medidor: ${waterToday} L · Variación: ${waterDiffLabel}`}
+              >
+                <span className="dashboard-focus-label">Consumo agua ayer</span>
                 <strong className="dashboard-focus-value">{waterToday} L</strong>
                 <small className={`dashboard-focus-meta ${waterDiff === 0 ? "" : waterDiff > 0 ? "warn" : "up"}`}>
                   {waterDiffLabel} vs {previousDayKey}
@@ -373,7 +378,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <span>G2</span>
                   <strong>{totalG2Use.toFixed(1)}h</strong>
                 </div>
-                <div className="dashboard-mini-metric" title={`Agua acumulada en el período visible: ${totals.water} L`}>
+                <div
+                  className="dashboard-mini-metric"
+                  title={`Consumo acumulado de agua calculado desde medidores en el período visible: ${totals.water} L`}
+                >
                   <span>Agua acum.</span>
                   <strong>{totals.water} L</strong>
                 </div>
