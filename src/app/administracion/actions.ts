@@ -336,6 +336,7 @@ export async function updateCampAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
+  redirect("/administracion?campStatus=updated");
 }
 
 export async function deleteCampAction(formData: FormData) {

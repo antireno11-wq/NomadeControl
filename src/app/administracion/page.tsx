@@ -30,7 +30,9 @@ export default async function AdministracionPage({
   const campStatusRaw = searchParams?.campStatus;
   const campStatus = typeof campStatusRaw === "string" ? campStatusRaw : "";
   const campAlert =
-    campStatus === "deleted"
+    campStatus === "updated"
+      ? { type: "success", text: "Cambios guardados correctamente." }
+      : campStatus === "deleted"
       ? { type: "success", text: "Campamento eliminado correctamente." }
       : campStatus === "blocked"
         ? { type: "error", text: "No se puede eliminar el campamento porque tiene datos o usuarios asociados." }
