@@ -49,8 +49,8 @@ export function NewUserForm({ camps }: { camps: CampOption[] }) {
       </div>
       <div>
         <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 28 }}>
-          <input type="checkbox" name="sendWelcomeEmail" defaultChecked style={{ width: "auto", padding: 0 }} />
-          Enviar credenciales por correo
+          <input type="checkbox" name="sendWelcomeEmail" style={{ width: "auto", padding: 0 }} />
+          Enviar credenciales por correo (opcional)
         </label>
       </div>
 

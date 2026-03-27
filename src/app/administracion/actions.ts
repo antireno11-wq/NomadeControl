@@ -121,6 +121,8 @@ export async function createUserAction(
       }
     });
 
+    let successMessage = "Usuario creado correctamente.";
+
     if (payload.sendWelcomeEmail === "on") {
       try {
         await sendWelcomeEmail({
@@ -131,16 +133,13 @@ export async function createUserAction(
           campName
         });
       } catch (error) {
-        await db.user.delete({ where: { id: createdUser.id } });
-        return {
-          error: error instanceof Error ? error.message : "No se pudo enviar el correo.",
-          success: ""
-        };
+        const mailErrorMessage = error instanceof Error ? error.message : "No se pudo enviar el correo.";
+        successMessage = `Usuario creado correctamente. El correo no se envió: ${mailErrorMessage}`;
       }
     }
 
     revalidatePath("/administracion");
-    return { error: "", success: "Usuario creado correctamente." };
+    return { error: "", success: successMessage };
   } catch (error) {
     if (isNextRedirectError(error)) {
       throw error;
