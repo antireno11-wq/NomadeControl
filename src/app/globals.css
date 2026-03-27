@@ -785,6 +785,30 @@ th {
   min-height: 38px;
 }
 
+.admin-camps-card {
+  padding: 14px;
+}
+
+.admin-camps-table th,
+.admin-camps-table td {
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.admin-camp-form {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.2fr) minmax(150px, 1fr) 110px auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-camp-form input,
+.admin-camp-form button {
+  padding: 8px 10px;
+  font-size: 0.86rem;
+  min-height: 38px;
+}
+
 .alert {
   padding: 10px 12px;
   border-radius: 10px;

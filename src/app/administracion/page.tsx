@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, deleteUserAction, updateUserAccessAction } from "./actions";
+import { createCampAction, deleteUserAction, updateCampAction, updateUserAccessAction } from "./actions";
 
 export default async function AdministracionPage() {
   const user = await requireRole(ADMIN_ROLES);
@@ -142,24 +142,34 @@ export default async function AdministracionPage() {
         </table>
       </div>
 
-      <div className="card" style={{ marginTop: 16, overflowX: "auto" }}>
+      <div className="card admin-camps-card" style={{ marginTop: 16, overflowX: "auto" }}>
         <h2 style={{ marginTop: 0 }}>Campamentos</h2>
-        <table>
+        <table className="admin-camps-table">
           <thead>
             <tr>
               <th>Nombre</th>
               <th>Ubicación</th>
               <th>Capacidad</th>
               <th>Activo</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {camps.map((camp) => (
               <tr key={camp.id}>
-                <td>{camp.name}</td>
-                <td>{camp.location ?? "-"}</td>
-                <td>{camp.capacityPeople}</td>
-                <td>{camp.isActive ? "Sí" : "No"}</td>
+                <td colSpan={5}>
+                  <form action={updateCampAction} className="admin-camp-form">
+                    <input type="hidden" name="campId" value={camp.id} />
+                    <input name="name" defaultValue={camp.name} placeholder="Nombre" />
+                    <input name="location" defaultValue={camp.location ?? ""} placeholder="Ubicación" />
+                    <input name="capacityPeople" type="number" min={0} defaultValue={camp.capacityPeople} />
+                    <label className="admin-inline-checkbox">
+                      <input type="checkbox" name="isActive" defaultChecked={camp.isActive} style={{ width: "auto", padding: 0 }} />
+                      Activo
+                    </label>
+                    <button type="submit" className="secondary">Guardar</button>
+                  </form>
+                </td>
               </tr>
             ))}
           </tbody>

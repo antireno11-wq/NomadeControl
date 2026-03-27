@@ -40,6 +40,14 @@ const createCampSchema = z.object({
   capacityPeople: z.coerce.number().int().min(0)
 });
 
+const updateCampSchema = z.object({
+  campId: z.string().min(1),
+  name: z.string().trim().min(2),
+  location: z.string().trim().optional(),
+  capacityPeople: z.coerce.number().int().min(0),
+  isActive: z.string().optional()
+});
+
 const deleteRecordSchema = z.object({
   recordType: z.enum(["dailyReport", "dailyTaskControl", "stockMovement", "staffMember"]),
   recordId: z.string().min(1)
@@ -286,6 +294,38 @@ export async function createCampAction(formData: FormData) {
       location: payload.location || null,
       capacityPeople: payload.capacityPeople,
       isActive: true
+    }
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/dashboard");
+  revalidatePath("/carga-diaria");
+}
+
+export async function updateCampAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+
+  const parsed = updateCampSchema.safeParse({
+    campId: formData.get("campId"),
+    name: formData.get("name"),
+    location: String(formData.get("location") ?? ""),
+    capacityPeople: formData.get("capacityPeople"),
+    isActive: formData.get("isActive")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Datos inválidos para actualizar campamento.");
+  }
+
+  const payload = parsed.data;
+
+  await db.camp.update({
+    where: { id: payload.campId },
+    data: {
+      name: payload.name,
+      location: payload.location || null,
+      capacityPeople: payload.capacityPeople,
+      isActive: payload.isActive === "on"
     }
   });
 
