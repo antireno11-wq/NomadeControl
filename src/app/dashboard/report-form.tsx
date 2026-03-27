@@ -20,6 +20,9 @@ function SaveButton() {
 export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaultDate: string }) {
   const [state, formAction] = useFormState(saveReportAction, initialState);
   const [wasteFillPercent, setWasteFillPercent] = useState(0);
+  const [blackWaterRemoved, setBlackWaterRemoved] = useState("NO");
+  const [potableWaterDelivered, setPotableWaterDelivered] = useState("NO");
+  const cubicMeterOptions = Array.from({ length: 40 }, (_, index) => index + 1);
 
   return (
     <form action={formAction} className="card grid">
@@ -100,26 +103,11 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
 
       <section className="report-section">
         <h3 className="section-title">Recursos Operativos</h3>
-        <div className="grid two">
+
+        <div className="grid two" style={{ marginBottom: 14 }}>
           <div>
             <label htmlFor="meterReading">Lectura del medidor</label>
             <input id="meterReading" name="meterReading" type="number" min={0} step="0.01" defaultValue={0} required />
-          </div>
-          <div>
-            <label htmlFor="waterLiters">Agua gastada (litros)</label>
-            <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
-          </div>
-          <div>
-            <label htmlFor="fuelLiters">Combustible (litros)</label>
-            <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
-          </div>
-          <div>
-            <label htmlFor="generator1Hours">Horómetro generador 1</label>
-            <input id="generator1Hours" name="generator1Hours" type="number" min={0} step="0.01" defaultValue={0} required />
-          </div>
-          <div>
-            <label htmlFor="generator2Hours">Horómetro generador 2</label>
-            <input id="generator2Hours" name="generator2Hours" type="number" min={0} step="0.01" defaultValue={0} required />
           </div>
           <div>
             <label htmlFor="internetStatus">Status internet</label>
@@ -129,29 +117,102 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
               <option value="NO_FUNCIONA">No funciona</option>
             </select>
           </div>
-          <div>
+        </div>
+
+        <div className="grid two" style={{ marginBottom: 14 }}>
+          <div className="report-section">
+            <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Consumos</h4>
+            <div className="grid">
+              <div>
+                <label htmlFor="waterLiters">Agua gastada (litros)</label>
+                <input id="waterLiters" name="waterLiters" type="number" min={0} defaultValue={0} required />
+              </div>
+              <div>
+                <label htmlFor="fuelLiters">Combustible (litros)</label>
+                <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
+              </div>
+            </div>
+          </div>
+
+          <div className="report-section">
+            <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Generadores</h4>
+            <div className="grid">
+              <div>
+                <label htmlFor="generator1Hours">Horómetro generador 1</label>
+                <input id="generator1Hours" name="generator1Hours" type="number" min={0} step="0.01" defaultValue={0} required />
+              </div>
+              <div>
+                <label htmlFor="generator2Hours">Horómetro generador 2</label>
+                <input id="generator2Hours" name="generator2Hours" type="number" min={0} step="0.01" defaultValue={0} required />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid two">
+          <div className="report-section">
+            <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Agua y saneamiento</h4>
+            <div className="grid">
+              <div>
             <label htmlFor="blackWaterRemoved">Retiro aguas negras realizado</label>
-            <select id="blackWaterRemoved" name="blackWaterRemoved" defaultValue="NO">
+            <select
+              id="blackWaterRemoved"
+              name="blackWaterRemoved"
+              value={blackWaterRemoved}
+              onChange={(event) => setBlackWaterRemoved(event.target.value)}
+            >
               <option value="NO">No</option>
               <option value="SI">Si</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="blackWaterRemovedM3">Aguas negras retiradas (m3)</label>
-            <input id="blackWaterRemovedM3" name="blackWaterRemovedM3" type="number" min={0} step="0.01" defaultValue={0} required />
-          </div>
-          <div>
+              {blackWaterRemoved === "SI" ? (
+                <div>
+                  <label htmlFor="blackWaterRemovedM3">Aguas negras retiradas (m3)</label>
+                  <select id="blackWaterRemovedM3" name="blackWaterRemovedM3" defaultValue="1" required>
+                    {cubicMeterOptions.map((value) => (
+                      <option key={`black-${value}`} value={value}>
+                        {value} m3
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <input type="hidden" name="blackWaterRemovedM3" value="0" />
+              )}
+
+              <div>
             <label htmlFor="potableWaterDelivered">Ingreso agua potable realizado</label>
-            <select id="potableWaterDelivered" name="potableWaterDelivered" defaultValue="NO">
+            <select
+              id="potableWaterDelivered"
+              name="potableWaterDelivered"
+              value={potableWaterDelivered}
+              onChange={(event) => setPotableWaterDelivered(event.target.value)}
+            >
               <option value="NO">No</option>
               <option value="SI">Si</option>
             </select>
           </div>
-          <div>
-            <label htmlFor="potableWaterDeliveredM3">Agua potable ingresada (m3)</label>
-            <input id="potableWaterDeliveredM3" name="potableWaterDeliveredM3" type="number" min={0} step="0.01" defaultValue={0} required />
+              {potableWaterDelivered === "SI" ? (
+                <div>
+                  <label htmlFor="potableWaterDeliveredM3">Agua potable ingresada (m3)</label>
+                  <select id="potableWaterDeliveredM3" name="potableWaterDeliveredM3" defaultValue="1" required>
+                    {cubicMeterOptions.map((value) => (
+                      <option key={`potable-${value}`} value={value}>
+                        {value} m3
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <input type="hidden" name="potableWaterDeliveredM3" value="0" />
+              )}
+            </div>
           </div>
-          <div>
+
+          <div className="report-section">
+            <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Control sanitario</h4>
+            <div className="grid">
+              <div>
             <label htmlFor="wasteFillPercent">Llenado contenedor basura ({wasteFillPercent}%)</label>
             <input
               id="wasteFillPercent"
@@ -164,13 +225,15 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
               required
             />
           </div>
-          <div>
-            <label htmlFor="chlorineLevel">Medición de cloro</label>
-            <input id="chlorineLevel" name="chlorineLevel" type="number" min={0} step="0.01" defaultValue={0} required />
-          </div>
-          <div>
-            <label htmlFor="phLevel">Medición de pH</label>
-            <input id="phLevel" name="phLevel" type="number" min={0} step="0.01" defaultValue={7} required />
+              <div>
+                <label htmlFor="chlorineLevel">Medición de cloro</label>
+                <input id="chlorineLevel" name="chlorineLevel" type="number" min={0} step="0.01" defaultValue={0} required />
+              </div>
+              <div>
+                <label htmlFor="phLevel">Medición de pH</label>
+                <input id="phLevel" name="phLevel" type="number" min={0} step="0.01" defaultValue={7} required />
+              </div>
+            </div>
           </div>
         </div>
       </section>

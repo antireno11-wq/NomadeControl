@@ -25,9 +25,9 @@ const reportSchema = z.object({
   generator2Hours: z.coerce.number().min(0),
   internetStatus: z.enum(["FUNCIONANDO", "CON_INTERRUPCIONES", "NO_FUNCIONA"]),
   blackWaterRemoved: z.enum(["SI", "NO"]),
-  blackWaterRemovedM3: z.coerce.number().min(0),
+  blackWaterRemovedM3: z.coerce.number().int().min(0).max(40),
   potableWaterDelivered: z.enum(["SI", "NO"]),
-  potableWaterDeliveredM3: z.coerce.number().min(0),
+  potableWaterDeliveredM3: z.coerce.number().int().min(0).max(40),
   wasteFillPercent: z.coerce.number().int().min(0).max(100),
   chlorineLevel: z.coerce.number().min(0),
   phLevel: z.coerce.number().min(0),
@@ -84,6 +84,16 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
 
   const payload = parsed.data;
   const date = normalizeDateOnly(payload.date);
+  const blackWaterRemovedM3 = payload.blackWaterRemoved === "SI" ? payload.blackWaterRemovedM3 : 0;
+  const potableWaterDeliveredM3 = payload.potableWaterDelivered === "SI" ? payload.potableWaterDeliveredM3 : 0;
+
+  if (payload.blackWaterRemoved === "SI" && blackWaterRemovedM3 < 1) {
+    return { error: "Indica los m3 retirados de aguas negras.", success: "" };
+  }
+
+  if (payload.potableWaterDelivered === "SI" && potableWaterDeliveredM3 < 1) {
+    return { error: "Indica los m3 ingresados de agua potable.", success: "" };
+  }
 
   if (isSupervisorRole(user.role)) {
     if (!user.campId) {
@@ -117,9 +127,9 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
       generator2Hours: payload.generator2Hours,
       internetStatus: payload.internetStatus,
       blackWaterRemoved: payload.blackWaterRemoved === "SI",
-      blackWaterRemovedM3: payload.blackWaterRemovedM3,
+      blackWaterRemovedM3,
       potableWaterDelivered: payload.potableWaterDelivered === "SI",
-      potableWaterDeliveredM3: payload.potableWaterDeliveredM3,
+      potableWaterDeliveredM3,
       wasteFillPercent: payload.wasteFillPercent,
       chlorineLevel: payload.chlorineLevel,
       phLevel: payload.phLevel,
@@ -144,9 +154,9 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
       generator2Hours: payload.generator2Hours,
       internetStatus: payload.internetStatus,
       blackWaterRemoved: payload.blackWaterRemoved === "SI",
-      blackWaterRemovedM3: payload.blackWaterRemovedM3,
+      blackWaterRemovedM3,
       potableWaterDelivered: payload.potableWaterDelivered === "SI",
-      potableWaterDeliveredM3: payload.potableWaterDeliveredM3,
+      potableWaterDeliveredM3,
       wasteFillPercent: payload.wasteFillPercent,
       chlorineLevel: payload.chlorineLevel,
       phLevel: payload.phLevel,
