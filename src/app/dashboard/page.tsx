@@ -335,7 +335,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             <div className="dashboard-panel-header">
               <h2>Resumen diario</h2>
               <div className="dashboard-mini-stats">
-                <span>{waterToday} L agua</span>
+                <span title={`Agua registrada ayer: ${waterToday} L`}>{waterToday} L agua ayer</span>
+                <span title={`Agua acumulada en el período visible: ${totals.water} L`}>{totals.water} L agua acumulada</span>
                 <span>{fuelToday} L combustible</span>
               </div>
             </div>
