@@ -25,7 +25,7 @@ export default async function AdministracionPage() {
 
   return (
     <AppShell title="Administración" user={user} activeNav="administracion" showAdminSections>
-      <div className="grid two" style={{ marginBottom: 16 }}>
+      <div className="admin-metrics-grid" style={{ marginBottom: 16 }}>
         <div className="metric">
           <div className="label">Usuarios</div>
           <div className="value">{users.length}</div>
@@ -75,7 +75,7 @@ export default async function AdministracionPage() {
         </form>
       </div>
 
-      <div className="card" style={{ overflowX: "auto" }}>
+      <div className="card admin-users-card" style={{ overflowX: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h2 style={{ margin: 0 }}>Usuarios del sistema</h2>
           <Link href="/administracion/usuarios/nuevo">
@@ -83,7 +83,7 @@ export default async function AdministracionPage() {
           </Link>
         </div>
 
-        <table>
+        <table className="admin-users-table">
           <thead>
             <tr>
               <th>Nombre</th>
@@ -102,8 +102,8 @@ export default async function AdministracionPage() {
                 <td>{row.role === "ADMIN" ? "ADMINISTRADOR" : row.role}</td>
                 <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.isActive ? "Sí" : "No"}</td>
-                <td>
-                  <form action={updateUserAccessAction} className="grid" style={{ gap: 8 }}>
+                <td className="admin-user-actions-cell">
+                  <form action={updateUserAccessAction} className="admin-user-access-form">
                     <input type="hidden" name="userId" value={row.id} />
                     <input name="name" defaultValue={row.name} placeholder="Nombre" />
                     <select name="role" defaultValue={row.role === "ADMIN" ? "ADMINISTRADOR" : row.role}>
@@ -118,23 +118,25 @@ export default async function AdministracionPage() {
                         </option>
                       ))}
                     </select>
-                    <label style={{ display: "flex", gap: 6, alignItems: "center", margin: 0 }}>
+                    <label className="admin-inline-checkbox">
                       <input type="checkbox" name="isActive" defaultChecked={row.isActive} style={{ width: "auto", padding: 0 }} />
                       Activo
                     </label>
                     <button type="submit" className="secondary">Guardar acceso</button>
                   </form>
-                  <form action={resetUserPasswordAction} className="grid" style={{ gap: 8, marginTop: 8 }}>
-                    <input type="hidden" name="userId" value={row.id} />
-                    <input name="newPassword" type="password" minLength={8} placeholder="Nueva clave" />
-                    <button type="submit" className="secondary">Reset clave</button>
-                  </form>
-                  {row.id !== user.id ? (
-                    <form action={deleteUserAction} style={{ marginTop: 8 }}>
+                  <div className="admin-user-secondary-actions">
+                    <form action={resetUserPasswordAction} className="admin-user-reset-form">
                       <input type="hidden" name="userId" value={row.id} />
-                      <button type="submit" className="danger">Borrar usuario</button>
+                      <input name="newPassword" type="password" minLength={8} placeholder="Nueva clave" />
+                      <button type="submit" className="secondary">Reset clave</button>
                     </form>
-                  ) : null}
+                    {row.id !== user.id ? (
+                      <form action={deleteUserAction}>
+                        <input type="hidden" name="userId" value={row.id} />
+                        <button type="submit" className="danger">Borrar usuario</button>
+                      </form>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}

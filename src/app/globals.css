@@ -718,6 +718,73 @@ th {
   color: var(--muted);
 }
 
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.admin-users-card {
+  padding: 14px;
+}
+
+.admin-users-table th,
+.admin-users-table td {
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.admin-user-actions-cell {
+  min-width: 410px;
+}
+
+.admin-user-access-form {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.15fr) minmax(120px, 0.9fr) minmax(140px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-inline-checkbox {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.admin-inline-checkbox input {
+  width: auto;
+  padding: 0;
+}
+
+.admin-user-secondary-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-user-reset-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  flex: 1 1 260px;
+}
+
+.admin-user-access-form input,
+.admin-user-access-form select,
+.admin-user-access-form button,
+.admin-user-reset-form input,
+.admin-user-reset-form button,
+.admin-user-secondary-actions button {
+  padding: 8px 10px;
+  font-size: 0.86rem;
+  min-height: 38px;
+}
+
 .alert {
   padding: 10px 12px;
   border-radius: 10px;
