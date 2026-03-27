@@ -529,7 +529,7 @@ a {
 
 .dashboard-mini-stack {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -925,6 +925,34 @@ th {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  position: relative;
+}
+
+.chart-tooltip-target {
+  cursor: default;
+}
+
+.chart-tooltip-target::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  background: rgba(8, 50, 58, 0.96);
+  color: #fff;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 20;
+}
+
+.chart-tooltip-target:hover::after {
+  opacity: 1;
 }
 
 .chart-value {

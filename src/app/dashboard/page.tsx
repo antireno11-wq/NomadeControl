@@ -336,7 +336,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Resumen diario</h2>
               <div className="dashboard-mini-stats">
                 <span title={`Agua registrada ayer: ${waterToday} L`}>{waterToday} L agua ayer</span>
-                <span title={`Agua acumulada en el período visible: ${totals.water} L`}>{totals.water} L agua acumulada</span>
                 <span>{fuelToday} L combustible</span>
               </div>
             </div>
@@ -374,6 +373,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <span>G2</span>
                   <strong>{totalG2Use.toFixed(1)}h</strong>
                 </div>
+                <div className="dashboard-mini-metric" title={`Agua acumulada en el período visible: ${totals.water} L`}>
+                  <span>Agua acum.</span>
+                  <strong>{totals.water} L</strong>
+                </div>
                 <div className="dashboard-mini-metric" title={tasksSubmitted ? "Control de tareas cargado" : "Control de tareas pendiente"}>
                   <span>Control tareas</span>
                   <strong className={tasksSubmitted ? "up" : "warn"}>{tasksSubmitted ? "✓" : "!"}</strong>
@@ -395,7 +398,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="chart-grid compact">
               {chartDays.map((day) => (
-                <div key={`p-${day.date}`} className="chart-col" title={`${day.date}: ${day.people} personas`}>
+                <div
+                  key={`p-${day.date}`}
+                  className="chart-col chart-tooltip-target"
+                  data-tooltip={`${day.date}: ${day.people} personas`}
+                >
                   <div className="chart-track tall">
                     <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
                   </div>
@@ -412,7 +419,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="chart-grid compact">
               {chartDays.map((day) => (
-                <div key={`c-${day.date}`} className="chart-col" title={`${day.date}: ${day.foodServices} servicios entregados`}>
+                <div
+                  key={`c-${day.date}`}
+                  className="chart-col chart-tooltip-target"
+                  data-tooltip={`${day.date}: ${day.foodServices} servicios entregados`}
+                >
                   <div className="chart-track tall">
                     <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
                   </div>
