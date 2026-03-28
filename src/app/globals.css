@@ -540,14 +540,19 @@ a {
 }
 
 .dashboard-mini-stack-compact {
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .dashboard-mini-metric {
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 10px;
+  min-height: 92px;
+  padding: 14px 12px;
   background: #f8fbfc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .dashboard-mini-metric span {
@@ -558,7 +563,8 @@ a {
 }
 
 .dashboard-mini-metric strong {
-  font-size: 1.2rem;
+  font-size: 1.35rem;
+  line-height: 1.1;
 }
 
 .dashboard-status-list,
