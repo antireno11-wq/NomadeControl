@@ -482,7 +482,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="dashboard-mini-stack">
               <div className="dashboard-mini-metric">
-                <span>Temp. máxima</span>
+                <span>Temp. máxima ayer</span>
                 <strong>
                   {weatherSummary?.temperatureMax != null
                     ? `${weatherSummary.temperatureMax.toFixed(1)}°C`
@@ -494,7 +494,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 </strong>
               </div>
               <div className="dashboard-mini-metric">
-                <span>Temp. mínima</span>
+                <span>Temp. mínima ayer</span>
                 <strong>
                   {weatherSummary?.temperatureMin != null
                     ? `${weatherSummary.temperatureMin.toFixed(1)}°C`
