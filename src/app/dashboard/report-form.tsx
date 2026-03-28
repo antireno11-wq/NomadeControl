@@ -153,6 +153,18 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
             <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Agua y saneamiento</h4>
             <div className="grid">
               <div>
+                <label htmlFor="blackWaterTankLevelPercent">Utilización estanque aguas negras (%)</label>
+                <input
+                  id="blackWaterTankLevelPercent"
+                  name="blackWaterTankLevelPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  defaultValue={0}
+                  required
+                />
+              </div>
+              <div>
             <label htmlFor="blackWaterRemoved">Retiro aguas negras realizado</label>
             <select
               id="blackWaterRemoved"

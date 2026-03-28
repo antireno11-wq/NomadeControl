@@ -51,6 +51,8 @@ model Camp {
   id        String        @id @default(cuid())
   name      String
   location  String?
+  latitude  Float?
+  longitude Float?
   capacityPeople Int      @default(0)
   isActive  Boolean       @default(true)
   users     User[]
@@ -86,6 +88,7 @@ model DailyReport {
   internetStatus        String  @default("FUNCIONANDO")
   blackWaterRemoved     Boolean @default(false)
   blackWaterRemovedM3   Float   @default(0)
+  blackWaterTankLevelPercent Int @default(0)
   potableWaterDelivered Boolean @default(false)
   potableWaterDeliveredM3 Float @default(0)
   wasteFillPercent      Int     @default(0)

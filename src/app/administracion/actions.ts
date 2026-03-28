@@ -37,6 +37,8 @@ const deleteUserSchema = z.object({
 const createCampSchema = z.object({
   name: z.string().trim().min(2),
   location: z.string().trim().optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   capacityPeople: z.coerce.number().int().min(0)
 });
 
@@ -44,6 +46,8 @@ const updateCampSchema = z.object({
   campId: z.string().min(1),
   name: z.string().trim().min(2),
   location: z.string().trim().optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   capacityPeople: z.coerce.number().int().min(0),
   isActive: z.string().optional()
 });
@@ -283,6 +287,8 @@ export async function createCampAction(formData: FormData) {
   const parsed = createCampSchema.safeParse({
     name: formData.get("name"),
     location: String(formData.get("location") ?? ""),
+    latitude: formData.get("latitude") === "" ? undefined : formData.get("latitude"),
+    longitude: formData.get("longitude") === "" ? undefined : formData.get("longitude"),
     capacityPeople: formData.get("capacityPeople")
   });
 
@@ -295,6 +301,8 @@ export async function createCampAction(formData: FormData) {
     data: {
       name: payload.name,
       location: payload.location || null,
+      latitude: payload.latitude ?? null,
+      longitude: payload.longitude ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: true
     }
@@ -312,6 +320,8 @@ export async function updateCampAction(formData: FormData) {
     campId: formData.get("campId"),
     name: formData.get("name"),
     location: String(formData.get("location") ?? ""),
+    latitude: formData.get("latitude") === "" ? undefined : formData.get("latitude"),
+    longitude: formData.get("longitude") === "" ? undefined : formData.get("longitude"),
     capacityPeople: formData.get("capacityPeople"),
     isActive: formData.get("isActive")
   });
@@ -327,6 +337,8 @@ export async function updateCampAction(formData: FormData) {
     data: {
       name: payload.name,
       location: payload.location || null,
+      latitude: payload.latitude ?? null,
+      longitude: payload.longitude ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: payload.isActive === "on"
     }

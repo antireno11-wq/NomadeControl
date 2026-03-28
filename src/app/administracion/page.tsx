@@ -90,6 +90,14 @@ export default async function AdministracionPage({
             <label htmlFor="camp-capacity">Capacidad de personas</label>
             <input id="camp-capacity" name="capacityPeople" type="number" min={0} defaultValue={0} required />
           </div>
+          <div>
+            <label htmlFor="camp-latitude">Latitud</label>
+            <input id="camp-latitude" name="latitude" type="number" step="0.000001" placeholder="-22.334455" />
+          </div>
+          <div>
+            <label htmlFor="camp-longitude">Longitud</label>
+            <input id="camp-longitude" name="longitude" type="number" step="0.000001" placeholder="-68.778899" />
+          </div>
           <div style={{ display: "flex", alignItems: "end" }}>
             <button type="submit">Crear campamento</button>
           </div>
@@ -170,6 +178,7 @@ export default async function AdministracionPage({
             <tr>
               <th>Nombre</th>
               <th>Ubicación</th>
+              <th>Coordenadas</th>
               <th>Capacidad</th>
               <th>Activo</th>
               <th>Acciones</th>
@@ -180,6 +189,7 @@ export default async function AdministracionPage({
               <tr key={camp.id}>
                 <td>{camp.name}</td>
                 <td>{camp.location ?? "-"}</td>
+                <td>{camp.latitude != null && camp.longitude != null ? `${camp.latitude.toFixed(5)}, ${camp.longitude.toFixed(5)}` : "-"}</td>
                 <td>{camp.capacityPeople}</td>
                 <td>{camp.isActive ? "Sí" : "No"}</td>
                 <td>

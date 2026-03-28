@@ -72,6 +72,28 @@ export default async function EditarCampamentoPage({ params }: { params: { id: s
               <label htmlFor="camp-capacity-edit">Capacidad de personas</label>
               <input id="camp-capacity-edit" name="capacityPeople" type="number" min={0} defaultValue={camp.capacityPeople} required />
             </div>
+            <div>
+              <label htmlFor="camp-latitude-edit">Latitud</label>
+              <input
+                id="camp-latitude-edit"
+                name="latitude"
+                type="number"
+                step="0.000001"
+                defaultValue={camp.latitude ?? ""}
+                placeholder="-22.334455"
+              />
+            </div>
+            <div>
+              <label htmlFor="camp-longitude-edit">Longitud</label>
+              <input
+                id="camp-longitude-edit"
+                name="longitude"
+                type="number"
+                step="0.000001"
+                defaultValue={camp.longitude ?? ""}
+                placeholder="-68.778899"
+              />
+            </div>
             <div style={{ display: "flex", alignItems: "end" }}>
               <label className="admin-inline-checkbox">
                 <input type="checkbox" name="isActive" defaultChecked={camp.isActive} style={{ width: "auto", padding: 0 }} />

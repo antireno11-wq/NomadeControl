@@ -3,6 +3,7 @@ import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
+import { getCampWeatherSummary } from "@/lib/weather";
 import { logoutAction } from "./actions";
 import { NotificationBell } from "@/components/notification-bell";
 
@@ -82,6 +83,21 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const reportsTodayScoped = reportsToday.filter((r) => scopeCampIds.has(r.campId));
   const recentReportsScoped = recentReports.filter((r) => scopeCampIds.has(r.campId));
   const taskControlsTodayScoped = taskControlsToday.filter((r) => scopeCampIds.has(r.campId));
+  const weatherCamp =
+    scopeCamps.length === 1
+      ? {
+          name: scopeCamps[0].name,
+          latitude: scopeCamps[0].latitude,
+          longitude: scopeCamps[0].longitude
+        }
+      : null;
+  const weatherSummary = weatherCamp
+    ? await getCampWeatherSummary({
+        latitude: weatherCamp.latitude,
+        longitude: weatherCamp.longitude,
+        date: toInputDateValue(dashboardDate)
+      })
+    : null;
 
   const waterByReportId = new Map<string, number>();
   const previousReportByCamp = new Map<string, { meterReading: number; waterLiters: number }>();
@@ -102,6 +118,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       foodServices: number;
       water: number;
       fuel: number;
+      potable: number;
+      blackRemoved: number;
+      blackTankLevelTotal: number;
+      reportCount: number;
     }
   >();
   for (const report of reportsScoped) {
@@ -118,7 +138,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       meals: 0,
       foodServices: 0,
       water: 0,
-      fuel: 0
+      fuel: 0,
+      potable: 0,
+      blackRemoved: 0,
+      blackTankLevelTotal: 0,
+      reportCount: 0
     };
     const computedWaterLiters = waterByReportId.get(report.id) ?? report.waterLiters;
     row.people += report.peopleCount;
@@ -126,6 +150,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     row.foodServices += foodServices;
     row.water += computedWaterLiters;
     row.fuel += report.fuelLiters;
+    row.potable += report.potableWaterDeliveredM3;
+    row.blackRemoved += report.blackWaterRemovedM3;
+    row.blackTankLevelTotal += report.blackWaterTankLevelPercent;
+    row.reportCount += 1;
     byDay.set(dateKey, row);
   }
 
@@ -215,6 +243,21 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
   const maxFoodServices = Math.max(1, ...chartDays.map((day) => day.foodServices));
   const totalFoodServices = chartDays.reduce((sum, day) => sum + day.foodServices, 0);
+  const chartDayInsights = chartDays.map((day) => ({
+    date: day.date,
+    waterPerPerson: day.people > 0 ? day.water / day.people : 0,
+    fuelPerPerson: day.people > 0 ? day.fuel / day.people : 0,
+    servicesPerPerson: day.people > 0 ? day.foodServices / day.people : 0,
+    blackTankLevel: day.reportCount > 0 ? day.blackTankLevelTotal / day.reportCount : 0,
+    potable: day.potable,
+    blackRemoved: day.blackRemoved
+  }));
+  const maxWaterPerPerson = Math.max(1, ...chartDayInsights.map((day) => day.waterPerPerson));
+  const maxFuelPerPerson = Math.max(1, ...chartDayInsights.map((day) => day.fuelPerPerson));
+  const maxServicesPerPerson = Math.max(1, ...chartDayInsights.map((day) => day.servicesPerPerson));
+  const maxBlackTankLevel = Math.max(1, ...chartDayInsights.map((day) => day.blackTankLevel));
+  const maxPotable = Math.max(1, ...chartDayInsights.map((day) => day.potable));
+  const maxBlackRemoved = Math.max(1, ...chartDayInsights.map((day) => day.blackRemoved));
 
   const totalG1Use = generatorRows.reduce((sum, row) => sum + row.g1Use, 0);
   const totalG2Use = generatorRows.reduce((sum, row) => sum + row.g2Use, 0);
@@ -226,8 +269,27 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     (sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount,
     0
   );
+  const foodServicesToday = reportsTodayScoped.reduce(
+    (sum, report) =>
+      sum +
+      report.breakfastCount +
+      report.lunchCount +
+      report.dinnerCount +
+      report.snackSimpleCount +
+      report.snackReplacementCount,
+    0
+  );
   const waterToday = reportsTodayScoped.reduce((sum, report) => sum + (waterByReportId.get(report.id) ?? report.waterLiters), 0);
   const fuelToday = reportsTodayScoped.reduce((sum, report) => sum + report.fuelLiters, 0);
+  const potableAccum = reportsScoped.reduce((sum, report) => sum + report.potableWaterDeliveredM3, 0);
+  const blackRemovedAccum = reportsScoped.reduce((sum, report) => sum + report.blackWaterRemovedM3, 0);
+  const blackTankAvgToday =
+    reportsTodayScoped.length > 0
+      ? reportsTodayScoped.reduce((sum, report) => sum + report.blackWaterTankLevelPercent, 0) / reportsTodayScoped.length
+      : 0;
+  const waterPerPersonToday = peopleToday > 0 ? waterToday / peopleToday : 0;
+  const fuelPerPersonToday = peopleToday > 0 ? fuelToday / peopleToday : 0;
+  const servicesPerPersonToday = peopleToday > 0 ? foodServicesToday / peopleToday : 0;
   const previousDayKey = toInputDateValue(previousDashboardDate);
   const previousDaySeries = byDay.get(previousDayKey);
   const previousDayPeople = previousDaySeries?.people ?? 0;
@@ -242,6 +304,30 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario ayer: ${camp.name}`, severity: "error" as const })),
     ...missingTaskControlsToday.map((camp) => ({ text: `Falta control de tareas ayer: ${camp.name}`, severity: "warning" as const })),
+    ...reportsTodayScoped
+      .filter((report) => report.peopleCount > 0 && (waterByReportId.get(report.id) ?? report.waterLiters) / report.peopleCount > 180)
+      .map((report) => ({
+        text: `${report.camp.name}: consumo de agua alto (${Math.round((waterByReportId.get(report.id) ?? report.waterLiters) / report.peopleCount)} L/persona)`,
+        severity: "warning" as const
+      })),
+    ...reportsTodayScoped
+      .filter((report) => report.peopleCount > 0 && report.fuelLiters / report.peopleCount > 20)
+      .map((report) => ({
+        text: `${report.camp.name}: combustible alto (${Math.round(report.fuelLiters / report.peopleCount)} L/persona)`,
+        severity: "warning" as const
+      })),
+    ...reportsTodayScoped
+      .filter((report) => report.blackWaterTankLevelPercent >= 80)
+      .map((report) => ({
+        text: `${report.camp.name}: estanque de aguas negras en ${report.blackWaterTankLevelPercent}%`,
+        severity: report.blackWaterTankLevelPercent >= 90 ? ("error" as const) : ("warning" as const)
+      })),
+    ...(weatherSummary && weatherSummary.temperatureMax != null && weatherSummary.temperatureMax >= 30
+      ? [{ text: `${weatherCamp?.name}: máxima de ${weatherSummary.temperatureMax.toFixed(1)}°C ayer`, severity: "warning" as const }]
+      : []),
+    ...(weatherSummary && weatherSummary.temperatureMin != null && weatherSummary.temperatureMin <= 0
+      ? [{ text: `${weatherCamp?.name}: mínima de ${weatherSummary.temperatureMin.toFixed(1)}°C ayer`, severity: "warning" as const }]
+      : []),
     ...generatorRows
       .filter((row) => row.diff > 30)
       .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
@@ -407,6 +493,42 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               </div>
             </div>
           </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Clima y alertas</h2>
+              <span className="dashboard-chip small">{weatherCamp ? weatherCamp.name : "General"}</span>
+            </div>
+            <div className="dashboard-mini-stack">
+              <div className="dashboard-mini-metric">
+                <span>Temp. máxima</span>
+                <strong>
+                  {weatherSummary?.temperatureMax != null ? `${weatherSummary.temperatureMax.toFixed(1)}°C` : weatherCamp ? "-" : "Selecciona campamento"}
+                </strong>
+              </div>
+              <div className="dashboard-mini-metric">
+                <span>Temp. mínima</span>
+                <strong>
+                  {weatherSummary?.temperatureMin != null ? `${weatherSummary.temperatureMin.toFixed(1)}°C` : weatherCamp ? "-" : "Selecciona campamento"}
+                </strong>
+              </div>
+              <div className="dashboard-mini-metric">
+                <span>Estanque negras</span>
+                <strong>{blackTankAvgToday.toFixed(0)}%</strong>
+              </div>
+            </div>
+            <div className="dashboard-status-list" style={{ marginTop: 12 }}>
+              {notificationItems.slice(0, 4).map((item) => (
+                <div key={item.text} className="dashboard-status-row">
+                  <span>{item.text}</span>
+                  <span className={`status-pill ${item.severity === "error" ? "danger" : item.severity === "warning" ? "warn" : "ok"}`}>
+                    {item.severity === "error" ? "Alta" : item.severity === "warning" ? "Media" : "Info"}
+                  </span>
+                </div>
+              ))}
+              {notificationItems.length === 0 ? <div className="section-caption">Sin alertas relevantes ayer.</div> : null}
+            </div>
+          </section>
         </div>
 
         <div className="dashboard-chart-grid">
@@ -445,6 +567,110 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 >
                   <div className="chart-track tall">
                     <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="dashboard-metrics-grid">
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Agua por huésped</h2>
+              <span className="dashboard-chip small">{waterPerPersonToday.toFixed(1)} L/p</span>
+            </div>
+            <div className="chart-grid compact">
+              {chartDayInsights.map((day) => (
+                <div key={`wp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.waterPerPerson.toFixed(1)} L por persona`}>
+                  <div className="chart-track tall">
+                    <div className="chart-bar water" style={{ height: `${(day.waterPerPerson / maxWaterPerPerson) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Combustible por huésped</h2>
+              <span className="dashboard-chip small">{fuelPerPersonToday.toFixed(1)} L/p</span>
+            </div>
+            <div className="chart-grid compact">
+              {chartDayInsights.map((day) => (
+                <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
+                  <div className="chart-track tall">
+                    <div className="chart-bar fuel" style={{ height: `${(day.fuelPerPerson / maxFuelPerPerson) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Servicios por huésped</h2>
+              <span className="dashboard-chip small">{servicesPerPersonToday.toFixed(2)} por pers.</span>
+            </div>
+            <div className="chart-grid compact">
+              {chartDayInsights.map((day) => (
+                <div key={`sp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.servicesPerPerson.toFixed(2)} servicios por persona`}>
+                  <div className="chart-track tall">
+                    <div className="chart-bar meals" style={{ height: `${(day.servicesPerPerson / maxServicesPerPerson) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Uso estanque negras</h2>
+              <span className={`dashboard-chip small ${blackTankAvgToday >= 80 ? "warn" : ""}`}>{blackTankAvgToday.toFixed(0)}%</span>
+            </div>
+            <div className="chart-grid compact">
+              {chartDayInsights.map((day) => (
+                <div key={`bt-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.blackTankLevel.toFixed(0)}% de utilización`}>
+                  <div className="chart-track tall">
+                    <div className="chart-bar people" style={{ height: `${(day.blackTankLevel / maxBlackTankLevel) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Agua potable acumulada</h2>
+              <span className="dashboard-chip small">{potableAccum.toFixed(1)} m3</span>
+            </div>
+            <div className="chart-grid compact">
+              {chartDayInsights.map((day) => (
+                <div key={`po-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.potable.toFixed(1)} m3 ingresados`}>
+                  <div className="chart-track tall">
+                    <div className="chart-bar water" style={{ height: `${(day.potable / maxPotable) * 100}%` }} />
+                  </div>
+                  <div className="chart-label">{day.date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-header">
+              <h2>Aguas negras retiradas</h2>
+              <span className="dashboard-chip small">{blackRemovedAccum.toFixed(1)} m3</span>
+            </div>
+            <div className="chart-grid compact">
+              {chartDayInsights.map((day) => (
+                <div key={`br-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.blackRemoved.toFixed(1)} m3 retirados`}>
+                  <div className="chart-track tall">
+                    <div className="chart-bar fuel" style={{ height: `${(day.blackRemoved / maxBlackRemoved) * 100}%` }} />
                   </div>
                   <div className="chart-label">{day.date.slice(5)}</div>
                 </div>

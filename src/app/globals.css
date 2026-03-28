@@ -354,6 +354,7 @@ a {
 
 .dashboard-core-grid,
 .dashboard-chart-grid,
+.dashboard-metrics-grid,
 .dashboard-bottom-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -385,8 +386,13 @@ a {
 }
 
 .dashboard-chart-grid > .dashboard-panel,
+.dashboard-metrics-grid > .dashboard-panel,
 .dashboard-bottom-grid > .dashboard-panel {
   grid-column: span 6;
+}
+
+.dashboard-metrics-grid > .dashboard-panel {
+  grid-column: span 4;
 }
 
 .dashboard-panel-header {
@@ -1165,6 +1171,7 @@ th {
   .dashboard-panel-wide,
   .dashboard-core-grid > .dashboard-panel:last-child,
   .dashboard-chart-grid > .dashboard-panel,
+  .dashboard-metrics-grid > .dashboard-panel,
   .dashboard-bottom-grid > .dashboard-panel {
     grid-column: span 12;
   }

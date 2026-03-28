@@ -159,6 +159,7 @@ export default async function CargaDiariaPage() {
                 <th>Horómetro G1</th>
                 <th>Horómetro G2</th>
                 <th>Internet</th>
+                <th>Estanque negras</th>
                 <th>Aguas negras</th>
                 <th>Agua potable</th>
                 <th>Agua gastada calc.</th>
@@ -182,6 +183,7 @@ export default async function CargaDiariaPage() {
                   <td>{report.generator1Hours.toFixed(2)}</td>
                   <td>{report.generator2Hours.toFixed(2)}</td>
                   <td>{report.internetStatus.replaceAll("_", " ")}</td>
+                  <td>{report.blackWaterTankLevelPercent}%</td>
                   <td>{report.blackWaterRemoved ? `${report.blackWaterRemovedM3.toFixed(2)} m3` : "No"}</td>
                   <td>{report.potableWaterDelivered ? `${report.potableWaterDeliveredM3.toFixed(2)} m3` : "No"}</td>
                   <td>{report.waterLiters} L</td>
@@ -193,7 +195,7 @@ export default async function CargaDiariaPage() {
               ))}
               {recentReports.length === 0 ? (
                 <tr>
-                  <td colSpan={18} style={{ color: "var(--muted)" }}>
+                  <td colSpan={19} style={{ color: "var(--muted)" }}>
                     Aún no hay informes registrados.
                   </td>
                 </tr>
