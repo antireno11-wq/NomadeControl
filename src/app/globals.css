@@ -544,6 +544,12 @@ a {
   gap: 12px;
 }
 
+.dashboard-summary-metrics {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .dashboard-mini-metric {
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -1192,6 +1198,10 @@ th {
   .dashboard-ring-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dashboard-summary-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -1213,6 +1223,10 @@ th {
 
   .dashboard-mini-stack {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-summary-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-status-row,

@@ -447,7 +447,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   vs {previousDayPeople} el {previousDayKey}
                 </small>
               </div>
-              <div className="dashboard-mini-stack dashboard-mini-stack-compact">
+              <div className="dashboard-mini-stack dashboard-summary-metrics">
                 <div className="dashboard-mini-metric" title={`Uso generador 1: ${totalG1Use.toFixed(1)} horas`}>
                   <span>G1</span>
                   <strong>{totalG1Use.toFixed(1)}h</strong>
