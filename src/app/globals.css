@@ -921,7 +921,7 @@ th {
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
-  gap: 6px;
+  gap: 8px;
   align-items: flex-end;
   min-height: 220px;
 }
@@ -978,6 +978,7 @@ th {
 
 .chart-grid.compact {
   min-height: 180px;
+  padding-inline: 4px;
 }
 
 .chart-track.tall,
@@ -1039,6 +1040,8 @@ th {
 .chart-label {
   font-size: 0.66rem;
   color: var(--muted);
+  min-width: 28px;
+  text-align: center;
 }
 
 .chart-legend {
