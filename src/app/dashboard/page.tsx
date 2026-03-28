@@ -87,6 +87,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     scopeCamps.length === 1
       ? {
           name: scopeCamps[0].name,
+          location: scopeCamps[0].location,
           latitude: scopeCamps[0].latitude,
           longitude: scopeCamps[0].longitude
         }
@@ -95,6 +96,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     ? await getCampWeatherSummary({
         latitude: weatherCamp.latitude,
         longitude: weatherCamp.longitude,
+        location: weatherCamp.location,
         date: toInputDateValue(dashboardDate)
       })
     : null;
@@ -246,18 +248,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const chartDayInsights = chartDays.map((day) => ({
     date: day.date,
     waterPerPerson: day.people > 0 ? day.water / day.people : 0,
-    fuelPerPerson: day.people > 0 ? day.fuel / day.people : 0,
-    servicesPerPerson: day.people > 0 ? day.foodServices / day.people : 0,
-    blackTankLevel: day.reportCount > 0 ? day.blackTankLevelTotal / day.reportCount : 0,
-    potable: day.potable,
-    blackRemoved: day.blackRemoved
+    fuelPerPerson: day.people > 0 ? day.fuel / day.people : 0
   }));
   const maxWaterPerPerson = Math.max(1, ...chartDayInsights.map((day) => day.waterPerPerson));
   const maxFuelPerPerson = Math.max(1, ...chartDayInsights.map((day) => day.fuelPerPerson));
-  const maxServicesPerPerson = Math.max(1, ...chartDayInsights.map((day) => day.servicesPerPerson));
-  const maxBlackTankLevel = Math.max(1, ...chartDayInsights.map((day) => day.blackTankLevel));
-  const maxPotable = Math.max(1, ...chartDayInsights.map((day) => day.potable));
-  const maxBlackRemoved = Math.max(1, ...chartDayInsights.map((day) => day.blackRemoved));
 
   const totalG1Use = generatorRows.reduce((sum, row) => sum + row.g1Use, 0);
   const totalG2Use = generatorRows.reduce((sum, row) => sum + row.g2Use, 0);
@@ -269,27 +263,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     (sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount,
     0
   );
-  const foodServicesToday = reportsTodayScoped.reduce(
-    (sum, report) =>
-      sum +
-      report.breakfastCount +
-      report.lunchCount +
-      report.dinnerCount +
-      report.snackSimpleCount +
-      report.snackReplacementCount,
-    0
-  );
   const waterToday = reportsTodayScoped.reduce((sum, report) => sum + (waterByReportId.get(report.id) ?? report.waterLiters), 0);
   const fuelToday = reportsTodayScoped.reduce((sum, report) => sum + report.fuelLiters, 0);
-  const potableAccum = reportsScoped.reduce((sum, report) => sum + report.potableWaterDeliveredM3, 0);
-  const blackRemovedAccum = reportsScoped.reduce((sum, report) => sum + report.blackWaterRemovedM3, 0);
   const blackTankAvgToday =
     reportsTodayScoped.length > 0
       ? reportsTodayScoped.reduce((sum, report) => sum + report.blackWaterTankLevelPercent, 0) / reportsTodayScoped.length
       : 0;
   const waterPerPersonToday = peopleToday > 0 ? waterToday / peopleToday : 0;
   const fuelPerPersonToday = peopleToday > 0 ? fuelToday / peopleToday : 0;
-  const servicesPerPersonToday = peopleToday > 0 ? foodServicesToday / peopleToday : 0;
   const previousDayKey = toInputDateValue(previousDashboardDate);
   const previousDaySeries = byDay.get(previousDayKey);
   const previousDayPeople = previousDaySeries?.people ?? 0;
@@ -466,7 +447,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   vs {previousDayPeople} el {previousDayKey}
                 </small>
               </div>
-              <div className="dashboard-mini-stack">
+              <div className="dashboard-mini-stack dashboard-mini-stack-compact">
                 <div className="dashboard-mini-metric" title={`Uso generador 1: ${totalG1Use.toFixed(1)} horas`}>
                   <span>G1</span>
                   <strong>{totalG1Use.toFixed(1)}h</strong>
@@ -503,13 +484,25 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <div className="dashboard-mini-metric">
                 <span>Temp. máxima</span>
                 <strong>
-                  {weatherSummary?.temperatureMax != null ? `${weatherSummary.temperatureMax.toFixed(1)}°C` : weatherCamp ? "-" : "Selecciona campamento"}
+                  {weatherSummary?.temperatureMax != null
+                    ? `${weatherSummary.temperatureMax.toFixed(1)}°C`
+                    : weatherCamp?.location
+                      ? "Sin dato"
+                      : weatherCamp
+                        ? "Agrega ubicación"
+                        : "Selecciona campamento"}
                 </strong>
               </div>
               <div className="dashboard-mini-metric">
                 <span>Temp. mínima</span>
                 <strong>
-                  {weatherSummary?.temperatureMin != null ? `${weatherSummary.temperatureMin.toFixed(1)}°C` : weatherCamp ? "-" : "Selecciona campamento"}
+                  {weatherSummary?.temperatureMin != null
+                    ? `${weatherSummary.temperatureMin.toFixed(1)}°C`
+                    : weatherCamp?.location
+                      ? "Sin dato"
+                      : weatherCamp
+                        ? "Agrega ubicación"
+                        : "Selecciona campamento"}
                 </strong>
               </div>
               <div className="dashboard-mini-metric">
@@ -517,6 +510,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 <strong>{blackTankAvgToday.toFixed(0)}%</strong>
               </div>
             </div>
+            {weatherCamp && !weatherCamp.location ? (
+              <div className="section-caption" style={{ marginTop: 12 }}>
+                Agrega la ubicación del campamento para obtener la temperatura automáticamente.
+              </div>
+            ) : null}
             <div className="dashboard-status-list" style={{ marginTop: 12 }}>
               {notificationItems.slice(0, 4).map((item) => (
                 <div key={item.text} className="dashboard-status-row">
@@ -603,74 +601,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
                   <div className="chart-track tall">
                     <div className="chart-bar fuel" style={{ height: `${(day.fuelPerPerson / maxFuelPerPerson) * 100}%` }} />
-                  </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Servicios por huésped</h2>
-              <span className="dashboard-chip small">{servicesPerPersonToday.toFixed(2)} por pers.</span>
-            </div>
-            <div className="chart-grid compact">
-              {chartDayInsights.map((day) => (
-                <div key={`sp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.servicesPerPerson.toFixed(2)} servicios por persona`}>
-                  <div className="chart-track tall">
-                    <div className="chart-bar meals" style={{ height: `${(day.servicesPerPerson / maxServicesPerPerson) * 100}%` }} />
-                  </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Uso estanque negras</h2>
-              <span className={`dashboard-chip small ${blackTankAvgToday >= 80 ? "warn" : ""}`}>{blackTankAvgToday.toFixed(0)}%</span>
-            </div>
-            <div className="chart-grid compact">
-              {chartDayInsights.map((day) => (
-                <div key={`bt-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.blackTankLevel.toFixed(0)}% de utilización`}>
-                  <div className="chart-track tall">
-                    <div className="chart-bar people" style={{ height: `${(day.blackTankLevel / maxBlackTankLevel) * 100}%` }} />
-                  </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Agua potable acumulada</h2>
-              <span className="dashboard-chip small">{potableAccum.toFixed(1)} m3</span>
-            </div>
-            <div className="chart-grid compact">
-              {chartDayInsights.map((day) => (
-                <div key={`po-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.potable.toFixed(1)} m3 ingresados`}>
-                  <div className="chart-track tall">
-                    <div className="chart-bar water" style={{ height: `${(day.potable / maxPotable) * 100}%` }} />
-                  </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Aguas negras retiradas</h2>
-              <span className="dashboard-chip small">{blackRemovedAccum.toFixed(1)} m3</span>
-            </div>
-            <div className="chart-grid compact">
-              {chartDayInsights.map((day) => (
-                <div key={`br-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.blackRemoved.toFixed(1)} m3 retirados`}>
-                  <div className="chart-track tall">
-                    <div className="chart-bar fuel" style={{ height: `${(day.blackRemoved / maxBlackRemoved) * 100}%` }} />
                   </div>
                   <div className="chart-label">{day.date.slice(5)}</div>
                 </div>

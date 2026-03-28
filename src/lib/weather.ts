@@ -3,12 +3,64 @@ type WeatherSummary = {
   temperatureMin: number | null;
 };
 
+type Coordinates = {
+  latitude: number;
+  longitude: number;
+};
+
+export async function geocodeLocation(location?: string | null): Promise<Coordinates | null> {
+  if (!location?.trim()) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    name: location,
+    count: "1",
+    language: "es",
+    format: "json"
+  });
+
+  try {
+    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`, {
+      next: { revalidate: 60 * 60 * 24 }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      results?: Array<{ latitude: number; longitude: number }>;
+    };
+
+    const firstMatch = payload.results?.[0];
+    if (!firstMatch) {
+      return null;
+    }
+
+    return {
+      latitude: firstMatch.latitude,
+      longitude: firstMatch.longitude
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getCampWeatherSummary(input: {
   latitude?: number | null;
   longitude?: number | null;
+  location?: string | null;
   date: string;
 }): Promise<WeatherSummary | null> {
-  const { latitude, longitude, date } = input;
+  let { latitude, longitude } = input;
+  const { date, location } = input;
+
+  if (latitude == null || longitude == null) {
+    const resolvedCoordinates = await geocodeLocation(location);
+    latitude = resolvedCoordinates?.latitude ?? null;
+    longitude = resolvedCoordinates?.longitude ?? null;
+  }
 
   if (latitude == null || longitude == null) {
     return null;

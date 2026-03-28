@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/mailer";
+import { geocodeLocation } from "@/lib/weather";
 
 const createUserSchema = z.object({
   name: z.string().trim().min(2),
@@ -297,12 +298,16 @@ export async function createCampAction(formData: FormData) {
   }
 
   const payload = parsed.data;
+  const inferredCoordinates =
+    payload.latitude == null && payload.longitude == null && payload.location
+      ? await geocodeLocation(payload.location)
+      : null;
   await db.camp.create({
     data: {
       name: payload.name,
       location: payload.location || null,
-      latitude: payload.latitude ?? null,
-      longitude: payload.longitude ?? null,
+      latitude: payload.latitude ?? inferredCoordinates?.latitude ?? null,
+      longitude: payload.longitude ?? inferredCoordinates?.longitude ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: true
     }
@@ -331,14 +336,18 @@ export async function updateCampAction(formData: FormData) {
   }
 
   const payload = parsed.data;
+  const inferredCoordinates =
+    payload.latitude == null && payload.longitude == null && payload.location
+      ? await geocodeLocation(payload.location)
+      : null;
 
   await db.camp.update({
     where: { id: payload.campId },
     data: {
       name: payload.name,
       location: payload.location || null,
-      latitude: payload.latitude ?? null,
-      longitude: payload.longitude ?? null,
+      latitude: payload.latitude ?? inferredCoordinates?.latitude ?? null,
+      longitude: payload.longitude ?? inferredCoordinates?.longitude ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: payload.isActive === "on"
     }
