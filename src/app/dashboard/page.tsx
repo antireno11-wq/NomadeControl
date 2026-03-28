@@ -571,9 +571,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               ))}
             </div>
           </section>
-        </div>
 
-        <div className="dashboard-metrics-grid">
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
               <h2>Agua por huésped</h2>
