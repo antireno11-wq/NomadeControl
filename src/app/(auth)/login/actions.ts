@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession, defaultRouteForRole, isAdminRole, isSupervisorRole, verifyPassword } from "@/lib/auth";
+import { createSession, defaultRouteForRole, isAdminRole, isSupervisorRole, isVehicleOnlyRole, verifyPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function loginAction(_: { error?: string } | undefined, formData: FormData) {
@@ -13,7 +13,7 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
     return { error: "Tipo de acceso, correo y contraseña son obligatorios." };
   }
 
-  if (accessRole !== "SUPERVISOR" && accessRole !== "ADMINISTRADOR") {
+  if (!["SUPERVISOR", "ADMINISTRADOR", "VEHICULOS"].includes(accessRole)) {
     return { error: "Selecciona un tipo de acceso válido." };
   }
 
@@ -39,6 +39,10 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
 
   if (accessRole === "SUPERVISOR" && !isSupervisorRole(user.role)) {
     return { error: "Este usuario no tiene perfil de supervisor." };
+  }
+
+  if (accessRole === "VEHICULOS" && !isVehicleOnlyRole(user.role)) {
+    return { error: "Este usuario no tiene perfil solo vehículos." };
   }
 
   await createSession(user.id);

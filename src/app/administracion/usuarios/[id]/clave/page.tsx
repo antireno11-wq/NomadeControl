@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, requireRole, roleLabel } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { resetUserPasswordAction } from "@/app/administracion/actions";
@@ -49,7 +49,7 @@ export default async function ResetClaveUsuarioPage({ params }: { params: { id: 
             </div>
             <div className="metric">
               <div className="label">Rol</div>
-              <div className="value" style={{ fontSize: "1rem" }}>{targetUser.role}</div>
+              <div className="value" style={{ fontSize: "1rem" }}>{roleLabel(targetUser.role)}</div>
             </div>
             <div className="metric">
               <div className="label">Campamento</div>

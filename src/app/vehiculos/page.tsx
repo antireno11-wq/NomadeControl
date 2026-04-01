@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
 import { toInputDateValue } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
 import { AppShell } from "@/components/app-shell";
 
 export default async function VehiculosPage() {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(VEHICLE_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
   const today = startOfDay(new Date());
 

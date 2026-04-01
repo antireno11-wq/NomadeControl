@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { FULL_ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { toInputDateValue } from "@/lib/report-utils";
 import { deleteRecordAction } from "../actions";
 
 export default async function AdministracionRegistrosPage() {
-  const user = await requireRole(ADMIN_ROLES);
+  const user = await requireRole(FULL_ADMIN_ROLES);
 
   const [dailyReports, dailyTaskControls, stockMovements, staffMembers] = await Promise.all([
     db.dailyReport.findMany({

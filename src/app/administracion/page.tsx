@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isFullAdminRole, requireRole, roleLabel } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { createCampAction, createProjectAction, deleteCampAction } from "./actions";
@@ -10,6 +10,7 @@ export default async function AdministracionPage({
   searchParams?: { campStatus?: string | string[]; userStatus?: string | string[] };
 }) {
   const user = await requireRole(ADMIN_ROLES);
+  const canDeleteData = isFullAdminRole(user.role);
 
   const [users, camps, projects, reports] = await Promise.all([
     db.user.findMany({
@@ -67,19 +68,21 @@ export default async function AdministracionPage({
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <h2 style={{ margin: 0 }}>Gestión de registros</h2>
-            <div style={{ color: "var(--muted)", marginTop: 6 }}>
-              Usa una ventana aparte para revisar y borrar registros del sistema.
+      {canDeleteData ? (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Gestión de registros</h2>
+              <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                Usa una ventana aparte para revisar y borrar registros del sistema.
+              </div>
             </div>
+            <Link href="/administracion/registros">
+              <button type="button" className="danger">Abrir administración de registros</button>
+            </Link>
           </div>
-          <Link href="/administracion/registros">
-            <button type="button" className="danger">Abrir administración de registros</button>
-          </Link>
         </div>
-      </div>
+      ) : null}
 
       <div className="card" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Crear campamento</h2>
@@ -155,7 +158,7 @@ export default async function AdministracionPage({
               <tr key={row.id}>
                 <td>{row.name}</td>
                 <td>{row.email}</td>
-                <td>{row.role === "ADMIN" ? "ADMINISTRADOR" : row.role}</td>
+                <td>{roleLabel(row.role)}</td>
                 <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.isActive ? "Sí" : "No"}</td>
                 <td>
@@ -195,10 +198,12 @@ export default async function AdministracionPage({
                     <Link href={`/administracion/campamentos/${camp.id}`}>
                       <button type="button" className="secondary">Editar</button>
                     </Link>
-                    <form action={deleteCampAction}>
-                      <input type="hidden" name="campId" value={camp.id} />
-                      <button type="submit" className="danger">Eliminar campamento</button>
-                    </form>
+                    {canDeleteData ? (
+                      <form action={deleteCampAction}>
+                        <input type="hidden" name="campId" value={camp.id} />
+                        <button type="submit" className="danger">Eliminar campamento</button>
+                      </form>
+                    ) : null}
                   </div>
                 </td>
               </tr>

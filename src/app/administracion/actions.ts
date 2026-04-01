@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, FULL_ADMIN_ROLES, MANAGED_USER_ROLE_VALUES, isAdminRole, isFullAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/mailer";
 import { geocodeLocation } from "@/lib/weather";
@@ -12,7 +12,7 @@ import { geocodeLocation } from "@/lib/weather";
 const createUserSchema = z.object({
   name: z.string().trim().min(2),
   email: z.string().trim().toLowerCase().email(),
-  role: z.enum(["ADMINISTRADOR", "SUPERVISOR"]),
+  role: z.enum(MANAGED_USER_ROLE_VALUES),
   campId: z.string().optional(),
   password: z.string().min(8),
   sendWelcomeEmail: z.string().optional()
@@ -21,7 +21,7 @@ const createUserSchema = z.object({
 const updateUserSchema = z.object({
   userId: z.string().min(1),
   name: z.string().trim().min(2),
-  role: z.enum(["ADMINISTRADOR", "SUPERVISOR"]),
+  role: z.enum(MANAGED_USER_ROLE_VALUES),
   campId: z.string().optional(),
   isActive: z.string().optional()
 });
@@ -68,8 +68,8 @@ const deleteRecordSchema = z.object({
   recordId: z.string().min(1)
 });
 
-function normalizedCampIdForRole(role: "ADMINISTRADOR" | "SUPERVISOR", campId?: string) {
-  if (role === "ADMINISTRADOR") return null;
+function normalizedCampIdForRole(role: (typeof MANAGED_USER_ROLE_VALUES)[number], campId?: string) {
+  if (isAdminRole(role)) return null;
   return campId && campId !== "none" ? campId : null;
 }
 
@@ -93,7 +93,7 @@ export async function createUserAction(
   formData: FormData
 ): Promise<CreateUserFormState> {
   try {
-    await requireRole(ADMIN_ROLES);
+    const currentUser = await requireRole(ADMIN_ROLES);
 
     const parsed = createUserSchema.safeParse({
       name: formData.get("name"),
@@ -107,6 +107,10 @@ export async function createUserAction(
     if (!parsed.success) return { error: "Datos inválidos para crear usuario.", success: "" };
 
     const payload = parsed.data;
+    if (!isFullAdminRole(currentUser.role) && payload.role === "ADMINISTRADOR") {
+      return { error: "Tu perfil no puede crear administradores totales.", success: "" };
+    }
+
     const existing = await db.user.findUnique({ where: { email: payload.email } });
     if (existing) {
       return { error: "Ya existe un usuario con ese correo.", success: "" };
@@ -181,6 +185,25 @@ export async function updateUserAccessAction(formData: FormData) {
     throw new Error("No puedes desactivar tu propio usuario.");
   }
 
+  const targetUser = await db.user.findUnique({
+    where: { id: payload.userId },
+    select: { role: true }
+  });
+
+  if (!targetUser) {
+    throw new Error("Usuario no encontrado.");
+  }
+
+  if (!isFullAdminRole(currentUser.role)) {
+    if (isFullAdminRole(targetUser.role)) {
+      throw new Error("Tu perfil no puede modificar administradores totales.");
+    }
+
+    if (payload.role === "ADMINISTRADOR") {
+      throw new Error("Tu perfil no puede asignar administradores totales.");
+    }
+  }
+
   await db.user.update({
     where: { id: payload.userId },
     data: {
@@ -199,7 +222,7 @@ export async function updateUserAccessAction(formData: FormData) {
 }
 
 export async function resetUserPasswordAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  const currentUser = await requireRole(ADMIN_ROLES);
 
   const parsed = resetPasswordSchema.safeParse({
     userId: formData.get("userId"),
@@ -211,6 +234,19 @@ export async function resetUserPasswordAction(formData: FormData) {
   }
 
   const payload = parsed.data;
+  const targetUser = await db.user.findUnique({
+    where: { id: payload.userId },
+    select: { role: true }
+  });
+
+  if (!targetUser) {
+    throw new Error("Usuario no encontrado.");
+  }
+
+  if (!isFullAdminRole(currentUser.role) && isFullAdminRole(targetUser.role)) {
+    throw new Error("Tu perfil no puede cambiar la clave de administradores totales.");
+  }
+
   const passwordHash = await bcrypt.hash(payload.newPassword, 10);
 
   await db.user.update({
@@ -224,7 +260,7 @@ export async function resetUserPasswordAction(formData: FormData) {
 }
 
 export async function deleteUserAction(formData: FormData) {
-  const currentUser = await requireRole(ADMIN_ROLES);
+  const currentUser = await requireRole(FULL_ADMIN_ROLES);
 
   const parsed = deleteUserSchema.safeParse({
     userId: formData.get("userId")
@@ -410,7 +446,7 @@ export async function updateCampAction(formData: FormData) {
 }
 
 export async function deleteCampAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  await requireRole(FULL_ADMIN_ROLES);
 
   const parsed = deleteCampSchema.safeParse({
     campId: formData.get("campId")
@@ -463,7 +499,7 @@ export async function deleteCampAction(formData: FormData) {
 }
 
 export async function deleteRecordAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  await requireRole(FULL_ADMIN_ROLES);
 
   const parsed = deleteRecordSchema.safeParse({
     recordType: formData.get("recordType"),

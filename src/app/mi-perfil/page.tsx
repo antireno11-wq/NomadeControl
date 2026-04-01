@@ -1,10 +1,10 @@
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, PROFILE_ROLES, requireRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { ProfileForm } from "./profile-form";
 import { toInputDateValue } from "@/lib/report-utils";
 
 export default async function MiPerfilPage() {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(PROFILE_ROLES);
 
   return (
     <AppShell title="Mi perfil" user={user} activeNav={null} showAdminSections={isAdminRole(user.role)}>

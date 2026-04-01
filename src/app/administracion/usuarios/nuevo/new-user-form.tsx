@@ -12,7 +12,7 @@ function SubmitButton() {
   return <button type="submit">{pending ? "Creando..." : "Crear usuario"}</button>;
 }
 
-export function NewUserForm({ camps }: { camps: CampOption[] }) {
+export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]; canAssignFullAdmin: boolean }) {
   const [state, formAction] = useFormState(createUserAction, initialState);
 
   return (
@@ -29,11 +29,13 @@ export function NewUserForm({ camps }: { camps: CampOption[] }) {
         <label htmlFor="new-role">Rol</label>
         <select id="new-role" name="role" defaultValue="SUPERVISOR">
           <option value="SUPERVISOR">SUPERVISOR</option>
-          <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+          {canAssignFullAdmin ? <option value="ADMINISTRADOR">ADMINISTRADOR</option> : null}
+          <option value="ADMIN_LIMITADO">ADMIN LIMITADO</option>
+          <option value="VEHICULOS">SOLO VEHÍCULOS</option>
         </select>
       </div>
       <div>
-        <label htmlFor="new-camp">Campamento (solo supervisor)</label>
+        <label htmlFor="new-camp">Campamento (supervisor o solo vehículos)</label>
         <select id="new-camp" name="campId" defaultValue="none">
           <option value="none">Sin asignar</option>
           {camps.map((camp) => (

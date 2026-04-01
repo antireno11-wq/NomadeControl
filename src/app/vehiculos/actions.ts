@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ADMIN_ROLES, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, VEHICLE_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
 
@@ -317,7 +317,7 @@ export async function addVehicleDocumentAction(_: ActionState, formData: FormDat
 
 export async function saveVehicleChecklistAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const user = await requireRole(OPERATION_ROLES);
+    const user = await requireRole(VEHICLE_ROLES);
 
     const parsed = checklistSchema.safeParse({
       vehicleId: formData.get("vehicleId"),

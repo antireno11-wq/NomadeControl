@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
 import { toInputDateValue } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, summarizeVehicleExpiries } from "@/lib/vehicle-status";
@@ -10,7 +10,7 @@ import { VehicleDocumentForm } from "../vehicle-document-form";
 import { VehicleForm } from "../vehicle-form";
 
 export default async function VehiculoDetallePage({ params }: { params: { id: string } }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(VEHICLE_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
 
   const [vehicle, camps] = await Promise.all([

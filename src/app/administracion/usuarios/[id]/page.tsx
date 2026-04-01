@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isFullAdminRole, requireRole, roleLabel } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { deleteUserAction, resetUserPasswordAction, updateUserAccessAction } from "@/app/administracion/actions";
@@ -23,6 +23,7 @@ export default async function EditarUsuarioPage({
   ]);
 
   if (!targetUser) notFound();
+  const canDeleteUsers = isFullAdminRole(user.role);
 
   const statusRaw = searchParams?.status;
   const status = typeof statusRaw === "string" ? statusRaw : "";
@@ -63,7 +64,7 @@ export default async function EditarUsuarioPage({
             </div>
             <div className="metric">
               <div className="label">Rol</div>
-              <div className="value" style={{ fontSize: "1rem" }}>{targetUser.role === "ADMIN" ? "ADMINISTRADOR" : targetUser.role}</div>
+              <div className="value" style={{ fontSize: "1rem" }}>{roleLabel(targetUser.role)}</div>
             </div>
             <div className="metric">
               <div className="label">Campamento</div>
@@ -85,7 +86,9 @@ export default async function EditarUsuarioPage({
               <label htmlFor="edit-user-role">Rol</label>
               <select id="edit-user-role" name="role" defaultValue={targetUser.role === "ADMIN" ? "ADMINISTRADOR" : targetUser.role}>
                 <option value="SUPERVISOR">SUPERVISOR</option>
-                <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+                {canDeleteUsers ? <option value="ADMINISTRADOR">ADMINISTRADOR</option> : null}
+                <option value="ADMIN_LIMITADO">ADMIN LIMITADO</option>
+                <option value="VEHICULOS">SOLO VEHÍCULOS</option>
               </select>
             </div>
             <div>
@@ -126,7 +129,7 @@ export default async function EditarUsuarioPage({
           </form>
         </div>
 
-        {targetUser.id !== user.id ? (
+        {targetUser.id !== user.id && canDeleteUsers ? (
           <div className="card" style={{ maxWidth: 760 }}>
             <h2 style={{ marginTop: 0 }}>Zona sensible</h2>
             <div className="section-caption" style={{ marginBottom: 12 }}>

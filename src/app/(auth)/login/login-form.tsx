@@ -28,6 +28,7 @@ export function LoginForm({ oauthErrorText }: { oauthErrorText?: string }) {
           <select id="accessRole" name="accessRole" defaultValue="SUPERVISOR" required>
             <option value="SUPERVISOR">Supervisor</option>
             <option value="ADMINISTRADOR">Administrador</option>
+            <option value="VEHICULOS">Solo vehículos</option>
           </select>
         </div>
 

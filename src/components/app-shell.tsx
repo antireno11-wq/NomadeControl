@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
+import { canAccessAdministration, canAccessCampOperations, canAccessDashboard, canAccessVehicles } from "@/lib/auth";
 
 type ShellNavKey = "dashboard" | "vehiculos" | "carga" | "tareas" | "administracion" | null;
 
@@ -28,16 +29,20 @@ export function AppShell({
   notifications?: NotificationItem[];
   children: ReactNode;
 }) {
+  const canSeeDashboard = canAccessDashboard(user.role);
+  const canSeeVehicles = canAccessVehicles(user.role);
+  const canSeeCampOps = canAccessCampOperations(user.role) && !canAccessAdministration(user.role);
+  const canSeeAdministration = canAccessAdministration(user.role);
   const navItems = [
-    { href: "/dashboard", label: "Dashboard", key: "dashboard" as const },
-    { href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const },
-    ...(!showAdminSections
+    ...(canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
+    ...(canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
+    ...(canSeeCampOps
       ? [
           { href: "/carga-diaria", label: "Informe diario", key: "carga" as const },
           { href: "/control-tareas-diarias", label: "Control tareas", key: "tareas" as const }
         ]
       : []),
-    ...(showAdminSections ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
+    ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
   ];
 
   return (

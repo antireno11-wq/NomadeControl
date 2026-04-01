@@ -6,24 +6,70 @@ import { db } from "@/lib/db";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "camp_session";
 const SESSION_TTL_DAYS = 7;
-export type AppRole = "ADMINISTRADOR" | "SUPERVISOR" | "ADMIN" | "OPERADOR";
-export const ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
-export const OPERATION_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN", "SUPERVISOR", "OPERADOR"];
+export type AppRole =
+  | "ADMINISTRADOR"
+  | "ADMIN_LIMITADO"
+  | "SUPERVISOR"
+  | "VEHICULOS"
+  | "ADMIN"
+  | "OPERADOR";
+export const MANAGED_USER_ROLE_VALUES = ["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS"] as const;
+export const FULL_ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
+export const ADMIN_ROLES: AppRole[] = [...FULL_ADMIN_ROLES, "ADMIN_LIMITADO"];
+export const VEHICLE_ROLES: AppRole[] = [...ADMIN_ROLES, "VEHICULOS"];
+export const OPERATION_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
+export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR"];
 export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
 
 export function defaultRouteForRole(role: string) {
-  if (role === "ADMINISTRADOR" || role === "ADMIN") {
+  if (isVehicleOnlyRole(role)) {
+    return "/vehiculos";
+  }
+
+  if (canAccessDashboard(role)) {
     return "/dashboard";
   }
+
   return "/carga-diaria";
 }
 
 export function isAdminRole(role: string) {
-  return role === "ADMINISTRADOR" || role === "ADMIN";
+  return ADMIN_ROLES.includes(role as AppRole);
+}
+
+export function isFullAdminRole(role: string) {
+  return FULL_ADMIN_ROLES.includes(role as AppRole);
 }
 
 export function isSupervisorRole(role: string) {
   return role === "SUPERVISOR" || role === "OPERADOR";
+}
+
+export function isVehicleOnlyRole(role: string) {
+  return role === "VEHICULOS";
+}
+
+export function canAccessAdministration(role: string) {
+  return isAdminRole(role);
+}
+
+export function canAccessDashboard(role: string) {
+  return OPERATION_ROLES.includes(role as AppRole);
+}
+
+export function canAccessCampOperations(role: string) {
+  return OPERATION_ROLES.includes(role as AppRole);
+}
+
+export function canAccessVehicles(role: string) {
+  return VEHICLE_ROLES.includes(role as AppRole);
+}
+
+export function roleLabel(role: string) {
+  if (role === "ADMIN" || role === "ADMINISTRADOR") return "ADMINISTRADOR";
+  if (role === "ADMIN_LIMITADO") return "ADMIN LIMITADO";
+  if (role === "VEHICULOS") return "SOLO VEHÍCULOS";
+  return role;
 }
 
 function sessionExpirationDate() {

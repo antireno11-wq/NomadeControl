@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isFullAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { updateCampAction, deleteCampAction } from "@/app/administracion/actions";
 
 export default async function EditarCampamentoPage({ params }: { params: { id: string } }) {
   const user = await requireRole(ADMIN_ROLES);
+  const canDeleteData = isFullAdminRole(user.role);
 
   const camp = await db.camp.findUnique({
     where: { id: params.id },
@@ -106,16 +107,18 @@ export default async function EditarCampamentoPage({ params }: { params: { id: s
           </form>
         </div>
 
-        <div className="card" style={{ maxWidth: 760 }}>
-          <h2 style={{ marginTop: 0 }}>Eliminar campamento</h2>
-          <div className="section-caption" style={{ marginBottom: 12 }}>
-            Solo se elimina si no tiene usuarios ni registros asociados.
+        {canDeleteData ? (
+          <div className="card" style={{ maxWidth: 760 }}>
+            <h2 style={{ marginTop: 0 }}>Eliminar campamento</h2>
+            <div className="section-caption" style={{ marginBottom: 12 }}>
+              Solo se elimina si no tiene usuarios ni registros asociados.
+            </div>
+            <form action={deleteCampAction}>
+              <input type="hidden" name="campId" value={camp.id} />
+              <button type="submit" className="danger">Eliminar campamento</button>
+            </form>
           </div>
-          <form action={deleteCampAction}>
-            <input type="hidden" name="campId" value={camp.id} />
-            <button type="submit" className="danger">Eliminar campamento</button>
-          </form>
-        </div>
+        ) : null}
       </div>
     </AppShell>
   );
