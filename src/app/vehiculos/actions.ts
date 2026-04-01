@@ -23,6 +23,7 @@ const vehicleSchema = z.object({
   status: z.enum(["OPERATIVO", "MANTENCION", "FUERA_DE_SERVICIO"]),
   odometerKm: z.coerce.number().int().min(0),
   assignedCampId: z.string().optional(),
+  assignedProjectId: z.string().optional(),
   ownerArea: z.string().trim().optional(),
   color: z.string().trim().optional(),
   vin: z.string().trim().optional(),
@@ -77,6 +78,10 @@ function normalizedCampId(value?: string) {
   return value && value !== "none" ? value : null;
 }
 
+function normalizedProjectId(value?: string) {
+  return value && value !== "none" ? value : null;
+}
+
 function checked(value?: string) {
   return value === "on";
 }
@@ -95,6 +100,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
       status: formData.get("status"),
       odometerKm: formData.get("odometerKm"),
       assignedCampId: formData.get("assignedCampId"),
+      assignedProjectId: formData.get("assignedProjectId"),
       ownerArea: String(formData.get("ownerArea") ?? ""),
       color: String(formData.get("color") ?? ""),
       vin: String(formData.get("vin") ?? ""),
@@ -127,6 +133,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
         status: payload.status,
         odometerKm: payload.odometerKm,
         assignedCampId: normalizedCampId(payload.assignedCampId),
+        assignedProjectId: normalizedProjectId(payload.assignedProjectId),
         ownerArea: payload.ownerArea || null,
         color: payload.color || null,
         vin: payload.vin || null,
@@ -164,6 +171,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
       status: formData.get("status"),
       odometerKm: formData.get("odometerKm"),
       assignedCampId: formData.get("assignedCampId"),
+      assignedProjectId: formData.get("assignedProjectId"),
       ownerArea: String(formData.get("ownerArea") ?? ""),
       color: String(formData.get("color") ?? ""),
       vin: String(formData.get("vin") ?? ""),
@@ -197,6 +205,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
         status: payload.status,
         odometerKm: payload.odometerKm,
         assignedCampId: normalizedCampId(payload.assignedCampId),
+        assignedProjectId: normalizedProjectId(payload.assignedProjectId),
         ownerArea: payload.ownerArea || null,
         color: payload.color || null,
         vin: payload.vin || null,

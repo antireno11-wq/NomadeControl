@@ -25,6 +25,7 @@ export default async function VehiculosPage() {
       orderBy: [{ status: "asc" }, { plate: "asc" }],
       include: {
         assignedCamp: true,
+        assignedProject: true,
         documents: { orderBy: { expiresAt: "asc" } },
         checklists: {
           take: 1,
@@ -169,7 +170,7 @@ export default async function VehiculosPage() {
                 <tr>
                   <th>Patente</th>
                   <th>Vehículo</th>
-                  <th>Campamento</th>
+                  <th>Campamento / proyecto</th>
                   <th>Estado</th>
                   <th>Próxima alerta</th>
                   <th>Último checklist</th>
@@ -191,7 +192,12 @@ export default async function VehiculosPage() {
                         {vehicle.brand} {vehicle.model}
                         <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{vehicle.odometerKm.toLocaleString("es-CL")} km</div>
                       </td>
-                      <td>{vehicle.assignedCamp?.name ?? "Sin asignar"}</td>
+                      <td>
+                        {vehicle.assignedCamp?.name ?? "Sin campamento"}
+                        <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                          {vehicle.assignedProject?.name ?? "Sin proyecto"}
+                        </div>
+                      </td>
                       <td>
                         <span className={`status-pill ${vehicle.health.tone === "danger" ? "danger" : vehicle.health.tone === "warn" ? "warn" : "ok"}`}>
                           {vehicle.health.label}

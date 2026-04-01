@@ -6,7 +6,10 @@ import { VehicleForm } from "../vehicle-form";
 
 export default async function NuevoVehiculoPage() {
   const user = await requireRole(ADMIN_ROLES);
-  const camps = await db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
+  const [camps, projects] = await Promise.all([
+    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    db.project.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
+  ]);
 
   return (
     <AppShell
@@ -30,7 +33,10 @@ export default async function NuevoVehiculoPage() {
         </div>
 
         <div className="card">
-          <VehicleForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} />
+          <VehicleForm
+            camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))}
+            projects={projects.map((project) => ({ id: project.id, name: project.name }))}
+          />
         </div>
       </div>
     </AppShell>

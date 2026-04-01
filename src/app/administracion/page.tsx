@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, deleteCampAction, deleteUserAction, updateUserAccessAction } from "./actions";
+import { createCampAction, createProjectAction, deleteCampAction, deleteUserAction, updateUserAccessAction } from "./actions";
 
 export default async function AdministracionPage({
   searchParams
@@ -11,7 +11,7 @@ export default async function AdministracionPage({
 }) {
   const user = await requireRole(ADMIN_ROLES);
 
-  const [users, camps, reports] = await Promise.all([
+  const [users, camps, projects, reports] = await Promise.all([
     db.user.findMany({
       where: {
         NOT: {
@@ -24,6 +24,7 @@ export default async function AdministracionPage({
       orderBy: [{ role: "asc" }, { name: "asc" }]
     }),
     db.camp.findMany({ orderBy: { name: "asc" } }),
+    db.project.findMany({ orderBy: { name: "asc" } }),
     db.dailyReport.count()
   ]);
 
@@ -100,6 +101,27 @@ export default async function AdministracionPage({
           </div>
           <div style={{ display: "flex", alignItems: "end" }}>
             <button type="submit">Crear campamento</button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>Crear proyecto</h2>
+        <form action={createProjectAction} className="grid two">
+          <div>
+            <label htmlFor="project-name">Nombre</label>
+            <input id="project-name" name="name" required />
+          </div>
+          <div>
+            <label htmlFor="project-code">Código</label>
+            <input id="project-code" name="code" placeholder="FS-2026" />
+          </div>
+          <div>
+            <label htmlFor="project-location">Ubicación</label>
+            <input id="project-location" name="location" placeholder="Faena, ciudad o zona" />
+          </div>
+          <div style={{ display: "flex", alignItems: "end" }}>
+            <button type="submit">Crear proyecto</button>
           </div>
         </form>
       </div>
@@ -205,6 +227,35 @@ export default async function AdministracionPage({
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card admin-camps-card" style={{ marginTop: 16, overflowX: "auto" }}>
+        <h2 style={{ marginTop: 0 }}>Proyectos</h2>
+        <table className="admin-camps-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Código</th>
+              <th>Ubicación</th>
+              <th>Activo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projects.map((project) => (
+              <tr key={project.id}>
+                <td>{project.name}</td>
+                <td>{project.code ?? "-"}</td>
+                <td>{project.location ?? "-"}</td>
+                <td>{project.isActive ? "Sí" : "No"}</td>
+              </tr>
+            ))}
+            {projects.length === 0 ? (
+              <tr>
+                <td colSpan={4} style={{ color: "var(--muted)" }}>Todavía no hay proyectos creados.</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

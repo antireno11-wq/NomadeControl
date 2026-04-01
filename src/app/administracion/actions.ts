@@ -43,6 +43,12 @@ const createCampSchema = z.object({
   capacityPeople: z.coerce.number().int().min(0)
 });
 
+const createProjectSchema = z.object({
+  name: z.string().trim().min(2),
+  code: z.string().trim().optional(),
+  location: z.string().trim().optional()
+});
+
 const updateCampSchema = z.object({
   campId: z.string().min(1),
   name: z.string().trim().min(2),
@@ -316,6 +322,41 @@ export async function createCampAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
+}
+
+export async function createProjectAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+
+  const parsed = createProjectSchema.safeParse({
+    name: formData.get("name"),
+    code: String(formData.get("code") ?? ""),
+    location: String(formData.get("location") ?? "")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Datos inválidos para crear proyecto.");
+  }
+
+  const payload = parsed.data;
+
+  if (payload.code) {
+    const existing = await db.project.findUnique({ where: { code: payload.code } });
+    if (existing) {
+      throw new Error("Ya existe un proyecto con ese código.");
+    }
+  }
+
+  await db.project.create({
+    data: {
+      name: payload.name,
+      code: payload.code || null,
+      location: payload.location || null,
+      isActive: true
+    }
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/vehiculos");
 }
 
 export async function updateCampAction(formData: FormData) {

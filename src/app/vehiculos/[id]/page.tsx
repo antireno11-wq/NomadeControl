@@ -18,6 +18,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
       where: { id: params.id },
       include: {
         assignedCamp: true,
+        assignedProject: true,
         documents: { orderBy: { expiresAt: "asc" } },
         checklists: {
           take: 10,
@@ -26,7 +27,10 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
         }
       }
     }),
-    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
+    Promise.all([
+      db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+      db.project.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
+    ])
   ]);
 
   if (!vehicle) notFound();
@@ -34,6 +38,8 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
   if (!canSeeAdminSections && user.campId && vehicle.assignedCampId && vehicle.assignedCampId !== user.campId) {
     redirect("/vehiculos");
   }
+
+  const [campOptions, projectOptions] = camps;
 
   const latestChecklist = vehicle.checklists[0] ?? null;
   const expirySummary = summarizeVehicleExpiries(vehicle);
@@ -87,7 +93,8 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
             <div className="card">
               <h2 style={{ marginTop: 0 }}>Ficha del vehículo</h2>
               <VehicleForm
-                camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))}
+                camps={campOptions.map((camp) => ({ id: camp.id, name: camp.name }))}
+                projects={projectOptions.map((project) => ({ id: project.id, name: project.name }))}
                 vehicle={vehicle}
               />
             </div>

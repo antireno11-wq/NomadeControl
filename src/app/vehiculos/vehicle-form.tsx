@@ -9,6 +9,11 @@ type CampOption = {
   name: string;
 };
 
+type ProjectOption = {
+  id: string;
+  name: string;
+};
+
 type VehicleSnapshot = {
   id: string;
   plate: string;
@@ -20,6 +25,7 @@ type VehicleSnapshot = {
   status: string;
   odometerKm: number;
   assignedCampId: string | null;
+  assignedProjectId: string | null;
   ownerArea: string | null;
   color: string | null;
   vin: string | null;
@@ -48,7 +54,15 @@ function asDateValue(value?: Date | null) {
   return value ? toInputDateValue(value) : "";
 }
 
-export function VehicleForm({ camps, vehicle }: { camps: CampOption[]; vehicle?: VehicleSnapshot }) {
+export function VehicleForm({
+  camps,
+  projects,
+  vehicle
+}: {
+  camps: CampOption[];
+  projects: ProjectOption[];
+  vehicle?: VehicleSnapshot;
+}) {
   const isEditing = Boolean(vehicle);
   const action = isEditing ? updateVehicleAction : createVehicleAction;
   const [state, formAction] = useFormState(action, initialState);
@@ -108,6 +122,17 @@ export function VehicleForm({ camps, vehicle }: { camps: CampOption[]; vehicle?:
           {camps.map((camp) => (
             <option key={camp.id} value={camp.id}>
               {camp.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="vehicle-project">Proyecto asignado</label>
+        <select id="vehicle-project" name="assignedProjectId" defaultValue={vehicle?.assignedProjectId ?? "none"}>
+          <option value="none">Sin proyecto</option>
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
             </option>
           ))}
         </select>

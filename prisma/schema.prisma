@@ -67,6 +67,19 @@ model Camp {
   updatedAt DateTime      @updatedAt
 }
 
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  code        String?   @unique
+  location    String?
+  isActive    Boolean   @default(true)
+  vehicles    Vehicle[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isActive, name])
+}
+
 model DailyReport {
   id             String   @id @default(cuid())
   date           DateTime
@@ -206,6 +219,8 @@ model Vehicle {
   odometerKm        Int               @default(0)
   assignedCampId    String?
   assignedCamp      Camp?             @relation(fields: [assignedCampId], references: [id], onDelete: SetNull)
+  assignedProjectId String?
+  assignedProject   Project?          @relation(fields: [assignedProjectId], references: [id], onDelete: SetNull)
   ownerArea         String?
   color             String?
   vin               String?
@@ -223,6 +238,7 @@ model Vehicle {
   updatedAt         DateTime          @updatedAt
 
   @@index([assignedCampId, status])
+  @@index([assignedProjectId, status])
   @@index([plate])
 }
 
