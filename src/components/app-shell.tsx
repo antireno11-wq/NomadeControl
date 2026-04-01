@@ -4,7 +4,7 @@ import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
 
-type ShellNavKey = "dashboard" | "carga" | "tareas" | "administracion" | null;
+type ShellNavKey = "dashboard" | "vehiculos" | "carga" | "tareas" | "administracion" | null;
 
 type NotificationItem = {
   text: string;
@@ -30,6 +30,7 @@ export function AppShell({
 }) {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", key: "dashboard" as const },
+    { href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const },
     ...(!showAdminSections
       ? [
           { href: "/carga-diaria", label: "Informe diario", key: "carga" as const },

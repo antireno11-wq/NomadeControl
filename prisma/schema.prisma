@@ -34,6 +34,7 @@ model User {
   dailyTaskControls DailyTaskControl[]
   stockMovements   StockMovement[]
   staffMembers     StaffMember[]
+  vehicleChecklists VehicleChecklist[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -61,6 +62,7 @@ model Camp {
   stockMovements    StockMovement[]
   inventoryItems    InventoryItem[]
   staffMembers      StaffMember[]
+  vehicles          Vehicle[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -190,4 +192,85 @@ model StaffShiftDay {
 
   @@unique([staffMemberId, date])
   @@index([date, status])
+}
+
+model Vehicle {
+  id                String            @id @default(cuid())
+  plate             String            @unique
+  internalCode      String?
+  brand             String
+  model             String
+  year              Int?
+  type              String
+  status            String            @default("OPERATIVO")
+  odometerKm        Int               @default(0)
+  assignedCampId    String?
+  assignedCamp      Camp?             @relation(fields: [assignedCampId], references: [id], onDelete: SetNull)
+  ownerArea         String?
+  color             String?
+  vin               String?
+  engineNumber      String?
+  circulationPermitDue DateTime?
+  soapDue           DateTime?
+  technicalReviewDue DateTime?
+  insuranceDue      DateTime?
+  extinguisherDue   DateTime?
+  gpsInstalled      Boolean           @default(false)
+  notes             String?
+  documents         VehicleDocument[]
+  checklists        VehicleChecklist[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([assignedCampId, status])
+  @@index([plate])
+}
+
+model VehicleDocument {
+  id           String    @id @default(cuid())
+  vehicleId    String
+  vehicle      Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  name         String
+  number       String?
+  issuer       String?
+  issuedAt     DateTime?
+  expiresAt    DateTime
+  alertDays    Int       @default(30)
+  status       String    @default("VIGENTE")
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([vehicleId, expiresAt])
+}
+
+model VehicleChecklist {
+  id                  String    @id @default(cuid())
+  vehicleId           String
+  vehicle             Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driverId            String
+  driver              User      @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  date                DateTime
+  odometerKm          Int
+  fuelPercent         Int
+  frontLightsOk       Boolean   @default(true)
+  rearLightsOk        Boolean   @default(true)
+  tiresOk             Boolean   @default(true)
+  brakesOk            Boolean   @default(true)
+  mirrorsOk           Boolean   @default(true)
+  hornOk              Boolean   @default(true)
+  fluidsOk            Boolean   @default(true)
+  jackOk              Boolean   @default(true)
+  spareTireOk         Boolean   @default(true)
+  extinguisherOk      Boolean   @default(true)
+  documentsOk         Boolean   @default(true)
+  bodyworkOk          Boolean   @default(true)
+  cleanlinessOk       Boolean   @default(true)
+  observations        String?
+  incidentReported    Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([vehicleId, date])
+  @@index([driverId, date])
 }

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Control de Campamentos",
-  description: "Panel para seguimiento diario de campamentos",
+  title: "Nomade Control",
+  description: "Plataforma de control operativo para campamentos, vehículos y operaciones de Nomade",
   icons: {
     icon: "/nomade-logo-v2.png",
     shortcut: "/nomade-logo-v2.png",
