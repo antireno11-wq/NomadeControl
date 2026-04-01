@@ -192,6 +192,10 @@ export async function updateUserAccessAction(formData: FormData) {
   });
 
   revalidatePath("/administracion");
+  const redirectTo = formData.get("redirectTo");
+  if (typeof redirectTo === "string" && redirectTo) {
+    redirect(redirectTo);
+  }
 }
 
 export async function resetUserPasswordAction(formData: FormData) {
@@ -215,7 +219,8 @@ export async function resetUserPasswordAction(formData: FormData) {
   });
 
   revalidatePath("/administracion");
-  redirect("/administracion");
+  const redirectTo = formData.get("redirectTo");
+  redirect(typeof redirectTo === "string" && redirectTo ? redirectTo : "/administracion");
 }
 
 export async function deleteUserAction(formData: FormData) {
@@ -286,6 +291,10 @@ export async function deleteUserAction(formData: FormData) {
   }
 
   revalidatePath("/administracion");
+  const redirectTo = formData.get("redirectTo");
+  if (typeof redirectTo === "string" && redirectTo) {
+    redirect(redirectTo);
+  }
 }
 
 export async function createCampAction(formData: FormData) {

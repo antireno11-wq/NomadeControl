@@ -2,12 +2,12 @@ import Link from "next/link";
 import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, createProjectAction, deleteCampAction, deleteUserAction, updateUserAccessAction } from "./actions";
+import { createCampAction, createProjectAction, deleteCampAction } from "./actions";
 
 export default async function AdministracionPage({
   searchParams
 }: {
-  searchParams?: { campStatus?: string | string[] };
+  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[] };
 }) {
   const user = await requireRole(ADMIN_ROLES);
 
@@ -29,7 +29,9 @@ export default async function AdministracionPage({
   ]);
 
   const campStatusRaw = searchParams?.campStatus;
+  const userStatusRaw = searchParams?.userStatus;
   const campStatus = typeof campStatusRaw === "string" ? campStatusRaw : "";
+  const userStatus = typeof userStatusRaw === "string" ? userStatusRaw : "";
   const campAlert =
     campStatus === "updated"
       ? { type: "success", text: "Cambios guardados correctamente." }
@@ -42,10 +44,13 @@ export default async function AdministracionPage({
           : campStatus === "invalid"
             ? { type: "error", text: "Solicitud inválida para eliminar campamento." }
             : null;
+  const userAlert =
+    userStatus === "deleted" ? { type: "success", text: "Usuario procesado correctamente." } : null;
 
   return (
     <AppShell title="Administración" user={user} activeNav="administracion" showAdminSections>
       {campAlert ? <div className={`alert ${campAlert.type === "success" ? "success" : "error"}`} style={{ marginBottom: 16 }}>{campAlert.text}</div> : null}
+      {userAlert ? <div className="alert success" style={{ marginBottom: 16 }}>{userAlert.text}</div> : null}
 
       <div className="admin-metrics-grid" style={{ marginBottom: 16 }}>
         <div className="metric">
@@ -153,39 +158,10 @@ export default async function AdministracionPage({
                 <td>{row.role === "ADMIN" ? "ADMINISTRADOR" : row.role}</td>
                 <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.isActive ? "Sí" : "No"}</td>
-                <td className="admin-user-actions-cell">
-                  <form action={updateUserAccessAction} className="admin-user-access-form">
-                    <input type="hidden" name="userId" value={row.id} />
-                    <input name="name" defaultValue={row.name} placeholder="Nombre" />
-                    <select name="role" defaultValue={row.role === "ADMIN" ? "ADMINISTRADOR" : row.role}>
-                      <option value="SUPERVISOR">SUPERVISOR</option>
-                      <option value="ADMINISTRADOR">ADMINISTRADOR</option>
-                    </select>
-                    <select name="campId" defaultValue={row.campId ?? "none"}>
-                      <option value="none">Sin asignar</option>
-                      {camps.map((camp) => (
-                        <option key={camp.id} value={camp.id}>
-                          {camp.name}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="admin-inline-checkbox">
-                      <input type="checkbox" name="isActive" defaultChecked={row.isActive} style={{ width: "auto", padding: 0 }} />
-                      Activo
-                    </label>
-                    <button type="submit" className="secondary">Guardar acceso</button>
-                  </form>
-                  <div className="admin-user-secondary-actions">
-                    <Link href={`/administracion/usuarios/${row.id}/clave`}>
-                      <button type="button" className="secondary">Reset clave</button>
-                    </Link>
-                    {row.id !== user.id ? (
-                      <form action={deleteUserAction}>
-                        <input type="hidden" name="userId" value={row.id} />
-                        <button type="submit" className="danger">Borrar usuario</button>
-                      </form>
-                    ) : null}
-                  </div>
+                <td>
+                  <Link href={`/administracion/usuarios/${row.id}`}>
+                    <button type="button" className="secondary">Editar</button>
+                  </Link>
                 </td>
               </tr>
             ))}
