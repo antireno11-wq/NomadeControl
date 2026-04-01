@@ -82,6 +82,11 @@ function normalizedProjectId(value?: string) {
   return value && value !== "none" ? value : null;
 }
 
+function optionalField(formData: FormData, field: string) {
+  const value = formData.get(field);
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
 function checked(value?: string) {
   return value === "on";
 }
@@ -99,8 +104,8 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
       type: formData.get("type"),
       status: formData.get("status"),
       odometerKm: formData.get("odometerKm"),
-      assignedCampId: formData.get("assignedCampId"),
-      assignedProjectId: formData.get("assignedProjectId"),
+      assignedCampId: optionalField(formData, "assignedCampId"),
+      assignedProjectId: optionalField(formData, "assignedProjectId"),
       ownerArea: String(formData.get("ownerArea") ?? ""),
       color: String(formData.get("color") ?? ""),
       vin: String(formData.get("vin") ?? ""),
@@ -110,7 +115,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
       technicalReviewDue: String(formData.get("technicalReviewDue") ?? ""),
       insuranceDue: String(formData.get("insuranceDue") ?? ""),
       extinguisherDue: String(formData.get("extinguisherDue") ?? ""),
-      gpsInstalled: formData.get("gpsInstalled"),
+      gpsInstalled: optionalField(formData, "gpsInstalled"),
       notes: String(formData.get("notes") ?? "")
     });
 
@@ -170,8 +175,8 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
       type: formData.get("type"),
       status: formData.get("status"),
       odometerKm: formData.get("odometerKm"),
-      assignedCampId: formData.get("assignedCampId"),
-      assignedProjectId: formData.get("assignedProjectId"),
+      assignedCampId: optionalField(formData, "assignedCampId"),
+      assignedProjectId: optionalField(formData, "assignedProjectId"),
       ownerArea: String(formData.get("ownerArea") ?? ""),
       color: String(formData.get("color") ?? ""),
       vin: String(formData.get("vin") ?? ""),
@@ -181,7 +186,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
       technicalReviewDue: String(formData.get("technicalReviewDue") ?? ""),
       insuranceDue: String(formData.get("insuranceDue") ?? ""),
       extinguisherDue: String(formData.get("extinguisherDue") ?? ""),
-      gpsInstalled: formData.get("gpsInstalled"),
+      gpsInstalled: optionalField(formData, "gpsInstalled"),
       notes: String(formData.get("notes") ?? "")
     });
 
@@ -277,20 +282,20 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
       odometerKm: formData.get("odometerKm"),
       fuelPercent: formData.get("fuelPercent"),
       observations: String(formData.get("observations") ?? ""),
-      incidentReported: formData.get("incidentReported"),
-      frontLightsOk: formData.get("frontLightsOk"),
-      rearLightsOk: formData.get("rearLightsOk"),
-      tiresOk: formData.get("tiresOk"),
-      brakesOk: formData.get("brakesOk"),
-      mirrorsOk: formData.get("mirrorsOk"),
-      hornOk: formData.get("hornOk"),
-      fluidsOk: formData.get("fluidsOk"),
-      jackOk: formData.get("jackOk"),
-      spareTireOk: formData.get("spareTireOk"),
-      extinguisherOk: formData.get("extinguisherOk"),
-      documentsOk: formData.get("documentsOk"),
-      bodyworkOk: formData.get("bodyworkOk"),
-      cleanlinessOk: formData.get("cleanlinessOk")
+      incidentReported: optionalField(formData, "incidentReported"),
+      frontLightsOk: optionalField(formData, "frontLightsOk"),
+      rearLightsOk: optionalField(formData, "rearLightsOk"),
+      tiresOk: optionalField(formData, "tiresOk"),
+      brakesOk: optionalField(formData, "brakesOk"),
+      mirrorsOk: optionalField(formData, "mirrorsOk"),
+      hornOk: optionalField(formData, "hornOk"),
+      fluidsOk: optionalField(formData, "fluidsOk"),
+      jackOk: optionalField(formData, "jackOk"),
+      spareTireOk: optionalField(formData, "spareTireOk"),
+      extinguisherOk: optionalField(formData, "extinguisherOk"),
+      documentsOk: optionalField(formData, "documentsOk"),
+      bodyworkOk: optionalField(formData, "bodyworkOk"),
+      cleanlinessOk: optionalField(formData, "cleanlinessOk")
     });
 
     if (!parsed.success) return { error: "Datos inválidos para el checklist.", success: "" };
