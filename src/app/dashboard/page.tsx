@@ -1,11 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
 import { getCampWeatherSummary } from "@/lib/weather";
-import { logoutAction } from "./actions";
-import { NotificationBell } from "@/components/notification-bell";
+import { AppShell } from "@/components/app-shell";
 
 export default async function DashboardPage({ searchParams }: { searchParams?: { campId?: string | string[] } }) {
   const user = await requireRole(OPERATION_ROLES);
@@ -314,76 +312,32 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
   ];
 
-  const dashboardNavItems = [
-    { href: "/dashboard", label: "Dashboard", active: true },
-    ...(!canSeeAdminSections
-      ? [
-          { href: "/carga-diaria", label: "Informe diario", active: false },
-          { href: "/control-tareas-diarias", label: "Control tareas", active: false }
-        ]
-      : []),
-    ...(canSeeAdminSections ? [{ href: "/administracion", label: "Administración", active: false }] : [])
-  ];
-
   return (
-    <main className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <div className="dashboard-sidebar-card">
-          <Link href="/" aria-label="Ir al inicio" className="dashboard-brand">
-            <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={112} height={112} priority />
-            <div>
-              <strong>Nomade Control</strong>
-              <span>{scopedSelectedCampId ? scopeCamps[0]?.name ?? "Campamento" : "Vista general"}</span>
-            </div>
-          </Link>
-
-          <nav className="dashboard-nav">
-            {dashboardNavItems.map((item) => (
-              <Link key={item.href} href={item.href} className={`dashboard-nav-link ${item.active ? "active" : ""}`}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="dashboard-sidebar-footer">
-            <Link href="/mi-perfil" className="dashboard-mini-link">
-              Mi perfil
-            </Link>
-            <form action={logoutAction}>
-              <button className="danger" type="submit">
-                Cerrar sesión
-              </button>
-            </form>
-          </div>
-        </div>
-      </aside>
-
-      <section className="dashboard-main">
-        <div className="dashboard-topbar">
-          <div>
-            <h1>Dashboard</h1>
-          </div>
-          <div className="dashboard-topbar-actions">
-            {canSeeAdminSections ? (
-              <form method="get" className="dashboard-filter">
-                <label htmlFor="campId" className="sr-only">
-                  Campamento
-                </label>
-                <select id="campId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
-                  <option value="general">Todos</option>
-                  {camps.map((camp) => (
-                    <option key={camp.id} value={camp.id}>
-                      {camp.name}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit">Ver</button>
-              </form>
-            ) : null}
-            <NotificationBell items={notificationItems} />
-            <div className="dashboard-user">{user.name}</div>
-          </div>
-        </div>
+    <AppShell
+      title="Dashboard"
+      user={user}
+      activeNav="dashboard"
+      showAdminSections={canSeeAdminSections}
+      notifications={notificationItems}
+      rightSlot={
+        canSeeAdminSections ? (
+          <form method="get" className="dashboard-filter">
+            <label htmlFor="campId" className="sr-only">
+              Campamento
+            </label>
+            <select id="campId" name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
+              <option value="general">Todos</option>
+              {camps.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name}
+                </option>
+              ))}
+            </select>
+            <button type="submit">Ver</button>
+          </form>
+        ) : undefined
+      }
+    >
 
         <div className="dashboard-kpi-grid">
           <div className="dashboard-kpi accent" title={`${reportsTodayScoped.length} informes cargados ayer · ${missingCampsToday.length} pendientes`}>
@@ -683,7 +637,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
           </section>
         </div>
-      </section>
-    </main>
+    </AppShell>
   );
 }
