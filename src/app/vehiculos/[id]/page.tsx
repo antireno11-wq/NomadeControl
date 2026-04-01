@@ -63,7 +63,9 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
           <div className={`dashboard-kpi ${health.tone === "danger" ? "accent" : health.tone === "warn" ? "teal" : ""}`}>
             <div className="dashboard-kpi-label">Estado general</div>
             <div className="dashboard-kpi-value" style={{ fontSize: "1.5rem" }}>{health.label}</div>
-            <div className="dashboard-kpi-meta">{vehicle.status.replaceAll("_", " ")}</div>
+            <div className="dashboard-kpi-meta">
+              {vehicle.status.replaceAll("_", " ")} · {vehicle.accreditationStatus.replaceAll("_", " ")}
+            </div>
           </div>
           <div className="dashboard-kpi">
             <div className="dashboard-kpi-label">Kilometraje</div>
@@ -85,6 +87,29 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
             <div className="dashboard-kpi-meta">
               {latestChecklist ? `${latestChecklist.driver.name} · ${checklistIssues} observaciones` : "Aún no hay checklist"}
             </div>
+          </div>
+        </div>
+
+        <div className="summary-grid vehicle-summary-grid">
+          <div className="metric">
+            <div className="label">Empresa</div>
+            <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.company ?? "-"}</div>
+          </div>
+          <div className="metric">
+            <div className="label">Proyecto</div>
+            <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.assignedProject?.name ?? "Sin proyecto"}</div>
+          </div>
+          <div className="metric">
+            <div className="label">Cert. GPS</div>
+            <div className="value">{vehicle.gpsCertificatePresent ? "Sí" : "No"}</div>
+          </div>
+          <div className="metric">
+            <div className="label">Fotos unidad</div>
+            <div className="value">{vehicle.unitPhotoSet ? "Sí" : "No"}</div>
+          </div>
+          <div className="metric">
+            <div className="label">Revisado por</div>
+            <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.reviewedByName ?? "-"}</div>
           </div>
         </div>
 

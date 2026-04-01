@@ -2,7 +2,7 @@ import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { toInputDateValue } from "@/lib/report-utils";
 import { db } from "@/lib/db";
-import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeVehicleExpiries } from "@/lib/vehicle-status";
+import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
 import { AppShell } from "@/components/app-shell";
 
 export default async function VehiculosPage() {
@@ -70,6 +70,12 @@ export default async function VehiculosPage() {
   const expiredCount = rows.reduce((sum, vehicle) => sum + vehicle.expirySummary.expired.length, 0);
   const upcomingCount = rows.reduce((sum, vehicle) => sum + vehicle.expirySummary.upcoming.length, 0);
   const operationalCount = rows.filter((vehicle) => vehicle.status === "OPERATIVO").length;
+  const accreditationSummary = {
+    acreditado: rows.filter((vehicle) => vehicle.accreditationStatus === "ACREDITADO").length,
+    pendiente: rows.filter((vehicle) => vehicle.accreditationStatus === "PENDIENTE").length,
+    noAcreditado: rows.filter((vehicle) => vehicle.accreditationStatus === "NO_ACREDITADO").length
+  };
+  const documentSummary = summarizeByDocumentType(rows, today);
   const alertVehicles = rows.filter((vehicle) => vehicle.expirySummary.expired.length > 0 || vehicle.checklistIssues > 0).slice(0, 6);
 
   const notifications = alertVehicles.map((vehicle) => ({
@@ -124,6 +130,67 @@ export default async function VehiculosPage() {
           <div className="metric">
             <div className="label">Checklist hoy</div>
             <div className="value">{checklistsToday}</div>
+          </div>
+        </div>
+
+        <div className="vehicle-list-grid">
+          <div className="card">
+            <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
+              <h2>Acreditación</h2>
+              <span className="dashboard-chip small">Estado general</span>
+            </div>
+            <div className="summary-list">
+              <div className="summary-row">
+                <div>
+                  <strong>Acreditados</strong>
+                  <div style={{ color: "var(--muted)" }}>Vehículos listos para operar</div>
+                </div>
+                <span className="status-pill ok">{accreditationSummary.acreditado}</span>
+              </div>
+              <div className="summary-row">
+                <div>
+                  <strong>Pendientes</strong>
+                  <div style={{ color: "var(--muted)" }}>Aún faltan respaldos o revisión</div>
+                </div>
+                <span className="status-pill warn">{accreditationSummary.pendiente}</span>
+              </div>
+              <div className="summary-row">
+                <div>
+                  <strong>No acreditados</strong>
+                  <div style={{ color: "var(--muted)" }}>Fuera de condición documental</div>
+                </div>
+                <span className="status-pill danger">{accreditationSummary.noAcreditado}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card table-card">
+            <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
+              <h2>Resumen por documento</h2>
+              <span className="dashboard-chip small">Vigente / por vencer / vencido</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Documento</th>
+                  <th>Vigente</th>
+                  <th>Por vencer</th>
+                  <th>Vencido</th>
+                  <th>N/A</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documentSummary.map((row) => (
+                  <tr key={row.key}>
+                    <td>{row.label}</td>
+                    <td>{row.vigente}</td>
+                    <td>{row.porVencer}</td>
+                    <td>{row.vencido}</td>
+                    <td>{row.na}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -191,6 +258,7 @@ export default async function VehiculosPage() {
                       <td>
                         {vehicle.brand} {vehicle.model}
                         <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{vehicle.odometerKm.toLocaleString("es-CL")} km</div>
+                        <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{vehicle.company ?? "Sin empresa"}</div>
                       </td>
                       <td>
                         {vehicle.assignedCamp?.name ?? "Sin campamento"}
@@ -202,6 +270,9 @@ export default async function VehiculosPage() {
                         <span className={`status-pill ${vehicle.health.tone === "danger" ? "danger" : vehicle.health.tone === "warn" ? "warn" : "ok"}`}>
                           {vehicle.health.label}
                         </span>
+                        <div style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 6 }}>
+                          {vehicle.accreditationStatus.replaceAll("_", " ")}
+                        </div>
                       </td>
                       <td>{alertText}</td>
                       <td>

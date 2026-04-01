@@ -17,12 +17,14 @@ type ProjectOption = {
 type VehicleSnapshot = {
   id: string;
   plate: string;
+  company: string | null;
   internalCode: string | null;
   brand: string;
   model: string;
   year: number | null;
   type: string;
   status: string;
+  accreditationStatus: string;
   odometerKm: number;
   assignedCampId: string | null;
   assignedProjectId: string | null;
@@ -36,6 +38,12 @@ type VehicleSnapshot = {
   insuranceDue: Date | null;
   extinguisherDue: Date | null;
   gpsInstalled: boolean;
+  gpsCertificatePresent: boolean;
+  unitPhotoSet: boolean;
+  winterKitPhotoSet: boolean;
+  uvProtectionCertificate: boolean;
+  reviewedByName: string | null;
+  reviewedAt: Date | null;
   notes: string | null;
 };
 
@@ -76,6 +84,10 @@ export function VehicleForm({
         <input id="vehicle-plate" name="plate" defaultValue={vehicle?.plate ?? ""} placeholder="ABCD12" required />
       </div>
       <div>
+        <label htmlFor="vehicle-company">Empresa</label>
+        <input id="vehicle-company" name="company" defaultValue={vehicle?.company ?? ""} placeholder="Nómade Chile" />
+      </div>
+      <div>
         <label htmlFor="vehicle-code">Código interno</label>
         <input id="vehicle-code" name="internalCode" defaultValue={vehicle?.internalCode ?? ""} placeholder="VH-001" />
       </div>
@@ -109,6 +121,14 @@ export function VehicleForm({
           <option value="OPERATIVO">Operativo</option>
           <option value="MANTENCION">Mantención</option>
           <option value="FUERA_DE_SERVICIO">Fuera de servicio</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="vehicle-accreditation">Estatus de acreditación</label>
+        <select id="vehicle-accreditation" name="accreditationStatus" defaultValue={vehicle?.accreditationStatus ?? "PENDIENTE"}>
+          <option value="ACREDITADO">Acreditado</option>
+          <option value="PENDIENTE">Pendiente</option>
+          <option value="NO_ACREDITADO">No acreditado</option>
         </select>
       </div>
       <div>
@@ -178,6 +198,38 @@ export function VehicleForm({
           <input type="checkbox" name="gpsInstalled" defaultChecked={vehicle?.gpsInstalled ?? false} />
           GPS instalado
         </label>
+      </div>
+      <div className="vehicle-inline-option">
+        <label>
+          <input type="checkbox" name="gpsCertificatePresent" defaultChecked={vehicle?.gpsCertificatePresent ?? false} />
+          Certificado de GPS
+        </label>
+      </div>
+      <div className="vehicle-inline-option">
+        <label>
+          <input type="checkbox" name="unitPhotoSet" defaultChecked={vehicle?.unitPhotoSet ?? false} />
+          Detalle fotográfico unidad
+        </label>
+      </div>
+      <div className="vehicle-inline-option">
+        <label>
+          <input type="checkbox" name="winterKitPhotoSet" defaultChecked={vehicle?.winterKitPhotoSet ?? false} />
+          Caja de invierno fotografiada
+        </label>
+      </div>
+      <div className="vehicle-inline-option">
+        <label>
+          <input type="checkbox" name="uvProtectionCertificate" defaultChecked={vehicle?.uvProtectionCertificate ?? false} />
+          Certificado láminas UV
+        </label>
+      </div>
+      <div>
+        <label htmlFor="vehicle-reviewed-by">Revisado por</label>
+        <input id="vehicle-reviewed-by" name="reviewedByName" defaultValue={vehicle?.reviewedByName ?? ""} />
+      </div>
+      <div>
+        <label htmlFor="vehicle-reviewed-at">Fecha revisión</label>
+        <input id="vehicle-reviewed-at" name="reviewedAt" type="date" defaultValue={asDateValue(vehicle?.reviewedAt)} />
       </div>
       <div style={{ gridColumn: "1 / -1" }}>
         <label htmlFor="vehicle-notes">Observaciones</label>

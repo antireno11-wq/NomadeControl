@@ -15,12 +15,14 @@ const optionalDate = z.string().optional().transform((value) => {
 
 const vehicleSchema = z.object({
   plate: z.string().trim().min(5),
+  company: z.string().trim().optional(),
   internalCode: z.string().trim().optional(),
   brand: z.string().trim().min(2),
   model: z.string().trim().min(1),
   year: z.coerce.number().int().min(1990).max(2100).optional(),
   type: z.string().trim().min(2),
   status: z.enum(["OPERATIVO", "MANTENCION", "FUERA_DE_SERVICIO"]),
+  accreditationStatus: z.enum(["ACREDITADO", "PENDIENTE", "NO_ACREDITADO"]),
   odometerKm: z.coerce.number().int().min(0),
   assignedCampId: z.string().optional(),
   assignedProjectId: z.string().optional(),
@@ -34,6 +36,12 @@ const vehicleSchema = z.object({
   insuranceDue: optionalDate,
   extinguisherDue: optionalDate,
   gpsInstalled: z.string().optional(),
+  gpsCertificatePresent: z.string().optional(),
+  unitPhotoSet: z.string().optional(),
+  winterKitPhotoSet: z.string().optional(),
+  uvProtectionCertificate: z.string().optional(),
+  reviewedByName: z.string().trim().optional(),
+  reviewedAt: optionalDate,
   notes: z.string().trim().optional()
 });
 
@@ -43,6 +51,7 @@ const updateVehicleSchema = vehicleSchema.extend({
 
 const vehicleDocumentSchema = z.object({
   vehicleId: z.string().min(1),
+  documentType: z.string().trim().min(2),
   name: z.string().trim().min(2),
   number: z.string().trim().optional(),
   issuer: z.string().trim().optional(),
@@ -97,12 +106,14 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
 
     const parsed = vehicleSchema.safeParse({
       plate: formData.get("plate"),
+      company: String(formData.get("company") ?? ""),
       internalCode: String(formData.get("internalCode") ?? ""),
       brand: formData.get("brand"),
       model: formData.get("model"),
       year: formData.get("year") === "" ? undefined : formData.get("year"),
       type: formData.get("type"),
       status: formData.get("status"),
+      accreditationStatus: formData.get("accreditationStatus"),
       odometerKm: formData.get("odometerKm"),
       assignedCampId: optionalField(formData, "assignedCampId"),
       assignedProjectId: optionalField(formData, "assignedProjectId"),
@@ -116,6 +127,12 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
       insuranceDue: String(formData.get("insuranceDue") ?? ""),
       extinguisherDue: String(formData.get("extinguisherDue") ?? ""),
       gpsInstalled: optionalField(formData, "gpsInstalled"),
+      gpsCertificatePresent: optionalField(formData, "gpsCertificatePresent"),
+      unitPhotoSet: optionalField(formData, "unitPhotoSet"),
+      winterKitPhotoSet: optionalField(formData, "winterKitPhotoSet"),
+      uvProtectionCertificate: optionalField(formData, "uvProtectionCertificate"),
+      reviewedByName: String(formData.get("reviewedByName") ?? ""),
+      reviewedAt: String(formData.get("reviewedAt") ?? ""),
       notes: String(formData.get("notes") ?? "")
     });
 
@@ -130,12 +147,14 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
     await db.vehicle.create({
       data: {
         plate,
+        company: payload.company || null,
         internalCode: payload.internalCode || null,
         brand: payload.brand,
         model: payload.model,
         year: payload.year ?? null,
         type: payload.type,
         status: payload.status,
+        accreditationStatus: payload.accreditationStatus,
         odometerKm: payload.odometerKm,
         assignedCampId: normalizedCampId(payload.assignedCampId),
         assignedProjectId: normalizedProjectId(payload.assignedProjectId),
@@ -149,6 +168,12 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
         insuranceDue: payload.insuranceDue,
         extinguisherDue: payload.extinguisherDue,
         gpsInstalled: checked(payload.gpsInstalled),
+        gpsCertificatePresent: checked(payload.gpsCertificatePresent),
+        unitPhotoSet: checked(payload.unitPhotoSet),
+        winterKitPhotoSet: checked(payload.winterKitPhotoSet),
+        uvProtectionCertificate: checked(payload.uvProtectionCertificate),
+        reviewedByName: payload.reviewedByName || null,
+        reviewedAt: payload.reviewedAt,
         notes: payload.notes || null
       }
     });
@@ -168,12 +193,14 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
     const parsed = updateVehicleSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
       plate: formData.get("plate"),
+      company: String(formData.get("company") ?? ""),
       internalCode: String(formData.get("internalCode") ?? ""),
       brand: formData.get("brand"),
       model: formData.get("model"),
       year: formData.get("year") === "" ? undefined : formData.get("year"),
       type: formData.get("type"),
       status: formData.get("status"),
+      accreditationStatus: formData.get("accreditationStatus"),
       odometerKm: formData.get("odometerKm"),
       assignedCampId: optionalField(formData, "assignedCampId"),
       assignedProjectId: optionalField(formData, "assignedProjectId"),
@@ -187,6 +214,12 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
       insuranceDue: String(formData.get("insuranceDue") ?? ""),
       extinguisherDue: String(formData.get("extinguisherDue") ?? ""),
       gpsInstalled: optionalField(formData, "gpsInstalled"),
+      gpsCertificatePresent: optionalField(formData, "gpsCertificatePresent"),
+      unitPhotoSet: optionalField(formData, "unitPhotoSet"),
+      winterKitPhotoSet: optionalField(formData, "winterKitPhotoSet"),
+      uvProtectionCertificate: optionalField(formData, "uvProtectionCertificate"),
+      reviewedByName: String(formData.get("reviewedByName") ?? ""),
+      reviewedAt: String(formData.get("reviewedAt") ?? ""),
       notes: String(formData.get("notes") ?? "")
     });
 
@@ -202,12 +235,14 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
       where: { id: payload.vehicleId },
       data: {
         plate,
+        company: payload.company || null,
         internalCode: payload.internalCode || null,
         brand: payload.brand,
         model: payload.model,
         year: payload.year ?? null,
         type: payload.type,
         status: payload.status,
+        accreditationStatus: payload.accreditationStatus,
         odometerKm: payload.odometerKm,
         assignedCampId: normalizedCampId(payload.assignedCampId),
         assignedProjectId: normalizedProjectId(payload.assignedProjectId),
@@ -221,6 +256,12 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
         insuranceDue: payload.insuranceDue,
         extinguisherDue: payload.extinguisherDue,
         gpsInstalled: checked(payload.gpsInstalled),
+        gpsCertificatePresent: checked(payload.gpsCertificatePresent),
+        unitPhotoSet: checked(payload.unitPhotoSet),
+        winterKitPhotoSet: checked(payload.winterKitPhotoSet),
+        uvProtectionCertificate: checked(payload.uvProtectionCertificate),
+        reviewedByName: payload.reviewedByName || null,
+        reviewedAt: payload.reviewedAt,
         notes: payload.notes || null
       }
     });
@@ -239,6 +280,7 @@ export async function addVehicleDocumentAction(_: ActionState, formData: FormDat
 
     const parsed = vehicleDocumentSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
+      documentType: formData.get("documentType"),
       name: formData.get("name"),
       number: String(formData.get("number") ?? ""),
       issuer: String(formData.get("issuer") ?? ""),
@@ -254,6 +296,7 @@ export async function addVehicleDocumentAction(_: ActionState, formData: FormDat
     await db.vehicleDocument.create({
       data: {
         vehicleId: payload.vehicleId,
+        documentType: payload.documentType,
         name: payload.name,
         number: payload.number || null,
         issuer: payload.issuer || null,

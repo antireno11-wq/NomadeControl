@@ -210,12 +210,14 @@ model StaffShiftDay {
 model Vehicle {
   id                String            @id @default(cuid())
   plate             String            @unique
+  company           String?
   internalCode      String?
   brand             String
   model             String
   year              Int?
   type              String
   status            String            @default("OPERATIVO")
+  accreditationStatus String         @default("PENDIENTE")
   odometerKm        Int               @default(0)
   assignedCampId    String?
   assignedCamp      Camp?             @relation(fields: [assignedCampId], references: [id], onDelete: SetNull)
@@ -231,6 +233,12 @@ model Vehicle {
   insuranceDue      DateTime?
   extinguisherDue   DateTime?
   gpsInstalled      Boolean           @default(false)
+  gpsCertificatePresent Boolean       @default(false)
+  unitPhotoSet      Boolean           @default(false)
+  winterKitPhotoSet Boolean           @default(false)
+  uvProtectionCertificate Boolean     @default(false)
+  reviewedByName    String?
+  reviewedAt        DateTime?
   notes             String?
   documents         VehicleDocument[]
   checklists        VehicleChecklist[]
@@ -246,6 +254,7 @@ model VehicleDocument {
   id           String    @id @default(cuid())
   vehicleId    String
   vehicle      Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentType String    @default("OTRO")
   name         String
   number       String?
   issuer       String?
