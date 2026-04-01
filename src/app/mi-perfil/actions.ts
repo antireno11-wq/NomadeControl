@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -28,6 +29,18 @@ const shiftRules = {
 } as const;
 
 export type ProfileFormState = { error: string; success: string };
+export type PasswordFormState = { error: string; success: string };
+
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8),
+    confirmPassword: z.string().min(8)
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "La nueva contraseña y la confirmación no coinciden.",
+    path: ["confirmPassword"]
+  });
 
 export async function saveProfileAction(_: ProfileFormState, formData: FormData): Promise<ProfileFormState> {
   const user = await requireRole(OPERATION_ROLES);
@@ -78,4 +91,36 @@ export async function saveProfileAction(_: ProfileFormState, formData: FormData)
 
   revalidatePath("/mi-perfil");
   return { error: "", success: "Perfil actualizado correctamente." };
+}
+
+export async function changeOwnPasswordAction(
+  _: PasswordFormState,
+  formData: FormData
+): Promise<PasswordFormState> {
+  const user = await requireRole(OPERATION_ROLES);
+
+  const parsed = passwordSchema.safeParse({
+    currentPassword: String(formData.get("currentPassword") ?? ""),
+    newPassword: String(formData.get("newPassword") ?? ""),
+    confirmPassword: String(formData.get("confirmPassword") ?? "")
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Verifica la nueva contraseña.", success: "" };
+  }
+
+  const isCurrentPasswordValid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
+  if (!isCurrentPasswordValid) {
+    return { error: "La contraseña actual no es correcta.", success: "" };
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { passwordHash }
+  });
+
+  revalidatePath("/mi-perfil");
+  return { error: "", success: "Contraseña actualizada correctamente." };
 }
