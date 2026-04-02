@@ -243,6 +243,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
   const maxFoodServices = Math.max(1, ...chartDays.map((day) => day.foodServices));
   const totalFoodServices = chartDays.reduce((sum, day) => sum + day.foodServices, 0);
+  const visibleWaterTotal = chartDays.reduce((sum, day) => sum + day.water, 0);
   const chartDayInsights = chartDays.map((day) => ({
     date: day.date,
     waterPerPerson: day.people > 0 ? day.water / day.people : 0,
@@ -412,10 +413,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 </div>
                 <div
                   className="dashboard-mini-metric"
-                  title={`Consumo acumulado de agua calculado desde medidores en el período visible: ${totals.water} L`}
+                  title={`Consumo acumulado de agua calculado desde medidores en el período visible: ${visibleWaterTotal} L`}
                 >
                   <span>Agua acum.</span>
-                  <strong>{totals.water} L</strong>
+                  <strong>{visibleWaterTotal} L</strong>
                 </div>
                 <div className="dashboard-mini-metric" title={tasksSubmitted ? "Control de tareas cargado" : "Control de tareas pendiente"}>
                   <span>Control tareas</span>
