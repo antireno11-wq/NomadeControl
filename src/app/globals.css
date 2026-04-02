@@ -841,6 +841,12 @@ th {
   color: #186a3b;
 }
 
+.report-save-feedback {
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .header {
   display: flex;
   justify-content: space-between;

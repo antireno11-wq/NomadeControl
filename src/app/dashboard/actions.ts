@@ -190,5 +190,5 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
   revalidatePath("/hsec");
-  return { error: "", success: "Reporte guardado correctamente." };
+  return { error: "", success: `Informe diario del ${payload.date} guardado correctamente.` };
 }

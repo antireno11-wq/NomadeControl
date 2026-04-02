@@ -27,6 +27,8 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
   return (
     <form action={formAction} className="card grid">
       <h2 style={{ margin: 0 }}>Informe diario</h2>
+      {state?.error ? <div className="alert error report-save-feedback">{state.error}</div> : null}
+      {state?.success ? <div className="alert success report-save-feedback">{state.success}</div> : null}
 
       <section className="report-section">
         <h3 className="section-title">Contexto Diario</h3>
@@ -253,9 +255,6 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
         <label htmlFor="notes">Observaciones</label>
         <textarea id="notes" name="notes" placeholder="Novedades del día..." />
       </div>
-
-      {state?.error ? <div className="alert error">{state.error}</div> : null}
-      {state?.success ? <div className="alert success">{state.success}</div> : null}
 
       <SaveButton />
     </form>

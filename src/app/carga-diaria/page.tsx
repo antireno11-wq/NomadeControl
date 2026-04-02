@@ -56,6 +56,20 @@ export default async function CargaDiariaPage() {
         severity: "warning" as const
       }))
   ];
+  const recentDatesLoaded = Array.from(
+    new Map(
+      recentReports.map((report) => [
+        `${report.campId}-${toInputDateValue(report.date)}`,
+        {
+          id: report.id,
+          date: toInputDateValue(report.date),
+          campName: report.camp.name,
+          createdBy: report.createdBy.name,
+          peopleCount: report.peopleCount
+        }
+      ])
+    ).values()
+  ).slice(0, 7);
 
   return (
     <AppShell
@@ -108,6 +122,27 @@ export default async function CargaDiariaPage() {
               );
             })}
             {camps.length === 0 ? <div className="alert error">No hay campamento asignado o activo para este usuario.</div> : null}
+          </div>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Últimas fechas guardadas</h2>
+          <div className="section-caption" style={{ marginBottom: 12 }}>
+            Revisa aquí si el informe del día quedó realmente guardado antes de salir.
+          </div>
+          <div className="summary-list">
+            {recentDatesLoaded.map((row) => (
+              <div key={row.id} className="summary-row">
+                <div>
+                  <strong>{row.date}</strong>
+                  <div style={{ color: "var(--muted)" }}>
+                    {row.campName} · {row.peopleCount} personas · cargado por {row.createdBy}
+                  </div>
+                </div>
+                <span className="status-pill ok">Guardado</span>
+              </div>
+            ))}
+            {recentDatesLoaded.length === 0 ? <div className="alert error">Aún no hay informes guardados para mostrar.</div> : null}
           </div>
         </div>
 
