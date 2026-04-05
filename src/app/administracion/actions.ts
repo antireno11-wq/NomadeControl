@@ -59,6 +59,13 @@ const updateCampSchema = z.object({
   isActive: z.string().optional()
 });
 
+const updateCampShiftSchema = z.object({
+  campId: z.string().min(1),
+  supervisorId: z.string().min(1),
+  shiftPattern: z.enum(["14x14", "10x10", "7x7", "4x3"]),
+  shiftStartDate: z.string().min(1)
+});
+
 const deleteCampSchema = z.object({
   campId: z.string().min(1)
 });
@@ -443,6 +450,74 @@ export async function updateCampAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
   redirect("/administracion?campStatus=updated");
+}
+
+export async function updateCampShiftAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+
+  const parsed = updateCampShiftSchema.safeParse({
+    campId: formData.get("campId"),
+    supervisorId: formData.get("supervisorId"),
+    shiftPattern: formData.get("shiftPattern"),
+    shiftStartDate: formData.get("shiftStartDate")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Datos inválidos para iniciar nuevo turno.");
+  }
+
+  const payload = parsed.data;
+  const shiftRules = {
+    "14x14": { work: 14, off: 14 },
+    "10x10": { work: 10, off: 10 },
+    "7x7": { work: 7, off: 7 },
+    "4x3": { work: 4, off: 3 }
+  } as const;
+
+  const supervisor = await db.user.findFirst({
+    where: {
+      id: payload.supervisorId,
+      isActive: true,
+      role: { in: ["SUPERVISOR", "OPERADOR"] },
+      campId: payload.campId
+    },
+    select: { id: true, name: true }
+  });
+
+  if (!supervisor) {
+    throw new Error("El supervisor seleccionado no pertenece a este campamento.");
+  }
+
+  const shiftRule = shiftRules[payload.shiftPattern];
+  const shiftStartDate = new Date(`${payload.shiftStartDate}T00:00:00.000Z`);
+
+  await db.$transaction([
+    db.user.update({
+      where: { id: supervisor.id },
+      data: {
+        shiftPattern: payload.shiftPattern,
+        shiftWorkDays: shiftRule.work,
+        shiftOffDays: shiftRule.off,
+        shiftStartDate
+      }
+    }),
+    db.camp.update({
+      where: { id: payload.campId },
+      data: {
+        currentShiftSupervisorId: supervisor.id,
+        currentShiftSupervisorName: supervisor.name,
+        currentShiftPattern: payload.shiftPattern,
+        currentShiftWorkDays: shiftRule.work,
+        currentShiftOffDays: shiftRule.off,
+        currentShiftStartDate: shiftStartDate
+      }
+    })
+  ]);
+
+  revalidatePath("/administracion");
+  revalidatePath(`/administracion/campamentos/${payload.campId}`);
+  revalidatePath("/dashboard");
+  redirect(`/administracion/campamentos/${payload.campId}?shiftStatus=updated`);
 }
 
 export async function deleteCampAction(formData: FormData) {

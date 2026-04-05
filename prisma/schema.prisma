@@ -56,6 +56,12 @@ model Camp {
   longitude Float?
   capacityPeople Int      @default(0)
   isActive  Boolean       @default(true)
+  currentShiftSupervisorId String?
+  currentShiftSupervisorName String?
+  currentShiftPattern String?
+  currentShiftWorkDays Int?
+  currentShiftOffDays Int?
+  currentShiftStartDate DateTime?
   users     User[]
   reports   DailyReport[]
   dailyTaskControls DailyTaskControl[]

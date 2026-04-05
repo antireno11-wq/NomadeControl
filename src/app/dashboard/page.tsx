@@ -208,7 +208,25 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           shiftStartDate: user.shiftStartDate
         }
       : shiftCampId
-        ? campShiftUsers.find((candidate) => candidate.campId === shiftCampId) ?? null
+        ? (() => {
+            const selectedCamp = scopeCamps.find((camp) => camp.id === shiftCampId);
+            if (
+              selectedCamp?.currentShiftSupervisorId &&
+              selectedCamp.currentShiftStartDate &&
+              selectedCamp.currentShiftWorkDays &&
+              selectedCamp.currentShiftOffDays
+            ) {
+              return {
+                name: selectedCamp.currentShiftSupervisorName ?? "Turno actual",
+                shiftPattern: selectedCamp.currentShiftPattern ?? "14x14",
+                shiftWorkDays: selectedCamp.currentShiftWorkDays,
+                shiftOffDays: selectedCamp.currentShiftOffDays,
+                shiftStartDate: selectedCamp.currentShiftStartDate
+              };
+            }
+
+            return campShiftUsers.find((candidate) => candidate.campId === shiftCampId) ?? null;
+          })()
         : null;
 
   let chartDays = defaultChartDays;
