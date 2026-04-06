@@ -487,6 +487,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <span>Control tareas</span>
                   <strong className={tasksSubmitted ? "up" : "warn"}>{tasksSubmitted ? "✓" : "!"}</strong>
                 </div>
+                <div className="dashboard-mini-metric" title={`Uso promedio del estanque de aguas negras: ${blackTankAvgToday.toFixed(0)}%`}>
+                  <span>Aguas negras</span>
+                  <strong>{blackTankAvgToday.toFixed(0)}%</strong>
+                </div>
                 <div className="dashboard-mini-metric" title={`Promedio llenado basura: ${wasteAvg.toFixed(0)}%`}>
                   <span>Basura</span>
                   <strong>{wasteAvg.toFixed(0)}%</strong>
@@ -497,7 +501,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
 
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
-              <h2>Clima y alertas</h2>
+              <h2>Clima</h2>
               <span className="dashboard-chip small">{weatherCamp ? weatherCamp.name : "General"}</span>
             </div>
             <div className="dashboard-mini-stack">
@@ -525,27 +529,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                         : "Selecciona campamento"}
                 </strong>
               </div>
-              <div className="dashboard-mini-metric">
-                <span>Estanque negras</span>
-                <strong>{blackTankAvgToday.toFixed(0)}%</strong>
-              </div>
             </div>
             {weatherCamp && !weatherCamp.location ? (
               <div className="section-caption" style={{ marginTop: 12 }}>
                 Agrega la ubicación del campamento para obtener la temperatura automáticamente.
               </div>
             ) : null}
-            <div className="dashboard-status-list" style={{ marginTop: 12 }}>
-              {notificationItems.slice(0, 4).map((item) => (
-                <div key={item.text} className="dashboard-status-row">
-                  <span>{item.text}</span>
-                  <span className={`status-pill ${item.severity === "error" ? "danger" : item.severity === "warning" ? "warn" : "ok"}`}>
-                    {item.severity === "error" ? "Alta" : item.severity === "warning" ? "Media" : "Info"}
-                  </span>
-                </div>
-              ))}
-              {notificationItems.length === 0 ? <div className="section-caption">Sin alertas relevantes ayer.</div> : null}
-            </div>
           </section>
         </div>
 
