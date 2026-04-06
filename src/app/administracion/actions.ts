@@ -42,6 +42,7 @@ const createCampSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180).optional(),
   potableWaterTankCapacityM3: z.coerce.number().min(0).optional(),
   blackWaterTankCapacityM3: z.coerce.number().min(0).optional(),
+  greyWaterTankCapacityM3: z.coerce.number().min(0).optional(),
   capacityPeople: z.coerce.number().int().min(0)
 });
 
@@ -59,6 +60,7 @@ const updateCampSchema = z.object({
   longitude: z.coerce.number().min(-180).max(180).optional(),
   potableWaterTankCapacityM3: z.coerce.number().min(0).optional(),
   blackWaterTankCapacityM3: z.coerce.number().min(0).optional(),
+  greyWaterTankCapacityM3: z.coerce.number().min(0).optional(),
   capacityPeople: z.coerce.number().int().min(0),
   isActive: z.string().optional()
 });
@@ -356,6 +358,8 @@ export async function createCampAction(formData: FormData) {
       formData.get("potableWaterTankCapacityM3") === "" ? undefined : formData.get("potableWaterTankCapacityM3"),
     blackWaterTankCapacityM3:
       formData.get("blackWaterTankCapacityM3") === "" ? undefined : formData.get("blackWaterTankCapacityM3"),
+    greyWaterTankCapacityM3:
+      formData.get("greyWaterTankCapacityM3") === "" ? undefined : formData.get("greyWaterTankCapacityM3"),
     capacityPeople: formData.get("capacityPeople")
   });
 
@@ -376,6 +380,7 @@ export async function createCampAction(formData: FormData) {
       longitude: payload.longitude ?? inferredCoordinates?.longitude ?? null,
       potableWaterTankCapacityM3: payload.potableWaterTankCapacityM3 ?? null,
       blackWaterTankCapacityM3: payload.blackWaterTankCapacityM3 ?? null,
+      greyWaterTankCapacityM3: payload.greyWaterTankCapacityM3 ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: true
     }
@@ -434,6 +439,8 @@ export async function updateCampAction(formData: FormData) {
       formData.get("potableWaterTankCapacityM3") === "" ? undefined : formData.get("potableWaterTankCapacityM3"),
     blackWaterTankCapacityM3:
       formData.get("blackWaterTankCapacityM3") === "" ? undefined : formData.get("blackWaterTankCapacityM3"),
+    greyWaterTankCapacityM3:
+      formData.get("greyWaterTankCapacityM3") === "" ? undefined : formData.get("greyWaterTankCapacityM3"),
     capacityPeople: formData.get("capacityPeople"),
     isActive: formData.get("isActive")
   });
@@ -457,6 +464,7 @@ export async function updateCampAction(formData: FormData) {
       longitude: payload.longitude ?? inferredCoordinates?.longitude ?? null,
       potableWaterTankCapacityM3: payload.potableWaterTankCapacityM3 ?? null,
       blackWaterTankCapacityM3: payload.blackWaterTankCapacityM3 ?? null,
+      greyWaterTankCapacityM3: payload.greyWaterTankCapacityM3 ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: payload.isActive === "on"
     }

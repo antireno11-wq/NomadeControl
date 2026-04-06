@@ -122,6 +122,17 @@ export default async function EditarCampamentoPage({
               />
             </div>
             <div>
+              <label htmlFor="camp-grey-capacity-edit">Capacidad estanque aguas grises (m3)</label>
+              <input
+                id="camp-grey-capacity-edit"
+                name="greyWaterTankCapacityM3"
+                type="number"
+                min={0}
+                step="0.1"
+                defaultValue={camp.greyWaterTankCapacityM3 ?? ""}
+              />
+            </div>
+            <div>
               <label htmlFor="camp-latitude-edit">Latitud</label>
               <input
                 id="camp-latitude-edit"

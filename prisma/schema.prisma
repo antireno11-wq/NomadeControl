@@ -72,6 +72,7 @@ model Camp {
   capacityPeople Int      @default(0)
   potableWaterTankCapacityM3 Float? 
   blackWaterTankCapacityM3 Float?
+  greyWaterTankCapacityM3 Float?
   isActive  Boolean       @default(true)
   currentShiftSupervisorId String?
   currentShiftSupervisorName String?
