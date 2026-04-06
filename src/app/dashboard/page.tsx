@@ -298,6 +298,28 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const waterDiffLabel = waterDiff === 0 ? "Sin cambio" : `${waterDiff > 0 ? "+" : ""}${waterDiff} L`;
   const reportSubmitted = scopeCamps.length > 0 && missingCampsToday.length === 0;
   const tasksSubmitted = scopeCamps.length > 0 && missingTaskControlsToday.length === 0;
+  const latestReportByCamp = new Map(reportsTodayScoped.map((report) => [report.campId, report]));
+  const avgVisibleWaterPerDay = chartDays.length > 0 ? visibleWaterTotal / chartDays.length : 0;
+  const visibleFuelTotal = chartDays.reduce((sum, day) => sum + day.fuel, 0);
+  const avgVisibleFuelPerDay = chartDays.length > 0 ? visibleFuelTotal / chartDays.length : 0;
+  const waterRemainingLiters = scopeCamps.reduce((sum, camp) => {
+    const latestReport = latestReportByCamp.get(camp.id);
+    const capacityLiters = (camp.potableWaterTankCapacityM3 ?? 0) * 1000;
+    if (!latestReport || capacityLiters <= 0) return sum;
+    return sum + Math.round((latestReport.potableWaterTankLevelPercent / 100) * capacityLiters);
+  }, 0);
+  const blackRemainingLiters = scopeCamps.reduce((sum, camp) => {
+    const latestReport = latestReportByCamp.get(camp.id);
+    const capacityLiters = (camp.blackWaterTankCapacityM3 ?? 0) * 1000;
+    if (!latestReport || capacityLiters <= 0) return sum;
+    return sum + Math.round(((100 - latestReport.blackWaterTankLevelPercent) / 100) * capacityLiters);
+  }, 0);
+  const fuelRemainingLiters = reportsTodayScoped.reduce((sum, report) => sum + report.fuelRemainingLiters, 0);
+  const waterAutonomyDays = avgVisibleWaterPerDay > 0 ? waterRemainingLiters / avgVisibleWaterPerDay : null;
+  const fuelAutonomyDays = avgVisibleFuelPerDay > 0 ? fuelRemainingLiters / avgVisibleFuelPerDay : null;
+  const internetCriticalCount = reportsTodayScoped.filter((report) => report.internetStatus !== "FUNCIONANDO").length;
+  const sanitaryCriticalCount = reportsTodayScoped.filter((report) => report.chlorineLevel < 0.2 || report.chlorineLevel > 1.5 || report.phLevel < 6.5 || report.phLevel > 8.5).length;
+  const criticalStatusCount = internetCriticalCount + sanitaryCriticalCount;
 
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario ayer: ${camp.name}`, severity: "error" as const })),
@@ -359,25 +381,50 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     >
 
         <div className="dashboard-kpi-grid">
-          <div className="dashboard-kpi accent" title={`${reportsTodayScoped.length} informes cargados ayer · ${missingCampsToday.length} pendientes`}>
-            <div className="dashboard-kpi-label">Informes ayer</div>
-            <div className="dashboard-kpi-value">{reportsTodayScoped.length}</div>
+          <div
+            className={`dashboard-kpi ${waterAutonomyDays != null && waterAutonomyDays < 2 ? "accent" : "teal"}`}
+            title={`Agua restante estimada: ${waterRemainingLiters} L · Promedio visible ${avgVisibleWaterPerDay.toFixed(0)} L/día`}
+          >
+            <div className="dashboard-kpi-label">Agua restante</div>
+            <div className="dashboard-kpi-value">{waterRemainingLiters.toLocaleString("es-CL")} L</div>
+            <div className="dashboard-kpi-meta">
+              {waterAutonomyDays != null ? `${waterAutonomyDays.toFixed(1)} días aprox.` : "Falta capacidad o nivel"}
+            </div>
+          </div>
+          <div
+            className={`dashboard-kpi ${blackRemainingLiters < 5000 && blackRemainingLiters > 0 ? "accent" : ""}`}
+            title={`Capacidad libre en estanques de aguas negras: ${blackRemainingLiters} L`}
+          >
+            <div className="dashboard-kpi-label">Aguas negras libres</div>
+            <div className="dashboard-kpi-value">{blackRemainingLiters.toLocaleString("es-CL")} L</div>
+            <div className="dashboard-kpi-meta">espacio disponible</div>
+          </div>
+          <div
+            className={`dashboard-kpi ${fuelAutonomyDays != null && fuelAutonomyDays < 2 ? "accent" : ""}`}
+            title={`Combustible restante estimado: ${fuelRemainingLiters} L · Promedio visible ${avgVisibleFuelPerDay.toFixed(0)} L/día`}
+          >
+            <div className="dashboard-kpi-label">Combustible restante</div>
+            <div className="dashboard-kpi-value">{fuelRemainingLiters.toLocaleString("es-CL")} L</div>
+            <div className="dashboard-kpi-meta">
+              {fuelAutonomyDays != null ? `${fuelAutonomyDays.toFixed(1)} días aprox.` : "Falta consumo visible"}
+            </div>
+          </div>
+          <div className={`dashboard-kpi ${reportSubmitted ? "teal" : "accent"}`} title={`${reportsTodayScoped.length} informes cargados ayer · ${missingCampsToday.length} pendientes`}>
+            <div className="dashboard-kpi-label">Informe diario</div>
+            <div className="dashboard-kpi-value">{reportSubmitted ? "OK" : "Falta"}</div>
             <div className="dashboard-kpi-meta">{missingCampsToday.length} pendientes</div>
           </div>
-          <div className="dashboard-kpi teal" title={`${taskControlsTodayScoped.length} controles cargados ayer · ${missingTaskControlsToday.length} pendientes`}>
-            <div className="dashboard-kpi-label">Tareas ayer</div>
-            <div className="dashboard-kpi-value">{taskControlsTodayScoped.length}</div>
+          <div className={`dashboard-kpi ${tasksSubmitted ? "teal" : "accent"}`} title={`${taskControlsTodayScoped.length} controles cargados ayer · ${missingTaskControlsToday.length} pendientes`}>
+            <div className="dashboard-kpi-label">Control tareas</div>
+            <div className="dashboard-kpi-value">{tasksSubmitted ? "OK" : "Falta"}</div>
             <div className="dashboard-kpi-meta">{missingTaskControlsToday.length} pendientes</div>
           </div>
-          <div className="dashboard-kpi" title={`${peopleToday} personas registradas ayer · ${mealsToday} raciones entregadas`}>
-            <div className="dashboard-kpi-label">Personas ayer</div>
-            <div className="dashboard-kpi-value">{peopleToday}</div>
-            <div className="dashboard-kpi-meta">{mealsToday} raciones</div>
-          </div>
-          <div className="dashboard-kpi" title={`Diferencia total entre generadores: ${totalGeneratorDiff.toFixed(1)} horas`}>
-            <div className="dashboard-kpi-label">Generadores ayer</div>
-            <div className="dashboard-kpi-value">{totalGeneratorDiff.toFixed(1)}h</div>
-            <div className="dashboard-kpi-meta">diferencia total</div>
+          <div className={`dashboard-kpi ${criticalStatusCount > 0 ? "accent" : ""}`} title={`${internetCriticalCount} problema(s) internet · ${sanitaryCriticalCount} alerta(s) cloro/pH`}>
+            <div className="dashboard-kpi-label">Estado crítico</div>
+            <div className="dashboard-kpi-value">{criticalStatusCount}</div>
+            <div className="dashboard-kpi-meta">
+              {criticalStatusCount > 0 ? `${internetCriticalCount} internet · ${sanitaryCriticalCount} sanitario` : "Sin alertas críticas"}
+            </div>
           </div>
         </div>
 

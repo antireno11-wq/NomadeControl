@@ -100,6 +100,28 @@ export default async function EditarCampamentoPage({
               <input id="camp-capacity-edit" name="capacityPeople" type="number" min={0} defaultValue={camp.capacityPeople} required />
             </div>
             <div>
+              <label htmlFor="camp-potable-capacity-edit">Capacidad estanque agua potable (m3)</label>
+              <input
+                id="camp-potable-capacity-edit"
+                name="potableWaterTankCapacityM3"
+                type="number"
+                min={0}
+                step="0.1"
+                defaultValue={camp.potableWaterTankCapacityM3 ?? ""}
+              />
+            </div>
+            <div>
+              <label htmlFor="camp-black-capacity-edit">Capacidad estanque aguas negras (m3)</label>
+              <input
+                id="camp-black-capacity-edit"
+                name="blackWaterTankCapacityM3"
+                type="number"
+                min={0}
+                step="0.1"
+                defaultValue={camp.blackWaterTankCapacityM3 ?? ""}
+              />
+            </div>
+            <div>
               <label htmlFor="camp-latitude-edit">Latitud</label>
               <input
                 id="camp-latitude-edit"

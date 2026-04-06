@@ -100,6 +100,14 @@ export default async function AdministracionPage({
             <input id="camp-capacity" name="capacityPeople" type="number" min={0} defaultValue={0} required />
           </div>
           <div>
+            <label htmlFor="camp-potable-capacity">Capacidad estanque agua potable (m3)</label>
+            <input id="camp-potable-capacity" name="potableWaterTankCapacityM3" type="number" min={0} step="0.1" />
+          </div>
+          <div>
+            <label htmlFor="camp-black-capacity">Capacidad estanque aguas negras (m3)</label>
+            <input id="camp-black-capacity" name="blackWaterTankCapacityM3" type="number" min={0} step="0.1" />
+          </div>
+          <div>
             <label htmlFor="camp-latitude">Latitud</label>
             <input id="camp-latitude" name="latitude" type="number" step="0.000001" placeholder="-22.334455" />
           </div>

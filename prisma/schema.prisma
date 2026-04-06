@@ -55,6 +55,8 @@ model Camp {
   latitude  Float?
   longitude Float?
   capacityPeople Int      @default(0)
+  potableWaterTankCapacityM3 Float? 
+  blackWaterTankCapacityM3 Float?
   isActive  Boolean       @default(true)
   currentShiftSupervisorId String?
   currentShiftSupervisorName String?
@@ -104,11 +106,13 @@ model DailyReport {
   meterReading          Float   @default(0)
   waterLiters           Int
   fuelLiters     Int
+  fuelRemainingLiters   Int     @default(0)
   generator1Hours       Float   @default(0)
   generator2Hours       Float   @default(0)
   internetStatus        String  @default("FUNCIONANDO")
   blackWaterRemoved     Boolean @default(false)
   blackWaterRemovedM3   Float   @default(0)
+  potableWaterTankLevelPercent Int @default(0)
   blackWaterTankLevelPercent Int @default(0)
   potableWaterDelivered Boolean @default(false)
   potableWaterDeliveredM3 Float @default(0)

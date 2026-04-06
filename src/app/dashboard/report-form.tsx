@@ -132,6 +132,10 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
                 <label htmlFor="fuelLiters">Combustible (litros)</label>
                 <input id="fuelLiters" name="fuelLiters" type="number" min={0} defaultValue={0} required />
               </div>
+              <div>
+                <label htmlFor="fuelRemainingLiters">Combustible restante (litros)</label>
+                <input id="fuelRemainingLiters" name="fuelRemainingLiters" type="number" min={0} defaultValue={0} required />
+              </div>
             </div>
           </div>
 
@@ -154,6 +158,18 @@ export function ReportForm({ camps, defaultDate }: { camps: CampOption[]; defaul
           <div className="report-section">
             <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Agua y saneamiento</h4>
             <div className="grid">
+              <div>
+                <label htmlFor="potableWaterTankLevelPercent">Nivel estanque agua potable (%)</label>
+                <input
+                  id="potableWaterTankLevelPercent"
+                  name="potableWaterTankLevelPercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  defaultValue={0}
+                  required
+                />
+              </div>
               <div>
                 <label htmlFor="blackWaterTankLevelPercent">Utilización estanque aguas negras (%)</label>
                 <input

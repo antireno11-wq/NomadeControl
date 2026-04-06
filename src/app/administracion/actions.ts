@@ -40,6 +40,8 @@ const createCampSchema = z.object({
   location: z.string().trim().optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
+  potableWaterTankCapacityM3: z.coerce.number().min(0).optional(),
+  blackWaterTankCapacityM3: z.coerce.number().min(0).optional(),
   capacityPeople: z.coerce.number().int().min(0)
 });
 
@@ -55,6 +57,8 @@ const updateCampSchema = z.object({
   location: z.string().trim().optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
+  potableWaterTankCapacityM3: z.coerce.number().min(0).optional(),
+  blackWaterTankCapacityM3: z.coerce.number().min(0).optional(),
   capacityPeople: z.coerce.number().int().min(0),
   isActive: z.string().optional()
 });
@@ -348,6 +352,10 @@ export async function createCampAction(formData: FormData) {
     location: String(formData.get("location") ?? ""),
     latitude: formData.get("latitude") === "" ? undefined : formData.get("latitude"),
     longitude: formData.get("longitude") === "" ? undefined : formData.get("longitude"),
+    potableWaterTankCapacityM3:
+      formData.get("potableWaterTankCapacityM3") === "" ? undefined : formData.get("potableWaterTankCapacityM3"),
+    blackWaterTankCapacityM3:
+      formData.get("blackWaterTankCapacityM3") === "" ? undefined : formData.get("blackWaterTankCapacityM3"),
     capacityPeople: formData.get("capacityPeople")
   });
 
@@ -366,6 +374,8 @@ export async function createCampAction(formData: FormData) {
       location: payload.location || null,
       latitude: payload.latitude ?? inferredCoordinates?.latitude ?? null,
       longitude: payload.longitude ?? inferredCoordinates?.longitude ?? null,
+      potableWaterTankCapacityM3: payload.potableWaterTankCapacityM3 ?? null,
+      blackWaterTankCapacityM3: payload.blackWaterTankCapacityM3 ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: true
     }
@@ -420,6 +430,10 @@ export async function updateCampAction(formData: FormData) {
     location: String(formData.get("location") ?? ""),
     latitude: formData.get("latitude") === "" ? undefined : formData.get("latitude"),
     longitude: formData.get("longitude") === "" ? undefined : formData.get("longitude"),
+    potableWaterTankCapacityM3:
+      formData.get("potableWaterTankCapacityM3") === "" ? undefined : formData.get("potableWaterTankCapacityM3"),
+    blackWaterTankCapacityM3:
+      formData.get("blackWaterTankCapacityM3") === "" ? undefined : formData.get("blackWaterTankCapacityM3"),
     capacityPeople: formData.get("capacityPeople"),
     isActive: formData.get("isActive")
   });
@@ -441,6 +455,8 @@ export async function updateCampAction(formData: FormData) {
       location: payload.location || null,
       latitude: payload.latitude ?? inferredCoordinates?.latitude ?? null,
       longitude: payload.longitude ?? inferredCoordinates?.longitude ?? null,
+      potableWaterTankCapacityM3: payload.potableWaterTankCapacityM3 ?? null,
+      blackWaterTankCapacityM3: payload.blackWaterTankCapacityM3 ?? null,
       capacityPeople: payload.capacityPeople,
       isActive: payload.isActive === "on"
     }
