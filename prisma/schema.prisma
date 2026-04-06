@@ -35,6 +35,7 @@ model User {
   stockMovements   StockMovement[]
   staffMembers     StaffMember[]
   vehicleChecklists VehicleChecklist[]
+  alertDeliveries AlertDelivery[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -46,6 +47,20 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model AlertDelivery {
+  id         String   @id @default(cuid())
+  kind       String
+  targetDate DateTime
+  recipientId String?
+  recipient  User?    @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  status     String   @default("SENT")
+  payload    String?
+  createdAt  DateTime @default(now())
+
+  @@unique([kind, targetDate])
+  @@index([targetDate, kind])
 }
 
 model Camp {

@@ -6,6 +6,18 @@ type SendWelcomeEmailInput = {
   campName?: string | null;
 };
 
+type MissingCampInput = {
+  campName: string;
+  missingReport: boolean;
+  missingTasks: boolean;
+};
+
+type SendMissingDailyInputsAlertEmailInput = {
+  to: string[];
+  targetDateLabel: string;
+  missingCamps: MissingCampInput[];
+};
+
 function appUrl() {
   return process.env.APP_URL ?? "https://nomadecontrol-production.up.railway.app";
 }
@@ -43,6 +55,70 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput) {
       from,
       to: [input.to],
       subject: "Acceso a NomadeControl",
+      html
+    })
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Error enviando correo: ${detail}`);
+  }
+}
+
+export async function sendMissingDailyInputsAlertEmail(input: SendMissingDailyInputsAlertEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+
+  if (!apiKey || !from) {
+    throw new Error("Falta configuración de correo: RESEND_API_KEY y/o RESEND_FROM_EMAIL.");
+  }
+
+  if (input.to.length === 0) {
+    throw new Error("No hay destinatarios configurados para la alerta.");
+  }
+
+  const rows = input.missingCamps
+    .map((camp) => {
+      const missingParts = [
+        camp.missingReport ? "Informe diario" : null,
+        camp.missingTasks ? "Control de tareas" : null
+      ].filter(Boolean);
+
+      return `<tr>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${camp.campName}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;">${missingParts.join(" + ")}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const url = appUrl();
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #10212b; line-height:1.5">
+      <h2>Faltan cargas diarias en NomadeControl</h2>
+      <p>Se detectaron campamentos sin carga completa para el día <strong>${input.targetDateLabel}</strong>.</p>
+      <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+        <thead>
+          <tr>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1;">Campamento</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1;">Falta</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p>Revisa la plataforma aquí: <a href="${url}">${url}</a></p>
+    </div>
+  `;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      from,
+      to: input.to,
+      subject: `Alerta NomadeControl: faltan informes del ${input.targetDateLabel}`,
       html
     })
   });
