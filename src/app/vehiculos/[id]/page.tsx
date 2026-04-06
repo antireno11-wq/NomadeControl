@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isAdminRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, summarizeVehicleExpiries } from "@/lib/vehicle-status";
 import { AppShell } from "@/components/app-shell";
@@ -75,14 +75,14 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
           <div className="dashboard-kpi">
             <div className="dashboard-kpi-label">Próximo vencimiento</div>
             <div className="dashboard-kpi-value" style={{ fontSize: "1.45rem" }}>
-              {expirySummary.next ? toInputDateValue(expirySummary.next.expiresAt) : "-"}
+              {expirySummary.next ? formatDisplayDate(expirySummary.next.expiresAt) : "-"}
             </div>
             <div className="dashboard-kpi-meta">{expirySummary.next?.label ?? "Sin documentos cargados"}</div>
           </div>
           <div className="dashboard-kpi">
             <div className="dashboard-kpi-label">Último checklist</div>
             <div className="dashboard-kpi-value" style={{ fontSize: "1.45rem" }}>
-              {latestChecklist ? toInputDateValue(latestChecklist.date) : "-"}
+              {latestChecklist ? formatDisplayDate(latestChecklist.date) : "-"}
             </div>
             <div className="dashboard-kpi-meta">
               {latestChecklist ? `${latestChecklist.driver.name} · ${checklistIssues} observaciones` : "Aún no hay checklist"}
@@ -147,7 +147,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
                     <div key={`${item.label}-${item.expiresAt.toISOString()}`} className="summary-row">
                       <div>
                         <strong>{item.label}</strong>
-                        <div style={{ color: "var(--muted)" }}>{toInputDateValue(item.expiresAt)}</div>
+                        <div style={{ color: "var(--muted)" }}>{formatDisplayDate(item.expiresAt)}</div>
                       </div>
                       <span className={`status-pill ${pillClass}`}>{pillLabel}</span>
                     </div>
@@ -182,7 +182,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
                 const issueCount = getChecklistIssueCount(checklist);
                 return (
                   <tr key={checklist.id}>
-                    <td>{toInputDateValue(checklist.date)}</td>
+                    <td>{formatDisplayDate(checklist.date)}</td>
                     <td>{checklist.driver.name}</td>
                     <td>{checklist.odometerKm.toLocaleString("es-CL")} km</td>
                     <td>{checklist.fuelPercent}%</td>

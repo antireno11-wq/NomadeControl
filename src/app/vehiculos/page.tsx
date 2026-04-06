@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isAdminRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
 import { AppShell } from "@/components/app-shell";
@@ -247,7 +247,7 @@ export default async function VehiculosPage() {
               <tbody>
                 {rows.map((vehicle) => {
                   const alertText = vehicle.topAlert
-                    ? `${vehicle.topAlert.label} · ${toInputDateValue(vehicle.topAlert.expiresAt)}`
+                    ? `${vehicle.topAlert.label} · ${formatDisplayDate(vehicle.topAlert.expiresAt)}`
                     : vehicle.latestChecklist
                       ? `${vehicle.checklistIssues} observación(es)`
                       : "Sin alertas";
@@ -276,7 +276,7 @@ export default async function VehiculosPage() {
                       </td>
                       <td>{alertText}</td>
                       <td>
-                        {vehicle.latestChecklist ? `${toInputDateValue(vehicle.latestChecklist.date)} · ${vehicle.latestChecklist.driver.name}` : "Sin checklist"}
+                        {vehicle.latestChecklist ? `${formatDisplayDate(vehicle.latestChecklist.date)} · ${vehicle.latestChecklist.driver.name}` : "Sin checklist"}
                       </td>
                       <td>
                         <Link href={`/vehiculos/${vehicle.id}`} className="dashboard-mini-link">Abrir</Link>

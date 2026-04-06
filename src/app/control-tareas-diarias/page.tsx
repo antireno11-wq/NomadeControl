@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { AppShell } from "@/components/app-shell";
 import { TasksForm } from "./tasks-form";
 
@@ -201,7 +201,7 @@ export default async function ControlTareasDiariasPage() {
             <tbody>
               {recent.map((row) => (
                 <tr key={row.id}>
-                  <td>{toInputDateValue(row.date)}</td>
+                  <td>{formatDisplayDate(row.date)}</td>
                   <td>{row.camp.name}</td>
                   <td>{row.createdBy.name}</td>
                 </tr>

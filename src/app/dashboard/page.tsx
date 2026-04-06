@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate, formatShortDisplayDateValue, resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
 import { getCampWeatherSummary } from "@/lib/weather";
 import { AppShell } from "@/components/app-shell";
 
@@ -560,12 +560,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 <div
                   key={`p-${day.date}`}
                   className="chart-col chart-tooltip-target"
-                  data-tooltip={`${day.date}: ${day.people} personas`}
+                  data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.people} personas`}
                 >
                   <div className="chart-track tall">
                     <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
                   </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
+                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                 </div>
               ))}
             </div>
@@ -581,12 +581,12 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 <div
                   key={`c-${day.date}`}
                   className="chart-col chart-tooltip-target"
-                  data-tooltip={`${day.date}: ${day.foodServices} servicios entregados`}
+                  data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.foodServices} servicios entregados`}
                 >
                   <div className="chart-track tall">
                     <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
                   </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
+                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                 </div>
               ))}
             </div>
@@ -599,11 +599,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="chart-grid compact">
               {chartDayInsights.map((day) => (
-                <div key={`wp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.waterPerPerson.toFixed(1)} L por persona`}>
+                <div key={`wp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.waterPerPerson.toFixed(1)} L por persona`}>
                   <div className="chart-track tall">
                     <div className="chart-bar water" style={{ height: `${(day.waterPerPerson / maxWaterPerPerson) * 100}%` }} />
                   </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
+                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                 </div>
               ))}
             </div>
@@ -616,11 +616,11 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
             <div className="chart-grid compact">
               {chartDayInsights.map((day) => (
-                <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
+                <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
                   <div className="chart-track tall">
                     <div className="chart-bar fuel" style={{ height: `${(day.fuelPerPerson / maxFuelPerPerson) * 100}%` }} />
                   </div>
-                  <div className="chart-label">{day.date.slice(5)}</div>
+                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                 </div>
               ))}
             </div>
@@ -677,7 +677,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 <tbody>
                   {recentReportsScoped.map((report) => (
                     <tr key={report.id}>
-                      <td>{toInputDateValue(report.date)}</td>
+                      <td>{formatDisplayDate(report.date)}</td>
                       <td>{report.camp.name}</td>
                       <td>{report.peopleCount}</td>
                       <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>

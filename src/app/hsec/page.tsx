@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate } from "@/lib/report-utils";
 import { logoutAction } from "@/app/dashboard/actions";
 import { OpsNav } from "@/components/ops-nav";
 
@@ -88,7 +88,7 @@ export default async function HsecPage() {
               return (
                 <tr key={report.id}>
                   <td>{report.camp.name}</td>
-                  <td>{toInputDateValue(report.date)}</td>
+                  <td>{formatDisplayDate(report.date)}</td>
                   <td>{report.chlorineLevel.toFixed(2)}</td>
                   <td>{report.phLevel.toFixed(2)}</td>
                   <td>{report.wasteFillPercent}%</td>

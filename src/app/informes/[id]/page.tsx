@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate } from "@/lib/report-utils";
 import { AppShell } from "@/components/app-shell";
 
 export default async function InformeDetallePage({ params }: { params: { id: string } }) {
@@ -47,7 +47,7 @@ export default async function InformeDetallePage({ params }: { params: { id: str
         <div className="dashboard-panel">
           <div className="dashboard-panel-header">
             <h2>{report.camp.name}</h2>
-            <span className="dashboard-chip">{toInputDateValue(report.date)}</span>
+            <span className="dashboard-chip">{formatDisplayDate(report.date)}</span>
           </div>
           <div className="summary-grid">
             <div className="metric">

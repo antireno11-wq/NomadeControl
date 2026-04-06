@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { clearSession, isSupervisorRole, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { normalizeDateOnly } from "@/lib/report-utils";
+import { formatDisplayDate, normalizeDateOnly } from "@/lib/report-utils";
 
 const reportSchema = z.object({
   date: z.string().min(1),
@@ -227,14 +227,14 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
 
   if (previousReport && payload.meterReading < previousReport.meterReading) {
     return {
-      error: `La lectura del medidor no puede ser menor a la del ${previousReport.date.toISOString().slice(0, 10)}.`,
+      error: `La lectura del medidor no puede ser menor a la del ${formatDisplayDate(previousReport.date)}.`,
       success: ""
     };
   }
 
   if (nextReport && payload.meterReading > nextReport.meterReading) {
     return {
-      error: `La lectura del medidor no puede ser mayor a la del ${nextReport.date.toISOString().slice(0, 10)} porque desordena el histórico.`,
+      error: `La lectura del medidor no puede ser mayor a la del ${formatDisplayDate(nextReport.date)} porque desordena el histórico.`,
       success: ""
     };
   }

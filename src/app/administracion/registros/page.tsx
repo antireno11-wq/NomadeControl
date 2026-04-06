@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FULL_ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate } from "@/lib/report-utils";
 import { deleteRecordAction } from "../actions";
 
 export default async function AdministracionRegistrosPage() {
@@ -81,7 +81,7 @@ export default async function AdministracionRegistrosPage() {
           <tbody>
             {dailyReports.map((row) => (
               <tr key={row.id}>
-                <td>{toInputDateValue(row.date)}</td>
+                <td>{formatDisplayDate(row.date)}</td>
                 <td>{row.camp.name}</td>
                 <td>{row.peopleCount}</td>
                 <td>{row.createdBy.name}</td>
@@ -119,7 +119,7 @@ export default async function AdministracionRegistrosPage() {
           <tbody>
             {dailyTaskControls.map((row) => (
               <tr key={row.id}>
-                <td>{toInputDateValue(row.date)}</td>
+                <td>{formatDisplayDate(row.date)}</td>
                 <td>{row.camp.name}</td>
                 <td>{row.createdBy.name}</td>
                 <td>
@@ -159,7 +159,7 @@ export default async function AdministracionRegistrosPage() {
           <tbody>
             {stockMovements.map((row) => (
               <tr key={row.id}>
-                <td>{toInputDateValue(row.date)}</td>
+                <td>{formatDisplayDate(row.date)}</td>
                 <td>{row.camp.name}</td>
                 <td>{row.itemName}</td>
                 <td>{row.movementType}</td>

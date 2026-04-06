@@ -7,6 +7,28 @@ export function toInputDateValue(date: Date) {
   return new Date(date).toISOString().slice(0, 10);
 }
 
+export function formatDisplayDate(date: Date) {
+  const value = toInputDateValue(date);
+  const [year, month, day] = value.split("-");
+  return `${day}-${month}-${year}`;
+}
+
+export function formatShortDisplayDate(date: Date) {
+  const value = toInputDateValue(date);
+  const [, month, day] = value.split("-");
+  return `${day}/${month}`;
+}
+
+export function formatDisplayDateValue(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${day}-${month}-${year}`;
+}
+
+export function formatShortDisplayDateValue(value: string) {
+  const [, month, day] = value.split("-");
+  return `${day}/${month}`;
+}
+
 type WaterReadingReport = {
   meterReading: number;
   waterLiters: number;

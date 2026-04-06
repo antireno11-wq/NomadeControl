@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { ReportForm } from "@/app/dashboard/report-form";
 import { NotificationBell } from "@/components/notification-bell";
 import { AppShell } from "@/components/app-shell";
@@ -45,14 +45,14 @@ export default async function CargaDiariaPage() {
       .filter((report) => Math.abs(report.generator1Hours - report.generator2Hours) > 30)
       .slice(0, 3)
       .map((report) => ({
-        text: `${report.camp.name} ${toInputDateValue(report.date)}: diferencia horómetros > 30h`,
+        text: `${report.camp.name} ${formatDisplayDate(report.date)}: diferencia horómetros > 30h`,
         severity: "warning" as const
       })),
     ...recentReports
       .filter((report) => report.internetStatus !== "FUNCIONANDO")
       .slice(0, 3)
       .map((report) => ({
-        text: `${report.camp.name} ${toInputDateValue(report.date)}: internet ${report.internetStatus.replaceAll("_", " ").toLowerCase()}`,
+        text: `${report.camp.name} ${formatDisplayDate(report.date)}: internet ${report.internetStatus.replaceAll("_", " ").toLowerCase()}`,
         severity: "warning" as const
       }))
   ];
@@ -62,7 +62,7 @@ export default async function CargaDiariaPage() {
         `${report.campId}-${toInputDateValue(report.date)}`,
         {
           id: report.id,
-          date: toInputDateValue(report.date),
+          date: formatDisplayDate(report.date),
           campName: report.camp.name,
           createdById: report.createdById,
           createdBy: report.createdBy.name,
@@ -216,7 +216,7 @@ export default async function CargaDiariaPage() {
             <tbody>
               {recentReports.map((report) => (
                 <tr key={report.id}>
-                  <td>{toInputDateValue(report.date)}</td>
+                  <td>{formatDisplayDate(report.date)}</td>
                   <td>{report.camp.name}</td>
                   <td>{report.peopleCount}</td>
                   <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
