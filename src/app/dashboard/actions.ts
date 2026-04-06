@@ -41,6 +41,55 @@ export type ReportFormState = {
   success: string;
 };
 
+async function recalculateCampWaterLitersFromDate(campId: string, startDate: Date) {
+  const [previousReport, reportsToRecalculate] = await Promise.all([
+    db.dailyReport.findFirst({
+      where: {
+        campId,
+        date: { lt: startDate }
+      },
+      orderBy: { date: "desc" },
+      select: { meterReading: true }
+    }),
+    db.dailyReport.findMany({
+      where: {
+        campId,
+        date: { gte: startDate }
+      },
+      orderBy: { date: "asc" },
+      select: {
+        id: true,
+        meterReading: true,
+        waterLiters: true
+      }
+    })
+  ]);
+
+  let previousMeterReading = previousReport?.meterReading ?? null;
+  const updates = reportsToRecalculate
+    .map((report) => {
+      const computedWaterLiters = previousMeterReading === null
+        ? 0
+        : Math.max(0, Math.round(report.meterReading - previousMeterReading));
+
+      previousMeterReading = report.meterReading;
+
+      if (computedWaterLiters === report.waterLiters) {
+        return null;
+      }
+
+      return db.dailyReport.update({
+        where: { id: report.id },
+        data: { waterLiters: computedWaterLiters }
+      });
+    })
+    .filter((operation): operation is ReturnType<typeof db.dailyReport.update> => operation !== null);
+
+  if (updates.length > 0) {
+    await db.$transaction(updates);
+  }
+}
+
 export async function logoutAction() {
   await clearSession();
   redirect("/login");
@@ -48,6 +97,7 @@ export async function logoutAction() {
 
 export async function saveReportAction(_: ReportFormState, formData: FormData): Promise<ReportFormState> {
   const user = await requireUser();
+  const reportId = String(formData.get("reportId") ?? "").trim() || undefined;
 
   if (!isSupervisorRole(user.role)) {
     return { error: "Solo usuarios SUPERVISOR pueden cargar información diaria.", success: "" };
@@ -90,6 +140,25 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
   const date = normalizeDateOnly(payload.date);
   const blackWaterRemovedM3 = payload.blackWaterRemoved === "SI" ? payload.blackWaterRemovedM3 : 0;
   const potableWaterDeliveredM3 = payload.potableWaterDelivered === "SI" ? payload.potableWaterDeliveredM3 : 0;
+  const reportBeingEdited = reportId
+    ? await db.dailyReport.findUnique({
+        where: { id: reportId },
+        select: {
+          id: true,
+          campId: true,
+          date: true,
+          createdById: true
+        }
+      })
+    : null;
+
+  if (reportId && !reportBeingEdited) {
+    return { error: "No encontramos el informe que intentas editar.", success: "" };
+  }
+
+  if (reportBeingEdited && reportBeingEdited.createdById !== user.id) {
+    return { error: "Solo el usuario que creó este informe puede editarlo.", success: "" };
+  }
 
   if (payload.blackWaterRemoved === "SI" && blackWaterRemovedM3 < 1) {
     return { error: "Indica los m3 retirados de aguas negras.", success: "" };
@@ -106,16 +175,55 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     if (payload.campId !== user.campId) {
       return { error: "Solo puedes cargar información de tu campamento asignado.", success: "" };
     }
+    if (reportBeingEdited && reportBeingEdited.campId !== user.campId) {
+      return { error: "No puedes editar informes de otro campamento.", success: "" };
+    }
   }
 
-  const previousReport = await db.dailyReport.findFirst({
-    where: {
-      campId: payload.campId,
-      date: { lt: date }
-    },
-    orderBy: { date: "desc" },
-    select: { meterReading: true, date: true }
-  });
+  const [existingReportOnTargetDate, previousReport, nextReport] = await Promise.all([
+    db.dailyReport.findUnique({
+      where: {
+        campId_date: {
+          campId: payload.campId,
+          date
+        }
+      },
+      select: {
+        id: true,
+        createdById: true
+      }
+    }),
+    db.dailyReport.findFirst({
+      where: {
+        campId: payload.campId,
+        date: { lt: date },
+        ...(reportBeingEdited ? { id: { not: reportBeingEdited.id } } : {})
+      },
+      orderBy: { date: "desc" },
+      select: { meterReading: true, date: true }
+    }),
+    db.dailyReport.findFirst({
+      where: {
+        campId: payload.campId,
+        date: { gt: date },
+        ...(reportBeingEdited ? { id: { not: reportBeingEdited.id } } : {})
+      },
+      orderBy: { date: "asc" },
+      select: { meterReading: true, date: true }
+    })
+  ]);
+
+  if (!reportBeingEdited && existingReportOnTargetDate) {
+    return existingReportOnTargetDate.createdById === user.id
+      ? { error: "Ya existe un informe para esa fecha. Corrígelo desde el botón Editar del historial.", success: "" }
+      : { error: "Ya existe un informe en esa fecha y solo lo puede editar quien lo creó.", success: "" };
+  }
+
+  if (reportBeingEdited && existingReportOnTargetDate && existingReportOnTargetDate.id !== reportBeingEdited.id) {
+    return existingReportOnTargetDate.createdById === user.id
+      ? { error: "Ya tienes otro informe en esa fecha. Edita ese registro directamente.", success: "" }
+      : { error: "Ya existe otro informe en esa fecha y no puedes reemplazarlo.", success: "" };
+  }
 
   if (previousReport && payload.meterReading < previousReport.meterReading) {
     return {
@@ -124,79 +232,71 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     };
   }
 
+  if (nextReport && payload.meterReading > nextReport.meterReading) {
+    return {
+      error: `La lectura del medidor no puede ser mayor a la del ${nextReport.date.toISOString().slice(0, 10)} porque desordena el histórico.`,
+      success: ""
+    };
+  }
+
   const computedWaterLiters = previousReport
     ? Math.max(0, Math.round(payload.meterReading - previousReport.meterReading))
     : 0;
 
-  await db.dailyReport.upsert({
-    where: {
-      campId_date: {
-        campId: payload.campId,
-        date
-      }
-    },
-    update: {
-      peopleCount: payload.peopleCount,
-      breakfastCount: payload.breakfastCount,
-      lunchCount: payload.lunchCount,
-      dinnerCount: payload.dinnerCount,
-      snackSimpleCount: payload.snackSimpleCount,
-      snackReplacementCount: payload.snackReplacementCount,
-      waterBottleCount: payload.waterBottleCount,
-      lodgingCount: payload.lodgingCount,
-      meterReading: payload.meterReading,
-      waterLiters: computedWaterLiters,
-      fuelLiters: payload.fuelLiters,
-      fuelRemainingLiters: payload.fuelRemainingLiters,
-      generator1Hours: payload.generator1Hours,
-      generator2Hours: payload.generator2Hours,
-      internetStatus: payload.internetStatus,
-      blackWaterRemoved: payload.blackWaterRemoved === "SI",
-      blackWaterRemovedM3,
-      potableWaterTankLevelPercent: payload.potableWaterTankLevelPercent,
-      blackWaterTankLevelPercent: payload.blackWaterTankLevelPercent,
-      potableWaterDelivered: payload.potableWaterDelivered === "SI",
-      potableWaterDeliveredM3,
-      wasteFillPercent: payload.wasteFillPercent,
-      chlorineLevel: payload.chlorineLevel,
-      phLevel: payload.phLevel,
-      notes: payload.notes || null,
-      createdById: user.id
-    },
-    create: {
-      campId: payload.campId,
-      date,
-      peopleCount: payload.peopleCount,
-      breakfastCount: payload.breakfastCount,
-      lunchCount: payload.lunchCount,
-      dinnerCount: payload.dinnerCount,
-      snackSimpleCount: payload.snackSimpleCount,
-      snackReplacementCount: payload.snackReplacementCount,
-      waterBottleCount: payload.waterBottleCount,
-      lodgingCount: payload.lodgingCount,
-      meterReading: payload.meterReading,
-      waterLiters: computedWaterLiters,
-      fuelLiters: payload.fuelLiters,
-      fuelRemainingLiters: payload.fuelRemainingLiters,
-      generator1Hours: payload.generator1Hours,
-      generator2Hours: payload.generator2Hours,
-      internetStatus: payload.internetStatus,
-      blackWaterRemoved: payload.blackWaterRemoved === "SI",
-      blackWaterRemovedM3,
-      potableWaterTankLevelPercent: payload.potableWaterTankLevelPercent,
-      blackWaterTankLevelPercent: payload.blackWaterTankLevelPercent,
-      potableWaterDelivered: payload.potableWaterDelivered === "SI",
-      potableWaterDeliveredM3,
-      wasteFillPercent: payload.wasteFillPercent,
-      chlorineLevel: payload.chlorineLevel,
-      phLevel: payload.phLevel,
-      notes: payload.notes || null,
-      createdById: user.id
-    }
-  });
+  const reportData = {
+    campId: payload.campId,
+    date,
+    peopleCount: payload.peopleCount,
+    breakfastCount: payload.breakfastCount,
+    lunchCount: payload.lunchCount,
+    dinnerCount: payload.dinnerCount,
+    snackSimpleCount: payload.snackSimpleCount,
+    snackReplacementCount: payload.snackReplacementCount,
+    waterBottleCount: payload.waterBottleCount,
+    lodgingCount: payload.lodgingCount,
+    meterReading: payload.meterReading,
+    waterLiters: computedWaterLiters,
+    fuelLiters: payload.fuelLiters,
+    fuelRemainingLiters: payload.fuelRemainingLiters,
+    generator1Hours: payload.generator1Hours,
+    generator2Hours: payload.generator2Hours,
+    internetStatus: payload.internetStatus,
+    blackWaterRemoved: payload.blackWaterRemoved === "SI",
+    blackWaterRemovedM3,
+    potableWaterTankLevelPercent: payload.potableWaterTankLevelPercent,
+    blackWaterTankLevelPercent: payload.blackWaterTankLevelPercent,
+    potableWaterDelivered: payload.potableWaterDelivered === "SI",
+    potableWaterDeliveredM3,
+    wasteFillPercent: payload.wasteFillPercent,
+    chlorineLevel: payload.chlorineLevel,
+    phLevel: payload.phLevel,
+    notes: payload.notes || null
+  };
+
+  const savedReport = reportBeingEdited
+    ? await db.dailyReport.update({
+        where: { id: reportBeingEdited.id },
+        data: reportData
+      })
+    : await db.dailyReport.create({
+        data: {
+          ...reportData,
+          createdById: user.id
+        }
+      });
+
+  const recalcStartDate = reportBeingEdited && reportBeingEdited.date < date ? reportBeingEdited.date : date;
+  await recalculateCampWaterLitersFromDate(payload.campId, recalcStartDate);
 
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
   revalidatePath("/hsec");
-  return { error: "", success: `Informe diario del ${payload.date} guardado correctamente.` };
+  revalidatePath(`/informes/${savedReport.id}`);
+  revalidatePath(`/informes/${savedReport.id}/editar`);
+  return {
+    error: "",
+    success: reportBeingEdited
+      ? `Informe diario del ${payload.date} actualizado correctamente.`
+      : `Informe diario del ${payload.date} guardado correctamente.`
+  };
 }

@@ -64,6 +64,7 @@ export default async function CargaDiariaPage() {
           id: report.id,
           date: toInputDateValue(report.date),
           campName: report.camp.name,
+          createdById: report.createdById,
           createdBy: report.createdBy.name,
           peopleCount: report.peopleCount
         }
@@ -139,7 +140,14 @@ export default async function CargaDiariaPage() {
                     {row.campName} · {row.peopleCount} personas · cargado por {row.createdBy}
                   </div>
                 </div>
-                <span className="status-pill ok">Guardado</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="status-pill ok">Guardado</span>
+                  {canEdit && row.createdById === user.id ? (
+                    <Link href={`/informes/${row.id}/editar`}>
+                      <button type="button" className="secondary">Editar</button>
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             ))}
             {recentDatesLoaded.length === 0 ? <div className="alert error">Aún no hay informes guardados para mostrar.</div> : null}
@@ -202,6 +210,7 @@ export default async function CargaDiariaPage() {
                 <th>Basura</th>
                 <th>Cloro</th>
                 <th>pH</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -226,11 +235,23 @@ export default async function CargaDiariaPage() {
                   <td>{report.wasteFillPercent}%</td>
                   <td>{report.chlorineLevel.toFixed(2)}</td>
                   <td>{report.phLevel.toFixed(2)}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <Link href={`/informes/${report.id}`}>
+                        <button type="button" className="secondary">Ver</button>
+                      </Link>
+                      {canEdit && report.createdById === user.id ? (
+                        <Link href={`/informes/${report.id}/editar`}>
+                          <button type="button" className="secondary">Editar</button>
+                        </Link>
+                      ) : null}
+                    </div>
+                  </td>
                 </tr>
               ))}
               {recentReports.length === 0 ? (
                 <tr>
-                  <td colSpan={19} style={{ color: "var(--muted)" }}>
+                  <td colSpan={20} style={{ color: "var(--muted)" }}>
                     Aún no hay informes registrados.
                   </td>
                 </tr>

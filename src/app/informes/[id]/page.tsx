@@ -22,6 +22,8 @@ export default async function InformeDetallePage({ params }: { params: { id: str
     redirect("/dashboard");
   }
 
+  const canEditOwnReport = !canSeeAdminSections && report.createdById === user.id;
+
   return (
     <AppShell
       title="Detalle informe"
@@ -29,9 +31,16 @@ export default async function InformeDetallePage({ params }: { params: { id: str
       activeNav={canSeeAdminSections ? "dashboard" : "carga"}
       showAdminSections={canSeeAdminSections}
       rightSlot={
-        <Link href="/dashboard">
-          <button type="button" className="secondary">Volver</button>
-        </Link>
+        <div style={{ display: "flex", gap: 8 }}>
+          {canEditOwnReport ? (
+            <Link href={`/informes/${report.id}/editar`}>
+              <button type="button" className="secondary">Editar</button>
+            </Link>
+          ) : null}
+          <Link href={canSeeAdminSections ? "/dashboard" : "/carga-diaria"}>
+            <button type="button" className="secondary">Volver</button>
+          </Link>
+        </div>
       }
     >
       <div className="page-stack">
