@@ -126,17 +126,10 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
     { done: 0, total: 0 }
   );
 
-  const latestReports = scopedReports
-    .slice()
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
-    .slice(0, 20);
   const latestTaskControls = scopedTaskControls.slice(0, 20);
-
-  const campRows = scopeCamps.map((camp) => {
+  const campTrendRows = scopeCamps.map((camp) => {
     const campReports = scopedReports.filter((report) => report.campId === camp.id);
     const campTaskControls = scopedTaskControls.filter((control) => control.campId === camp.id);
-    const latestReport = campReports[campReports.length - 1] ?? null;
-    const latestTask = campTaskControls[0] ?? null;
     const reportTotal = campReports.length;
     const peopleTotal = campReports.reduce((sum, report) => sum + report.peopleCount, 0);
     const mealsTotal = campReports.reduce((sum, report) => sum + report.breakfastCount + report.lunchCount + report.dinnerCount, 0);
@@ -162,22 +155,70 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
     return {
       id: camp.id,
       name: camp.name,
-      latestReportDate: latestReport ? formatDisplayDate(latestReport.date) : "Sin informe",
-      latestTaskDate: latestTask ? formatDisplayDate(latestTask.date) : "Sin control",
       reportTotal,
-      taskTotal: campTaskControls.length,
       peopleAvg: reportTotal > 0 ? Math.round(peopleTotal / reportTotal) : 0,
       mealsTotal,
       waterTotal,
       fuelTotal,
-      potableTotal,
-      blackRemovedTotal,
       internetIssues,
       wasteAvg,
-      blackTankAvg,
       taskCompletionPercent: taskCompletion.total > 0 ? Math.round((taskCompletion.done / taskCompletion.total) * 100) : 0
     };
   });
+
+  const dayTrendMap = new Map<
+    string,
+    { date: string; people: number; meals: number; water: number; fuel: number; taskDone: number; taskTotal: number }
+  >();
+
+  for (const report of scopedReports) {
+    const dateKey = toInputDateValue(report.date);
+    const row = dayTrendMap.get(dateKey) ?? {
+      date: dateKey,
+      people: 0,
+      meals: 0,
+      water: 0,
+      fuel: 0,
+      taskDone: 0,
+      taskTotal: 0
+    };
+
+    row.people += report.peopleCount;
+    row.meals += report.breakfastCount + report.lunchCount + report.dinnerCount;
+    row.water += waterByReportId.get(report.id) ?? report.waterLiters;
+    row.fuel += report.fuelLiters;
+    dayTrendMap.set(dateKey, row);
+  }
+
+  for (const control of scopedTaskControls) {
+    const dateKey = toInputDateValue(control.date);
+    const row = dayTrendMap.get(dateKey) ?? {
+      date: dateKey,
+      people: 0,
+      meals: 0,
+      water: 0,
+      fuel: 0,
+      taskDone: 0,
+      taskTotal: 0
+    };
+    const admin = countChecks(control.administrativeChecks);
+    const operational = countChecks(control.operationalChecks);
+    row.taskDone += admin.done + operational.done;
+    row.taskTotal += admin.total + operational.total;
+    dayTrendMap.set(dateKey, row);
+  }
+
+  const trendDays = Array.from(dayTrendMap.values())
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-Math.min(days, 14));
+
+  const maxTrendPeople = Math.max(1, ...trendDays.map((day) => day.people));
+  const maxTrendMeals = Math.max(1, ...trendDays.map((day) => day.meals));
+  const maxTrendWater = Math.max(1, ...trendDays.map((day) => day.water));
+  const maxTrendFuel = Math.max(1, ...trendDays.map((day) => day.fuel));
+  const maxCampWater = Math.max(1, ...campTrendRows.map((row) => row.waterTotal));
+  const maxCampFuel = Math.max(1, ...campTrendRows.map((row) => row.fuelTotal));
+  const maxCampMeals = Math.max(1, ...campTrendRows.map((row) => row.mealsTotal));
 
   const summaryPeriodLabel = `${formatDisplayDate(periodStart)} al ${formatDisplayDate(todayDate)}`;
   const avgWaste = scopedReports.length > 0 ? summary.waste / scopedReports.length : 0;
@@ -264,88 +305,144 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
         <div className="dashboard-core-grid">
           <section className="dashboard-panel dashboard-panel-large">
             <div className="dashboard-panel-header">
-              <h2>Resumen por campamento</h2>
-              <span className="dashboard-chip small">Período consolidado</span>
+              <h2>Tendencias del período</h2>
+              <span className="dashboard-chip small">Últimos {trendDays.length || 0} días</span>
             </div>
-            <div className="dashboard-table-wrap">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Campamento</th>
-                    <th>Últ. informe</th>
-                    <th>Últ. control</th>
-                    <th>Inf.</th>
-                    <th>Ctrl.</th>
-                    <th>Prom. personas</th>
-                    <th>Comidas</th>
-                    <th>Agua</th>
-                    <th>Comb.</th>
-                    <th>Potable</th>
-                    <th>Negras</th>
-                    <th>Basura</th>
-                    <th>Estanque negras</th>
-                    <th>Tareas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campRows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.name}</td>
-                      <td>{row.latestReportDate}</td>
-                      <td>{row.latestTaskDate}</td>
-                      <td>{row.reportTotal}</td>
-                      <td>{row.taskTotal}</td>
-                      <td>{row.peopleAvg}</td>
-                      <td>{row.mealsTotal}</td>
-                      <td>{row.waterTotal.toLocaleString("es-CL")} L</td>
-                      <td>{row.fuelTotal.toLocaleString("es-CL")} L</td>
-                      <td>{row.potableTotal.toFixed(0)} m3</td>
-                      <td>{row.blackRemovedTotal.toFixed(0)} m3</td>
-                      <td>{row.wasteAvg.toFixed(0)}%</td>
-                      <td>{row.blackTankAvg.toFixed(0)}%</td>
-                      <td>{row.taskCompletionPercent}%</td>
-                    </tr>
+            <div className="dashboard-chart-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+              <section className="dashboard-panel" style={{ padding: 0, background: "transparent", border: 0, boxShadow: "none" }}>
+                <div className="dashboard-panel-header">
+                  <h2>Personas</h2>
+                  <span className="dashboard-chip small">{summary.people.toLocaleString("es-CL")} total</span>
+                </div>
+                <div className="chart-grid compact">
+                  {trendDays.map((day) => (
+                    <div
+                      key={`people-${day.date}`}
+                      className="chart-col chart-tooltip-target"
+                      data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.people} personas`}
+                    >
+                      <div className="chart-track tall">
+                        <div className="chart-bar people" style={{ height: `${(day.people / maxTrendPeople) * 100}%` }} />
+                      </div>
+                      <div className="chart-label">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</div>
+                    </div>
                   ))}
-                  {campRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={14} style={{ color: "var(--muted)" }}>No hay campamentos ni registros en el período seleccionado.</td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+                </div>
+              </section>
+
+              <section className="dashboard-panel" style={{ padding: 0, background: "transparent", border: 0, boxShadow: "none" }}>
+                <div className="dashboard-panel-header">
+                  <h2>Comidas</h2>
+                  <span className="dashboard-chip small">{summary.meals.toLocaleString("es-CL")} total</span>
+                </div>
+                <div className="chart-grid compact">
+                  {trendDays.map((day) => (
+                    <div
+                      key={`meals-${day.date}`}
+                      className="chart-col chart-tooltip-target"
+                      data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.meals} comidas`}
+                    >
+                      <div className="chart-track tall">
+                        <div className="chart-bar meals" style={{ height: `${(day.meals / maxTrendMeals) * 100}%` }} />
+                      </div>
+                      <div className="chart-label">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="dashboard-panel" style={{ padding: 0, background: "transparent", border: 0, boxShadow: "none" }}>
+                <div className="dashboard-panel-header">
+                  <h2>Agua</h2>
+                  <span className="dashboard-chip small">{summary.water.toLocaleString("es-CL")} L</span>
+                </div>
+                <div className="chart-grid compact">
+                  {trendDays.map((day) => (
+                    <div
+                      key={`water-${day.date}`}
+                      className="chart-col chart-tooltip-target"
+                      data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.water.toLocaleString("es-CL")} L`}
+                    >
+                      <div className="chart-track tall">
+                        <div className="chart-bar water" style={{ height: `${(day.water / maxTrendWater) * 100}%` }} />
+                      </div>
+                      <div className="chart-label">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="dashboard-panel" style={{ padding: 0, background: "transparent", border: 0, boxShadow: "none" }}>
+                <div className="dashboard-panel-header">
+                  <h2>Combustible</h2>
+                  <span className="dashboard-chip small">{summary.fuel.toLocaleString("es-CL")} L</span>
+                </div>
+                <div className="chart-grid compact">
+                  {trendDays.map((day) => (
+                    <div
+                      key={`fuel-${day.date}`}
+                      className="chart-col chart-tooltip-target"
+                      data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.fuel.toLocaleString("es-CL")} L`}
+                    >
+                      <div className="chart-track tall">
+                        <div className="chart-bar fuel" style={{ height: `${(day.fuel / maxTrendFuel) * 100}%` }} />
+                      </div>
+                      <div className="chart-label">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           </section>
 
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
-              <h2>Promedios operativos</h2>
-              <span className="dashboard-chip small">Indicadores clave</span>
+              <h2>Comparativo campamentos</h2>
+              <span className="dashboard-chip small">Visual del período</span>
             </div>
-            <div className="dashboard-mini-stack">
-              <div className="dashboard-mini-metric">
-                <span>Botellas de agua</span>
-                <strong>{summary.bottles.toLocaleString("es-CL")}</strong>
-              </div>
-              <div className="dashboard-mini-metric">
-                <span>Alojamientos</span>
-                <strong>{summary.lodgings.toLocaleString("es-CL")}</strong>
-              </div>
-              <div className="dashboard-mini-metric">
-                <span>Basura promedio</span>
-                <strong>{avgWaste.toFixed(0)}%</strong>
-              </div>
-              <div className="dashboard-mini-metric">
-                <span>Estanque negras</span>
-                <strong>{avgBlackTank.toFixed(0)}%</strong>
-              </div>
-              <div className="dashboard-mini-metric">
-                <span>Cloro promedio</span>
-                <strong>{avgChlorine.toFixed(2)}</strong>
-              </div>
-              <div className="dashboard-mini-metric">
-                <span>pH promedio</span>
-                <strong>{avgPh.toFixed(2)}</strong>
-              </div>
+            <div className="summary-list">
+              {campTrendRows.map((row) => (
+                <div key={row.id} className="summary-row" style={{ alignItems: "stretch", gap: 16 }}>
+                  <div style={{ minWidth: 150 }}>
+                    <strong>{row.name}</strong>
+                    <div style={{ color: "var(--muted)" }}>
+                      {row.reportTotal} informe(s) · {row.peopleAvg} personas prom.
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, display: "grid", gap: 8 }}>
+                    <div className="progress-cell">
+                      <span style={{ minWidth: 58 }}>Agua</span>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${(row.waterTotal / maxCampWater) * 100}%` }} />
+                      </div>
+                      <strong>{row.waterTotal.toLocaleString("es-CL")} L</strong>
+                    </div>
+                    <div className="progress-cell">
+                      <span style={{ minWidth: 58 }}>Comb.</span>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${(row.fuelTotal / maxCampFuel) * 100}%`, background: "linear-gradient(90deg, #ff7b2f, #ff9f1c)" }} />
+                      </div>
+                      <strong>{row.fuelTotal.toLocaleString("es-CL")} L</strong>
+                    </div>
+                    <div className="progress-cell">
+                      <span style={{ minWidth: 58 }}>Comidas</span>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${(row.mealsTotal / maxCampMeals) * 100}%`, background: "linear-gradient(90deg, #006878, #00a6b6)" }} />
+                      </div>
+                      <strong>{row.mealsTotal.toLocaleString("es-CL")}</strong>
+                    </div>
+                  </div>
+                  <div style={{ minWidth: 96, textAlign: "right" }}>
+                    <div className={`status-pill ${row.taskCompletionPercent >= 80 ? "ok" : row.taskCompletionPercent >= 60 ? "warn" : "danger"}`}>
+                      {row.taskCompletionPercent}%
+                    </div>
+                    <div style={{ color: "var(--muted)", marginTop: 8, fontSize: "0.8rem" }}>
+                      basura {row.wasteAvg.toFixed(0)}% · internet {row.internetIssues}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {campTrendRows.length === 0 ? <div className="section-caption">Sin campamentos para comparar.</div> : null}
             </div>
           </section>
         </div>
@@ -353,51 +450,25 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
         <div className="dashboard-bottom-grid">
           <section className="dashboard-panel dashboard-panel-wide">
             <div className="dashboard-panel-header">
-              <h2>Últimos informes cargados</h2>
-              <span className="dashboard-chip small">Detalle operativo</span>
+              <h2>Tendencia de cumplimiento diario</h2>
+              <span className="dashboard-chip small">{taskCompletionPercent}% promedio</span>
             </div>
-            <div className="dashboard-table-wrap">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Campamento</th>
-                    <th>Personas</th>
-                    <th>Comidas</th>
-                    <th>Botellas</th>
-                    <th>Agua</th>
-                    <th>Comb.</th>
-                    <th>Internet</th>
-                    <th>Basura</th>
-                    <th>Cloro</th>
-                    <th>pH</th>
-                    <th>Cargado por</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestReports.map((report) => (
-                    <tr key={report.id}>
-                      <td>{formatDisplayDate(report.date)}</td>
-                      <td>{report.camp.name}</td>
-                      <td>{report.peopleCount}</td>
-                      <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
-                      <td>{report.waterBottleCount}</td>
-                      <td>{(waterByReportId.get(report.id) ?? report.waterLiters).toLocaleString("es-CL")} L</td>
-                      <td>{report.fuelLiters.toLocaleString("es-CL")} L</td>
-                      <td>{report.internetStatus.replaceAll("_", " ")}</td>
-                      <td>{report.wasteFillPercent}%</td>
-                      <td>{report.chlorineLevel.toFixed(2)}</td>
-                      <td>{report.phLevel.toFixed(2)}</td>
-                      <td>{report.createdBy.name}</td>
-                    </tr>
-                  ))}
-                  {latestReports.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} style={{ color: "var(--muted)" }}>No hay informes cargados en el período seleccionado.</td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+            <div className="chart-grid compact">
+              {trendDays.map((day) => {
+                const taskPercent = day.taskTotal > 0 ? Math.round((day.taskDone / day.taskTotal) * 100) : 0;
+                return (
+                  <div
+                    key={`tasks-${day.date}`}
+                    className="chart-col chart-tooltip-target"
+                    data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${taskPercent}% cumplimiento`}
+                  >
+                    <div className="chart-track tall">
+                      <div className="chart-bar meals" style={{ height: `${taskPercent}%`, background: "linear-gradient(180deg, #20b36c, #0d8a3b)" }} />
+                    </div>
+                    <div className="chart-label">{day.date.slice(8, 10)}/{day.date.slice(5, 7)}</div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>
