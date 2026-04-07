@@ -394,57 +394,6 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
               </section>
             </div>
           </section>
-
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Comparativo campamentos</h2>
-              <span className="dashboard-chip small">Visual del período</span>
-            </div>
-            <div className="summary-list">
-              {campTrendRows.map((row) => (
-                <div key={row.id} className="summary-row" style={{ alignItems: "stretch", gap: 16 }}>
-                  <div style={{ minWidth: 150 }}>
-                    <strong>{row.name}</strong>
-                    <div style={{ color: "var(--muted)" }}>
-                      {row.reportTotal} informe(s) · {row.peopleAvg} personas prom.
-                    </div>
-                  </div>
-                  <div style={{ flex: 1, display: "grid", gap: 8 }}>
-                    <div className="progress-cell">
-                      <span style={{ minWidth: 58 }}>Agua</span>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${(row.waterTotal / maxCampWater) * 100}%` }} />
-                      </div>
-                      <strong>{row.waterTotal.toLocaleString("es-CL")} L</strong>
-                    </div>
-                    <div className="progress-cell">
-                      <span style={{ minWidth: 58 }}>Comb.</span>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${(row.fuelTotal / maxCampFuel) * 100}%`, background: "linear-gradient(90deg, #ff7b2f, #ff9f1c)" }} />
-                      </div>
-                      <strong>{row.fuelTotal.toLocaleString("es-CL")} L</strong>
-                    </div>
-                    <div className="progress-cell">
-                      <span style={{ minWidth: 58 }}>Comidas</span>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${(row.mealsTotal / maxCampMeals) * 100}%`, background: "linear-gradient(90deg, #006878, #00a6b6)" }} />
-                      </div>
-                      <strong>{row.mealsTotal.toLocaleString("es-CL")}</strong>
-                    </div>
-                  </div>
-                  <div style={{ minWidth: 96, textAlign: "right" }}>
-                    <div className={`status-pill ${row.taskCompletionPercent >= 80 ? "ok" : row.taskCompletionPercent >= 60 ? "warn" : "danger"}`}>
-                      {row.taskCompletionPercent}%
-                    </div>
-                    <div style={{ color: "var(--muted)", marginTop: 8, fontSize: "0.8rem" }}>
-                      basura {row.wasteAvg.toFixed(0)}% · internet {row.internetIssues}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {campTrendRows.length === 0 ? <div className="section-caption">Sin campamentos para comparar.</div> : null}
-            </div>
-          </section>
         </div>
 
         <div className="dashboard-bottom-grid">
@@ -469,6 +418,65 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
                   </div>
                 );
               })}
+            </div>
+          </section>
+        </div>
+
+        <div className="dashboard-bottom-grid">
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="dashboard-panel-header">
+              <h2>Comparativo campamentos</h2>
+              <span className="dashboard-chip small">Visual del período</span>
+            </div>
+            <div className="summary-list">
+              {campTrendRows.map((row) => (
+                <div key={row.id} className="summary-row" style={{ alignItems: "stretch", gap: 16 }}>
+                  <div style={{ minWidth: 180 }}>
+                    <strong>{row.name}</strong>
+                    <div style={{ color: "var(--muted)" }}>
+                      {row.reportTotal} informe(s) · {row.peopleAvg} personas prom.
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, display: "grid", gap: 8 }}>
+                    <div className="progress-cell">
+                      <span style={{ minWidth: 58 }}>Agua</span>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${(row.waterTotal / maxCampWater) * 100}%` }} />
+                      </div>
+                      <strong>{row.waterTotal.toLocaleString("es-CL")} L</strong>
+                    </div>
+                    <div className="progress-cell">
+                      <span style={{ minWidth: 58 }}>Comb.</span>
+                      <div className="progress-track">
+                        <div
+                          className="progress-fill"
+                          style={{ width: `${(row.fuelTotal / maxCampFuel) * 100}%`, background: "linear-gradient(90deg, #ff7b2f, #ff9f1c)" }}
+                        />
+                      </div>
+                      <strong>{row.fuelTotal.toLocaleString("es-CL")} L</strong>
+                    </div>
+                    <div className="progress-cell">
+                      <span style={{ minWidth: 58 }}>Comidas</span>
+                      <div className="progress-track">
+                        <div
+                          className="progress-fill"
+                          style={{ width: `${(row.mealsTotal / maxCampMeals) * 100}%`, background: "linear-gradient(90deg, #006878, #00a6b6)" }}
+                        />
+                      </div>
+                      <strong>{row.mealsTotal.toLocaleString("es-CL")}</strong>
+                    </div>
+                  </div>
+                  <div style={{ minWidth: 120, textAlign: "right" }}>
+                    <div className={`status-pill ${row.taskCompletionPercent >= 80 ? "ok" : row.taskCompletionPercent >= 60 ? "warn" : "danger"}`}>
+                      {row.taskCompletionPercent}%
+                    </div>
+                    <div style={{ color: "var(--muted)", marginTop: 8, fontSize: "0.8rem" }}>
+                      basura {row.wasteAvg.toFixed(0)}% · internet {row.internetIssues}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {campTrendRows.length === 0 ? <div className="section-caption">Sin campamentos para comparar.</div> : null}
             </div>
           </section>
         </div>
