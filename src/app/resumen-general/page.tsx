@@ -126,7 +126,6 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
     { done: 0, total: 0 }
   );
 
-  const latestTaskControls = scopedTaskControls.slice(0, 20);
   const campTrendRows = scopeCamps.map((camp) => {
     const campReports = scopedReports.filter((report) => report.campId === camp.id);
     const campTaskControls = scopedTaskControls.filter((control) => control.campId === camp.id);
@@ -481,53 +480,6 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
           </section>
         </div>
 
-        <div className="dashboard-bottom-grid">
-          <section className="dashboard-panel dashboard-panel-wide">
-            <div className="dashboard-panel-header">
-              <h2>Últimos controles de tareas</h2>
-              <span className="dashboard-chip small">Seguimiento de cumplimiento</span>
-            </div>
-            <div className="dashboard-table-wrap">
-              <table className="dashboard-table">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Campamento</th>
-                    <th>Administrativo</th>
-                    <th>Operacional</th>
-                    <th>Cumplimiento</th>
-                    <th>Registrado por</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestTaskControls.map((control) => {
-                    const admin = countChecks(control.administrativeChecks);
-                    const operational = countChecks(control.operationalChecks);
-                    const total = admin.total + operational.total;
-                    const done = admin.done + operational.done;
-                    const compliance = total > 0 ? Math.round((done / total) * 100) : 0;
-
-                    return (
-                      <tr key={control.id}>
-                        <td>{formatDisplayDate(control.date)}</td>
-                        <td>{control.camp.name}</td>
-                        <td>{admin.done}/{admin.total}</td>
-                        <td>{operational.done}/{operational.total}</td>
-                        <td>{compliance}%</td>
-                        <td>{control.createdBy.name}</td>
-                      </tr>
-                    );
-                  })}
-                  {latestTaskControls.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ color: "var(--muted)" }}>No hay controles cargados en el período seleccionado.</td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
       </div>
     </AppShell>
   );
