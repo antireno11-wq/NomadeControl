@@ -5,7 +5,7 @@ import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
 import { canAccessAdministration, canAccessCampOperations, canAccessDashboard, canAccessVehicles } from "@/lib/auth";
 
-type ShellNavKey = "dashboard" | "vehiculos" | "carga" | "tareas" | "administracion" | null;
+type ShellNavKey = "dashboard" | "resumen" | "vehiculos" | "carga" | "tareas" | "administracion" | null;
 
 type NotificationItem = {
   text: string;
@@ -35,6 +35,7 @@ export function AppShell({
   const canSeeAdministration = canAccessAdministration(user.role);
   const navItems = [
     ...(canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
+    ...(canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
     ...(canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
     ...(canSeeCampOps
       ? [
