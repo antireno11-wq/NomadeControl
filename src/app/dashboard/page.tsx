@@ -617,31 +617,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         </div>
 
         <div className="dashboard-bottom-grid">
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Generadores</h2>
-              <span className={`dashboard-chip small ${totalGeneratorDiff > 30 ? "warn" : ""}`}>{totalGeneratorDiff.toFixed(1)}h</span>
-            </div>
-            <div className="dashboard-generator-list">
-              {generatorRows.map((row) => (
-                <div
-                  key={row.id}
-                  className="dashboard-generator-row"
-                  title={`${row.name}: G1 ${row.g1Use.toFixed(1)}h, G2 ${row.g2Use.toFixed(1)}h, diferencia ${row.diff.toFixed(1)}h`}
-                >
-                  <div>
-                    <strong>{row.name}</strong>
-                    <span>
-                      G1 {row.g1Use.toFixed(1)}h / G2 {row.g2Use.toFixed(1)}h
-                    </span>
-                  </div>
-                  <span className={`status-pill ${row.diff > 30 ? "warn" : "ok"}`}>{row.diff.toFixed(1)}h</span>
-                </div>
-              ))}
-              {generatorRows.length === 0 ? <div className="section-caption">Sin datos.</div> : null}
-            </div>
-          </section>
-
           <section className="dashboard-panel dashboard-panel-wide">
             <div className="dashboard-panel-header">
               <h2>Últimos informes</h2>
