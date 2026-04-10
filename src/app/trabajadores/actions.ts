@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
 
@@ -59,6 +59,7 @@ async function ensureWorkerAccess(campId: string) {
 }
 
 export async function createWorkerAction(formData: FormData) {
+  const adminUser = await requireRole(ADMIN_ROLES);
   const parsed = workerSchema.safeParse({
     workerId: formData.get("workerId") ?? undefined,
     campId: formData.get("campId"),
@@ -87,22 +88,13 @@ export async function createWorkerAction(formData: FormData) {
   }
 
   const payload = parsed.data;
-  const { user, error } = await ensureWorkerAccess(payload.campId);
-
-  if (error === "no-camp") {
-    redirect(`${payload.errorRedirectTo}?status=no-camp`);
-  }
-
-  if (error === "forbidden") {
-    redirect(`${payload.errorRedirectTo}?status=forbidden`);
-  }
 
   const rule = patternToDays[payload.shiftPattern];
 
   await db.staffMember.create({
     data: {
       campId: payload.campId,
-      createdById: user.id,
+      createdById: adminUser.id,
       fullName: payload.fullName,
       role: payload.role || null,
       employerCompany: payload.employerCompany || null,

@@ -94,21 +94,23 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
       rightSlot={
         <>
           {canSeeAdminSections ? (
-            <form method="get" className="dashboard-filter">
-              <select name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
-                <option value="general">Todos</option>
-                {camps.map((camp) => (
-                  <option key={camp.id} value={camp.id}>
-                    {camp.name}
-                  </option>
-                ))}
-              </select>
-              <button type="submit">Ver</button>
-            </form>
+            <>
+              <form method="get" className="dashboard-filter">
+                <select name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
+                  <option value="general">Todos</option>
+                  {camps.map((camp) => (
+                    <option key={camp.id} value={camp.id}>
+                      {camp.name}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit">Ver</button>
+              </form>
+              <Link href="/trabajadores/nuevo">
+                <button type="button">Nuevo trabajador</button>
+              </Link>
+            </>
           ) : null}
-          <Link href="/trabajadores/nuevo">
-            <button type="button">Nuevo trabajador</button>
-          </Link>
         </>
       }
     >

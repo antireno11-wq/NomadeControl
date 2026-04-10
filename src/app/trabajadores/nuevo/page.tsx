@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isAdminRole, isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { createWorkerAction } from "@/app/trabajadores/actions";
@@ -11,24 +11,21 @@ export default async function NuevoTrabajadorPage({
 }: {
   searchParams?: { status?: string | string[] };
 }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(ADMIN_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
 
   const camps = await db.camp.findMany({
-    where: { isActive: true, ...(isSupervisorRole(user.role) && user.campId ? { id: user.campId } : {}) },
+    where: { isActive: true },
     orderBy: { name: "asc" }
   });
 
-  const fixedCamp = isSupervisorRole(user.role) ? camps[0] ?? null : null;
   const statusRaw = searchParams?.status;
   const status = typeof statusRaw === "string" ? statusRaw : "";
   const alert =
     status === "invalid"
       ? { type: "error", text: "Revisa los datos del trabajador." }
       : status === "forbidden"
-        ? { type: "error", text: "Solo puedes cargar trabajadores de tu campamento." }
-        : status === "no-camp"
-          ? { type: "error", text: "Tu usuario no tiene campamento asignado." }
+        ? { type: "error", text: "Solo administradores pueden crear trabajadores." }
           : null;
 
   return (
@@ -54,13 +51,11 @@ export default async function NuevoTrabajadorPage({
           <WorkerForm
             action={createWorkerAction}
             camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))}
-            fixedCampId={fixedCamp?.id}
-            fixedCampName={fixedCamp?.name}
             successRedirectTo="/trabajadores?status=created"
             errorRedirectTo="/trabajadores/nuevo"
             submitLabel="Guardar trabajador"
             defaults={{
-              campId: fixedCamp?.id ?? "",
+              campId: "",
               fullName: "",
               role: "",
               employerCompany: "",
