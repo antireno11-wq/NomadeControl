@@ -4,7 +4,18 @@ export const STAFF_DOCUMENT_FIELDS = [
   { key: "occupationalExamDueDate", label: "Examen ocupacional" },
   { key: "inductionDueDate", label: "Inducción" },
   { key: "accreditationDueDate", label: "Acreditación" },
-  { key: "driversLicenseDueDate", label: "Licencia" }
+  { key: "driversLicenseDueDate", label: "Carnet de manejar" }
+] as const;
+
+export const STAFF_ROLE_OPTIONS = [
+  "SUPERVISOR",
+  "HSEC",
+  "MAESTRO DE COCINA",
+  "AYUDANTE DE COCINA",
+  "AUXILIAR DE COCINA",
+  "CAMPAMENTERO",
+  "CHOFER",
+  "MANTENCION"
 ] as const;
 
 export type StaffDocumentFieldKey = (typeof STAFF_DOCUMENT_FIELDS)[number]["key"];

@@ -1,4 +1,4 @@
-import { STAFF_DOCUMENT_FIELDS } from "@/lib/staff-docs";
+import { STAFF_DOCUMENT_FIELDS, STAFF_ROLE_OPTIONS } from "@/lib/staff-docs";
 
 type CampOption = {
   id: string;
@@ -80,7 +80,14 @@ export function WorkerForm({
       </div>
       <div>
         <label htmlFor="worker-role">Cargo</label>
-        <input id="worker-role" name="role" defaultValue={defaults.role} placeholder="Supervisor, Maestro, Conductor..." />
+        <select id="worker-role" name="role" defaultValue={defaults.role}>
+          <option value="">Selecciona un cargo</option>
+          {STAFF_ROLE_OPTIONS.map((role) => (
+            <option key={role} value={role}>
+              {role}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label htmlFor="worker-company">Empresa</label>
