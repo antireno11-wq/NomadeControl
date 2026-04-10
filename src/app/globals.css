@@ -571,6 +571,43 @@ a {
   line-height: 1.1;
 }
 
+.dashboard-climate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-climate-metric {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  min-height: 116px;
+  padding: 16px 14px;
+  background: linear-gradient(180deg, #f9fcfd, #f1f8f9);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.dashboard-climate-metric span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.dashboard-climate-metric strong {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.dashboard-climate-metric strong.up {
+  color: var(--accent);
+}
+
+.dashboard-climate-metric strong.down {
+  color: var(--teal);
+}
+
 .dashboard-status-list,
 .dashboard-generator-list {
   display: grid;

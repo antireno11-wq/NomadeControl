@@ -609,12 +609,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             <section className="dashboard-panel">
               <div className="dashboard-panel-header">
                 <h2>Clima</h2>
-                <span className="dashboard-chip small">{weatherCamp ? weatherCamp.name : "General"}</span>
               </div>
-              <div className="dashboard-mini-stack">
-                <div className="dashboard-mini-metric">
+              <div className="section-caption" style={{ marginBottom: 12 }}>
+                {weatherCamp ? weatherCamp.name : "Selecciona un campamento"}
+              </div>
+              <div className="dashboard-climate-grid">
+                <div className="dashboard-climate-metric">
                   <span>Temp. máxima ayer</span>
-                  <strong>
+                  <strong className="up">
                     {weatherSummary?.temperatureMax != null
                       ? `${weatherSummary.temperatureMax.toFixed(1)}°C`
                       : weatherCampHasSource
@@ -624,9 +626,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                           : "Selecciona campamento"}
                   </strong>
                 </div>
-                <div className="dashboard-mini-metric">
+                <div className="dashboard-climate-metric">
                   <span>Temp. mínima ayer</span>
-                  <strong>
+                  <strong className="down">
                     {weatherSummary?.temperatureMin != null
                       ? `${weatherSummary.temperatureMin.toFixed(1)}°C`
                       : weatherCampHasSource
