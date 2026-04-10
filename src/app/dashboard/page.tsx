@@ -447,12 +447,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         text: `${report.camp.name}: estanque de aguas negras en ${report.blackWaterTankLevelPercent}%`,
         severity: report.blackWaterTankLevelPercent >= 90 ? ("error" as const) : ("warning" as const)
       })),
-    ...(weatherSummary && weatherSummary.temperatureMax != null && weatherSummary.temperatureMax >= 30
-      ? [{ text: `${weatherCamp?.name}: máxima de ${weatherSummary.temperatureMax.toFixed(1)}°C ayer`, severity: "warning" as const }]
-      : []),
-    ...(weatherSummary && weatherSummary.temperatureMin != null && weatherSummary.temperatureMin <= 0
-      ? [{ text: `${weatherCamp?.name}: mínima de ${weatherSummary.temperatureMin.toFixed(1)}°C ayer`, severity: "warning" as const }]
-      : []),
     ...generatorRows
       .filter((row) => row.diff > 30)
       .map((row) => ({ text: `${row.name}: diferencia horómetros ${row.diff.toFixed(1)}h`, severity: "warning" as const }))
