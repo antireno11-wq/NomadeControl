@@ -5,6 +5,12 @@ import { formatDisplayDate, formatShortDisplayDateValue, resolveWaterLiters, toI
 import { getCampWeatherSummary } from "@/lib/weather";
 import { AppShell } from "@/components/app-shell";
 
+function estimateUtcDate(baseDate: Date, daysFromBase: number) {
+  const projected = new Date(baseDate);
+  projected.setUTCDate(projected.getUTCDate() + Math.max(1, Math.ceil(daysFromBase)));
+  return formatDisplayDate(projected);
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams?: { campId?: string | string[] } }) {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
@@ -321,6 +327,105 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const sanitaryCriticalCount = reportsTodayScoped.filter((report) => report.chlorineLevel < 0.2 || report.chlorineLevel > 1.5 || report.phLevel < 6.5 || report.phLevel > 8.5).length;
   const criticalStatusCount = internetCriticalCount + sanitaryCriticalCount;
 
+  const waterProjectionCandidates = scopeCamps
+    .map((camp) => {
+      const campReports = reportsScoped
+        .filter((report) => report.campId === camp.id)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+      const latestReport = latestReportByCamp.get(camp.id);
+      const capacityLiters = (camp.potableWaterTankCapacityM3 ?? 0) * 1000;
+      if (!latestReport || capacityLiters <= 0 || campReports.length === 0) return null;
+
+      const waterTotal = campReports.reduce((sum, report) => sum + (waterByReportId.get(report.id) ?? report.waterLiters), 0);
+      const avgWaterPerDay = waterTotal / campReports.length;
+      const remainingLiters = Math.round((latestReport.potableWaterTankLevelPercent / 100) * capacityLiters);
+      if (avgWaterPerDay <= 0 || remainingLiters <= 0) return null;
+
+      const daysRemaining = remainingLiters / avgWaterPerDay;
+      return {
+        campName: camp.name,
+        daysRemaining,
+        dateLabel: estimateUtcDate(dashboardDate, daysRemaining),
+        meta: `${remainingLiters.toLocaleString("es-CL")} L · ${avgWaterPerDay.toFixed(0)} L/día`
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+  const blackProjectionCandidates = scopeCamps
+    .map((camp) => {
+      const campReports = reportsScoped
+        .filter((report) => report.campId === camp.id)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+      const latestReport = latestReportByCamp.get(camp.id);
+      const capacityLiters = (camp.blackWaterTankCapacityM3 ?? 0) * 1000;
+      if (!latestReport || capacityLiters <= 0 || campReports.length < 2) return null;
+
+      const generationSamples: number[] = [];
+      for (let index = 1; index < campReports.length; index += 1) {
+        const previous = campReports[index - 1];
+        const current = campReports[index];
+        const previousOccupied = (previous.blackWaterTankLevelPercent / 100) * capacityLiters;
+        const currentOccupied = (current.blackWaterTankLevelPercent / 100) * capacityLiters;
+        const generatedLiters = Math.max(0, currentOccupied - previousOccupied + current.blackWaterRemovedM3 * 1000);
+        if (generatedLiters > 0) generationSamples.push(generatedLiters);
+      }
+
+      const avgGeneratedPerDay =
+        generationSamples.length > 0 ? generationSamples.reduce((sum, value) => sum + value, 0) / generationSamples.length : 0;
+      const freeLiters = Math.round(((100 - latestReport.blackWaterTankLevelPercent) / 100) * capacityLiters);
+      if (avgGeneratedPerDay <= 0 || freeLiters <= 0) return null;
+
+      const daysRemaining = freeLiters / avgGeneratedPerDay;
+      return {
+        campName: camp.name,
+        daysRemaining,
+        dateLabel: estimateUtcDate(dashboardDate, daysRemaining),
+        meta: `${freeLiters.toLocaleString("es-CL")} L libres · ${avgGeneratedPerDay.toFixed(0)} L/día`
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+  const wasteProjectionCandidates = scopeCamps
+    .map((camp) => {
+      const campReports = reportsScoped
+        .filter((report) => report.campId === camp.id)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+      const latestReport = latestReportByCamp.get(camp.id);
+      if (!latestReport || campReports.length < 2) return null;
+
+      const fillSamples: number[] = [];
+      for (let index = 1; index < campReports.length; index += 1) {
+        const previous = campReports[index - 1];
+        const current = campReports[index];
+        const delta = current.wasteFillPercent - previous.wasteFillPercent;
+        if (delta > 0) {
+          fillSamples.push(delta);
+        } else if (delta < 0 && current.wasteFillPercent > 0) {
+          fillSamples.push(current.wasteFillPercent);
+        }
+      }
+
+      const avgFillPerDay = fillSamples.length > 0 ? fillSamples.reduce((sum, value) => sum + value, 0) / fillSamples.length : 0;
+      const remainingPercent = Math.max(0, 100 - latestReport.wasteFillPercent);
+      if (avgFillPerDay <= 0 || remainingPercent <= 0) return null;
+
+      const daysRemaining = remainingPercent / avgFillPerDay;
+      return {
+        campName: camp.name,
+        daysRemaining,
+        dateLabel: estimateUtcDate(dashboardDate, daysRemaining),
+        meta: `${remainingPercent.toFixed(0)}% libre · ${avgFillPerDay.toFixed(1)}%/día`
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+  const nextWaterProjection = waterProjectionCandidates[0] ?? null;
+  const nextBlackProjection = blackProjectionCandidates[0] ?? null;
+  const nextWasteProjection = wasteProjectionCandidates[0] ?? null;
+
   const notificationItems = [
     ...missingCampsToday.map((camp) => ({ text: `Falta informe diario ayer: ${camp.name}`, severity: "error" as const })),
     ...missingTaskControlsToday.map((camp) => ({ text: `Falta control de tareas ayer: ${camp.name}`, severity: "warning" as const })),
@@ -535,6 +640,59 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                 Agrega la ubicación del campamento para obtener la temperatura automáticamente.
               </div>
             ) : null}
+          </section>
+        </div>
+
+        <div className="dashboard-bottom-grid">
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="dashboard-panel-header">
+              <h2>Próximas gestiones</h2>
+              <span className="dashboard-chip small">Proyección operativa</span>
+            </div>
+            <div className="dashboard-kpi-grid insight-kpi-grid">
+              <div
+                className={`dashboard-kpi ${nextWaterProjection && nextWaterProjection.daysRemaining <= 2 ? "accent" : "teal"}`}
+                title={
+                  nextWaterProjection
+                    ? `${nextWaterProjection.campName} · ${nextWaterProjection.meta}`
+                    : "Falta capacidad del estanque o historial suficiente"
+                }
+              >
+                <div className="dashboard-kpi-label">Próx. agua potable</div>
+                <div className="dashboard-kpi-value">{nextWaterProjection ? nextWaterProjection.dateLabel : "Sin dato"}</div>
+                <div className="dashboard-kpi-meta">
+                  {nextWaterProjection ? `${nextWaterProjection.campName} · ${nextWaterProjection.daysRemaining.toFixed(1)} días` : "Completa capacidad y nivel"}
+                </div>
+              </div>
+              <div
+                className={`dashboard-kpi ${nextBlackProjection && nextBlackProjection.daysRemaining <= 2 ? "accent" : ""}`}
+                title={
+                  nextBlackProjection
+                    ? `${nextBlackProjection.campName} · ${nextBlackProjection.meta}`
+                    : "Falta capacidad del estanque o historial suficiente"
+                }
+              >
+                <div className="dashboard-kpi-label">Próx. retiro negras</div>
+                <div className="dashboard-kpi-value">{nextBlackProjection ? nextBlackProjection.dateLabel : "Sin dato"}</div>
+                <div className="dashboard-kpi-meta">
+                  {nextBlackProjection ? `${nextBlackProjection.campName} · ${nextBlackProjection.daysRemaining.toFixed(1)} días` : "Completa capacidad e historial"}
+                </div>
+              </div>
+              <div
+                className={`dashboard-kpi ${nextWasteProjection && nextWasteProjection.daysRemaining <= 2 ? "accent" : ""}`}
+                title={
+                  nextWasteProjection
+                    ? `${nextWasteProjection.campName} · ${nextWasteProjection.meta}`
+                    : "Falta historial suficiente de llenado"
+                }
+              >
+                <div className="dashboard-kpi-label">Próx. cambio basura</div>
+                <div className="dashboard-kpi-value">{nextWasteProjection ? nextWasteProjection.dateLabel : "Sin dato"}</div>
+                <div className="dashboard-kpi-meta">
+                  {nextWasteProjection ? `${nextWasteProjection.campName} · ${nextWasteProjection.daysRemaining.toFixed(1)} días` : "Necesita más datos diarios"}
+                </div>
+              </div>
+            </div>
           </section>
         </div>
 
