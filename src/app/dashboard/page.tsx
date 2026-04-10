@@ -383,9 +383,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         <div className="dashboard-kpi-grid">
           <div
             className={`dashboard-kpi ${waterAutonomyDays != null && waterAutonomyDays < 2 ? "accent" : "teal"}`}
-            title={`Agua restante estimada: ${waterRemainingLiters} L · Promedio visible ${avgVisibleWaterPerDay.toFixed(0)} L/día`}
+            title={`Agua restante en estanque: ${waterRemainingLiters} L · Promedio visible ${avgVisibleWaterPerDay.toFixed(0)} L/día`}
           >
-            <div className="dashboard-kpi-label">Agua restante</div>
+            <div className="dashboard-kpi-label">Agua en estanque</div>
             <div className="dashboard-kpi-value">{waterRemainingLiters.toLocaleString("es-CL")} L</div>
             <div className="dashboard-kpi-meta">
               {waterAutonomyDays != null ? `${waterAutonomyDays.toFixed(1)} días aprox.` : "Falta capacidad o nivel"}
