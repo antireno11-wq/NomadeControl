@@ -7,6 +7,7 @@ import { updateWorkerAction } from "@/app/trabajadores/actions";
 import { WorkerForm } from "@/app/trabajadores/worker-form";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getNearestDocument, getStaffDocumentEntries } from "@/lib/staff-docs";
+import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
 export default async function EditarTrabajadorPage({
   params,
@@ -36,6 +37,15 @@ export default async function EditarTrabajadorPage({
 
   const docs = getStaffDocumentEntries(worker);
   const nearest = getNearestDocument(worker);
+  const shiftProjection = getShiftProjection(
+    {
+      shiftPattern: worker.shiftPattern,
+      shiftWorkDays: worker.shiftWorkDays,
+      shiftOffDays: worker.shiftOffDays,
+      shiftStartDate: worker.shiftStartDate
+    },
+    new Date()
+  );
   const statusRaw = searchParams?.status;
   const status = typeof statusRaw === "string" ? statusRaw : "";
   const alert =
@@ -90,6 +100,61 @@ export default async function EditarTrabajadorPage({
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Turno proyectado</h2>
+          {shiftProjection ? (
+            <>
+              <div className="summary-grid">
+                <div className="metric">
+                  <div className="label">Estado hoy</div>
+                  <div className="value" style={{ fontSize: "1rem" }}>
+                    {shiftProjection.shiftPatternLabel} · {shiftProjection.currentStateLabel}
+                  </div>
+                </div>
+                <div className="metric">
+                  <div className="label">Día del bloque</div>
+                  <div className="value" style={{ fontSize: "1rem" }}>
+                    {shiftProjection.currentBlockDay}/{shiftProjection.currentBlockTotal}
+                  </div>
+                </div>
+                <div className="metric">
+                  <div className="label">Bloque actual</div>
+                  <div className="value" style={{ fontSize: "1rem" }}>
+                    {formatShiftRange(shiftProjection.currentBlockStart, shiftProjection.currentBlockEnd)}
+                  </div>
+                </div>
+                <div className="metric">
+                  <div className="label">Próximo cambio</div>
+                  <div className="value" style={{ fontSize: "1rem" }}>
+                    {shiftProjection.nextBlockLabel} · {formatDisplayDate(shiftProjection.nextBlockStart)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="section-caption" style={{ marginBottom: 12 }}>
+                Proyección completa del ciclo desde hoy. Así puedes ver de inmediato cuándo trabaja y cuándo descansa.
+              </div>
+              <div className="summary-grid">
+                {shiftProjection.projectedDays.map((day) => (
+                  <div
+                    key={day.dateKey}
+                    className="metric"
+                    style={{
+                      border: day.isToday ? "1px solid rgba(255, 99, 0, 0.35)" : undefined,
+                      background: day.state === "work" ? "#fff7f1" : "#f4fbfb"
+                    }}
+                  >
+                    <div className="label">{day.isToday ? `Hoy · ${day.shortLabel}` : day.shortLabel}</div>
+                    <div className="value" style={{ fontSize: "0.95rem" }}>{day.stateLabel}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="section-caption">Todavía no hay suficiente información para proyectar el turno de este trabajador.</div>
+          )}
         </div>
 
         <div className="card" style={{ maxWidth: 860 }}>

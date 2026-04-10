@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { getNearestDocument, getStaffDocumentEntries } from "@/lib/staff-docs";
+import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
 type SearchParams = {
   campId?: string | string[];
@@ -46,6 +47,15 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
   const staffRows = staffMembers.map((worker) => {
     const docs = getStaffDocumentEntries(worker, today);
     const nearest = getNearestDocument(worker, today);
+    const shiftProjection = getShiftProjection(
+      {
+        shiftPattern: worker.shiftPattern,
+        shiftWorkDays: worker.shiftWorkDays,
+        shiftOffDays: worker.shiftOffDays,
+        shiftStartDate: worker.shiftStartDate
+      },
+      today
+    );
     const expired = docs.filter((entry) => entry.status === "expired");
     const dueSoon = docs.filter((entry) => entry.status === "dueSoon");
     const missing = docs.filter((entry) => entry.status === "missing");
@@ -54,12 +64,32 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
       worker,
       docs,
       nearest,
+      shiftProjection,
       expiredCount: expired.length,
       dueSoonCount: dueSoon.length,
       missingCount: missing.length,
       overallStatus: expired.length > 0 ? "danger" : dueSoon.length > 0 ? "warn" : "ok"
     } as const;
   });
+
+  const activeShiftRows = staffRows.filter((row) => row.worker.isActive && row.shiftProjection);
+  const workersOnShift = activeShiftRows.filter((row) => row.shiftProjection?.currentState === "work").length;
+  const workersResting = activeShiftRows.filter((row) => row.shiftProjection?.currentState === "off").length;
+  const shiftChangesThisWeek = activeShiftRows.filter((row) => (row.shiftProjection?.daysRemainingInBlock ?? 99) <= 7).length;
+  const nextShiftChanges = activeShiftRows
+    .map((row) => ({
+      workerId: row.worker.id,
+      workerName: row.worker.fullName,
+      campName: row.worker.camp.name,
+      shiftPattern: row.shiftProjection!.shiftPatternLabel,
+      currentStateLabel: row.shiftProjection!.currentStateLabel,
+      nextBlockLabel: row.shiftProjection!.nextBlockLabel,
+      daysRemainingInBlock: row.shiftProjection!.daysRemainingInBlock,
+      nextBlockStart: row.shiftProjection!.nextBlockStart,
+      currentBlockRange: formatShiftRange(row.shiftProjection!.currentBlockStart, row.shiftProjection!.currentBlockEnd),
+      nextBlockRange: formatShiftRange(row.shiftProjection!.nextBlockStart, row.shiftProjection!.nextBlockEnd)
+    }))
+    .sort((a, b) => a.daysRemainingInBlock - b.daysRemainingInBlock || a.workerName.localeCompare(b.workerName));
 
   const expiredWorkers = staffRows.filter((row) => row.expiredCount > 0).length;
   const dueSoonWorkers = staffRows.filter((row) => row.expiredCount === 0 && row.dueSoonCount > 0).length;
@@ -123,6 +153,16 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
             <div className="dashboard-kpi-value">{staffRows.length}</div>
             <div className="dashboard-kpi-meta">{staffRows.filter((row) => row.worker.isActive).length} activos</div>
           </div>
+          <div className="dashboard-kpi teal">
+            <div className="dashboard-kpi-label">En turno hoy</div>
+            <div className="dashboard-kpi-value">{workersOnShift}</div>
+            <div className="dashboard-kpi-meta">{workersResting} en descanso</div>
+          </div>
+          <div className={`dashboard-kpi ${shiftChangesThisWeek > 0 ? "accent" : ""}`}>
+            <div className="dashboard-kpi-label">Cambios próximos</div>
+            <div className="dashboard-kpi-value">{shiftChangesThisWeek}</div>
+            <div className="dashboard-kpi-meta">cambian de bloque en 7 días</div>
+          </div>
           <div className={`dashboard-kpi ${expiredWorkers > 0 ? "accent" : "teal"}`}>
             <div className="dashboard-kpi-label">Con vencidos</div>
             <div className="dashboard-kpi-value">{expiredWorkers}</div>
@@ -141,6 +181,37 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
         </div>
 
         <div className="dashboard-core-grid">
+          <section className="dashboard-panel dashboard-panel-large">
+            <div className="dashboard-panel-header">
+              <h2>Proyección de todo el turno</h2>
+              <span className="dashboard-chip small">Bloque actual y siguiente</span>
+            </div>
+            <div className="summary-list">
+              {nextShiftChanges.map((entry) => (
+                <div key={entry.workerId} className="summary-row">
+                  <div>
+                    <strong>{entry.workerName}</strong>
+                    <div style={{ color: "var(--muted)" }}>{entry.campName}</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700 }}>{entry.shiftPattern} · {entry.currentStateLabel}</div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
+                      Actual: {entry.currentBlockRange}
+                    </div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
+                      Luego: {entry.nextBlockLabel} · {entry.nextBlockRange}
+                    </div>
+                  </div>
+                  <div style={{ minWidth: 120 }}>{formatDisplayDate(entry.nextBlockStart)}</div>
+                  <div className={`status-pill ${entry.daysRemainingInBlock <= 2 ? "danger" : entry.daysRemainingInBlock <= 7 ? "warn" : "ok"}`}>
+                    {entry.daysRemainingInBlock === 0 ? "Cambia mañana" : `${entry.daysRemainingInBlock} día(s)`}
+                  </div>
+                </div>
+              ))}
+              {nextShiftChanges.length === 0 ? <div className="section-caption">Todavía no hay turnos configurados en los trabajadores activos.</div> : null}
+            </div>
+          </section>
+
           <section className="dashboard-panel dashboard-panel-large">
             <div className="dashboard-panel-header">
               <h2>Alertas documentales</h2>
@@ -178,6 +249,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                     <th>Trabajador</th>
                     <th>Campamento</th>
                     <th>Cargo</th>
+                    <th>Turno proyectado</th>
                     <th>Contrato</th>
                     <th>Altura</th>
                     <th>Acreditación</th>
@@ -192,6 +264,23 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                       <td>{row.worker.fullName}</td>
                       <td>{row.worker.camp.name}</td>
                       <td>{row.worker.role ?? "-"}</td>
+                      <td>
+                        {row.shiftProjection ? (
+                          <div style={{ display: "grid", gap: 4 }}>
+                            <strong style={{ lineHeight: 1.2 }}>
+                              {row.shiftProjection.shiftPatternLabel} · {row.shiftProjection.currentStateLabel}
+                            </strong>
+                            <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+                              Día {row.shiftProjection.currentBlockDay}/{row.shiftProjection.currentBlockTotal}
+                            </span>
+                            <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+                              Próx. cambio: {formatDisplayDate(row.shiftProjection.nextBlockStart)}
+                            </span>
+                          </div>
+                        ) : (
+                          "Sin turno"
+                        )}
+                      </td>
                       <td>{row.worker.contractEndDate ? formatDisplayDate(row.worker.contractEndDate) : "Sin fecha"}</td>
                       <td>{row.worker.altitudeExamDueDate ? formatDisplayDate(row.worker.altitudeExamDueDate) : "Sin fecha"}</td>
                       <td>{row.worker.accreditationDueDate ? formatDisplayDate(row.worker.accreditationDueDate) : "Sin fecha"}</td>
@@ -210,7 +299,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                   ))}
                   {staffRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} style={{ color: "var(--muted)" }}>
+                      <td colSpan={10} style={{ color: "var(--muted)" }}>
                         No hay trabajadores cargados todavía.
                       </td>
                     </tr>
