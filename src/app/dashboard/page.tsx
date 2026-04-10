@@ -90,6 +90,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
   const weatherCamp =
     scopeCamps.length === 1
       ? {
+          id: scopeCamps[0].id,
           name: scopeCamps[0].name,
           location: scopeCamps[0].location,
           latitude: scopeCamps[0].latitude,
@@ -104,6 +105,9 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         date: toInputDateValue(dashboardDate)
       })
     : null;
+  const weatherCampHasSource = Boolean(
+    weatherCamp && ((weatherCamp.latitude != null && weatherCamp.longitude != null) || weatherCamp.location?.trim())
+  );
 
   const waterByReportId = new Map<string, number>();
   const previousReportByCamp = new Map<string, { meterReading: number; waterLiters: number }>();
@@ -599,7 +603,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           </section>
 
           <Link
-            href={scopeCamps.length === 1 ? `/clima?campId=${scopeCamps[0].id}` : "/clima"}
+            href={weatherCamp ? `/clima?campId=${weatherCamp.id}` : "/clima"}
             style={{ color: "inherit", textDecoration: "none" }}
           >
             <section className="dashboard-panel">
@@ -613,10 +617,10 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <strong>
                     {weatherSummary?.temperatureMax != null
                       ? `${weatherSummary.temperatureMax.toFixed(1)}°C`
-                      : weatherCamp?.location
+                      : weatherCampHasSource
                         ? "Sin dato"
                         : weatherCamp
-                          ? "Agrega ubicación"
+                          ? "Agrega ubicación o coordenadas"
                           : "Selecciona campamento"}
                   </strong>
                 </div>
@@ -625,17 +629,17 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   <strong>
                     {weatherSummary?.temperatureMin != null
                       ? `${weatherSummary.temperatureMin.toFixed(1)}°C`
-                      : weatherCamp?.location
+                      : weatherCampHasSource
                         ? "Sin dato"
                         : weatherCamp
-                          ? "Agrega ubicación"
+                          ? "Agrega ubicación o coordenadas"
                           : "Selecciona campamento"}
                   </strong>
                 </div>
               </div>
-              {weatherCamp && !weatherCamp.location ? (
+              {weatherCamp && !weatherCampHasSource ? (
                 <div className="section-caption" style={{ marginTop: 12 }}>
-                  Agrega la ubicación del campamento para obtener la temperatura automáticamente.
+                  Agrega ubicación o coordenadas del campamento para obtener la temperatura automáticamente.
                 </div>
               ) : null}
             </section>
