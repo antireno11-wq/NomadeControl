@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ADMIN_ROLES, isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
 
@@ -91,7 +92,7 @@ export async function createWorkerAction(formData: FormData) {
 
   const rule = patternToDays[payload.shiftPattern];
 
-  await db.staffMember.create({
+  const worker = await db.staffMember.create({
     data: {
       campId: payload.campId,
       createdById: adminUser.id,
@@ -117,6 +118,19 @@ export async function createWorkerAction(formData: FormData) {
   });
 
   revalidatePath("/trabajadores");
+  await logAuditEvent({
+    actorUserId: adminUser.id,
+    actorName: adminUser.name,
+    actorEmail: adminUser.email,
+    action: "CREATE_WORKER",
+    entityType: "staffMember",
+    entityId: worker.id,
+    summary: `Creó trabajador ${worker.fullName}`,
+    metadata: {
+      campId: worker.campId,
+      role: worker.role
+    }
+  });
   redirect(payload.successRedirectTo);
 }
 
@@ -170,7 +184,7 @@ export async function updateWorkerAction(formData: FormData) {
 
   const rule = patternToDays[payload.shiftPattern];
 
-  await db.staffMember.update({
+  const updatedWorker = await db.staffMember.update({
     where: { id: worker.id },
     data: {
       campId: payload.campId,
@@ -197,5 +211,18 @@ export async function updateWorkerAction(formData: FormData) {
 
   revalidatePath("/trabajadores");
   revalidatePath(`/trabajadores/${worker.id}`);
+  await logAuditEvent({
+    actorUserId: user.id,
+    actorName: user.name,
+    actorEmail: user.email,
+    action: "UPDATE_WORKER",
+    entityType: "staffMember",
+    entityId: updatedWorker.id,
+    summary: `Actualizó trabajador ${updatedWorker.fullName}`,
+    metadata: {
+      campId: updatedWorker.campId,
+      role: updatedWorker.role
+    }
+  });
   redirect(payload.successRedirectTo);
 }

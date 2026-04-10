@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ADMIN_ROLES, VEHICLE_ROLES, requireRole } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
 
@@ -102,7 +103,7 @@ function checked(value?: string) {
 
 export async function createVehicleAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireRole(ADMIN_ROLES);
+    const user = await requireRole(ADMIN_ROLES);
 
     const parsed = vehicleSchema.safeParse({
       plate: formData.get("plate"),
@@ -144,7 +145,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
     const existing = await db.vehicle.findUnique({ where: { plate } });
     if (existing) return { error: "Ya existe un vehículo con esa patente.", success: "" };
 
-    await db.vehicle.create({
+    const vehicle = await db.vehicle.create({
       data: {
         plate,
         company: payload.company || null,
@@ -178,6 +179,17 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
       }
     });
 
+    await logAuditEvent({
+      actorUserId: user.id,
+      actorName: user.name,
+      actorEmail: user.email,
+      action: "CREATE_VEHICLE",
+      entityType: "vehicle",
+      entityId: vehicle.id,
+      summary: `Creó vehículo ${vehicle.plate}`,
+      metadata: { status: vehicle.status, assignedCampId: vehicle.assignedCampId }
+    });
+
     revalidatePath("/vehiculos");
     revalidatePath("/administracion");
     return { error: "", success: "Vehículo creado correctamente." };
@@ -188,7 +200,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
 
 export async function updateVehicleAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireRole(ADMIN_ROLES);
+    const user = await requireRole(ADMIN_ROLES);
 
     const parsed = updateVehicleSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
@@ -231,7 +243,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
     const duplicate = await db.vehicle.findFirst({ where: { plate, NOT: { id: payload.vehicleId } } });
     if (duplicate) return { error: "Ya existe otro vehículo con esa patente.", success: "" };
 
-    await db.vehicle.update({
+    const vehicle = await db.vehicle.update({
       where: { id: payload.vehicleId },
       data: {
         plate,
@@ -264,6 +276,17 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
         reviewedAt: payload.reviewedAt,
         notes: payload.notes || null
       }
+    });
+
+    await logAuditEvent({
+      actorUserId: user.id,
+      actorName: user.name,
+      actorEmail: user.email,
+      action: "UPDATE_VEHICLE",
+      entityType: "vehicle",
+      entityId: vehicle.id,
+      summary: `Actualizó vehículo ${vehicle.plate}`,
+      metadata: { status: vehicle.status, assignedCampId: vehicle.assignedCampId }
     });
 
     revalidatePath("/vehiculos");
@@ -346,7 +369,7 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
     const payload = parsed.data;
     const date = normalizeDateOnly(payload.date);
 
-    await db.vehicleChecklist.create({
+    const checklist = await db.vehicleChecklist.create({
       data: {
         vehicleId: payload.vehicleId,
         driverId: user.id,
@@ -374,6 +397,17 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
     await db.vehicle.update({
       where: { id: payload.vehicleId },
       data: { odometerKm: payload.odometerKm }
+    });
+
+    await logAuditEvent({
+      actorUserId: user.id,
+      actorName: user.name,
+      actorEmail: user.email,
+      action: "CREATE_VEHICLE_CHECKLIST",
+      entityType: "vehicleChecklist",
+      entityId: checklist.id,
+      summary: `Registró checklist de vehículo`,
+      metadata: { vehicleId: payload.vehicleId, date: payload.date, odometerKm: payload.odometerKm }
     });
 
     revalidatePath("/vehiculos");

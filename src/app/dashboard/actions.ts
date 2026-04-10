@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { clearSession, isSupervisorRole, requireUser } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { formatDisplayDate, normalizeDateOnly } from "@/lib/report-utils";
 
@@ -293,6 +294,20 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
   revalidatePath("/hsec");
   revalidatePath(`/informes/${savedReport.id}`);
   revalidatePath(`/informes/${savedReport.id}/editar`);
+  await logAuditEvent({
+    actorUserId: user.id,
+    actorName: user.name,
+    actorEmail: user.email,
+    action: reportBeingEdited ? "UPDATE_REPORT" : "CREATE_REPORT",
+    entityType: "dailyReport",
+    entityId: savedReport.id,
+    summary: `${reportBeingEdited ? "Actualizó" : "Creó"} informe diario ${payload.date}`,
+    metadata: {
+      campId: payload.campId,
+      date: payload.date,
+      peopleCount: payload.peopleCount
+    }
+  });
   return {
     error: "",
     success: reportBeingEdited

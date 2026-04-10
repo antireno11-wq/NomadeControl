@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { logAuditEvent } from "@/lib/audit";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "camp_session";
 const SESSION_TTL_DAYS = 7;
@@ -86,6 +87,11 @@ export async function createSession(userId: string) {
   const token = crypto.randomBytes(32).toString("hex");
   const expiresAt = sessionExpirationDate();
 
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true }
+  });
+
   await db.session.create({
     data: {
       token,
@@ -101,15 +107,44 @@ export async function createSession(userId: string) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    path: "/"
+      path: "/"
   });
+
+  if (user) {
+    await logAuditEvent({
+      actorUserId: user.id,
+      actorName: user.name,
+      actorEmail: user.email,
+      action: "LOGIN",
+      entityType: "session",
+      entityId: token,
+      summary: "Inicio de sesión"
+    });
+  }
 }
 
 export async function clearSession() {
   const token = cookies().get(SESSION_COOKIE_NAME)?.value;
 
   if (token) {
+    const session = await db.session.findUnique({
+      where: { token },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    });
+
     await db.session.deleteMany({ where: { token } });
+
+    if (session?.user) {
+      await logAuditEvent({
+        actorUserId: session.user.id,
+        actorName: session.user.name,
+        actorEmail: session.user.email,
+        action: "LOGOUT",
+        entityType: "session",
+        entityId: token,
+        summary: "Cierre de sesión"
+      });
+    }
   }
 
   cookies().delete(SESSION_COOKIE_NAME);

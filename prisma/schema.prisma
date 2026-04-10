@@ -36,6 +36,7 @@ model User {
   staffMembers     StaffMember[]
   vehicleChecklists VehicleChecklist[]
   alertDeliveries AlertDelivery[]
+  auditLogs    AuditLog[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -61,6 +62,24 @@ model AlertDelivery {
 
   @@unique([kind, targetDate])
   @@index([targetDate, kind])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorUser   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorName   String?
+  actorEmail  String?
+  action      String
+  entityType  String
+  entityId    String?
+  summary     String
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 model Camp {

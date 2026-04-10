@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { ADMIN_ROLES, FULL_ADMIN_ROLES, MANAGED_USER_ROLE_VALUES, isAdminRole, isFullAdminRole, requireRole } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/mailer";
 import { geocodeLocation } from "@/lib/weather";
@@ -149,6 +150,17 @@ export async function createUserAction(
       }
     });
 
+    await logAuditEvent({
+      actorUserId: currentUser.id,
+      actorName: currentUser.name,
+      actorEmail: currentUser.email,
+      action: "CREATE_USER",
+      entityType: "user",
+      entityId: createdUser.id,
+      summary: `Creó usuario ${createdUser.email}`,
+      metadata: { role: createdUser.role, campId: createdUser.campId }
+    });
+
     let successMessage = "Usuario creado correctamente.";
 
     if (payload.sendWelcomeEmail === "on") {
@@ -217,7 +229,7 @@ export async function updateUserAccessAction(formData: FormData) {
     }
   }
 
-  await db.user.update({
+  const updatedUser = await db.user.update({
     where: { id: payload.userId },
     data: {
       name: payload.name,
@@ -225,6 +237,17 @@ export async function updateUserAccessAction(formData: FormData) {
       isActive: payload.isActive === "on",
       campId: normalizedCampIdForRole(payload.role, payload.campId)
     }
+  });
+
+  await logAuditEvent({
+    actorUserId: currentUser.id,
+    actorName: currentUser.name,
+    actorEmail: currentUser.email,
+    action: "UPDATE_USER",
+    entityType: "user",
+    entityId: updatedUser.id,
+    summary: `Actualizó usuario ${updatedUser.email}`,
+    metadata: { role: updatedUser.role, campId: updatedUser.campId, isActive: updatedUser.isActive }
   });
 
   revalidatePath("/administracion");
@@ -347,7 +370,7 @@ export async function deleteUserAction(formData: FormData) {
 }
 
 export async function createCampAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  const currentUser = await requireRole(ADMIN_ROLES);
 
   const parsed = createCampSchema.safeParse({
     name: formData.get("name"),
@@ -372,7 +395,7 @@ export async function createCampAction(formData: FormData) {
     payload.latitude == null && payload.longitude == null && payload.location
       ? await geocodeLocation(payload.location)
       : null;
-  await db.camp.create({
+  const createdCamp = await db.camp.create({
     data: {
       name: payload.name,
       location: payload.location || null,
@@ -384,6 +407,16 @@ export async function createCampAction(formData: FormData) {
       capacityPeople: payload.capacityPeople,
       isActive: true
     }
+  });
+
+  await logAuditEvent({
+    actorUserId: currentUser.id,
+    actorName: currentUser.name,
+    actorEmail: currentUser.email,
+    action: "CREATE_CAMP",
+    entityType: "camp",
+    entityId: createdCamp.id,
+    summary: `Creó campamento ${createdCamp.name}`
   });
 
   revalidatePath("/administracion");
@@ -427,7 +460,7 @@ export async function createProjectAction(formData: FormData) {
 }
 
 export async function updateCampAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  const currentUser = await requireRole(ADMIN_ROLES);
 
   const parsed = updateCampSchema.safeParse({
     campId: formData.get("campId"),
@@ -455,7 +488,7 @@ export async function updateCampAction(formData: FormData) {
       ? await geocodeLocation(payload.location)
       : null;
 
-  await db.camp.update({
+  const updatedCamp = await db.camp.update({
     where: { id: payload.campId },
     data: {
       name: payload.name,
@@ -468,6 +501,17 @@ export async function updateCampAction(formData: FormData) {
       capacityPeople: payload.capacityPeople,
       isActive: payload.isActive === "on"
     }
+  });
+
+  await logAuditEvent({
+    actorUserId: currentUser.id,
+    actorName: currentUser.name,
+    actorEmail: currentUser.email,
+    action: "UPDATE_CAMP",
+    entityType: "camp",
+    entityId: updatedCamp.id,
+    summary: `Actualizó campamento ${updatedCamp.name}`,
+    metadata: { isActive: updatedCamp.isActive, capacityPeople: updatedCamp.capacityPeople }
   });
 
   revalidatePath("/administracion");

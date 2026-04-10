@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isSupervisorRole, requireUser } from "@/lib/auth";
+import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { ADMIN_DAILY_TASKS, OPERATIONAL_DAILY_TASKS, taskKeyFromLabel } from "@/lib/daily-task-checklists";
 import { normalizeDateOnly } from "@/lib/report-utils";
@@ -74,5 +75,18 @@ export async function saveDailyTasksAction(
   });
 
   revalidatePath("/control-tareas-diarias");
+  await logAuditEvent({
+    actorUserId: user.id,
+    actorName: user.name,
+    actorEmail: user.email,
+    action: "SAVE_TASK_CONTROL",
+    entityType: "dailyTaskControl",
+    entityId: `${payload.campId}:${payload.date}`,
+    summary: `Guardó control de tareas ${payload.date}`,
+    metadata: {
+      campId: payload.campId,
+      date: payload.date
+    }
+  });
   return { error: "", success: "Control de tareas guardado." };
 }
