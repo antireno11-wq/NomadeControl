@@ -632,6 +632,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                     <th>Campamento</th>
                     <th>Pers.</th>
                     <th>Com.</th>
+                    <th>Lectura agua</th>
                     <th>G1</th>
                     <th>G2</th>
                     <th>Operador</th>
@@ -645,6 +646,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                       <td>{report.camp.name}</td>
                       <td>{report.peopleCount}</td>
                       <td>{report.breakfastCount + report.lunchCount + report.dinnerCount}</td>
+                      <td>{report.meterReading.toLocaleString("es-CL")}</td>
                       <td>{report.generator1Hours.toFixed(1)}</td>
                       <td>{report.generator2Hours.toFixed(1)}</td>
                       <td>{report.createdBy.name}</td>
@@ -657,7 +659,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
                   ))}
                   {recentReportsScoped.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ color: "var(--muted)" }}>
+                      <td colSpan={9} style={{ color: "var(--muted)" }}>
                         Sin registros.
                       </td>
                     </tr>
