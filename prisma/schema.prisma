@@ -205,6 +205,16 @@ model StaffMember {
   createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
   fullName       String
   role           String?
+  employerCompany String?
+  nationalId     String?
+  phone          String?
+  personalEmail  String?
+  contractEndDate DateTime?
+  altitudeExamDueDate DateTime?
+  occupationalExamDueDate DateTime?
+  inductionDueDate DateTime?
+  accreditationDueDate DateTime?
+  driversLicenseDueDate DateTime?
   shiftPattern   String   @default("14x14")
   shiftWorkDays  Int      @default(14)
   shiftOffDays   Int      @default(14)
