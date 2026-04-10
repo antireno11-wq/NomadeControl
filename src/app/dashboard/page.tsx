@@ -598,43 +598,48 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             </div>
           </section>
 
-          <section className="dashboard-panel">
-            <div className="dashboard-panel-header">
-              <h2>Clima</h2>
-              <span className="dashboard-chip small">{weatherCamp ? weatherCamp.name : "General"}</span>
-            </div>
-            <div className="dashboard-mini-stack">
-              <div className="dashboard-mini-metric">
-                <span>Temp. máxima ayer</span>
-                <strong>
-                  {weatherSummary?.temperatureMax != null
-                    ? `${weatherSummary.temperatureMax.toFixed(1)}°C`
-                    : weatherCamp?.location
-                      ? "Sin dato"
-                      : weatherCamp
-                        ? "Agrega ubicación"
-                        : "Selecciona campamento"}
-                </strong>
+          <Link
+            href={scopeCamps.length === 1 ? `/clima?campId=${scopeCamps[0].id}` : "/clima"}
+            style={{ color: "inherit", textDecoration: "none" }}
+          >
+            <section className="dashboard-panel">
+              <div className="dashboard-panel-header">
+                <h2>Clima</h2>
+                <span className="dashboard-chip small">{weatherCamp ? weatherCamp.name : "General"}</span>
               </div>
-              <div className="dashboard-mini-metric">
-                <span>Temp. mínima ayer</span>
-                <strong>
-                  {weatherSummary?.temperatureMin != null
-                    ? `${weatherSummary.temperatureMin.toFixed(1)}°C`
-                    : weatherCamp?.location
-                      ? "Sin dato"
-                      : weatherCamp
-                        ? "Agrega ubicación"
-                        : "Selecciona campamento"}
-                </strong>
+              <div className="dashboard-mini-stack">
+                <div className="dashboard-mini-metric">
+                  <span>Temp. máxima ayer</span>
+                  <strong>
+                    {weatherSummary?.temperatureMax != null
+                      ? `${weatherSummary.temperatureMax.toFixed(1)}°C`
+                      : weatherCamp?.location
+                        ? "Sin dato"
+                        : weatherCamp
+                          ? "Agrega ubicación"
+                          : "Selecciona campamento"}
+                  </strong>
+                </div>
+                <div className="dashboard-mini-metric">
+                  <span>Temp. mínima ayer</span>
+                  <strong>
+                    {weatherSummary?.temperatureMin != null
+                      ? `${weatherSummary.temperatureMin.toFixed(1)}°C`
+                      : weatherCamp?.location
+                        ? "Sin dato"
+                        : weatherCamp
+                          ? "Agrega ubicación"
+                          : "Selecciona campamento"}
+                  </strong>
+                </div>
               </div>
-            </div>
-            {weatherCamp && !weatherCamp.location ? (
-              <div className="section-caption" style={{ marginTop: 12 }}>
-                Agrega la ubicación del campamento para obtener la temperatura automáticamente.
-              </div>
-            ) : null}
-          </section>
+              {weatherCamp && !weatherCamp.location ? (
+                <div className="section-caption" style={{ marginTop: 12 }}>
+                  Agrega la ubicación del campamento para obtener la temperatura automáticamente.
+                </div>
+              ) : null}
+            </section>
+          </Link>
         </div>
 
         <div className="dashboard-bottom-grid">

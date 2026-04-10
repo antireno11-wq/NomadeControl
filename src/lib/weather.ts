@@ -3,6 +3,12 @@ type WeatherSummary = {
   temperatureMin: number | null;
 };
 
+export type WeatherHistoryPoint = {
+  date: string;
+  temperatureMax: number | null;
+  temperatureMin: number | null;
+};
+
 type Coordinates = {
   latitude: number;
   longitude: number;
@@ -97,5 +103,62 @@ export async function getCampWeatherSummary(input: {
     };
   } catch {
     return null;
+  }
+}
+
+export async function getCampWeatherHistory(input: {
+  latitude?: number | null;
+  longitude?: number | null;
+  location?: string | null;
+  startDate: string;
+  endDate: string;
+}): Promise<WeatherHistoryPoint[]> {
+  let { latitude, longitude } = input;
+  const { startDate, endDate, location } = input;
+
+  if (latitude == null || longitude == null) {
+    const resolvedCoordinates = await geocodeLocation(location);
+    latitude = resolvedCoordinates?.latitude ?? null;
+    longitude = resolvedCoordinates?.longitude ?? null;
+  }
+
+  if (latitude == null || longitude == null) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    start_date: startDate,
+    end_date: endDate,
+    daily: "temperature_2m_max,temperature_2m_min",
+    timezone: "auto"
+  });
+
+  try {
+    const response = await fetch(`https://archive-api.open-meteo.com/v1/archive?${params.toString()}`, {
+      next: { revalidate: 60 * 60 * 6 }
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = (await response.json()) as {
+      daily?: {
+        time?: string[];
+        temperature_2m_max?: number[];
+        temperature_2m_min?: number[];
+      };
+    };
+
+    const times = payload.daily?.time ?? [];
+    return times.map((date, index) => ({
+      date,
+      temperatureMax: payload.daily?.temperature_2m_max?.[index] ?? null,
+      temperatureMin: payload.daily?.temperature_2m_min?.[index] ?? null
+    }));
+  } catch {
+    return [];
   }
 }
