@@ -603,6 +603,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           </section>
 
           <Link
+            className="dashboard-panel-link"
             href={weatherCamp ? `/clima?campId=${weatherCamp.id}` : "/clima"}
             style={{ color: "inherit", textDecoration: "none" }}
           >

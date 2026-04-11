@@ -368,6 +368,11 @@ a {
   box-shadow: 0 18px 50px rgba(16, 33, 43, 0.06);
 }
 
+.dashboard-panel-link {
+  display: block;
+  min-width: 0;
+}
+
 .dashboard-panel-large {
   grid-column: span 8;
 }
@@ -380,7 +385,15 @@ a {
   grid-column: span 4;
 }
 
+.dashboard-core-grid > .dashboard-panel-link:last-child {
+  grid-column: span 4;
+}
+
 .dashboard-core-grid > .dashboard-panel:only-child {
+  grid-column: 1 / -1;
+}
+
+.dashboard-core-grid > .dashboard-panel-link:only-child {
   grid-column: 1 / -1;
 }
 
