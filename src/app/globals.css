@@ -274,8 +274,10 @@ a {
   align-items: center;
 }
 
-.dashboard-filter select {
-  min-width: 170px;
+.dashboard-filter select,
+.dashboard-filter input {
+  min-width: 150px;
+  width: auto;
 }
 
 .dashboard-filter button,

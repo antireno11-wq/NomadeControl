@@ -1,16 +1,27 @@
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { formatDisplayDate, resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate, normalizeDateOnly, resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
 
 type SearchParams = {
   campId?: string | string[];
   days?: string | string[];
+  startDate?: string | string[];
+  endDate?: string | string[];
 };
 
 function parseDaysParam(raw: string | string[] | undefined) {
   const value = typeof raw === "string" ? Number(raw) : NaN;
   return [7, 14, 30, 60, 90].includes(value) ? value : 30;
+}
+
+function parseDateParam(raw: string | string[] | undefined) {
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return null;
+  }
+
+  const date = normalizeDateOnly(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function countChecks(value: unknown) {
@@ -32,12 +43,21 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
   const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
   const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
   const days = parseDaysParam(searchParams?.days);
+  const customStartDate = parseDateParam(searchParams?.startDate);
+  const customEndDate = parseDateParam(searchParams?.endDate);
+  const hasCustomPeriod = Boolean(customStartDate || customEndDate);
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const periodStart = new Date(todayDate);
-  periodStart.setUTCDate(periodStart.getUTCDate() - days);
+  const defaultStartDate = new Date(todayDate);
+  defaultStartDate.setUTCDate(defaultStartDate.getUTCDate() - days);
+  const rawPeriodStart = customStartDate ?? defaultStartDate;
+  const rawPeriodEnd = customEndDate ?? todayDate;
+  const periodStart = rawPeriodStart <= rawPeriodEnd ? rawPeriodStart : rawPeriodEnd;
+  const periodEnd = rawPeriodStart <= rawPeriodEnd ? rawPeriodEnd : rawPeriodStart;
+  const periodStartInput = hasCustomPeriod ? toInputDateValue(periodStart) : "";
+  const periodEndInput = hasCustomPeriod ? toInputDateValue(periodEnd) : "";
 
   const [camps, reports, taskControls] = await Promise.all([
     db.camp.findMany({
@@ -47,7 +67,7 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
     db.dailyReport.findMany({
       where: {
         ...(campFilter ? { campId: campFilter } : {}),
-        date: { gte: periodStart }
+        date: { gte: periodStart, lte: periodEnd }
       },
       orderBy: [{ date: "asc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
@@ -55,7 +75,7 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
     db.dailyTaskControl.findMany({
       where: {
         ...(campFilter ? { campId: campFilter } : {}),
-        date: { gte: periodStart }
+        date: { gte: periodStart, lte: periodEnd }
       },
       orderBy: [{ date: "desc" }, { camp: { name: "asc" } }],
       include: { camp: true, createdBy: true }
@@ -219,7 +239,7 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
   const maxCampFuel = Math.max(1, ...campTrendRows.map((row) => row.fuelTotal));
   const maxCampMeals = Math.max(1, ...campTrendRows.map((row) => row.mealsTotal));
 
-  const summaryPeriodLabel = `${formatDisplayDate(periodStart)} al ${formatDisplayDate(todayDate)}`;
+  const summaryPeriodLabel = `${formatDisplayDate(periodStart)} al ${formatDisplayDate(periodEnd)}`;
   const avgWaste = scopedReports.length > 0 ? summary.waste / scopedReports.length : 0;
   const avgBlackTank = scopedReports.length > 0 ? summary.blackTank / scopedReports.length : 0;
   const avgChlorine = scopedReports.length > 0 ? summary.chlorine / scopedReports.length : 0;
@@ -242,13 +262,15 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
               </option>
             ))}
           </select>
-          <select name="days" defaultValue={String(days)}>
+          <select name="days" defaultValue={String(days)} title="Rango rápido si no usas fechas personalizadas">
             <option value="7">7 días</option>
             <option value="14">14 días</option>
             <option value="30">30 días</option>
             <option value="60">60 días</option>
             <option value="90">90 días</option>
           </select>
+          <input name="startDate" type="date" defaultValue={periodStartInput} title="Desde" aria-label="Fecha desde" />
+          <input name="endDate" type="date" defaultValue={periodEndInput} title="Hasta" aria-label="Fecha hasta" />
           <button type="submit">Ver</button>
         </form>
       }
@@ -258,7 +280,7 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
           <div className="hero-kicker">Torre de control</div>
           <h2 style={{ marginTop: 0, marginBottom: 8 }}>Resumen consolidado de campamentos</h2>
           <div className="section-caption">
-            Vista general de toda la información cargada en el período seleccionado. Puedes ver todos los campamentos o bajar al detalle de uno.
+            Vista general de consumos y operación en el período seleccionado. Usa fechas personalizadas para revisar agua, combustible y servicios en un rango específico.
           </div>
           <div className="dashboard-mini-stats" style={{ marginTop: 12 }}>
             <span>Período: {summaryPeriodLabel}</span>
