@@ -240,7 +240,6 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         : null;
 
   let chartDays = defaultChartDays;
-  let peopleChartLabel = defaultChartDays.length > 0 ? `Últimos ${defaultChartDays.length} días` : "Sin turno";
 
   if (shiftOwner?.shiftStartDate && shiftOwner.shiftWorkDays && shiftOwner.shiftOffDays) {
     const millisPerDay = 24 * 60 * 60 * 1000;
@@ -262,17 +261,16 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
       chartDays = Array.from(byDay.values())
         .filter((day) => day.date >= cycleStartKey && day.date <= toInputDateValue(dashboardDate))
         .sort((a, b) => a.date.localeCompare(b.date));
-      peopleChartLabel = `${shiftOwner.shiftPattern ?? "14x14"} · quedan ${shiftOwner.shiftWorkDays - (cycleIndex + 1)} días`;
-    } else {
-      peopleChartLabel = `${shiftOwner.shiftPattern ?? "14x14"} · descanso`;
     }
   }
 
-  const maxPeople = Math.max(1, ...chartDays.map((day) => day.people));
-  const maxFoodServices = Math.max(1, ...chartDays.map((day) => day.foodServices));
-  const totalFoodServices = chartDays.reduce((sum, day) => sum + day.foodServices, 0);
+  const horizontalChartDays = defaultChartDays;
+  const horizontalChartLabel = horizontalChartDays.length > 0 ? `Últimos ${horizontalChartDays.length} días` : "Sin datos";
+  const maxPeople = Math.max(1, ...horizontalChartDays.map((day) => day.people));
+  const maxFoodServices = Math.max(1, ...horizontalChartDays.map((day) => day.foodServices));
+  const totalFoodServices = horizontalChartDays.reduce((sum, day) => sum + day.foodServices, 0);
   const visibleWaterTotal = chartDays.reduce((sum, day) => sum + day.water, 0);
-  const chartDayInsights = chartDays.map((day) => ({
+  const chartDayInsights = horizontalChartDays.map((day) => ({
     date: day.date,
     waterPerPerson: day.people > 0 ? day.water / day.people : 0,
     fuelPerPerson: day.people > 0 ? day.fuel / day.people : 0
@@ -702,14 +700,14 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
           </section>
         </div>
 
-        <div className="dashboard-chart-grid">
+        <div className="dashboard-chart-grid dashboard-horizontal-charts">
           <section className="dashboard-panel">
             <div className="dashboard-panel-header">
               <h2>Personas por turno</h2>
-              <span className="dashboard-chip small">{peopleChartLabel}</span>
+              <span className="dashboard-chip small">{horizontalChartLabel}</span>
             </div>
-            <div className="chart-grid compact">
-              {chartDays.map((day) => (
+            <div className="chart-grid compact horizontal-days">
+              {horizontalChartDays.map((day) => (
                 <div
                   key={`p-${day.date}`}
                   className="chart-col chart-tooltip-target"
@@ -729,8 +727,8 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Servicios entregados</h2>
               <span className="dashboard-chip small">{totalFoodServices} total</span>
             </div>
-            <div className="chart-grid compact">
-              {chartDays.map((day) => (
+            <div className="chart-grid compact horizontal-days">
+              {horizontalChartDays.map((day) => (
                 <div
                   key={`c-${day.date}`}
                   className="chart-col chart-tooltip-target"
@@ -750,7 +748,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Agua por huésped</h2>
               <span className="dashboard-chip small">{waterPerPersonToday.toFixed(1)} L/p</span>
             </div>
-            <div className="chart-grid compact">
+            <div className="chart-grid compact horizontal-days">
               {chartDayInsights.map((day) => (
                 <div key={`wp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.waterPerPerson.toFixed(1)} L por persona`}>
                   <div className="chart-track tall">
@@ -767,7 +765,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Combustible por huésped</h2>
               <span className="dashboard-chip small">{fuelPerPersonToday.toFixed(1)} L/p</span>
             </div>
-            <div className="chart-grid compact">
+            <div className="chart-grid compact horizontal-days">
               {chartDayInsights.map((day) => (
                 <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
                   <div className="chart-track tall">
