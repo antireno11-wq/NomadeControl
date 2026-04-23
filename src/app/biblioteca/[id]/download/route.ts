@@ -26,5 +26,5 @@ export async function GET(
     headers.set("Content-Length", String(doc.fileSize));
   }
 
-  return new NextResponse(doc.contenido, { headers });
+  return new NextResponse(doc.contenido.buffer as ArrayBuffer, { headers });
 }
