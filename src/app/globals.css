@@ -406,14 +406,13 @@ a {
 
 .dashboard-horizontal-charts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(260px, 1fr));
-  overflow-x: auto;
-  padding-bottom: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .dashboard-horizontal-charts > .dashboard-panel {
   grid-column: auto;
-  min-width: 260px;
+  min-width: 0;
 }
 
 .dashboard-bottom-grid > .dashboard-panel:only-child {
@@ -1066,10 +1065,16 @@ th {
   padding-inline: 4px;
 }
 
+.chart-scroll-wrap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
 .chart-grid.horizontal-days {
-  grid-template-columns: repeat(14, minmax(18px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(14, 32px);
+  gap: 8px;
   min-height: 150px;
+  min-width: max-content;
 }
 
 .chart-grid.horizontal-days .chart-track.tall,
@@ -1292,6 +1297,10 @@ th {
 }
 
 @media (max-width: 760px) {
+  .dashboard-horizontal-charts {
+    grid-template-columns: 1fr;
+  }
+
   .dashboard-topbar {
     flex-direction: column;
   }

@@ -706,19 +706,21 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Personas por turno</h2>
               <span className="dashboard-chip small">{horizontalChartLabel}</span>
             </div>
-            <div className="chart-grid compact horizontal-days">
-              {horizontalChartDays.map((day) => (
-                <div
-                  key={`p-${day.date}`}
-                  className="chart-col chart-tooltip-target"
-                  data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.people} personas`}
-                >
-                  <div className="chart-track tall">
-                    <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
+            <div className="chart-scroll-wrap">
+              <div className="chart-grid compact horizontal-days">
+                {horizontalChartDays.map((day) => (
+                  <div
+                    key={`p-${day.date}`}
+                    className="chart-col chart-tooltip-target"
+                    data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.people} personas`}
+                  >
+                    <div className="chart-track tall">
+                      <div className="chart-bar people" style={{ height: `${(day.people / maxPeople) * 100}%` }} />
+                    </div>
+                    <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                   </div>
-                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
 
@@ -727,19 +729,21 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Servicios entregados</h2>
               <span className="dashboard-chip small">{totalFoodServices} total</span>
             </div>
-            <div className="chart-grid compact horizontal-days">
-              {horizontalChartDays.map((day) => (
-                <div
-                  key={`c-${day.date}`}
-                  className="chart-col chart-tooltip-target"
-                  data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.foodServices} servicios entregados`}
-                >
-                  <div className="chart-track tall">
-                    <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
+            <div className="chart-scroll-wrap">
+              <div className="chart-grid compact horizontal-days">
+                {horizontalChartDays.map((day) => (
+                  <div
+                    key={`c-${day.date}`}
+                    className="chart-col chart-tooltip-target"
+                    data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.foodServices} servicios entregados`}
+                  >
+                    <div className="chart-track tall">
+                      <div className="chart-bar meals" style={{ height: `${(day.foodServices / maxFoodServices) * 100}%` }} />
+                    </div>
+                    <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                   </div>
-                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
 
@@ -748,15 +752,17 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Agua por huésped</h2>
               <span className="dashboard-chip small">{waterPerPersonToday.toFixed(1)} L/p</span>
             </div>
-            <div className="chart-grid compact horizontal-days">
-              {chartDayInsights.map((day) => (
-                <div key={`wp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.waterPerPerson.toFixed(1)} L por persona`}>
-                  <div className="chart-track tall">
-                    <div className="chart-bar water" style={{ height: `${(day.waterPerPerson / maxWaterPerPerson) * 100}%` }} />
+            <div className="chart-scroll-wrap">
+              <div className="chart-grid compact horizontal-days">
+                {chartDayInsights.map((day) => (
+                  <div key={`wp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.waterPerPerson.toFixed(1)} L por persona`}>
+                    <div className="chart-track tall">
+                      <div className="chart-bar water" style={{ height: `${(day.waterPerPerson / maxWaterPerPerson) * 100}%` }} />
+                    </div>
+                    <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                   </div>
-                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
 
@@ -765,15 +771,17 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
               <h2>Combustible por huésped</h2>
               <span className="dashboard-chip small">{fuelPerPersonToday.toFixed(1)} L/p</span>
             </div>
-            <div className="chart-grid compact horizontal-days">
-              {chartDayInsights.map((day) => (
-                <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
-                  <div className="chart-track tall">
-                    <div className="chart-bar fuel" style={{ height: `${(day.fuelPerPerson / maxFuelPerPerson) * 100}%` }} />
+            <div className="chart-scroll-wrap">
+              <div className="chart-grid compact horizontal-days">
+                {chartDayInsights.map((day) => (
+                  <div key={`fp-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${formatDisplayDate(new Date(`${day.date}T00:00:00Z`))}: ${day.fuelPerPerson.toFixed(1)} L por persona`}>
+                    <div className="chart-track tall">
+                      <div className="chart-bar fuel" style={{ height: `${(day.fuelPerPerson / maxFuelPerPerson) * 100}%` }} />
+                    </div>
+                    <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
                   </div>
-                  <div className="chart-label">{formatShortDisplayDateValue(day.date)}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </section>
         </div>
