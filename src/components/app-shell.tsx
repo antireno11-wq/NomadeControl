@@ -3,9 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
-import { canAccessAdministration, canAccessCampOperations, canAccessDashboard, canAccessVehicles } from "@/lib/auth";
+import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessTareas, canAccessVehicles } from "@/lib/auth";
 
-type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "administracion" | null;
+type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "administracion" | null;
 
 type NotificationItem = {
   text: string;
@@ -34,6 +34,8 @@ export function AppShell({
   const canSeeCampOps = canAccessCampOperations(user.role) && !canAccessAdministration(user.role);
   const canSeeWorkers = canAccessCampOperations(user.role);
   const canSeeAdministration = canAccessAdministration(user.role);
+  const canSeeBiblioteca = canAccessBiblioteca(user.role);
+  const canSeeTareas = canAccessTareas(user.role);
   const navItems = [
     ...(canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
     ...(canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
@@ -45,6 +47,8 @@ export function AppShell({
           { href: "/control-tareas-diarias", label: "Control tareas", key: "tareas" as const }
         ]
       : []),
+    ...(canSeeTareas ? [{ href: "/gestion-tareas", label: "Gestión de tareas", key: "gestion-tareas" as const }] : []),
+    ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
     ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
   ];
 

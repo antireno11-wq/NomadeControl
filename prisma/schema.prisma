@@ -354,3 +354,42 @@ model VehicleChecklist {
   @@index([vehicleId, date])
   @@index([driverId, date])
 }
+
+model Documento {
+  id               String   @id @default(cuid())
+  titulo           String
+  descripcion      String?
+  categoria        String
+  originalFilename String
+  fileSize         Int?
+  mimeType         String?
+  version          String?
+  subidoPor        String?
+  contenido        Bytes
+  createdAt        DateTime @default(now())
+
+  @@index([categoria])
+  @@index([createdAt])
+}
+
+model Tarea {
+  id          String    @id @default(cuid())
+  tipo        String    @default("compromiso")
+  proyecto    String?
+  area        String?
+  descripcion String
+  responsable String?
+  comentario  String?
+  prioridad   String    @default("media")
+  estado      String    @default("pendiente")
+  fechaInicio DateTime?
+  fechaCierre DateTime?
+  creadoPor   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([estado])
+  @@index([responsable])
+  @@index([tipo])
+  @@index([fechaCierre])
+}

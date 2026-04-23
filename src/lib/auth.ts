@@ -21,6 +21,8 @@ export const VEHICLE_ROLES: AppRole[] = [...ADMIN_ROLES, "VEHICULOS"];
 export const OPERATION_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
 export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR"];
 export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
+export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
+export const TAREAS_ROLES: AppRole[]     = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
 
 export function defaultRouteForRole(role: string) {
   if (isVehicleOnlyRole(role)) {
@@ -64,6 +66,14 @@ export function canAccessCampOperations(role: string) {
 
 export function canAccessVehicles(role: string) {
   return VEHICLE_ROLES.includes(role as AppRole);
+}
+
+export function canAccessBiblioteca(role: string) {
+  return BIBLIOTECA_ROLES.includes(role as AppRole);
+}
+
+export function canAccessTareas(role: string) {
+  return TAREAS_ROLES.includes(role as AppRole);
 }
 
 export function roleLabel(role: string) {
