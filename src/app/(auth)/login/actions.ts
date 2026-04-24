@@ -13,7 +13,7 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
     return { error: "Tipo de acceso, correo y contraseña son obligatorios." };
   }
 
-  if (!["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS", "OFICINA", "COLABORADOR"].includes(accessRole)) {
+  if (!["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "OFICINA", "COLABORADOR"].includes(accessRole)) {
     return { error: "Selecciona un tipo de acceso válido." };
   }
 
@@ -41,15 +41,11 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
     return { error: "Este usuario no tiene perfil de supervisor." };
   }
 
-  if (accessRole === "VEHICULOS" && !isVehicleOnlyRole(user.role)) {
-    return { error: "Este usuario no tiene perfil solo vehículos." };
-  }
-
   if (accessRole === "OFICINA" && user.role !== "OFICINA") {
     return { error: "Este usuario no tiene perfil de oficina." };
   }
 
-  if (accessRole === "COLABORADOR" && user.role !== "COLABORADOR") {
+  if (accessRole === "COLABORADOR" && !["COLABORADOR", "VEHICULOS"].includes(user.role)) {
     return { error: "Este usuario no tiene perfil de colaborador." };
   }
 

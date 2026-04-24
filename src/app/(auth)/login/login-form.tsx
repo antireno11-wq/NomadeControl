@@ -30,7 +30,6 @@ export function LoginForm({ oauthErrorText }: { oauthErrorText?: string }) {
             <option value="ADMINISTRADOR">Administrador</option>
             <option value="OFICINA">Oficina</option>
             <option value="COLABORADOR">Colaborador</option>
-            <option value="VEHICULOS">Solo vehículos</option>
           </select>
         </div>
 
