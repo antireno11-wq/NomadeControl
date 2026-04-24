@@ -93,15 +93,32 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
     ? await db.tarea.findMany({ where: verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } } })
     : tareas;
 
-  const misTareasRaw = (vista === "mis" || esColaborador)
+  const misTareasBase = (vista === "mis" || esColaborador)
     ? await db.tarea.findMany({
         where: { responsable: user.name },
         orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
-        include: { comentarios: { orderBy: { createdAt: "asc" } } },
       })
     : [];
 
-  const misTareas: TareaRow[] = misTareasRaw;
+  // Fetch comments separately to avoid Prisma include complexity
+  const tareaIds = misTareasBase.map(t => t.id);
+  const comentariosList = tareaIds.length > 0
+    ? await (db as any).tareaComentario.findMany({
+        where: { tareaId: { in: tareaIds } },
+        orderBy: { createdAt: "asc" },
+      }).catch(() => [])
+    : [];
+
+  const comentariosByTareaId = (comentariosList as any[]).reduce((acc: Record<string, any[]>, c: any) => {
+    if (!acc[c.tareaId]) acc[c.tareaId] = [];
+    acc[c.tareaId].push(c);
+    return acc;
+  }, {});
+
+  const misTareas: TareaRow[] = misTareasBase.map(t => ({
+    ...t,
+    comentarios: comentariosByTareaId[t.id] ?? [],
+  }));
 
   const stats = {
     total: tareasTodas.length,
