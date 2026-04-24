@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireRole, TAREAS_ROLES } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
+import { sendTareaAsignadaEmail } from "@/lib/mailer";
 
 const TareaSchema = z.object({
   tipo:        z.string().default("compromiso"),
@@ -54,6 +55,19 @@ export async function crearTareaAction(formData: FormData) {
     action: "TAREA_CREATE", entityType: "tarea", entityId: tarea.id,
     summary: `Creó tarea «${tarea.descripcion.slice(0, 60)}»`
   });
+
+  if (d.responsable) {
+    const resp = await db.user.findFirst({ where: { name: d.responsable, isActive: true } });
+    if (resp?.email) {
+      await sendTareaAsignadaEmail({
+        to: resp.email, toName: resp.name,
+        descripcion: tarea.descripcion,
+        asignadoPor: user.name,
+        prioridad: tarea.prioridad,
+        fechaCierre: tarea.fechaCierre?.toLocaleDateString("es-CL") ?? null,
+      }).catch(() => {});
+    }
+  }
 
   revalidatePath("/gestion-tareas");
   redirect("/gestion-tareas?status=created");
@@ -105,12 +119,30 @@ export async function cambiarEstadoTareaAction(tareaId: string, estado: string) 
 
 export async function reasignarTareaAction(tareaId: string, nuevoResponsable: string) {
   const user = await requireRole(TAREAS_ROLES);
-  await db.tarea.update({ where: { id: tareaId }, data: { responsable: nuevoResponsable } });
+  const tarea = await db.tarea.update({
+    where: { id: tareaId },
+    data: { responsable: nuevoResponsable },
+  });
+
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
     action: "TAREA_REASIGNAR", entityType: "tarea", entityId: tareaId,
     summary: `Reasignó tarea a ${nuevoResponsable}`
   });
+
+  if (nuevoResponsable) {
+    const resp = await db.user.findFirst({ where: { name: nuevoResponsable, isActive: true } });
+    if (resp?.email) {
+      await sendTareaAsignadaEmail({
+        to: resp.email, toName: resp.name,
+        descripcion: tarea.descripcion,
+        asignadoPor: user.name,
+        prioridad: tarea.prioridad,
+        fechaCierre: tarea.fechaCierre?.toLocaleDateString("es-CL") ?? null,
+      }).catch(() => {});
+    }
+  }
+
   revalidatePath("/gestion-tareas");
 }
 

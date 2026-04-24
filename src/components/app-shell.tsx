@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
-import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessTareas, canAccessVehicles } from "@/lib/auth";
+import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessVehicles, canManageTareas, canViewTareas } from "@/lib/auth";
 
 type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "administracion" | null;
 
@@ -35,19 +35,21 @@ export function AppShell({
   const canSeeWorkers = canAccessCampOperations(user.role);
   const canSeeAdministration = canAccessAdministration(user.role);
   const canSeeBiblioteca = canAccessBiblioteca(user.role);
-  const canSeeTareas = canAccessTareas(user.role);
+  const canSeeGestionTareas = canManageTareas(user.role);
+  const canSeeTareasBasic = canViewTareas(user.role);
+  const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
   const navItems = [
-    ...(canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
-    ...(canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
-    ...(canSeeWorkers ? [{ href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const }] : []),
-    ...(canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
-    ...(canSeeCampOps
+    ...(!isOfficeRole && canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
+    ...(!isOfficeRole && canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
+    ...(!isOfficeRole && canSeeWorkers ? [{ href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const }] : []),
+    ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
+    ...(canSeeCampOps && !isOfficeRole
       ? [
           { href: "/carga-diaria", label: "Informe diario", key: "carga" as const },
           { href: "/control-tareas-diarias", label: "Control tareas", key: "tareas" as const }
         ]
       : []),
-    ...(canSeeTareas ? [{ href: "/gestion-tareas", label: "Gestión de tareas", key: "gestion-tareas" as const }] : []),
+    ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Gestión de tareas", key: "gestion-tareas" as const }] : []),
     ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
     ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
   ];

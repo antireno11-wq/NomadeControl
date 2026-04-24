@@ -1,9 +1,51 @@
 import { AppShell } from "@/components/app-shell";
-import { requireRole, TAREAS_ROLES, isAdminRole } from "@/lib/auth";
+import { requireRole, canManageTareas, TAREAS_VER_ROLES } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { crearTareaAction, editarTareaAction, eliminarTareaAction, cambiarEstadoTareaAction, reasignarTareaAction } from "./actions";
+import {
+  crearTareaAction,
+  editarTareaAction,
+  eliminarTareaAction,
+  cambiarEstadoTareaAction,
+  reasignarTareaAction,
+} from "./actions";
 
-type SearchParams = { status?: string; filtro?: string; ver?: string };
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+type SearchParams = { v?: string; filtro?: string; ver?: string; status?: string };
+
+function prioridadColor(p: string) {
+  return p === "alta" ? "#dc2626" : p === "media" ? "#f97316" : "#16a34a";
+}
+
+function estadoColor(e: string) {
+  const map: Record<string, string> = {
+    pendiente: "#f59e0b",
+    en_progreso: "#3b82f6",
+    completada: "#16a34a",
+    cancelada: "#94a3b8",
+  };
+  return map[e] ?? "#94a3b8";
+}
+
+function estadoLabel(e: string) {
+  const map: Record<string, string> = {
+    pendiente: "Por hacer",
+    en_progreso: "En progreso",
+    completada: "Completada",
+    cancelada: "Cancelada",
+  };
+  return map[e] ?? e;
+}
+
+function fmtDate(d: Date | null) {
+  if (!d) return null;
+  return d.toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
+}
+
+function diasAtraso(fechaCierre: Date | null, estado: string) {
+  if (!fechaCierre || ["completada", "cancelada"].includes(estado)) return 0;
+  return Math.max(0, Math.floor((Date.now() - fechaCierre.getTime()) / 86400000));
+}
 
 function statusMsg(s?: string) {
   if (s === "created") return { type: "success", text: "Tarea creada correctamente." };
@@ -12,69 +54,398 @@ function statusMsg(s?: string) {
   return null;
 }
 
-function prioridadBadge(p: string) {
-  const map: Record<string, string> = { alta: "#dc2626", media: "#f97316", baja: "#16a34a" };
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.75rem;font-weight:700;background:${map[p] ?? "#94a3b8"}22;color:${map[p] ?? "#64748b"}">${p.toUpperCase()}</span>`;
-}
-
-function estadoBadge(e: string) {
-  const map: Record<string, [string, string]> = {
-    pendiente:   ["#f59e0b", "Pendiente"],
-    en_progreso: ["#3b82f6", "En progreso"],
-    completada:  ["#16a34a", "Completada"],
-    cancelada:   ["#94a3b8", "Cancelada"],
-  };
-  const [color, label] = map[e] ?? ["#94a3b8", e];
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:0.75rem;font-weight:700;background:${color}22;color:${color}">${label}</span>`;
-}
-
-function fmtDate(d: Date | null) {
-  if (!d) return "—";
-  return d.toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function diasAtraso(fechaCierre: Date | null, estado: string) {
-  if (!fechaCierre || ["completada", "cancelada"].includes(estado)) return 0;
-  const diff = Math.floor((Date.now() - fechaCierre.getTime()) / 86400000);
-  return Math.max(0, diff);
-}
+// ─── page ────────────────────────────────────────────────────────────────────
 
 export default async function GestionTareasPage({ searchParams }: { searchParams?: SearchParams }) {
-  const user = await requireRole(TAREAS_ROLES);
-  const msg = statusMsg(searchParams?.status);
+  const user = await requireRole(TAREAS_VER_ROLES);
+  const puedeGestionar = canManageTareas(user.role);
+  const esColaborador = user.role === "COLABORADOR";
+
+  const vista = (esColaborador ? "mis" : searchParams?.v) ?? "mis";
   const verCompletadas = searchParams?.ver === "todas";
-  const filtroResp = searchParams?.filtro ?? "";
+  const filtroResp = esColaborador ? user.name : (searchParams?.filtro ?? "");
+  const msg = statusMsg(searchParams?.status);
+
+  // Tareas
+  const whereBase = verCompletadas
+    ? {}
+    : { estado: { notIn: ["completada", "cancelada"] } };
+
+  const whereFiltro = filtroResp
+    ? { ...whereBase, responsable: filtroResp }
+    : whereBase;
 
   const [tareas, usuarios] = await Promise.all([
     db.tarea.findMany({
-      where: verCompletadas ? undefined : { estado: { notIn: ["completada", "cancelada"] } },
+      where: whereFiltro,
       orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
     }),
-    db.user.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    puedeGestionar
+      ? db.user.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } })
+      : Promise.resolve([] as { id: string; name: string }[]),
   ]);
 
-  const tareasFiltradas = filtroResp
-    ? tareas.filter(t => t.responsable === filtroResp)
-    : tareas;
+  const usuariosList = usuarios as { id: string; name: string }[];
+
+  // Fetch extra data in parallel based on the current view
+  const [tareasTodas, misTareas] = await Promise.all([
+    // Stats source: unfiltered when in "todas" view, otherwise reuse already-fetched list
+    (vista === "todas" && !esColaborador)
+      ? db.tarea.findMany({ where: verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } } })
+      : Promise.resolve(tareas),
+    // "mis" view always shows all tasks for the user (including completed)
+    (vista === "mis" || esColaborador)
+      ? db.tarea.findMany({
+          where: { responsable: user.name },
+          orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
+        })
+      : Promise.resolve([] as typeof tareas),
+  ]);
 
   const stats = {
-    total:      tareas.length,
-    pendientes: tareas.filter(t => t.estado === "pendiente").length,
-    enProgreso: tareas.filter(t => t.estado === "en_progreso").length,
-    atrasadas:  tareas.filter(t => diasAtraso(t.fechaCierre, t.estado) > 0).length,
-    completadas: tareas.filter(t => t.estado === "completada").length,
+    total: tareasTodas.length,
+    pendientes: tareasTodas.filter(t => t.estado === "pendiente").length,
+    enProgreso: tareasTodas.filter(t => t.estado === "en_progreso").length,
+    atrasadas: tareasTodas.filter(t => diasAtraso(t.fechaCierre, t.estado) > 0).length,
+    completadas: tareasTodas.filter(t => t.estado === "completada").length,
   };
 
   return (
     <AppShell title="Gestión de Tareas" user={{ name: user.name, role: user.role }} activeNav="gestion-tareas">
+
+      {/* Flash */}
       {msg && (
-        <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 10, background: msg.type === "success" ? "#dcfce7" : "#fee2e2", color: msg.type === "success" ? "#15803d" : "#dc2626", fontWeight: 600 }}>
+        <div style={{
+          marginBottom: 16, padding: "10px 14px", borderRadius: 10,
+          background: msg.type === "success" ? "#dcfce7" : "#fee2e2",
+          color: msg.type === "success" ? "#15803d" : "#dc2626",
+          fontWeight: 600,
+        }}>
           {msg.text}
         </div>
       )}
 
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 20 }}>
+      {/* Tab bar + new task button */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
+          <TabLink href="/gestion-tareas?v=mis" active={vista === "mis"}>📋 Mis tareas</TabLink>
+          {!esColaborador && (
+            <TabLink href="/gestion-tareas?v=todas" active={vista === "todas"}>📊 Todas las tareas</TabLink>
+          )}
+          {!esColaborador && (
+            <TabLink href="/gestion-tareas?v=tablero" active={vista === "tablero"}>🗂 Tablero</TabLink>
+          )}
+        </div>
+
+        {puedeGestionar && (
+          <details style={{ position: "relative" }}>
+            <summary style={{
+              cursor: "pointer", padding: "8px 18px", borderRadius: 8,
+              background: "var(--accent)", color: "#fff", fontWeight: 700,
+              fontSize: "0.92rem", listStyle: "none", display: "inline-block",
+              userSelect: "none",
+            }}>
+              + Nueva tarea
+            </summary>
+            <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 420, marginTop: 6 }}>
+              <TareaForm usuarios={usuariosList} />
+            </div>
+          </details>
+        )}
+      </div>
+
+      {/* Views */}
+      {vista === "mis" && (
+        <MisTareasView
+          tareas={misTareas}
+          usuarios={usuariosList}
+          puedeGestionar={puedeGestionar}
+          userName={user.name}
+        />
+      )}
+
+      {vista === "todas" && !esColaborador && (
+        <TodasTareasView
+          tareas={tareas}
+          usuarios={usuariosList}
+          stats={stats}
+          filtroResp={filtroResp}
+          verCompletadas={verCompletadas}
+          puedeGestionar={puedeGestionar}
+        />
+      )}
+
+      {vista === "tablero" && !esColaborador && (
+        <TableroView
+          tareas={tareas}
+          usuarios={usuariosList}
+          puedeGestionar={puedeGestionar}
+        />
+      )}
+
+      {esColaborador && vista !== "mis" && (
+        <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+          Vista no disponible para tu rol.
+        </div>
+      )}
+    </AppShell>
+  );
+}
+
+// ─── Tab link ─────────────────────────────────────────────────────────────────
+
+function TabLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+  return (
+    <a href={href} style={{
+      padding: "7px 16px", borderRadius: 999,
+      background: active ? "var(--teal)" : "transparent",
+      color: active ? "#fff" : "var(--muted)",
+      fontWeight: 600, fontSize: "0.88rem", textDecoration: "none",
+      border: active ? "1.5px solid var(--teal)" : "1.5px solid var(--border)",
+      transition: "background 0.15s",
+    }}>
+      {children}
+    </a>
+  );
+}
+
+// ─── Tarea row (Asana-style) ──────────────────────────────────────────────────
+
+type TareaRow = {
+  id: string;
+  descripcion: string;
+  tipo: string;
+  proyecto: string | null;
+  area: string | null;
+  responsable: string | null;
+  prioridad: string;
+  estado: string;
+  fechaCierre: Date | null;
+  comentario: string | null;
+  fechaInicio: Date | null;
+};
+
+function AsanaTareaRow({
+  t,
+  usuarios,
+  puedeGestionar,
+}: {
+  t: TareaRow;
+  usuarios: { id: string; name: string }[];
+  puedeGestionar: boolean;
+}) {
+  const terminada = ["completada", "cancelada"].includes(t.estado);
+  const atraso = diasAtraso(t.fechaCierre, t.estado);
+  const fecha = fmtDate(t.fechaCierre);
+  const pColor = prioridadColor(t.prioridad);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "10px 14px", borderBottom: "1px solid var(--border)",
+      background: terminada ? "#f8fafc" : "#fff",
+      opacity: terminada ? 0.7 : 1,
+      borderLeft: `4px solid ${pColor}`,
+    }}>
+      {/* Complete button */}
+      <div style={{ flexShrink: 0 }}>
+        {terminada ? (
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 22, height: 22, borderRadius: "50%",
+            background: "#16a34a22", color: "#16a34a", fontWeight: 800, fontSize: "0.8rem",
+          }}>✓</span>
+        ) : puedeGestionar ? (
+          <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
+            <button type="submit" title="Marcar completada" style={{
+              width: 22, height: 22, borderRadius: "50%", padding: 0,
+              background: "transparent", border: "2px solid #cbd5e1",
+              cursor: "pointer", color: "#94a3b8", fontSize: "0.75rem", lineHeight: 1,
+            }}>○</button>
+          </form>
+        ) : (
+          <span style={{
+            display: "inline-block", width: 22, height: 22, borderRadius: "50%",
+            border: "2px solid #cbd5e1",
+          }} />
+        )}
+      </div>
+
+      {/* Description + tags */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontWeight: 600, fontSize: "0.9rem",
+          textDecoration: terminada ? "line-through" : "none",
+          color: terminada ? "var(--muted)" : "inherit",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {t.descripcion}
+        </div>
+        <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+          {t.proyecto && (
+            <span style={{
+              fontSize: "0.72rem", padding: "1px 7px", borderRadius: 999,
+              background: "#e0f2fe", color: "#0369a1", fontWeight: 600,
+            }}>
+              📌 {t.proyecto}{t.area ? ` · ${t.area}` : ""}
+            </span>
+          )}
+          <span style={{
+            fontSize: "0.72rem", padding: "1px 7px", borderRadius: 999,
+            background: `${pColor}18`, color: pColor, fontWeight: 700, textTransform: "uppercase",
+          }}>
+            {t.prioridad}
+          </span>
+        </div>
+      </div>
+
+      {/* Due date */}
+      <div style={{ flexShrink: 0, fontSize: "0.8rem", minWidth: 80, textAlign: "right" }}>
+        {fecha ? (
+          atraso > 0 ? (
+            <span style={{ color: "#dc2626", fontWeight: 700 }}>{fecha} · {atraso}d</span>
+          ) : (
+            <span style={{ color: "var(--muted)" }}>{fecha}</span>
+          )
+        ) : (
+          <span style={{ color: "var(--border)" }}>—</span>
+        )}
+      </div>
+
+      {/* Responsable */}
+      <div style={{
+        flexShrink: 0, fontSize: "0.8rem", color: "var(--muted)",
+        minWidth: 90, maxWidth: 120, overflow: "hidden",
+        textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {t.responsable ?? <span style={{ color: "var(--border)" }}>—</span>}
+      </div>
+
+      {/* Actions */}
+      {puedeGestionar && (
+        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+          <details style={{ position: "relative" }}>
+            <summary style={{
+              cursor: "pointer", padding: "3px 9px", borderRadius: 6,
+              background: "#334e5c", color: "#fff", fontWeight: 600,
+              fontSize: "0.78rem", listStyle: "none", display: "inline-block",
+            }}>✏️</summary>
+            <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
+              <TareaForm tarea={t} usuarios={usuarios} />
+            </div>
+          </details>
+          <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
+          <EliminarForm tareaId={t.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SeccionHeader({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "8px 14px", background: "#f8fafc",
+      borderBottom: "1px solid var(--border)",
+    }}>
+      <span style={{ fontWeight: 700, fontSize: "0.85rem", color }}>{label}</span>
+      <span style={{
+        fontSize: "0.75rem", padding: "1px 7px", borderRadius: 999,
+        background: `${color}20`, color, fontWeight: 700,
+      }}>{count}</span>
+    </div>
+  );
+}
+
+// ─── Mis tareas view ──────────────────────────────────────────────────────────
+
+function MisTareasView({
+  tareas,
+  usuarios,
+  puedeGestionar,
+  userName,
+}: {
+  tareas: TareaRow[];
+  usuarios: { id: string; name: string }[];
+  puedeGestionar: boolean;
+  userName: string;
+}) {
+  const porHacer = tareas.filter(t => t.estado === "pendiente");
+  const enProgreso = tareas.filter(t => t.estado === "en_progreso");
+  const terminadas = tareas.filter(t => ["completada", "cancelada"].includes(t.estado));
+
+  if (tareas.length === 0) {
+    return (
+      <div className="card" style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+        No tenés tareas asignadas.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {porHacer.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <SeccionHeader label="Por hacer" count={porHacer.length} color="#f59e0b" />
+          {porHacer.map(t => (
+            <AsanaTareaRow key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+          ))}
+        </div>
+      )}
+
+      {enProgreso.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <SeccionHeader label="En progreso" count={enProgreso.length} color="#3b82f6" />
+          {enProgreso.map(t => (
+            <AsanaTareaRow key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+          ))}
+        </div>
+      )}
+
+      {terminadas.length > 0 && (
+        <details>
+          <summary style={{
+            cursor: "pointer", listStyle: "none", padding: "8px 14px",
+            background: "#f8fafc", borderRadius: 10, border: "1px solid var(--border)",
+            fontWeight: 700, fontSize: "0.85rem", color: "var(--muted)",
+          }}>
+            ▶ Completadas / Canceladas ({terminadas.length})
+          </summary>
+          <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 6 }}>
+            {terminadas.map(t => (
+              <AsanaTareaRow key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+// ─── Todas view ───────────────────────────────────────────────────────────────
+
+function TodasTareasView({
+  tareas,
+  usuarios,
+  stats,
+  filtroResp,
+  verCompletadas,
+  puedeGestionar,
+}: {
+  tareas: TareaRow[];
+  usuarios: { id: string; name: string }[];
+  stats: { total: number; pendientes: number; enProgreso: number; atrasadas: number; completadas: number };
+  filtroResp: string;
+  verCompletadas: boolean;
+  puedeGestionar: boolean;
+}) {
+  return (
+    <div>
+      {/* Stats strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px,1fr))", gap: 10, marginBottom: 18 }}>
         {[
           { label: "Total", value: stats.total, color: "#006878" },
           { label: "Pendientes", value: stats.pendientes, color: "#f59e0b" },
@@ -82,39 +453,39 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
           { label: "Atrasadas", value: stats.atrasadas, color: "#dc2626" },
           { label: "Completadas", value: stats.completadas, color: "#16a34a" },
         ].map(s => (
-          <div key={s.label} className="card" style={{ textAlign: "center", padding: "14px 10px" }}>
-            <div style={{ fontSize: "1.8rem", fontWeight: 900, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: 2 }}>{s.label}</div>
+          <div key={s.label} className="card" style={{ textAlign: "center", padding: "12px 8px" }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: 900, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+      {/* Filter toolbar */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
         <form method="GET" style={{ display: "contents" }}>
-          <select name="filtro" defaultValue={filtroResp} onChange={undefined}
-            style={{ width: "auto", padding: "7px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: "0.9rem" }}>
+          <input type="hidden" name="v" value="todas" />
+          {verCompletadas && <input type="hidden" name="ver" value="todas" />}
+          <select name="filtro" defaultValue={filtroResp} style={{ width: "auto", padding: "7px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: "0.9rem" }}>
             <option value="">Todos los responsables</option>
             {usuarios.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
           </select>
-          {verCompletadas && <input type="hidden" name="ver" value="todas" />}
           <button type="submit" style={{ width: "auto", padding: "7px 16px", borderRadius: 8 }}>Filtrar</button>
         </form>
-        <a href={verCompletadas ? "/gestion-tareas" : "/gestion-tareas?ver=todas"}
-          style={{ padding: "7px 14px", borderRadius: 8, background: verCompletadas ? "#16a34a22" : "#f1f5f9", color: verCompletadas ? "#15803d" : "var(--muted)", fontWeight: 600, fontSize: "0.88rem", textDecoration: "none", border: "1px solid var(--border)" }}>
+        <a
+          href={verCompletadas ? "/gestion-tareas?v=todas" : `/gestion-tareas?v=todas&ver=todas${filtroResp ? `&filtro=${encodeURIComponent(filtroResp)}` : ""}`}
+          style={{
+            padding: "7px 14px", borderRadius: 8,
+            background: verCompletadas ? "#16a34a22" : "#f1f5f9",
+            color: verCompletadas ? "#15803d" : "var(--muted)",
+            fontWeight: 600, fontSize: "0.88rem", textDecoration: "none",
+            border: "1px solid var(--border)",
+          }}
+        >
           {verCompletadas ? "🙈 Ocultar completadas" : "👁 Ver completadas"}
         </a>
-        <details style={{ marginLeft: "auto" }}>
-          <summary style={{ cursor: "pointer", padding: "7px 16px", borderRadius: 8, background: "var(--accent)", color: "#fff", fontWeight: 700, fontSize: "0.9rem", listStyle: "none", display: "inline-block" }}>
-            + Nueva tarea
-          </summary>
-          <div className="card" style={{ position: "absolute", zIndex: 100, minWidth: 400, marginTop: 6, right: 24 }}>
-            <TareaForm usuarios={usuarios} />
-          </div>
-        </details>
       </div>
 
-      {/* Tabla */}
+      {/* Table */}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table className="dashboard-table">
           <thead>
@@ -126,67 +497,226 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
               <th>Cierre</th>
               <th>Atraso</th>
               <th>Estado</th>
-              <th>Acciones</th>
+              {puedeGestionar && <th>Acciones</th>}
             </tr>
           </thead>
           <tbody>
-            {tareasFiltradas.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>No hay tareas con estos filtros</td></tr>
-            ) : tareasFiltradas.map(t => {
+            {tareas.length === 0 ? (
+              <tr>
+                <td colSpan={puedeGestionar ? 8 : 7} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
+                  No hay tareas con estos filtros
+                </td>
+              </tr>
+            ) : tareas.map(t => {
               const atraso = diasAtraso(t.fechaCierre, t.estado);
               const terminada = ["completada", "cancelada"].includes(t.estado);
+              const pColor = prioridadColor(t.prioridad);
+              const eColor = estadoColor(t.estado);
               return (
-                <tr key={t.id} style={{ opacity: terminada ? 0.6 : 1 }}>
+                <tr key={t.id} style={{ opacity: terminada ? 0.65 : 1 }}>
                   <td>
-                    <div style={{ fontWeight: 600, fontSize: "0.9rem", textDecoration: terminada ? "line-through" : "none" }}>{t.descripcion}</div>
-                    {t.proyecto && <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>📌 {t.proyecto}{t.area ? ` · ${t.area}` : ""}</div>}
-                    {t.comentario && <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>{t.comentario}</div>}
+                    <div style={{
+                      fontWeight: 600, fontSize: "0.9rem",
+                      textDecoration: terminada ? "line-through" : "none",
+                      borderLeft: `3px solid ${pColor}`, paddingLeft: 8,
+                    }}>
+                      {t.descripcion}
+                    </div>
+                    {t.proyecto && (
+                      <div style={{ fontSize: "0.75rem", color: "var(--muted)", paddingLeft: 11 }}>
+                        📌 {t.proyecto}{t.area ? ` · ${t.area}` : ""}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontSize: "0.82rem" }}>{t.tipo}</td>
                   <td style={{ fontSize: "0.85rem", fontWeight: 600 }}>{t.responsable ?? "—"}</td>
-                  <td dangerouslySetInnerHTML={{ __html: prioridadBadge(t.prioridad) }} />
-                  <td style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>{fmtDate(t.fechaCierre)}</td>
+                  <td>
+                    <span style={{
+                      display: "inline-block", padding: "2px 8px", borderRadius: 999,
+                      fontSize: "0.75rem", fontWeight: 700,
+                      background: `${pColor}22`, color: pColor,
+                    }}>
+                      {t.prioridad.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>{fmtDate(t.fechaCierre) ?? "—"}</td>
                   <td>
                     {atraso > 0
                       ? <span style={{ color: "#dc2626", fontWeight: 700, fontSize: "0.82rem" }}>{atraso}d</span>
-                      : <span style={{ color: "#16a34a", fontSize: "0.82rem" }}>Al día</span>}
+                      : <span style={{ color: "#16a34a", fontSize: "0.82rem" }}>Al día</span>
+                    }
                   </td>
-                  <td dangerouslySetInnerHTML={{ __html: estadoBadge(t.estado) }} />
                   <td>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {!terminada && (
-                        <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
-                          <button type="submit" style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", borderRadius: 6, background: "#16a34a" }}>✓</button>
-                        </form>
-                      )}
-                      <details style={{ position: "relative" }}>
-                        <summary style={{ cursor: "pointer", padding: "4px 10px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.8rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
-                        <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 360, marginTop: 4 }}>
-                          <TareaForm tarea={t} usuarios={usuarios} />
-                        </div>
-                      </details>
-                      <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
-                      <EliminarForm tareaId={t.id} />
-                    </div>
+                    <span style={{
+                      display: "inline-block", padding: "2px 8px", borderRadius: 999,
+                      fontSize: "0.75rem", fontWeight: 700,
+                      background: `${eColor}22`, color: eColor,
+                    }}>
+                      {estadoLabel(t.estado)}
+                    </span>
                   </td>
+                  {puedeGestionar && (
+                    <td>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {!terminada && (
+                          <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
+                            <button type="submit" style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", borderRadius: 6, background: "#16a34a" }}>✓</button>
+                          </form>
+                        )}
+                        <details style={{ position: "relative" }}>
+                          <summary style={{ cursor: "pointer", padding: "4px 10px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.8rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
+                          <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
+                            <TareaForm tarea={t} usuarios={usuarios} />
+                          </div>
+                        </details>
+                        <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
+                        <EliminarForm tareaId={t.id} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-    </AppShell>
+    </div>
   );
 }
 
+// ─── Tablero (Kanban) view ────────────────────────────────────────────────────
+
+function KanbanCard({
+  t,
+  usuarios,
+  puedeGestionar,
+}: {
+  t: TareaRow;
+  usuarios: { id: string; name: string }[];
+  puedeGestionar: boolean;
+}) {
+  const pColor = prioridadColor(t.prioridad);
+  const atraso = diasAtraso(t.fechaCierre, t.estado);
+  const fecha = fmtDate(t.fechaCierre);
+  const terminada = ["completada", "cancelada"].includes(t.estado);
+
+  return (
+    <div style={{
+      borderRadius: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+      padding: 12, background: "#fff",
+      borderLeft: `4px solid ${pColor}`,
+      marginBottom: 10,
+    }}>
+      <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 6, textDecoration: terminada ? "line-through" : "none" }}>
+        {t.descripcion}
+      </div>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+        {t.proyecto && (
+          <span style={{ fontSize: "0.7rem", padding: "1px 6px", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", fontWeight: 600 }}>
+            {t.proyecto}
+          </span>
+        )}
+        <span style={{ fontSize: "0.7rem", padding: "1px 6px", borderRadius: 999, background: `${pColor}18`, color: pColor, fontWeight: 700, textTransform: "uppercase" }}>
+          {t.prioridad}
+        </span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.78rem" }}>
+        <span style={{ color: "var(--muted)" }}>{t.responsable ?? "—"}</span>
+        {fecha && (
+          atraso > 0
+            ? <span style={{ color: "#dc2626", fontWeight: 700 }}>{fecha} · {atraso}d</span>
+            : <span style={{ color: "var(--muted)" }}>{fecha}</span>
+        )}
+      </div>
+      {puedeGestionar && (
+        <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>
+          {t.estado === "pendiente" && (
+            <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "en_progreso"); }}>
+              <button type="submit" style={{ width: "auto", padding: "3px 8px", fontSize: "0.75rem", borderRadius: 6, background: "#3b82f6" }}>▶ Iniciar</button>
+            </form>
+          )}
+          {t.estado === "en_progreso" && (
+            <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
+              <button type="submit" style={{ width: "auto", padding: "3px 8px", fontSize: "0.75rem", borderRadius: 6, background: "#16a34a" }}>✓ Completar</button>
+            </form>
+          )}
+          <details style={{ position: "relative" }}>
+            <summary style={{ cursor: "pointer", padding: "3px 8px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.75rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
+            <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
+              <TareaForm tarea={t} usuarios={usuarios} />
+            </div>
+          </details>
+          <EliminarForm tareaId={t.id} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableroView({
+  tareas,
+  usuarios,
+  puedeGestionar,
+}: {
+  tareas: TareaRow[];
+  usuarios: { id: string; name: string }[];
+  puedeGestionar: boolean;
+}) {
+  const pendientes = tareas.filter(t => t.estado === "pendiente");
+  const enProgreso = tareas.filter(t => t.estado === "en_progreso");
+  const completadas = tareas.filter(t => ["completada", "cancelada"].includes(t.estado));
+
+  const columns = [
+    { label: "Pendiente", color: "#f59e0b", items: pendientes },
+    { label: "En progreso", color: "#3b82f6", items: enProgreso },
+    { label: "Completada", color: "#16a34a", items: completadas },
+  ];
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      {columns.map(col => (
+        <div key={col.label}>
+          {/* Column header */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, marginBottom: 12,
+            padding: "8px 12px", background: `${col.color}15`,
+            borderRadius: 10, borderTop: `3px solid ${col.color}`,
+          }}>
+            <span style={{ fontWeight: 700, fontSize: "0.9rem", color: col.color }}>{col.label}</span>
+            <span style={{
+              fontSize: "0.75rem", padding: "1px 8px", borderRadius: 999,
+              background: `${col.color}25`, color: col.color, fontWeight: 700,
+            }}>
+              {col.items.length}
+            </span>
+          </div>
+
+          {/* Cards */}
+          {col.items.length === 0 ? (
+            <div style={{ padding: 20, textAlign: "center", color: "var(--border)", fontSize: "0.85rem", border: "1.5px dashed var(--border)", borderRadius: 10 }}>
+              Sin tareas
+            </div>
+          ) : col.items.map(t => (
+            <KanbanCard key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── TareaForm ────────────────────────────────────────────────────────────────
+
 function TareaForm({ tarea, usuarios }: {
-  tarea?: { id: string; tipo: string; proyecto: string | null; area: string | null; descripcion: string; responsable: string | null; comentario: string | null; prioridad: string; estado: string; fechaInicio: Date | null; fechaCierre: Date | null };
+  tarea?: {
+    id: string; tipo: string; proyecto: string | null; area: string | null;
+    descripcion: string; responsable: string | null; comentario: string | null;
+    prioridad: string; estado: string; fechaInicio: Date | null; fechaCierre: Date | null;
+  };
   usuarios: { id: string; name: string }[];
 }) {
   const isEdit = !!tarea;
-  const action = isEdit
-    ? editarTareaAction.bind(null, tarea!.id)
-    : crearTareaAction;
+  const action = isEdit ? editarTareaAction.bind(null, tarea!.id) : crearTareaAction;
 
   return (
     <form action={action} style={{ display: "grid", gap: 10 }}>
@@ -263,7 +793,13 @@ function TareaForm({ tarea, usuarios }: {
   );
 }
 
-function ReasignarForm({ tareaId, usuarios, responsableActual }: { tareaId: string; usuarios: { id: string; name: string }[]; responsableActual: string | null }) {
+// ─── ReasignarForm ────────────────────────────────────────────────────────────
+
+function ReasignarForm({ tareaId, usuarios, responsableActual }: {
+  tareaId: string;
+  usuarios: { id: string; name: string }[];
+  responsableActual: string | null;
+}) {
   return (
     <details style={{ position: "relative" }}>
       <summary style={{ cursor: "pointer", padding: "4px 10px", borderRadius: 6, background: "#e2e8f0", color: "#334e5c", fontWeight: 600, fontSize: "0.8rem", listStyle: "none", display: "inline-block" }}>🔄</summary>
@@ -271,7 +807,13 @@ function ReasignarForm({ tareaId, usuarios, responsableActual }: { tareaId: stri
         <p style={{ margin: "0 0 8px", fontSize: "0.85rem", color: "var(--muted)" }}>
           Actualmente: <strong>{responsableActual ?? "—"}</strong>
         </p>
-        <form action={async (fd: FormData) => { "use server"; await reasignarTareaAction(tareaId, fd.get("responsable") as string); }} style={{ display: "grid", gap: 8 }}>
+        <form
+          action={async (fd: FormData) => {
+            "use server";
+            await reasignarTareaAction(tareaId, fd.get("responsable") as string);
+          }}
+          style={{ display: "grid", gap: 8 }}
+        >
           <select name="responsable" style={{ padding: "7px 10px" }}>
             <option value="">— Sin asignar —</option>
             {usuarios.filter(u => u.name !== responsableActual).map(u => (
@@ -285,11 +827,14 @@ function ReasignarForm({ tareaId, usuarios, responsableActual }: { tareaId: stri
   );
 }
 
+// ─── EliminarForm ─────────────────────────────────────────────────────────────
+
 function EliminarForm({ tareaId }: { tareaId: string }) {
   return (
     <form action={async () => { "use server"; await eliminarTareaAction(tareaId); }}>
-      <button type="submit" className="danger" style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", borderRadius: 6 }}
-        onClick={undefined}>🗑</button>
+      <button type="submit" className="danger" style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", borderRadius: 6 }}>
+        🗑
+      </button>
     </form>
   );
 }

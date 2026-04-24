@@ -32,6 +32,8 @@ export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]
           {canAssignFullAdmin ? <option value="ADMINISTRADOR">ADMINISTRADOR</option> : null}
           <option value="ADMIN_LIMITADO">ADMIN LIMITADO</option>
           <option value="VEHICULOS">SOLO VEHÍCULOS</option>
+          <option value="OFICINA">OFICINA</option>
+          <option value="COLABORADOR">COLABORADOR</option>
         </select>
       </div>
       <div>

@@ -13,18 +13,29 @@ export type AppRole =
   | "SUPERVISOR"
   | "VEHICULOS"
   | "ADMIN"
-  | "OPERADOR";
-export const MANAGED_USER_ROLE_VALUES = ["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS"] as const;
+  | "OPERADOR"
+  | "OFICINA"
+  | "COLABORADOR";
+export const MANAGED_USER_ROLE_VALUES = ["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS", "OFICINA", "COLABORADOR"] as const;
 export const FULL_ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
 export const ADMIN_ROLES: AppRole[] = [...FULL_ADMIN_ROLES, "ADMIN_LIMITADO"];
 export const VEHICLE_ROLES: AppRole[] = [...ADMIN_ROLES, "VEHICULOS"];
 export const OPERATION_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
-export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR"];
+export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR"];
 export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
-export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
-export const TAREAS_ROLES: AppRole[]     = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
+export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR"];
+export const TAREAS_ROLES: AppRole[]     = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA"];
+export const TAREAS_VER_ROLES: AppRole[] = [...TAREAS_ROLES, "COLABORADOR"];
 
 export function defaultRouteForRole(role: string) {
+  if (role === "COLABORADOR") {
+    return "/biblioteca";
+  }
+
+  if (role === "OFICINA") {
+    return "/gestion-tareas";
+  }
+
   if (isVehicleOnlyRole(role)) {
     return "/vehiculos";
   }
@@ -76,10 +87,20 @@ export function canAccessTareas(role: string) {
   return TAREAS_ROLES.includes(role as AppRole);
 }
 
+export function canManageTareas(role: string) {
+  return TAREAS_ROLES.includes(role as AppRole);
+}
+
+export function canViewTareas(role: string) {
+  return TAREAS_VER_ROLES.includes(role as AppRole);
+}
+
 export function roleLabel(role: string) {
   if (role === "ADMIN" || role === "ADMINISTRADOR") return "ADMINISTRADOR";
   if (role === "ADMIN_LIMITADO") return "ADMIN LIMITADO";
   if (role === "VEHICULOS") return "SOLO VEHÍCULOS";
+  if (role === "OFICINA") return "OFICINA";
+  if (role === "COLABORADOR") return "COLABORADOR";
   return role;
 }
 

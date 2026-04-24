@@ -89,6 +89,8 @@ export default async function EditarUsuarioPage({
                 {canDeleteUsers ? <option value="ADMINISTRADOR">ADMINISTRADOR</option> : null}
                 <option value="ADMIN_LIMITADO">ADMIN LIMITADO</option>
                 <option value="VEHICULOS">SOLO VEHÍCULOS</option>
+                <option value="OFICINA">OFICINA</option>
+                <option value="COLABORADOR">COLABORADOR</option>
               </select>
             </div>
             <div>

@@ -128,3 +128,50 @@ export async function sendMissingDailyInputsAlertEmail(input: SendMissingDailyIn
     throw new Error(`Error enviando correo: ${detail}`);
   }
 }
+
+type SendTareaAsignadaEmailInput = {
+  to: string;       // recipient email
+  toName: string;   // recipient name
+  descripcion: string;
+  asignadoPor: string;
+  prioridad: string;
+  fechaCierre?: string | null;
+  appUrl?: string;
+};
+
+export async function sendTareaAsignadaEmail(input: SendTareaAsignadaEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) return; // silently skip if not configured
+
+  const url = input.appUrl ?? appUrl();
+  const prioridadColor = input.prioridad === "alta" ? "#dc2626" : input.prioridad === "media" ? "#f97316" : "#16a34a";
+  const fechaTexto = input.fechaCierre ? `<p><strong>Fecha de cierre:</strong> ${input.fechaCierre}</p>` : "";
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #10212b; line-height:1.6; max-width:520px">
+      <h2 style="color:#006878">Nueva tarea asignada</h2>
+      <p>Hola ${input.toName}, se te asignó una nueva tarea en NomadeControl.</p>
+      <div style="border-left:4px solid ${prioridadColor};padding:12px 16px;background:#f8fafc;border-radius:0 8px 8px 0;margin:16px 0">
+        <p style="margin:0;font-weight:700;font-size:1rem">${input.descripcion}</p>
+        <p style="margin:4px 0 0;font-size:0.85rem;color:#64748b">Prioridad: <strong style="color:${prioridadColor}">${input.prioridad.toUpperCase()}</strong></p>
+      </div>
+      ${fechaTexto}
+      <p><strong>Asignada por:</strong> ${input.asignadoPor}</p>
+      <a href="${url}/gestion-tareas" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#006878;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+        Ver mis tareas
+      </a>
+    </div>
+  `;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: [input.to],
+      subject: `Tarea asignada: ${input.descripcion.slice(0, 60)}`,
+      html,
+    }),
+  }).catch(() => {}); // don't break the action if email fails
+}
