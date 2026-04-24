@@ -32,19 +32,11 @@ export function defaultRouteForRole(role: string) {
     return "/biblioteca";
   }
 
-  if (role === "OFICINA") {
-    return "/gestion-tareas";
-  }
-
   if (isVehicleOnlyRole(role)) {
     return "/vehiculos";
   }
 
-  if (canAccessDashboard(role)) {
-    return "/dashboard";
-  }
-
-  return "/carga-diaria";
+  return "/";
 }
 
 export function isAdminRole(role: string) {
