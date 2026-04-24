@@ -89,20 +89,19 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
   const usuariosList = usuarios as { id: string; name: string }[];
 
   // Fetch extra data in parallel based on the current view
-  const [tareasTodas, misTareas] = await Promise.all([
-    // Stats source: unfiltered when in "todas" view, otherwise reuse already-fetched list
-    (vista === "todas" && !esColaborador)
-      ? db.tarea.findMany({ where: verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } } })
-      : Promise.resolve(tareas),
-    // "mis" view always shows all tasks for the user (including completed)
-    (vista === "mis" || esColaborador)
-      ? db.tarea.findMany({
-          where: { responsable: user.name },
-          orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
-          include: { comentarios: { orderBy: { createdAt: "asc" } } },
-        })
-      : Promise.resolve([] as typeof tareas),
-  ]);
+  const tareasTodas = (vista === "todas" && !esColaborador)
+    ? await db.tarea.findMany({ where: verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } } })
+    : tareas;
+
+  const misTareasRaw = (vista === "mis" || esColaborador)
+    ? await db.tarea.findMany({
+        where: { responsable: user.name },
+        orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
+        include: { comentarios: { orderBy: { createdAt: "asc" } } },
+      })
+    : [];
+
+  const misTareas: TareaRow[] = misTareasRaw;
 
   const stats = {
     total: tareasTodas.length,
