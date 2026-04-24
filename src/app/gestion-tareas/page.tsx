@@ -7,6 +7,7 @@ import {
   eliminarTareaAction,
   cambiarEstadoTareaAction,
   reasignarTareaAction,
+  agregarComentarioAction,
 } from "./actions";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
       ? db.tarea.findMany({
           where: { responsable: user.name },
           orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
+          include: { comentarios: { orderBy: { createdAt: "asc" } } },
         })
       : Promise.resolve([] as typeof tareas),
   ]);
@@ -211,6 +213,13 @@ function TabLink({ href, active, children }: { href: string; active: boolean; ch
 
 // ─── Tarea row (Asana-style) ──────────────────────────────────────────────────
 
+type TareaComentarioRow = {
+  id: string;
+  texto: string;
+  autorNombre: string;
+  createdAt: Date;
+};
+
 type TareaRow = {
   id: string;
   descripcion: string;
@@ -223,6 +232,7 @@ type TareaRow = {
   fechaCierre: Date | null;
   comentario: string | null;
   fechaInicio: Date | null;
+  comentarios?: TareaComentarioRow[];
 };
 
 function AsanaTareaRow({
@@ -391,7 +401,14 @@ function MisTareasView({
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <SeccionHeader label="Por hacer" count={porHacer.length} color="#f59e0b" />
           {porHacer.map(t => (
-            <AsanaTareaRow key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+            <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+              <summary style={{ listStyle: "none", cursor: "pointer" }}>
+                <AsanaTareaRow t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+              </summary>
+              <div style={{ padding: "0 14px 12px 14px" }}>
+                <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
+              </div>
+            </details>
           ))}
         </div>
       )}
@@ -400,7 +417,14 @@ function MisTareasView({
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <SeccionHeader label="En progreso" count={enProgreso.length} color="#3b82f6" />
           {enProgreso.map(t => (
-            <AsanaTareaRow key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+            <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+              <summary style={{ listStyle: "none", cursor: "pointer" }}>
+                <AsanaTareaRow t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+              </summary>
+              <div style={{ padding: "0 14px 12px 14px" }}>
+                <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
+              </div>
+            </details>
           ))}
         </div>
       )}
@@ -416,7 +440,14 @@ function MisTareasView({
           </summary>
           <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 6 }}>
             {terminadas.map(t => (
-              <AsanaTareaRow key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+              <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <summary style={{ listStyle: "none", cursor: "pointer" }}>
+                  <AsanaTareaRow t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+                </summary>
+                <div style={{ padding: "0 14px 12px 14px" }}>
+                  <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
+                </div>
+              </details>
             ))}
           </div>
         </details>
@@ -836,5 +867,45 @@ function EliminarForm({ tareaId }: { tareaId: string }) {
         🗑
       </button>
     </form>
+  );
+}
+
+// ─── ComentariosSection ───────────────────────────────────────────────────────
+
+function ComentariosSection({ tareaId, comentarios }: {
+  tareaId: string;
+  comentarios: { id: string; texto: string; autorNombre: string; createdAt: Date }[];
+}) {
+  const action = agregarComentarioAction.bind(null, tareaId);
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>
+        💬 Comentarios ({comentarios.length})
+      </div>
+      {comentarios.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+          {comentarios.map(c => (
+            <div key={c.id} style={{ background: "#f8fafc", borderRadius: 8, padding: "7px 10px", fontSize: "0.82rem" }}>
+              <span style={{ fontWeight: 700, color: "var(--teal)" }}>{c.autorNombre}</span>
+              <span style={{ color: "var(--muted)", fontSize: "0.75rem", marginLeft: 8 }}>
+                {c.createdAt.toLocaleDateString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <div style={{ marginTop: 3, color: "var(--text)" }}>{c.texto}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <form action={action} style={{ display: "flex", gap: 6 }}>
+        <input
+          name="texto"
+          placeholder="Agregar comentario..."
+          required
+          style={{ flex: 1, padding: "6px 10px", fontSize: "0.82rem", borderRadius: 8 }}
+        />
+        <button type="submit" style={{ width: "auto", padding: "6px 14px", fontSize: "0.82rem", borderRadius: 8 }}>
+          Enviar
+        </button>
+      </form>
+    </div>
   );
 }

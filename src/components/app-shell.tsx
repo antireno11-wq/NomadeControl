@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
-import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessVehicles, canManageTareas, canViewTareas } from "@/lib/auth";
+import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessVehicles, canManageTareas, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
 
 type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "administracion" | null;
 
@@ -39,6 +39,7 @@ export function AppShell({
   const canSeeTareasBasic = canViewTareas(user.role);
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
   const navItems = [
+    ...(!isVehicleOnlyRole(user.role) ? [{ href: "/", label: "🏠 Inicio", key: null as any }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
     ...(!isOfficeRole && canSeeWorkers ? [{ href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const }] : []),

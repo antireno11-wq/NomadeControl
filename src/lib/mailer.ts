@@ -175,3 +175,65 @@ export async function sendTareaAsignadaEmail(input: SendTareaAsignadaEmailInput)
     }),
   }).catch(() => {}); // don't break the action if email fails
 }
+
+type TareaVencidaItem = {
+  descripcion: string;
+  responsable: string | null;
+  diasAtraso: number;
+  prioridad: string;
+};
+
+type SendTareasVencidasEmailInput = {
+  to: string[];
+  tareas: TareaVencidaItem[];
+};
+
+export async function sendTareasVencidasEmail(input: SendTareasVencidasEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from || input.to.length === 0) return;
+
+  const url = appUrl();
+
+  const rows = input.tareas.map(t => {
+    const color = t.prioridad === "alta" ? "#dc2626" : t.prioridad === "media" ? "#f97316" : "#16a34a";
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:600">${t.descripcion}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${t.responsable ?? "Sin asignar"}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:${color};font-weight:700">${t.prioridad.toUpperCase()}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:#dc2626;font-weight:700">${t.diasAtraso}d</td>
+    </tr>`;
+  }).join("");
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#10212b;line-height:1.6;max-width:600px">
+      <h2 style="color:#dc2626">⚠️ Tareas vencidas en NomadeControl</h2>
+      <p>Las siguientes tareas han superado su fecha de cierre y requieren atención:</p>
+      <table style="border-collapse:collapse;width:100%;margin:16px 0">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Tarea</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Responsable</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Prioridad</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Atraso</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <a href="${url}/gestion-tareas?v=todas" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#dc2626;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+        Ver todas las tareas
+      </a>
+    </div>
+  `;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: input.to,
+      subject: `⚠️ ${input.tareas.length} tarea${input.tareas.length > 1 ? "s" : ""} vencida${input.tareas.length > 1 ? "s" : ""} en NomadeControl`,
+      html,
+    }),
+  }).catch(() => {});
+}

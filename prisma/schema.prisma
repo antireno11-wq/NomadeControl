@@ -388,8 +388,21 @@ model Tarea {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  comentarios TareaComentario[]
+
   @@index([estado])
   @@index([responsable])
   @@index([tipo])
   @@index([fechaCierre])
+}
+
+model TareaComentario {
+  id          String   @id @default(cuid())
+  tareaId     String
+  tarea       Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  texto       String
+  autorNombre String
+  createdAt   DateTime @default(now())
+
+  @@index([tareaId])
 }

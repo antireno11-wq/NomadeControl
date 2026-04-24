@@ -16,9 +16,9 @@ export default function LoginPage({ searchParams }: { searchParams?: { error?: s
         <div className="brand-logo">
           <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={220} height={220} priority />
         </div>
-        <h1 style={{ marginTop: 0 }}>Control de Campamentos</h1>
+        <h1 style={{ marginTop: 0 }}>NomadeControl</h1>
         <p style={{ color: "var(--muted)" }}>
-          Selecciona si ingresas como supervisor o administrador antes de iniciar sesión.
+          Seleccioná tu tipo de acceso e iniciá sesión.
         </p>
         <LoginForm oauthErrorText={oauthErrorText} />
 

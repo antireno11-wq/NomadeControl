@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireRole, TAREAS_ROLES } from "@/lib/auth";
+import { requireRole, TAREAS_ROLES, TAREAS_VER_ROLES } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { sendTareaAsignadaEmail } from "@/lib/mailer";
 
@@ -155,5 +155,27 @@ export async function eliminarTareaAction(tareaId: string) {
     action: "TAREA_DELETE", entityType: "tarea", entityId: tareaId,
     summary: `Eliminó tarea «${tarea?.descripcion?.slice(0, 60)}»`
   });
+  revalidatePath("/gestion-tareas");
+}
+
+export async function agregarComentarioAction(tareaId: string, formData: FormData) {
+  const user = await requireRole(TAREAS_VER_ROLES);
+  const texto = (formData.get("texto") as string)?.trim();
+  if (!texto) return;
+
+  await db.tareaComentario.create({
+    data: {
+      tareaId,
+      texto,
+      autorNombre: user.name,
+    },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "TAREA_COMENTARIO", entityType: "tarea", entityId: tareaId,
+    summary: `Comentó en tarea`,
+  });
+
   revalidatePath("/gestion-tareas");
 }
