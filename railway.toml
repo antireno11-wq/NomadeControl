@@ -1,6 +1,5 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
 
 [deploy]
 startCommand = "node_modules/.bin/next start -p $PORT"
