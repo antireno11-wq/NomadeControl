@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "node server.js",
+    "startCommand": "node_modules/.bin/prisma migrate deploy && node server.js",
     "healthcheckPath": "/login",
     "healthcheckTimeout": 120
   }
