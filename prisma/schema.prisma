@@ -407,3 +407,61 @@ model TareaComentario {
 
   @@index([tareaId])
 }
+
+model Evaluacion {
+  id               String   @id @default(cuid())
+
+  // Identificación
+  evaluadoNombre   String
+  evaluadoCargo    String?
+  periodo          String
+  proyecto         String?
+  evaluadorNombre  String
+  evaluadorId      String?
+
+  // II. Competencias Transversales (1-5)
+  planificacion      Int?
+  iniciativa         Int?
+  cooperacion        Int?
+  responsabilidad    Int?
+  convivenciaLaboral Int?
+
+  // III. Seguridad y Medio Ambiente (1-5)
+  comunicacionSeg    Int?
+  indumentaria       Int?
+  elaboracionDocs    Int?
+  reportabilidad     Int?
+  gestionAmbiente    Int?
+
+  // Comentarios por competencia
+  comentPlanificacion   String?
+  comentIniciativa      String?
+  comentCooperacion     String?
+  comentResponsabilidad String?
+  comentConvivencia     String?
+  comentComunicacion    String?
+  comentIndumentaria    String?
+  comentElaboracion     String?
+  comentReportabilidad  String?
+  comentGestion         String?
+
+  // Puntaje calculado
+  puntajeTotal Float?
+
+  // Retroalimentación
+  oportunidadesMejora  String?
+  mantenerCargo        String?
+  reubicar             String?
+  promocion            String?
+  reconocimiento       String?
+  requiereCapacitacion String?
+  observacionesFinales String?
+
+  estado    String   @default("borrador") // borrador | completada
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([evaluadorId])
+  @@index([evaluadoNombre])
+  @@index([estado, createdAt])
+}

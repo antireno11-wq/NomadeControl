@@ -24,8 +24,9 @@ export const OPERATION_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERAD
 export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR"];
 export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
 export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR"];
-export const TAREAS_ROLES: AppRole[]     = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA"];
-export const TAREAS_VER_ROLES: AppRole[] = [...TAREAS_ROLES, "COLABORADOR"];
+export const TAREAS_ROLES: AppRole[]        = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA"];
+export const TAREAS_VER_ROLES: AppRole[]    = [...TAREAS_ROLES, "COLABORADOR"];
+export const EVALUACIONES_ROLES: AppRole[]  = [...ADMIN_ROLES, "SUPERVISOR"];
 
 export function defaultRouteForRole(role: string) {
   if (role === "COLABORADOR") {
@@ -85,6 +86,10 @@ export function canManageTareas(role: string) {
 
 export function canViewTareas(role: string) {
   return TAREAS_VER_ROLES.includes(role as AppRole);
+}
+
+export function canAccessEvaluaciones(role: string) {
+  return EVALUACIONES_ROLES.includes(role as AppRole);
 }
 
 export function roleLabel(role: string) {
