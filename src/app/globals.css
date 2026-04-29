@@ -1485,6 +1485,34 @@ th {
     color: white;
   }
 
+  .dashboard-panel {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+
+  .action-card {
+    background: rgba(19, 40, 48, 0.9);
+    border-color: var(--border);
+  }
+
+  .dashboard-chip {
+    background: rgba(19, 40, 48, 0.85);
+    border-color: var(--border);
+  }
+
+  .dashboard-kpi {
+    background: rgba(19, 40, 48, 0.85);
+    border-color: var(--border);
+  }
+
+  .dashboard-kpi.accent {
+    background: linear-gradient(160deg, rgba(255, 99, 0, 0.18), rgba(19, 40, 48, 0.9));
+  }
+
+  .dashboard-kpi.teal {
+    background: linear-gradient(160deg, rgba(0, 170, 191, 0.18), rgba(19, 40, 48, 0.9));
+  }
+
   .dashboard-sidebar-card {
     background: #0f2535;
     border-color: var(--border);
