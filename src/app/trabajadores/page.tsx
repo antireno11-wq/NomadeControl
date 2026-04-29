@@ -198,7 +198,9 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
               {nextShiftChanges.map((entry) => (
                 <div key={entry.workerId} className="summary-row">
                   <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "32%" }}>
-                    <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.workerName}</strong>
+                    <Link href={`/trabajadores/${entry.workerId}?tab=turno`} style={{ textDecoration: "none" }}>
+                      <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--teal)" }}>{entry.workerName}</strong>
+                    </Link>
                     <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,17 +225,23 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
             </div>
             <div className="summary-list">
               {upcomingEntries.map((entry) => (
-                <div key={`${entry.workerId}-${entry.label}-${entry.date.toISOString()}`} className="summary-row">
-                  <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "38%" }}>
-                    <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.workerName}</strong>
-                    <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
+                <Link
+                  key={`${entry.workerId}-${entry.label}-${entry.date.toISOString()}`}
+                  href={`/trabajadores/${entry.workerId}?tab=documentos`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <div className="summary-row" style={{ cursor: "pointer" }}>
+                    <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "38%" }}>
+                      <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.workerName}</strong>
+                      <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)", fontSize: "0.88rem" }}>{entry.label}</div>
+                    <div style={{ flexShrink: 0, fontSize: "0.88rem", color: "var(--text)" }}>{formatDisplayDate(entry.date)}</div>
+                    <div className={`status-pill ${entry.severity === "danger" ? "danger" : entry.severity === "warn" ? "warn" : "ok"}`} style={{ flexShrink: 0 }}>
+                      {entry.daysUntil < 0 ? `${Math.abs(entry.daysUntil)}d vencido` : `${entry.daysUntil} días`}
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)", fontSize: "0.88rem" }}>{entry.label}</div>
-                  <div style={{ flexShrink: 0, fontSize: "0.88rem", color: "var(--text)" }}>{formatDisplayDate(entry.date)}</div>
-                  <div className={`status-pill ${entry.severity === "danger" ? "danger" : entry.severity === "warn" ? "warn" : "ok"}`} style={{ flexShrink: 0 }}>
-                    {entry.daysUntil < 0 ? `${Math.abs(entry.daysUntil)}d vencido` : `${entry.daysUntil} días`}
-                  </div>
-                </div>
+                </Link>
               ))}
               {upcomingEntries.length === 0 ? <div className="section-caption">Todavía no hay vencimientos cargados.</div> : null}
             </div>
@@ -297,7 +305,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                       </td>
                       <td>
                         <Link href={`/trabajadores/${row.worker.id}`} className="dashboard-mini-link">
-                          Editar
+                          Ver perfil →
                         </Link>
                       </td>
                       {canEvaluar && (
