@@ -1,5 +1,4 @@
 :root {
-  color-scheme: light;
   --bg: #eef6f7;
   --surface: #ffffff;
   --text: #08323a;
@@ -1429,7 +1428,121 @@ th {
   }
 }
 
-/* Dark mode desactivado — app siempre en modo claro */
+/* ─── Dark mode ──────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1e24;
+    --surface: #132830;
+    --text: #dff0f3;
+    --muted: #7fb8c2;
+    --accent: #ff7020;
+    --accent-2: #e05500;
+    --danger: #ff6b57;
+    --border: #1e4050;
+    --teal: #00aabf;
+  }
+
+  body {
+    background: radial-gradient(circle at top, #0d2830 0%, #0b1e24 42%, #081820 100%);
+    color: var(--text);
+  }
+
+  .card {
+    background: var(--surface);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    color: var(--text);
+  }
+
+  h1, h2, h3, h4, h5, h6, p, span, label, td, th, li, a {
+    color: var(--text);
+  }
+
+  a { color: var(--teal); }
+
+  input, select, textarea {
+    background: #0d2530;
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--muted);
+  }
+
+  button {
+    background: var(--teal);
+    color: white;
+  }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  button.danger {
+    background: var(--danger);
+    color: white;
+  }
+
+  .dashboard-sidebar-card {
+    background: #0f2535;
+    border-color: var(--border);
+  }
+
+  .dashboard-nav-link {
+    color: var(--muted);
+  }
+
+  .dashboard-nav-link:hover,
+  .dashboard-nav-link.active {
+    background: rgba(0, 170, 191, 0.15);
+    color: var(--teal);
+  }
+
+  .dashboard-topbar {
+    background: rgba(11, 30, 36, 0.9);
+    border-color: var(--border);
+  }
+
+  .dashboard-topbar h1,
+  .dashboard-user {
+    color: var(--text);
+  }
+
+  .dashboard-table thead tr {
+    background: #0d2530;
+  }
+
+  .dashboard-table thead th {
+    color: var(--muted);
+  }
+
+  .dashboard-table tbody tr td {
+    color: var(--text);
+  }
+
+  .dashboard-table tbody tr:hover {
+    background: rgba(0, 170, 191, 0.06);
+  }
+
+  tr {
+    border-color: var(--border);
+  }
+
+  .stat-label, .muted {
+    color: var(--muted);
+  }
+
+  .badge {
+    color: var(--text);
+  }
+
+  select option {
+    background: #132830;
+    color: var(--text);
+  }
+}
 
 /* ─── Mobile responsive ──────────────────────────────────────── */
 @media (max-width: 640px) {
