@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { canAccessEvaluaciones, isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
@@ -23,6 +23,7 @@ function getStatusInfo(status: string) {
 export default async function TrabajadoresPage({ searchParams }: { searchParams?: SearchParams }) {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const canEvaluar = canAccessEvaluaciones(user.role);
   const selectedCampIdRaw = searchParams?.campId;
   const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
   const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
@@ -136,6 +137,13 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                 </select>
                 <button type="submit">Ver</button>
               </form>
+              {canEvaluar && (
+                <Link href="/evaluaciones">
+                  <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>
+                    📊 Evaluaciones
+                  </button>
+                </Link>
+              )}
               <Link href="/trabajadores/nuevo">
                 <button type="button">Nuevo trabajador</button>
               </Link>
@@ -189,22 +197,18 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
             <div className="summary-list">
               {nextShiftChanges.map((entry) => (
                 <div key={entry.workerId} className="summary-row">
-                  <div>
-                    <strong>{entry.workerName}</strong>
-                    <div style={{ color: "var(--muted)" }}>{entry.campName}</div>
+                  <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "32%" }}>
+                    <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.workerName}</strong>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700 }}>{entry.shiftPattern} · {entry.currentStateLabel}</div>
-                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
-                      Actual: {entry.currentBlockRange}
-                    </div>
-                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
-                      Luego: {entry.nextBlockLabel} · {entry.nextBlockRange}
-                    </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: "var(--text)" }}>{entry.shiftPattern} · {entry.currentStateLabel}</div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>Actual: {entry.currentBlockRange}</div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>Luego: {entry.nextBlockLabel} · {entry.nextBlockRange}</div>
                   </div>
-                  <div style={{ minWidth: 120 }}>{formatDisplayDate(entry.nextBlockStart)}</div>
-                  <div className={`status-pill ${entry.daysRemainingInBlock <= 2 ? "danger" : entry.daysRemainingInBlock <= 7 ? "warn" : "ok"}`}>
-                    {entry.daysRemainingInBlock === 0 ? "Cambia mañana" : `${entry.daysRemainingInBlock} día(s)`}
+                  <div style={{ flexShrink: 0, fontSize: "0.88rem", color: "var(--text)" }}>{formatDisplayDate(entry.nextBlockStart)}</div>
+                  <div className={`status-pill ${entry.daysRemainingInBlock <= 2 ? "danger" : entry.daysRemainingInBlock <= 7 ? "warn" : "ok"}`} style={{ flexShrink: 0 }}>
+                    {entry.daysRemainingInBlock === 0 ? "Mañana" : `${entry.daysRemainingInBlock} día(s)`}
                   </div>
                 </div>
               ))}
@@ -220,14 +224,14 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
             <div className="summary-list">
               {upcomingEntries.map((entry) => (
                 <div key={`${entry.workerId}-${entry.label}-${entry.date.toISOString()}`} className="summary-row">
-                  <div>
-                    <strong>{entry.workerName}</strong>
-                    <div style={{ color: "var(--muted)" }}>{entry.campName}</div>
+                  <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "38%" }}>
+                    <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.workerName}</strong>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
                   </div>
-                  <div style={{ flex: 1, color: "var(--muted)" }}>{entry.label}</div>
-                  <div style={{ minWidth: 110 }}>{formatDisplayDate(entry.date)}</div>
-                  <div className={`status-pill ${entry.severity === "danger" ? "danger" : entry.severity === "warn" ? "warn" : "ok"}`}>
-                    {entry.daysUntil < 0 ? `${Math.abs(entry.daysUntil)} días vencido` : `${entry.daysUntil} días`}
+                  <div style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)", fontSize: "0.88rem" }}>{entry.label}</div>
+                  <div style={{ flexShrink: 0, fontSize: "0.88rem", color: "var(--text)" }}>{formatDisplayDate(entry.date)}</div>
+                  <div className={`status-pill ${entry.severity === "danger" ? "danger" : entry.severity === "warn" ? "warn" : "ok"}`} style={{ flexShrink: 0 }}>
+                    {entry.daysUntil < 0 ? `${Math.abs(entry.daysUntil)}d vencido` : `${entry.daysUntil} días`}
                   </div>
                 </div>
               ))}
@@ -256,18 +260,19 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                     <th>Próximo venc.</th>
                     <th>Estado</th>
                     <th>Detalle</th>
+                    {canEvaluar && <th>Evaluar</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {staffRows.map((row) => (
                     <tr key={row.worker.id}>
-                      <td>{row.worker.fullName}</td>
-                      <td>{row.worker.camp.name}</td>
-                      <td>{row.worker.role ?? "-"}</td>
+                      <td style={{ fontWeight: 600, color: "var(--text)" }}>{row.worker.fullName}</td>
+                      <td style={{ color: "var(--text)" }}>{row.worker.camp.name}</td>
+                      <td style={{ color: "var(--text)" }}>{row.worker.role ?? "-"}</td>
                       <td>
                         {row.shiftProjection ? (
-                          <div style={{ display: "grid", gap: 4 }}>
-                            <strong style={{ lineHeight: 1.2 }}>
+                          <div style={{ display: "grid", gap: 3 }}>
+                            <strong style={{ lineHeight: 1.2, color: "var(--text)" }}>
                               {row.shiftProjection.shiftPatternLabel} · {row.shiftProjection.currentStateLabel}
                             </strong>
                             <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
@@ -278,13 +283,13 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                             </span>
                           </div>
                         ) : (
-                          "Sin turno"
+                          <span style={{ color: "var(--muted)" }}>Sin turno</span>
                         )}
                       </td>
-                      <td>{row.worker.contractEndDate ? formatDisplayDate(row.worker.contractEndDate) : "Sin fecha"}</td>
-                      <td>{row.worker.altitudeExamDueDate ? formatDisplayDate(row.worker.altitudeExamDueDate) : "Sin fecha"}</td>
-                      <td>{row.worker.accreditationDueDate ? formatDisplayDate(row.worker.accreditationDueDate) : "Sin fecha"}</td>
-                      <td>{row.nearest?.date ? `${row.nearest.label} · ${formatDisplayDate(row.nearest.date)}` : "Sin fechas"}</td>
+                      <td style={{ color: "var(--text)" }}>{row.worker.contractEndDate ? formatDisplayDate(row.worker.contractEndDate) : <span style={{ color: "var(--muted)" }}>Sin fecha</span>}</td>
+                      <td style={{ color: "var(--text)" }}>{row.worker.altitudeExamDueDate ? formatDisplayDate(row.worker.altitudeExamDueDate) : <span style={{ color: "var(--muted)" }}>Sin fecha</span>}</td>
+                      <td style={{ color: "var(--text)" }}>{row.worker.accreditationDueDate ? formatDisplayDate(row.worker.accreditationDueDate) : <span style={{ color: "var(--muted)" }}>Sin fecha</span>}</td>
+                      <td style={{ color: "var(--text)", fontSize: "0.85rem" }}>{row.nearest?.date ? `${row.nearest.label} · ${formatDisplayDate(row.nearest.date)}` : <span style={{ color: "var(--muted)" }}>Sin fechas</span>}</td>
                       <td>
                         <span className={`status-pill ${row.overallStatus}`}>
                           {row.expiredCount > 0 ? `${row.expiredCount} vencido(s)` : row.dueSoonCount > 0 ? `${row.dueSoonCount} por vencer` : "OK"}
@@ -295,11 +300,22 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                           Editar
                         </Link>
                       </td>
+                      {canEvaluar && (
+                        <td>
+                          <Link
+                            href={`/evaluaciones/nueva?nombre=${encodeURIComponent(row.worker.fullName)}&cargo=${encodeURIComponent(row.worker.role ?? "")}`}
+                            className="dashboard-mini-link"
+                            style={{ color: "var(--accent)" }}
+                          >
+                            📊 Evaluar
+                          </Link>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {staffRows.length === 0 ? (
                     <tr>
-                      <td colSpan={10} style={{ color: "var(--muted)" }}>
+                      <td colSpan={canEvaluar ? 11 : 10} style={{ color: "var(--muted)" }}>
                         No hay trabajadores cargados todavía.
                       </td>
                     </tr>

@@ -129,10 +129,24 @@ a {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #f8fcfc;
   padding: 12px 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.summary-row > div {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.summary-row strong,
+.summary-row span,
+.summary-row div {
+  color: var(--text);
 }
 
 .status-pill {
@@ -1563,6 +1577,17 @@ th {
   }
 
   .badge {
+    color: var(--text);
+  }
+
+  .summary-row {
+    background: #0d2530;
+    border-color: var(--border);
+  }
+
+  .summary-row strong,
+  .summary-row span,
+  .summary-row div {
     color: var(--text);
   }
 

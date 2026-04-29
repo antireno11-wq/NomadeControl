@@ -53,7 +53,6 @@ export function AppShell({
       : []),
     ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Gestión de tareas", key: "gestion-tareas" as const }] : []),
     ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
-    ...(canSeeEvaluaciones ? [{ href: "/evaluaciones", label: "📊 Evaluaciones", key: "evaluaciones" as const }] : []),
     ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
   ];
 
