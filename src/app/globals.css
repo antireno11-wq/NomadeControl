@@ -1640,6 +1640,82 @@ th {
     background: #132830;
     color: var(--text);
   }
+
+  /* ── Dashboard cards with hardcoded light backgrounds ── */
+  .dashboard-status-card,
+  .dashboard-focus-card,
+  .dashboard-ring-card {
+    background: #0d2530;
+    border-color: var(--border);
+  }
+
+  .dashboard-status-icon {
+    background: #132f3e;
+  }
+
+  .dashboard-focus-label {
+    color: var(--muted);
+  }
+
+  .dashboard-focus-value {
+    color: var(--text);
+  }
+
+  .dashboard-focus-meta {
+    color: var(--muted);
+  }
+
+  .dashboard-mini-metric {
+    background: #0d2530;
+    border-color: var(--border);
+  }
+
+  .dashboard-mini-metric span {
+    color: var(--muted);
+  }
+
+  .dashboard-mini-metric strong {
+    color: #ffffff;
+  }
+
+  .dashboard-ring > div {
+    background: #0d2530;
+  }
+
+  .dashboard-ring strong {
+    color: #ffffff;
+  }
+
+  .dashboard-ring-text span {
+    color: var(--text);
+  }
+
+  .dashboard-ring-text small {
+    color: var(--muted);
+  }
+
+  .dashboard-climate-metric {
+    background: linear-gradient(180deg, #0f2a36, #0a1e28);
+    border-color: var(--border);
+  }
+
+  .dashboard-climate-metric span {
+    color: var(--muted);
+  }
+
+  .dashboard-climate-metric strong {
+    color: #ffffff;
+  }
+
+  .dashboard-status-row,
+  .dashboard-generator-row {
+    background: #0d2530;
+    border-color: var(--border);
+  }
+
+  .dashboard-generator-row span {
+    color: var(--muted);
+  }
 }
 
 /* ─── Mobile responsive ──────────────────────────────────────── */
