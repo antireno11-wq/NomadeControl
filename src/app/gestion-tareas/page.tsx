@@ -89,7 +89,7 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
   const usuariosList = usuarios as { id: string; name: string }[];
 
   // Fetch extra data in parallel based on the current view
-  const tareasTodas = (vista === "todas" && !esColaborador)
+  const tareasTodas = (!esColaborador && (vista === "todas" || vista === "tablero" || vista === "gantt"))
     ? await db.tarea.findMany({ where: verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } } })
     : tareas;
 
@@ -153,6 +153,9 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
           {!esColaborador && (
             <TabLink href="/gestion-tareas?v=tablero" active={vista === "tablero"}>🗂 Tablero</TabLink>
           )}
+          {!esColaborador && (
+            <TabLink href="/gestion-tareas?v=gantt" active={vista === "gantt"}>📅 Gantt</TabLink>
+          )}
         </div>
 
         {puedeGestionar && (
@@ -199,6 +202,10 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
           usuarios={usuariosList}
           puedeGestionar={puedeGestionar}
         />
+      )}
+
+      {vista === "gantt" && !esColaborador && (
+        <GanttView tareas={tareasTodas} />
       )}
 
       {esColaborador && vista !== "mis" && (
@@ -922,6 +929,179 @@ function ComentariosSection({ tareaId, comentarios }: {
           Enviar
         </button>
       </form>
+    </div>
+  );
+}
+
+// ─── Gantt View ───────────────────────────────────────────────────────────────
+
+function GanttView({ tareas }: { tareas: any[] }) {
+  if (tareas.length === 0) {
+    return (
+      <div className="card" style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+        No hay tareas para mostrar en el Gantt.
+      </div>
+    );
+  }
+
+  const today = new Date();
+
+  // Calculate date range: earliest start to latest end (min 3 months)
+  const starts = tareas.map(t => new Date(t.createdAt).getTime());
+  const ends = tareas.map(t => t.fechaCierre ? new Date(t.fechaCierre).getTime() : today.getTime());
+  const rangeStart = new Date(Math.min(...starts));
+  const rangeEnd = new Date(Math.max(...ends, today.getTime()));
+
+  // Ensure minimum 3 months range
+  const minEnd = new Date(rangeStart);
+  minEnd.setMonth(minEnd.getMonth() + 3);
+  const effectiveEnd = rangeEnd > minEnd ? rangeEnd : minEnd;
+
+  // Set to start/end of month
+  rangeStart.setDate(1);
+  effectiveEnd.setDate(28);
+
+  const totalMs = effectiveEnd.getTime() - rangeStart.getTime();
+
+  // Generate month columns
+  const months: { label: string; left: number; width: number }[] = [];
+  const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+  while (cur <= effectiveEnd) {
+    const monthStart = new Date(cur.getFullYear(), cur.getMonth(), 1);
+    const monthEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    const left = Math.max(0, (monthStart.getTime() - rangeStart.getTime()) / totalMs) * 100;
+    const width = ((Math.min(monthEnd.getTime(), effectiveEnd.getTime()) - Math.max(monthStart.getTime(), rangeStart.getTime())) / totalMs) * 100;
+    months.push({
+      label: cur.toLocaleDateString("es-CL", { month: "short", year: "2-digit" }),
+      left,
+      width,
+    });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+
+  const prioColor: Record<string, string> = {
+    alta: "#ef4444", media: "#f97316", baja: "#22c55e",
+  };
+
+  const todayLeft = ((today.getTime() - rangeStart.getTime()) / totalMs) * 100;
+
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div style={{ overflowX: "auto" }}>
+        <div style={{ minWidth: 700 }}>
+
+          {/* Header row: task name col + month columns */}
+          <div style={{ display: "flex", borderBottom: "1.5px solid var(--border)", background: "var(--bg)" }}>
+            <div style={{ width: 220, minWidth: 220, padding: "8px 14px", fontWeight: 700, fontSize: "0.8rem", color: "var(--muted)", borderRight: "1.5px solid var(--border)" }}>
+              TAREA
+            </div>
+            <div style={{ flex: 1, position: "relative", height: 36 }}>
+              {months.map((m, i) => (
+                <div key={i} style={{
+                  position: "absolute", left: `${m.left}%`, width: `${m.width}%`,
+                  height: "100%", display: "flex", alignItems: "center",
+                  borderRight: "1px solid var(--border)", paddingLeft: 8,
+                  fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)",
+                  overflow: "hidden", whiteSpace: "nowrap",
+                }}>
+                  {m.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Task rows */}
+          {tareas.map((t, i) => {
+            const taskStart = new Date(t.createdAt);
+            const taskEnd = t.fechaCierre ? new Date(t.fechaCierre) : today;
+            const left = Math.max(0, (taskStart.getTime() - rangeStart.getTime()) / totalMs) * 100;
+            const width = Math.max(0.5, ((taskEnd.getTime() - taskStart.getTime()) / totalMs) * 100);
+            const color = prioColor[t.prioridad] ?? "#94a3b8";
+            const isCompleted = t.estado === "completada" || t.estado === "cancelada";
+            const isLate = !isCompleted && t.fechaCierre && new Date(t.fechaCierre) < today;
+
+            return (
+              <div key={t.id} style={{
+                display: "flex", alignItems: "center",
+                borderBottom: "1px solid var(--border)",
+                background: i % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)",
+                minHeight: 44,
+              }}>
+                {/* Task name */}
+                <div style={{
+                  width: 220, minWidth: 220, padding: "6px 14px",
+                  borderRight: "1.5px solid var(--border)",
+                  fontSize: "0.82rem", color: "var(--text)",
+                  overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                }}>
+                  <span style={{
+                    display: "inline-block", width: 8, height: 8, borderRadius: "50%",
+                    background: color, marginRight: 6, flexShrink: 0,
+                  }} />
+                  <span style={{ opacity: isCompleted ? 0.5 : 1, textDecoration: isCompleted ? "line-through" : "none" }}>
+                    {t.descripcion}
+                  </span>
+                </div>
+
+                {/* Bar area */}
+                <div style={{ flex: 1, position: "relative", height: 44 }}>
+                  {/* Month grid lines */}
+                  {months.map((m, mi) => (
+                    <div key={mi} style={{
+                      position: "absolute", left: `${m.left}%`, top: 0, bottom: 0,
+                      borderRight: "1px solid var(--border)", opacity: 0.4,
+                    }} />
+                  ))}
+
+                  {/* Today line */}
+                  {todayLeft >= 0 && todayLeft <= 100 && (
+                    <div style={{
+                      position: "absolute", left: `${todayLeft}%`, top: 0, bottom: 0,
+                      borderLeft: "2px dashed var(--accent)", opacity: 0.7, zIndex: 5,
+                    }} />
+                  )}
+
+                  {/* Task bar */}
+                  <div style={{
+                    position: "absolute",
+                    left: `${Math.min(left, 98)}%`,
+                    width: `${Math.min(width, 100 - Math.min(left, 98))}%`,
+                    top: "50%", transform: "translateY(-50%)",
+                    height: 22, borderRadius: 999,
+                    background: color,
+                    opacity: isCompleted ? 0.4 : 0.85,
+                    border: isLate ? "2px solid #dc2626" : "none",
+                    display: "flex", alignItems: "center",
+                    paddingLeft: 8, paddingRight: 4,
+                    overflow: "hidden",
+                    zIndex: 2,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+                  }}>
+                    <span style={{ fontSize: "0.7rem", color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {t.responsable ?? "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Legend */}
+          <div style={{ padding: "10px 14px", display: "flex", gap: 16, alignItems: "center", borderTop: "1.5px solid var(--border)", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>PRIORIDAD:</span>
+            {[["alta", "#ef4444", "Alta"], ["media", "#f97316", "Media"], ["baja", "#22c55e", "Baja"]].map(([, c, label]) => (
+              <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text)" }}>
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: c as string, display: "inline-block" }} />
+                {label}
+              </span>
+            ))}
+            <span style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text)" }}>
+              <span style={{ width: 20, borderTop: "2px dashed var(--accent)", display: "inline-block" }} />
+              Hoy
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
