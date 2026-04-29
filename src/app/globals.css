@@ -353,19 +353,24 @@ a {
 .dashboard-kpi-label {
   color: var(--muted);
   font-size: 0.84rem;
+  font-weight: 600;
   margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .dashboard-kpi-value {
   font-size: 2rem;
   font-weight: 800;
   line-height: 1;
+  color: var(--text);
 }
 
 .dashboard-kpi-meta {
   margin-top: 8px;
   color: var(--muted);
   font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .dashboard-core-grid,
@@ -708,8 +713,9 @@ a {
 .dashboard-table th {
   color: var(--muted);
   font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .dashboard-mini-link {
@@ -814,6 +820,7 @@ td {
 
 th {
   color: var(--muted);
+  font-weight: 700;
 }
 
 .admin-metrics-grid {
@@ -963,12 +970,17 @@ th {
 
 .metric .label {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
 }
 
 .metric .value {
   font-size: 1.3rem;
   font-weight: 700;
+  color: var(--text);
 }
 
 .up {
@@ -1447,8 +1459,8 @@ th {
   :root {
     --bg: #0b1e24;
     --surface: #132830;
-    --text: #dff0f3;
-    --muted: #7fb8c2;
+    --text: #f0f9fb;
+    --muted: #a8d4dc;
     --accent: #ff7020;
     --accent-2: #e05500;
     --danger: #ff6b57;
@@ -1520,11 +1532,44 @@ th {
   }
 
   .dashboard-kpi.accent {
-    background: linear-gradient(160deg, rgba(255, 99, 0, 0.18), rgba(19, 40, 48, 0.9));
+    background: linear-gradient(160deg, rgba(255, 99, 0, 0.22), rgba(19, 40, 48, 0.92));
   }
 
   .dashboard-kpi.teal {
-    background: linear-gradient(160deg, rgba(0, 170, 191, 0.18), rgba(19, 40, 48, 0.9));
+    background: linear-gradient(160deg, rgba(0, 170, 191, 0.22), rgba(19, 40, 48, 0.92));
+  }
+
+  .dashboard-kpi-value {
+    color: #ffffff;
+  }
+
+  .dashboard-kpi-label {
+    color: var(--muted);
+  }
+
+  .dashboard-kpi-meta {
+    color: var(--muted);
+  }
+
+  .metric {
+    background: rgba(13, 37, 48, 0.7);
+    border-color: var(--border);
+  }
+
+  .metric .label {
+    color: var(--muted);
+  }
+
+  .metric .value {
+    color: #ffffff;
+  }
+
+  .dashboard-panel-header h2 {
+    color: var(--text);
+  }
+
+  .section-caption {
+    color: var(--muted);
   }
 
   .dashboard-sidebar-card {
@@ -1557,7 +1602,7 @@ th {
   }
 
   .dashboard-table thead th {
-    color: var(--muted);
+    color: #a8d4dc;
   }
 
   .dashboard-table tbody tr td {
