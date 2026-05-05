@@ -109,6 +109,8 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
       acc.fuelRemaining += report.fuelRemainingLiters;
       acc.potable += report.potableWaterDeliveredM3;
       acc.blackRemoved += report.blackWaterRemovedM3;
+      acc.blackServices += report.blackWaterRemoved ? 1 : 0;
+      acc.potableServices += report.potableWaterDelivered ? 1 : 0;
       acc.internetIssues += report.internetStatus === "FUNCIONANDO" ? 0 : 1;
       acc.waste += report.wasteFillPercent;
       acc.blackTank += report.blackWaterTankLevelPercent;
@@ -127,6 +129,8 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
       fuelRemaining: 0,
       potable: 0,
       blackRemoved: 0,
+      blackServices: 0,
+      potableServices: 0,
       internetIssues: 0,
       waste: 0,
       blackTank: 0,
@@ -134,6 +138,40 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
       ph: 0
     }
   );
+
+  // ── Servicios por mes ─────────────────────────────────────────
+  const monthMap = new Map<string, {
+    label: string;
+    blackCount: number;
+    blackM3: number;
+    potableCount: number;
+    potableM3: number;
+    campBreakdown: Map<string, { name: string; blackCount: number; blackM3: number; potableCount: number; potableM3: number }>;
+  }>();
+
+  const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+  for (const report of scopedReports) {
+    if (!report.blackWaterRemoved && !report.potableWaterDelivered) continue;
+    const d = report.date;
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = `${MONTHS_ES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    const row = monthMap.get(key) ?? { label, blackCount: 0, blackM3: 0, potableCount: 0, potableM3: 0, campBreakdown: new Map() };
+    if (report.blackWaterRemoved) { row.blackCount++; row.blackM3 += report.blackWaterRemovedM3; }
+    if (report.potableWaterDelivered) { row.potableCount++; row.potableM3 += report.potableWaterDeliveredM3; }
+
+    const campRow = row.campBreakdown.get(report.campId) ?? { name: report.camp.name, blackCount: 0, blackM3: 0, potableCount: 0, potableM3: 0 };
+    if (report.blackWaterRemoved) { campRow.blackCount++; campRow.blackM3 += report.blackWaterRemovedM3; }
+    if (report.potableWaterDelivered) { campRow.potableCount++; campRow.potableM3 += report.potableWaterDeliveredM3; }
+    row.campBreakdown.set(report.campId, campRow);
+    monthMap.set(key, row);
+  }
+
+  const monthlyServices = Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, row]) => ({ ...row, campBreakdown: Array.from(row.campBreakdown.values()) }));
+
+  const showCampBreakdown = scopeCamps.length > 1 && !scopedSelectedCampId;
 
   const taskSummary = scopedTaskControls.reduce(
     (acc, control) => {
@@ -440,6 +478,72 @@ export default async function ResumenGeneralPage({ searchParams }: { searchParam
                 );
               })}
             </div>
+          </section>
+        </div>
+
+        {/* ── Servicios de saneamiento por mes ── */}
+        <div className="dashboard-bottom-grid">
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="dashboard-panel-header">
+              <h2>Servicios de saneamiento</h2>
+              <span className="dashboard-chip small">
+                {summary.blackServices} retiro(s) AN · {summary.potableServices} ingreso(s) AP
+              </span>
+            </div>
+            {monthlyServices.length === 0 ? (
+              <div className="section-caption">Sin servicios registrados en el período.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                      <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--muted)", fontWeight: 600 }}>Mes</th>
+                      <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--muted)", fontWeight: 600 }}>🚛 Retiros AN</th>
+                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--muted)", fontWeight: 600 }}>m³ retirados</th>
+                      <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--muted)", fontWeight: 600 }}>💧 Ingresos AP</th>
+                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--muted)", fontWeight: 600 }}>m³ ingresados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyServices.map((row, i) => (
+                      <>
+                        <tr key={`month-${i}`} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "rgba(0,168,184,0.04)" }}>
+                          <td style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text)" }}>{row.label}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                            <span style={{ background: row.blackCount > 0 ? "rgba(255,100,80,0.12)" : "transparent", color: row.blackCount > 0 ? "#c0392b" : "var(--muted)", borderRadius: 6, padding: "2px 10px", fontWeight: 700 }}>
+                              {row.blackCount}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: "var(--text)" }}>{row.blackM3 > 0 ? `${row.blackM3.toFixed(1)} m³` : "—"}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                            <span style={{ background: row.potableCount > 0 ? "rgba(0,168,184,0.12)" : "transparent", color: row.potableCount > 0 ? "var(--teal)" : "var(--muted)", borderRadius: 6, padding: "2px 10px", fontWeight: 700 }}>
+                              {row.potableCount}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: "var(--text)" }}>{row.potableM3 > 0 ? `${row.potableM3.toFixed(1)} m³` : "—"}</td>
+                        </tr>
+                        {showCampBreakdown && row.campBreakdown.map((camp) => (
+                          <tr key={`camp-${i}-${camp.name}`} style={{ borderBottom: "1px solid var(--border)", opacity: 0.75 }}>
+                            <td style={{ padding: "6px 12px 6px 28px", color: "var(--muted)", fontSize: "0.82rem" }}>↳ {camp.name}</td>
+                            <td style={{ padding: "6px 12px", textAlign: "center", color: "var(--muted)", fontSize: "0.82rem" }}>{camp.blackCount || "—"}</td>
+                            <td style={{ padding: "6px 12px", textAlign: "right", color: "var(--muted)", fontSize: "0.82rem" }}>{camp.blackM3 > 0 ? `${camp.blackM3.toFixed(1)} m³` : "—"}</td>
+                            <td style={{ padding: "6px 12px", textAlign: "center", color: "var(--muted)", fontSize: "0.82rem" }}>{camp.potableCount || "—"}</td>
+                            <td style={{ padding: "6px 12px", textAlign: "right", color: "var(--muted)", fontSize: "0.82rem" }}>{camp.potableM3 > 0 ? `${camp.potableM3.toFixed(1)} m³` : "—"}</td>
+                          </tr>
+                        ))}
+                      </>
+                    ))}
+                    <tr style={{ borderTop: "2px solid var(--border)", background: "rgba(0,168,184,0.06)" }}>
+                      <td style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text)" }}>Total período</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 700, color: "#c0392b" }}>{summary.blackServices}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "var(--text)" }}>{summary.blackRemoved > 0 ? `${summary.blackRemoved.toFixed(1)} m³` : "—"}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 700, color: "var(--teal)" }}>{summary.potableServices}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "var(--text)" }}>{summary.potable > 0 ? `${summary.potable.toFixed(1)} m³` : "—"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         </div>
 
