@@ -76,7 +76,7 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
     ? { ...whereBase, responsable: filtroResp }
     : whereBase;
 
-  const [tareas, usuarios] = await Promise.all([
+  const [tareas, usuarios, proyectos, areas] = await Promise.all([
     db.tarea.findMany({
       where: whereFiltro,
       orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
@@ -84,9 +84,13 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
     puedeGestionar
       ? db.user.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } })
       : Promise.resolve([] as { id: string; name: string }[]),
+    (db as any).proyectoConfig.findMany({ where: { isActive: true }, orderBy: { nombre: "asc" } }),
+    (db as any).areaConfig.findMany({ where: { isActive: true }, orderBy: { nombre: "asc" } }),
   ]);
 
   const usuariosList = usuarios as { id: string; name: string }[];
+  const proyectosList = proyectos.map(p => p.nombre);
+  const areasList = areas.map(a => a.nombre);
 
   // Fetch extra data in parallel based on the current view
   const tareasTodas = (!esColaborador && (vista === "todas" || vista === "tablero" || vista === "gantt"))
@@ -169,7 +173,7 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
               + Nueva tarea
             </summary>
             <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 420, marginTop: 6 }}>
-              <TareaForm usuarios={usuariosList} />
+              <TareaForm usuarios={usuariosList} proyectos={proyectosList} areas={areasList} />
             </div>
           </details>
         )}
@@ -180,6 +184,8 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
         <MisTareasView
           tareas={misTareas}
           usuarios={usuariosList}
+          proyectos={proyectosList}
+          areas={areasList}
           puedeGestionar={puedeGestionar}
           userName={user.name}
         />
@@ -189,6 +195,8 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
         <TodasTareasView
           tareas={tareas}
           usuarios={usuariosList}
+          proyectos={proyectosList}
+          areas={areasList}
           stats={stats}
           filtroResp={filtroResp}
           verCompletadas={verCompletadas}
@@ -200,6 +208,8 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
         <TableroView
           tareas={tareas}
           usuarios={usuariosList}
+          proyectos={proyectosList}
+          areas={areasList}
           puedeGestionar={puedeGestionar}
         />
       )}
@@ -261,10 +271,14 @@ type TareaRow = {
 function AsanaTareaRow({
   t,
   usuarios,
+  proyectos,
+  areas,
   puedeGestionar,
 }: {
   t: TareaRow;
   usuarios: { id: string; name: string }[];
+  proyectos: string[];
+  areas: string[];
   puedeGestionar: boolean;
 }) {
   const terminada = ["completada", "cancelada"].includes(t.estado);
@@ -364,7 +378,7 @@ function AsanaTareaRow({
               fontSize: "0.78rem", listStyle: "none", display: "inline-block",
             }}>✏️</summary>
             <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-              <TareaForm tarea={t} usuarios={usuarios} />
+              <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
             </div>
           </details>
           <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
@@ -398,11 +412,15 @@ function SeccionHeader({ label, count, color }: { label: string; count: number; 
 function MisTareasView({
   tareas,
   usuarios,
+  proyectos,
+  areas,
   puedeGestionar,
   userName,
 }: {
   tareas: TareaRow[];
   usuarios: { id: string; name: string }[];
+  proyectos: string[];
+  areas: string[];
   puedeGestionar: boolean;
   userName: string;
 }) {
@@ -426,7 +444,7 @@ function MisTareasView({
           {porHacer.map(t => (
             <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
               <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                <AsanaTareaRow t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+                <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
               </summary>
               <div style={{ padding: "0 14px 12px 14px" }}>
                 <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
@@ -442,7 +460,7 @@ function MisTareasView({
           {enProgreso.map(t => (
             <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
               <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                <AsanaTareaRow t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+                <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
               </summary>
               <div style={{ padding: "0 14px 12px 14px" }}>
                 <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
@@ -465,7 +483,7 @@ function MisTareasView({
             {terminadas.map(t => (
               <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                  <AsanaTareaRow t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+                  <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
                 </summary>
                 <div style={{ padding: "0 14px 12px 14px" }}>
                   <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
@@ -484,6 +502,8 @@ function MisTareasView({
 function TodasTareasView({
   tareas,
   usuarios,
+  proyectos,
+  areas,
   stats,
   filtroResp,
   verCompletadas,
@@ -491,6 +511,8 @@ function TodasTareasView({
 }: {
   tareas: TareaRow[];
   usuarios: { id: string; name: string }[];
+  proyectos: string[];
+  areas: string[];
   stats: { total: number; pendientes: number; enProgreso: number; atrasadas: number; completadas: number };
   filtroResp: string;
   verCompletadas: boolean;
@@ -620,7 +642,7 @@ function TodasTareasView({
                         <details style={{ position: "relative" }}>
                           <summary style={{ cursor: "pointer", padding: "4px 10px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.8rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
                           <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-                            <TareaForm tarea={t} usuarios={usuarios} />
+                            <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
                           </div>
                         </details>
                         <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
@@ -643,10 +665,14 @@ function TodasTareasView({
 function KanbanCard({
   t,
   usuarios,
+  proyectos,
+  areas,
   puedeGestionar,
 }: {
   t: TareaRow;
   usuarios: { id: string; name: string }[];
+  proyectos: string[];
+  areas: string[];
   puedeGestionar: boolean;
 }) {
   const pColor = prioridadColor(t.prioridad);
@@ -697,7 +723,7 @@ function KanbanCard({
           <details style={{ position: "relative" }}>
             <summary style={{ cursor: "pointer", padding: "3px 8px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.75rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
             <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-              <TareaForm tarea={t} usuarios={usuarios} />
+              <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
             </div>
           </details>
           <EliminarForm tareaId={t.id} />
@@ -710,10 +736,14 @@ function KanbanCard({
 function TableroView({
   tareas,
   usuarios,
+  proyectos,
+  areas,
   puedeGestionar,
 }: {
   tareas: TareaRow[];
   usuarios: { id: string; name: string }[];
+  proyectos: string[];
+  areas: string[];
   puedeGestionar: boolean;
 }) {
   const pendientes = tareas.filter(t => t.estado === "pendiente");
@@ -751,7 +781,7 @@ function TableroView({
               Sin tareas
             </div>
           ) : col.items.map(t => (
-            <KanbanCard key={t.id} t={t} usuarios={usuarios} puedeGestionar={puedeGestionar} />
+            <KanbanCard key={t.id} t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
           ))}
         </div>
       ))}
@@ -761,13 +791,15 @@ function TableroView({
 
 // ─── TareaForm ────────────────────────────────────────────────────────────────
 
-function TareaForm({ tarea, usuarios }: {
+function TareaForm({ tarea, usuarios, proyectos, areas }: {
   tarea?: {
     id: string; tipo: string; proyecto: string | null; area: string | null;
     descripcion: string; responsable: string | null; comentario: string | null;
     prioridad: string; estado: string; fechaInicio: Date | null; fechaCierre: Date | null;
   };
   usuarios: { id: string; name: string }[];
+  proyectos: string[];
+  areas: string[];
 }) {
   const isEdit = !!tarea;
   const action = isEdit ? editarTareaAction.bind(null, tarea!.id) : crearTareaAction;
@@ -778,18 +810,19 @@ function TareaForm({ tarea, usuarios }: {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Tipo</label>
-          <select name="tipo" defaultValue={tarea?.tipo ?? "compromiso"} style={{ padding: "7px 10px" }}>
-            <option value="compromiso">Compromiso</option>
-            <option value="amenaza">Amenaza</option>
-            <option value="rdp">Registro de Pendientes</option>
+          <select name="tipo" defaultValue={tarea?.tipo ?? "urgente"} style={{ padding: "7px 10px" }}>
+            <option value="urgente">🔴 Urgente</option>
+            <option value="seguimiento">🔵 Seguimiento</option>
+            <option value="correccion">🟠 Corrección</option>
+            <option value="mejora">🟢 Mejora</option>
           </select>
         </div>
         <div>
           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Prioridad</label>
           <select name="prioridad" defaultValue={tarea?.prioridad ?? "media"} style={{ padding: "7px 10px" }}>
-            <option value="alta">Alta</option>
-            <option value="media">Media</option>
-            <option value="baja">Baja</option>
+            <option value="alta">🔺 Alta</option>
+            <option value="media">▶ Media</option>
+            <option value="baja">🔽 Baja</option>
           </select>
         </div>
       </div>
@@ -800,11 +833,17 @@ function TareaForm({ tarea, usuarios }: {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Proyecto</label>
-          <input name="proyecto" defaultValue={tarea?.proyecto ?? ""} style={{ padding: "7px 10px" }} />
+          <select name="proyecto" defaultValue={tarea?.proyecto ?? ""} style={{ padding: "7px 10px" }}>
+            <option value="">— Sin proyecto —</option>
+            {proyectos.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
         </div>
         <div>
           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Área</label>
-          <input name="area" defaultValue={tarea?.area ?? ""} style={{ padding: "7px 10px" }} />
+          <select name="area" defaultValue={tarea?.area ?? ""} style={{ padding: "7px 10px" }}>
+            <option value="">— Sin área —</option>
+            {areas.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
         </div>
       </div>
       <div>

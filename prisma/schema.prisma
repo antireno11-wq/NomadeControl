@@ -373,9 +373,23 @@ model Documento {
   @@index([createdAt])
 }
 
+model ProyectoConfig {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model AreaConfig {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 model Tarea {
   id          String    @id @default(cuid())
-  tipo        String    @default("compromiso")
+  tipo        String    @default("urgente")
   proyecto    String?
   area        String?
   descripcion String

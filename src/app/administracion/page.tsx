@@ -85,6 +85,16 @@ export default async function AdministracionPage({
       ) : null}
 
       <div className="card" style={{ marginBottom: 16 }}>
+        <h2 style={{ marginTop: 0 }}>⚙️ Configuración de tareas</h2>
+        <p style={{ color: "var(--muted)", fontSize: "0.9rem", margin: "0 0 12px" }}>
+          Administra los proyectos y áreas disponibles al crear tareas.
+        </p>
+        <Link href="/administracion/configuracion">
+          <button type="button" className="secondary">Gestionar proyectos y áreas</button>
+        </Link>
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
         <h2 style={{ marginTop: 0 }}>Crear campamento</h2>
         <form action={createCampAction} className="grid two">
           <div>
