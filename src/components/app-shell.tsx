@@ -3,9 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
-import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessEvaluaciones, canAccessVehicles, canManageTareas, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
+import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessEvaluaciones, canAccessHSEC, canAccessVehicles, canManageTareas, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
 
-type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "administracion" | null;
+type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | null;
 
 type NotificationItem = {
   text: string;
@@ -38,6 +38,7 @@ export function AppShell({
   const canSeeGestionTareas = canManageTareas(user.role);
   const canSeeTareasBasic = canViewTareas(user.role);
   const canSeeEvaluaciones = canAccessEvaluaciones(user.role);
+  const canSeeHSEC = canAccessHSEC(user.role);
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
   const navItems = [
     ...(!isVehicleOnlyRole(user.role) ? [{ href: "/", label: "🏠 Inicio", key: null as any }] : []),
@@ -53,6 +54,7 @@ export function AppShell({
       : []),
     ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Gestión de tareas", key: "gestion-tareas" as const }] : []),
     ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
+    ...(canSeeHSEC ? [{ href: "/hsec", label: "HSEC / Prevención", key: "hsec" as const }] : []),
     ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
   ];
 

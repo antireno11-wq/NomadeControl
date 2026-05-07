@@ -89,8 +89,8 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
   ]);
 
   const usuariosList = usuarios as { id: string; name: string }[];
-  const proyectosList = proyectos.map(p => p.nombre);
-  const areasList = areas.map(a => a.nombre);
+  const proyectosList = (proyectos as { nombre: string }[]).map(p => p.nombre);
+  const areasList = (areas as { nombre: string }[]).map(a => a.nombre);
 
   // Fetch extra data in parallel based on the current view
   const tareasTodas = (!esColaborador && (vista === "todas" || vista === "tablero" || vista === "gantt"))

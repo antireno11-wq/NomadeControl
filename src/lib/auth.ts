@@ -27,6 +27,7 @@ export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERA
 export const TAREAS_ROLES: AppRole[]        = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA"];
 export const TAREAS_VER_ROLES: AppRole[]    = [...TAREAS_ROLES, "COLABORADOR"];
 export const EVALUACIONES_ROLES: AppRole[]  = [...ADMIN_ROLES, "SUPERVISOR"];
+export const HSEC_ROLES: AppRole[]          = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
 
 export function defaultRouteForRole(role: string) {
   if (role === "COLABORADOR") {
@@ -90,6 +91,10 @@ export function canViewTareas(role: string) {
 
 export function canAccessEvaluaciones(role: string) {
   return EVALUACIONES_ROLES.includes(role as AppRole);
+}
+
+export function canAccessHSEC(role: string) {
+  return HSEC_ROLES.includes(role as AppRole);
 }
 
 export function roleLabel(role: string) {

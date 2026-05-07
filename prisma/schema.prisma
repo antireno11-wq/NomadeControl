@@ -38,6 +38,11 @@ model User {
   vehicleChecklists VehicleChecklist[]
   alertDeliveries AlertDelivery[]
   auditLogs    AuditLog[]
+  incidentesReportados Incidente[]    @relation("IncidenteReportado")
+  incidentesAsignados  Incidente[]    @relation("IncidenteResponsable")
+  matricesRiesgo       MatrizRiesgo[] @relation("MatrizResponsable")
+  eppEntregados        EntregaEPP[]   @relation("EPPEntregador")
+  cursosCreados        Curso[]        @relation("CursoCreador")
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }
@@ -107,6 +112,9 @@ model Camp {
   inventoryItems    InventoryItem[]
   staffMembers      StaffMember[]
   vehicles          Vehicle[]
+  incidentes        Incidente[]
+  matricesRiesgo    MatrizRiesgo[]
+  entregasEPP       EntregaEPP[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -244,6 +252,8 @@ model StaffMember {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   shiftDays      StaffShiftDay[]
+  entregasEPP    EntregaEPP[]
+  inducciones    InduccionUsuario[]
 
   @@index([campId, isActive])
 }
@@ -478,4 +488,141 @@ model Evaluacion {
   @@index([evaluadorId])
   @@index([evaluadoNombre])
   @@index([estado, createdAt])
+}
+
+// ─── MÓDULO HSEC / PREVENCIÓN ────────────────────────────────────────────────
+
+model Incidente {
+  id                  String    @id @default(cuid())
+  titulo              String
+  descripcion         String
+  fechaOcurrencia     DateTime
+  lugar               String
+  area                String?
+  criticidad          String    // baja | media | alta | critica
+  estado              String    @default("abierto") // abierto | en_investigacion | cerrado
+  incumplimientoLegal Boolean   @default(false)
+  reportadoPorId      String
+  reportadoPor        User      @relation("IncidenteReportado", fields: [reportadoPorId], references: [id])
+  responsableId       String?
+  responsable         User?     @relation("IncidenteResponsable", fields: [responsableId], references: [id])
+  planAccion          String?
+  fechaCierre         DateTime?
+  evidenciaUrls       Json      @default("[]")
+  campId              String?
+  camp                Camp?     @relation(fields: [campId], references: [id], onDelete: SetNull)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([estado, createdAt])
+  @@index([criticidad])
+  @@index([campId])
+}
+
+model MatrizRiesgo {
+  id             String    @id @default(cuid())
+  tarea          String
+  area           String
+  peligro        String
+  probabilidad   Int       // 1-5
+  impacto        Int       // 1-5
+  nivelRiesgo    String    // bajo | medio | alto | critico
+  medidasControl String?
+  responsableId  String
+  responsable    User      @relation("MatrizResponsable", fields: [responsableId], references: [id])
+  evidenciaUrls  Json      @default("[]")
+  fechaRevision  DateTime?
+  campId         String?
+  camp           Camp?     @relation(fields: [campId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([nivelRiesgo])
+  @@index([campId])
+}
+
+// ─── MÓDULO EPP (dentro de Trabajadores) ─────────────────────────────────────
+
+model TipoEPP {
+  id           String       @id @default(cuid())
+  nombre       String
+  descripcion  String?
+  vigenciaDias Int          @default(365)
+  isActive     Boolean      @default(true)
+  entregas     EntregaEPP[]
+  createdAt    DateTime     @default(now())
+}
+
+model EntregaEPP {
+  id               String    @id @default(cuid())
+  staffMemberId    String?
+  staffMember      StaffMember? @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
+  nombreTrabajador String
+  tipoEppId        String
+  tipoEpp          TipoEPP   @relation(fields: [tipoEppId], references: [id])
+  cantidad         Int       @default(1)
+  fechaEntrega     DateTime
+  fechaVencimiento DateTime
+  firmaUrl         String?
+  entregadoPorId   String
+  entregadoPor     User      @relation("EPPEntregador", fields: [entregadoPorId], references: [id])
+  campId           String?
+  camp             Camp?     @relation(fields: [campId], references: [id], onDelete: SetNull)
+  observaciones    String?
+  createdAt        DateTime  @default(now())
+
+  @@index([campId, fechaVencimiento])
+  @@index([staffMemberId])
+}
+
+// ─── MÓDULO INDUCCIONES (dentro de Trabajadores) ─────────────────────────────
+
+model Curso {
+  id                String             @id @default(cuid())
+  titulo            String
+  descripcion       String?
+  contenido         String
+  tiempoEstimadoMin Int                @default(30)
+  activo            Boolean            @default(true)
+  createdById       String
+  createdBy         User               @relation("CursoCreador", fields: [createdById], references: [id])
+  createdAt         DateTime           @default(now())
+  preguntas         PreguntaQuiz[]
+  inducciones       InduccionUsuario[]
+
+  @@index([activo])
+}
+
+model PreguntaQuiz {
+  id                String @id @default(cuid())
+  cursoId           String
+  curso             Curso  @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  pregunta          String
+  opciones          Json
+  respuestaCorrecta Int
+  orden             Int    @default(0)
+
+  @@index([cursoId, orden])
+}
+
+model InduccionUsuario {
+  id                String       @id @default(cuid())
+  staffMemberId     String?
+  staffMember       StaffMember? @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
+  nombreTrabajador  String
+  cursoId           String
+  curso             Curso        @relation(fields: [cursoId], references: [id], onDelete: Cascade)
+  estado            String       @default("pendiente") // pendiente | en_progreso | completado | reprobado
+  puntaje           Int?
+  intentos          Int          @default(0)
+  firmaUrl          String?
+  certificadoUrl    String?
+  reglamentoFirmado Boolean      @default(false)
+  fechaInicio       DateTime?
+  fechaCompletado   DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([cursoId, estado])
+  @@index([staffMemberId])
 }

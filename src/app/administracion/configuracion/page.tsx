@@ -52,7 +52,7 @@ export default async function ConfiguracionPage() {
                 No hay proyectos configurados
               </div>
             )}
-            {proyectos.map(p => (
+            {proyectos.map((p: { id: string; nombre: string; isActive: boolean }) => (
               <div key={p.id} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "8px 12px", borderRadius: 8,
@@ -103,7 +103,7 @@ export default async function ConfiguracionPage() {
                 No hay áreas configuradas
               </div>
             )}
-            {areas.map(a => (
+            {areas.map((a: { id: string; nombre: string; isActive: boolean }) => (
               <div key={a.id} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "8px 12px", borderRadius: 8,

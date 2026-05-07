@@ -1,111 +1,116 @@
-import Image from "next/image";
 import Link from "next/link";
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, HSEC_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatDisplayDate } from "@/lib/report-utils";
-import { logoutAction } from "@/app/dashboard/actions";
-import { OpsNav } from "@/components/ops-nav";
+import { AppShell } from "@/components/app-shell";
+
+const criticidadColor: Record<string, string> = {
+  baja: "#16a34a", media: "#f59e0b", alta: "#f97316", critica: "#ef4444",
+};
+
+const estadoLabel: Record<string, string> = {
+  abierto: "Abierto", en_investigacion: "En investigación", cerrado: "Cerrado",
+};
 
 export default async function HsecPage() {
-  const user = await requireRole(OPERATION_ROLES);
-  const canSeeAdminSections = isAdminRole(user.role);
-  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
-  const recent = await db.dailyReport.findMany({
-    where: campFilter ? { campId: campFilter } : undefined,
-    take: 20,
-    orderBy: [{ date: "desc" }],
-    include: { camp: true }
+  const user = await requireRole(HSEC_ROLES);
+  const isAdmin = isAdminRole(user.role);
+  const campFilter = isAdmin ? {} : { campId: user.campId ?? undefined };
+
+  const [totalIncidentes, incidentesAbiertos, incidentesCriticos, totalMatrices, matrizAlta] = await Promise.all([
+    db.incidente.count({ where: campFilter }),
+    db.incidente.count({ where: { ...campFilter, estado: { in: ["abierto", "en_investigacion"] } } }),
+    db.incidente.count({ where: { ...campFilter, criticidad: { in: ["alta", "critica"] }, estado: { not: "cerrado" } } }),
+    db.matrizRiesgo.count({ where: campFilter }),
+    db.matrizRiesgo.count({ where: { ...campFilter, nivelRiesgo: { in: ["alto", "critico"] } } }),
+  ]);
+
+  const ultimosIncidentes = await db.incidente.findMany({
+    where: campFilter,
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    include: { reportadoPor: { select: { name: true } } },
   });
 
-  const latestByCamp = new Map<string, (typeof recent)[number]>();
-  for (const report of recent) {
-    if (!latestByCamp.has(report.campId)) {
-      latestByCamp.set(report.campId, report);
-    }
-  }
-
   return (
-    <main>
-      <div className="header">
-        <div>
-          <div className="brand-inline">
-            <Link href="/" aria-label="Ir al inicio">
-              <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={120} height={120} priority />
+    <AppShell title="HSEC / Prevención" user={user} activeNav="hsec">
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+        {/* KPIs */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
+          {[
+            { label: "Incidentes abiertos", value: incidentesAbiertos, color: incidentesAbiertos > 0 ? "#ef4444" : "#16a34a", href: "/hsec/incidentes" },
+            { label: "Criticidad alta/crítica", value: incidentesCriticos, color: incidentesCriticos > 0 ? "#f97316" : "#16a34a", href: "/hsec/incidentes" },
+            { label: "Total incidentes", value: totalIncidentes, color: "#64748b", href: "/hsec/incidentes" },
+            { label: "Riesgos altos/críticos", value: matrizAlta, color: matrizAlta > 0 ? "#f97316" : "#16a34a", href: "/hsec/matrices" },
+            { label: "Total matrices", value: totalMatrices, color: "#64748b", href: "/hsec/matrices" },
+          ].map((k) => (
+            <Link key={k.label} href={k.href} style={{ textDecoration: "none" }}>
+              <div className="card" style={{ borderTop: `4px solid ${k.color}`, padding: "1rem" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 700, color: k.color }}>{k.value}</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{k.label}</div>
+              </div>
             </Link>
-          </div>
-          <h1>HSEC</h1>
-          <div style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            Sesión: {user.name} ({user.role})
-          </div>
+          ))}
         </div>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/mi-perfil" className="menu-item">
-            Mi perfil
-          </Link>
-          <form action={logoutAction}>
-            <button className="danger" type="submit">
-              Cerrar sesión
-            </button>
-          </form>
+        {/* Accesos rápidos */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+          {[
+            { href: "/hsec/incidentes/nuevo", title: "+ Registrar incidente", desc: "Hallazgo, accidente o incumplimiento" },
+            { href: "/hsec/matrices/nueva", title: "+ Nueva matriz de riesgo", desc: "Evaluar probabilidad e impacto" },
+            { href: "/hsec/incidentes", title: "Ver incidentes", desc: "Listado y seguimiento" },
+            { href: "/hsec/matrices", title: "Ver matrices de riesgo", desc: "Listado por nivel de riesgo" },
+          ].map((a) => (
+            <Link key={a.href} href={a.href} className="card" style={{ textDecoration: "none", display: "block", padding: "1rem" }}>
+              <strong style={{ display: "block", marginBottom: 4 }}>{a.title}</strong>
+              <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>{a.desc}</span>
+            </Link>
+          ))}
         </div>
-      </div>
 
-      <OpsNav active="hsec" showAdminSections={canSeeAdminSections} showLoadSection={!canSeeAdminSections} />
-
-      {!canSeeAdminSections && !user.campId ? (
-        <div className="alert error" style={{ marginBottom: 16 }}>
-          Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.
-        </div>
-      ) : null}
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2 style={{ marginTop: 0 }}>Monitoreo de agua y condiciones sanitarias</h2>
-        <p style={{ margin: 0, color: "var(--muted)" }}>
-          Seguimiento diario de cloro, pH y nivel de llenado de basura por campamento.
-        </p>
-      </div>
-
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Campamento</th>
-              <th>Fecha última medición</th>
-              <th>Cloro</th>
-              <th>pH</th>
-              <th>Basura</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from(latestByCamp.values()).map((report) => {
-              const inRangeChlorine = report.chlorineLevel >= 0.2 && report.chlorineLevel <= 2;
-              const inRangePh = report.phLevel >= 6.5 && report.phLevel <= 8.5;
-              const wasteAlert = report.wasteFillPercent >= 80;
-              const ok = inRangeChlorine && inRangePh && !wasteAlert;
-
-              return (
-                <tr key={report.id}>
-                  <td>{report.camp.name}</td>
-                  <td>{formatDisplayDate(report.date)}</td>
-                  <td>{report.chlorineLevel.toFixed(2)}</td>
-                  <td>{report.phLevel.toFixed(2)}</td>
-                  <td>{report.wasteFillPercent}%</td>
-                  <td className={ok ? "up" : "down"}>{ok ? "Dentro de rango" : "Revisar"}</td>
+        {/* Últimos incidentes */}
+        {ultimosIncidentes.length > 0 && (
+          <div className="card" style={{ overflowX: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ margin: 0 }}>Últimos incidentes</h2>
+              <Link href="/hsec/incidentes" style={{ fontSize: "0.875rem" }}>Ver todos →</Link>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Criticidad</th>
+                  <th>Estado</th>
+                  <th>Reportado por</th>
+                  <th>Fecha</th>
                 </tr>
-              );
-            })}
-            {latestByCamp.size === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ color: "var(--muted)" }}>
-                  Aún no hay registros para HSEC.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {ultimosIncidentes.map((i) => (
+                  <tr key={i.id}>
+                    <td><Link href={`/hsec/incidentes/${i.id}`}>{i.titulo}</Link></td>
+                    <td>
+                      <span style={{ padding: "2px 8px", borderRadius: 4, fontSize: "0.8rem", background: criticidadColor[i.criticidad] + "20", color: criticidadColor[i.criticidad], fontWeight: 600 }}>
+                        {i.criticidad.charAt(0).toUpperCase() + i.criticidad.slice(1)}
+                      </span>
+                    </td>
+                    <td>{estadoLabel[i.estado] ?? i.estado}</td>
+                    <td>{i.reportadoPor.name}</td>
+                    <td>{new Date(i.fechaOcurrencia).toLocaleDateString("es-CL")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {ultimosIncidentes.length === 0 && (
+          <div className="card" style={{ textAlign: "center", padding: "2rem", color: "var(--muted)" }}>
+            <p style={{ margin: 0 }}>No hay incidentes registrados aún.</p>
+            <Link href="/hsec/incidentes/nuevo" style={{ marginTop: 8, display: "inline-block" }}>Registrar el primero →</Link>
+          </div>
+        )}
       </div>
-    </main>
+    </AppShell>
   );
 }
