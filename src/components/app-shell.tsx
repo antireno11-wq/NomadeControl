@@ -48,6 +48,7 @@ export function AppShell({
       { href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const },
       { href: "/trabajadores/inducciones", label: "↳ Inducciones", key: "trabajadores" as const },
       { href: "/trabajadores/epp", label: "↳ Control EPP", key: "trabajadores" as const },
+      { href: "/bodega", label: "↳ Bodega", key: "trabajadores" as const },
     ] : []),
     ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
     ...(canSeeCampOps && !isOfficeRole
