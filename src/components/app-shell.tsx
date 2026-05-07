@@ -44,7 +44,11 @@ export function AppShell({
     ...(!isVehicleOnlyRole(user.role) ? [{ href: "/", label: "🏠 Inicio", key: null as any }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
-    ...(!isOfficeRole && canSeeWorkers ? [{ href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const }] : []),
+    ...(!isOfficeRole && canSeeWorkers ? [
+      { href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const },
+      { href: "/trabajadores/inducciones", label: "↳ Inducciones", key: "trabajadores" as const },
+      { href: "/trabajadores/epp", label: "↳ Control EPP", key: "trabajadores" as const },
+    ] : []),
     ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
     ...(canSeeCampOps && !isOfficeRole
       ? [
