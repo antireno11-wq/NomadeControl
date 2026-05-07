@@ -5,7 +5,7 @@ import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
 import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessEvaluaciones, canAccessHSEC, canAccessVehicles, canManageTareas, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
 
-type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | null;
+type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
 
 type NotificationItem = {
   text: string;
@@ -43,7 +43,7 @@ export function AppShell({
   const navItems = [
     ...(!isVehicleOnlyRole(user.role) ? [{ href: "/", label: "🏠 Inicio", key: null as any }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
-    ...(!isOfficeRole && canSeeDashboard ? [{ href: "/resumen-general", label: "Resumen general", key: "resumen" as const }] : []),
+    ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Tareas", key: "gestion-tareas" as const }] : []),
     ...(!isOfficeRole && canSeeWorkers ? [
       { href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const },
       { href: "/trabajadores/inducciones", label: "↳ Inducciones", key: "trabajadores" as const },
@@ -51,13 +51,14 @@ export function AppShell({
       { href: "/bodega", label: "↳ Bodega", key: "trabajadores" as const },
     ] : []),
     ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
-    ...(canSeeCampOps && !isOfficeRole
-      ? [
-          { href: "/carga-diaria", label: "Informe diario", key: "carga" as const },
-          { href: "/control-tareas-diarias", label: "Control tareas", key: "tareas" as const }
-        ]
-      : []),
-    ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Gestión de tareas", key: "gestion-tareas" as const }] : []),
+    ...(!isOfficeRole && canSeeDashboard ? [
+      { href: "/operaciones", label: "Operaciones", key: "operaciones" as const },
+      { href: "/resumen-general", label: "↳ Resumen general", key: "resumen" as const },
+      ...(canSeeCampOps ? [
+        { href: "/carga-diaria", label: "↳ Informe diario", key: "carga" as const },
+        { href: "/control-tareas-diarias", label: "↳ Control tareas", key: "tareas" as const },
+      ] : []),
+    ] : []),
     ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
     ...(canSeeHSEC ? [{ href: "/hsec", label: "HSEC / Prevención", key: "hsec" as const }] : []),
     ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
