@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
-import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessEvaluaciones, canAccessHSEC, canAccessVehicles, canManageTareas, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
+import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
+import { NavMenu, type NavEntry } from "@/components/nav-menu";
 
 type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
 
@@ -35,32 +36,90 @@ export function AppShell({
   const canSeeWorkers = canAccessCampOperations(user.role);
   const canSeeAdministration = canAccessAdministration(user.role);
   const canSeeBiblioteca = canAccessBiblioteca(user.role);
-  const canSeeGestionTareas = canManageTareas(user.role);
   const canSeeTareasBasic = canViewTareas(user.role);
-  const canSeeEvaluaciones = canAccessEvaluaciones(user.role);
   const canSeeHSEC = canAccessHSEC(user.role);
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
-  const navItems = [
-    ...(!isOfficeRole && canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
-    ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Tareas", key: "gestion-tareas" as const }] : []),
-    ...(!isOfficeRole && canSeeDashboard ? [
-      { href: "/operaciones", label: "Operaciones", key: "operaciones" as const },
-      { href: "/resumen-general", label: "↳ Resumen general", key: "resumen" as const },
-      ...(canSeeCampOps ? [
-        { href: "/carga-diaria", label: "↳ Informe diario", key: "carga" as const },
-        { href: "/control-tareas-diarias", label: "↳ Control tareas", key: "tareas" as const },
-      ] : []),
-    ] : []),
-    ...(canSeeHSEC ? [{ href: "/hsec", label: "HSEC / Prevención", key: "hsec" as const }] : []),
-    ...(!isOfficeRole && canSeeWorkers ? [
-      { href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const },
-      { href: "/trabajadores/inducciones", label: "↳ Inducciones", key: "trabajadores" as const },
-      { href: "/trabajadores/epp", label: "↳ Control EPP", key: "trabajadores" as const },
-      { href: "/bodega", label: "↳ Bodega", key: "trabajadores" as const },
-    ] : []),
-    ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
-    ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
-    ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
+
+  // Grupos activos según activeNav
+  const opcionesActivas = ["resumen", "carga", "tareas", "operaciones"] as ShellNavKey[];
+  const trabajadoresActivos = ["trabajadores"] as ShellNavKey[];
+
+  const navEntries: NavEntry[] = [
+    ...(!isOfficeRole && canSeeDashboard ? [{
+      type: "link" as const,
+      href: "/dashboard",
+      label: "Dashboard",
+      navKey: "dashboard",
+      active: activeNav === "dashboard",
+    }] : []),
+
+    ...(canSeeTareasBasic ? [{
+      type: "link" as const,
+      href: "/gestion-tareas",
+      label: "Tareas",
+      navKey: "gestion-tareas",
+      active: activeNav === "gestion-tareas",
+    }] : []),
+
+    ...(!isOfficeRole && canSeeDashboard ? [{
+      type: "group" as const,
+      label: "Operaciones",
+      navKey: "operaciones",
+      anyChildActive: opcionesActivas.includes(activeNav),
+      children: [
+        { href: "/operaciones", label: "Dashboard campamentos" },
+        { href: "/resumen-general", label: "Resumen general" },
+        ...(canSeeCampOps ? [
+          { href: "/carga-diaria", label: "Informe diario" },
+          { href: "/control-tareas-diarias", label: "Control tareas" },
+        ] : []),
+        { href: "/bodega", label: "Bodega" },
+      ],
+    }] : []),
+
+    ...(canSeeHSEC ? [{
+      type: "link" as const,
+      href: "/hsec",
+      label: "HSEC / Prevención",
+      navKey: "hsec",
+      active: activeNav === "hsec",
+    }] : []),
+
+    ...(!isOfficeRole && canSeeWorkers ? [{
+      type: "group" as const,
+      label: "Trabajadores",
+      navKey: "trabajadores",
+      anyChildActive: trabajadoresActivos.includes(activeNav),
+      children: [
+        { href: "/trabajadores", label: "Trabajadores" },
+        { href: "/trabajadores/inducciones", label: "Inducciones" },
+        { href: "/trabajadores/epp", label: "Control EPP" },
+      ],
+    }] : []),
+
+    ...(!isOfficeRole && canSeeVehicles ? [{
+      type: "link" as const,
+      href: "/vehiculos",
+      label: "Vehículos",
+      navKey: "vehiculos",
+      active: activeNav === "vehiculos",
+    }] : []),
+
+    ...(canSeeBiblioteca ? [{
+      type: "link" as const,
+      href: "/biblioteca",
+      label: "Biblioteca",
+      navKey: "biblioteca",
+      active: activeNav === "biblioteca",
+    }] : []),
+
+    ...(canSeeAdministration ? [{
+      type: "link" as const,
+      href: "/administracion",
+      label: "Administración",
+      navKey: "administracion",
+      active: activeNav === "administracion",
+    }] : []),
   ];
 
   return (
@@ -75,13 +134,7 @@ export function AppShell({
             </div>
           </Link>
 
-          <nav className="dashboard-nav">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className={`dashboard-nav-link ${activeNav === item.key ? "active" : ""}`}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <NavMenu items={navEntries} />
 
           <div className="dashboard-sidebar-footer">
             <Link href="/mi-perfil" className="dashboard-mini-link">
