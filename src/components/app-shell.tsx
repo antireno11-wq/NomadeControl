@@ -41,16 +41,8 @@ export function AppShell({
   const canSeeHSEC = canAccessHSEC(user.role);
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
   const navItems = [
-    ...(!isVehicleOnlyRole(user.role) ? [{ href: "/", label: "🏠 Inicio", key: null as any }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [{ href: "/dashboard", label: "Dashboard", key: "dashboard" as const }] : []),
     ...(canSeeTareasBasic ? [{ href: "/gestion-tareas", label: "Tareas", key: "gestion-tareas" as const }] : []),
-    ...(!isOfficeRole && canSeeWorkers ? [
-      { href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const },
-      { href: "/trabajadores/inducciones", label: "↳ Inducciones", key: "trabajadores" as const },
-      { href: "/trabajadores/epp", label: "↳ Control EPP", key: "trabajadores" as const },
-      { href: "/bodega", label: "↳ Bodega", key: "trabajadores" as const },
-    ] : []),
-    ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
     ...(!isOfficeRole && canSeeDashboard ? [
       { href: "/operaciones", label: "Operaciones", key: "operaciones" as const },
       { href: "/resumen-general", label: "↳ Resumen general", key: "resumen" as const },
@@ -59,8 +51,15 @@ export function AppShell({
         { href: "/control-tareas-diarias", label: "↳ Control tareas", key: "tareas" as const },
       ] : []),
     ] : []),
-    ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
     ...(canSeeHSEC ? [{ href: "/hsec", label: "HSEC / Prevención", key: "hsec" as const }] : []),
+    ...(!isOfficeRole && canSeeWorkers ? [
+      { href: "/trabajadores", label: "Trabajadores", key: "trabajadores" as const },
+      { href: "/trabajadores/inducciones", label: "↳ Inducciones", key: "trabajadores" as const },
+      { href: "/trabajadores/epp", label: "↳ Control EPP", key: "trabajadores" as const },
+      { href: "/bodega", label: "↳ Bodega", key: "trabajadores" as const },
+    ] : []),
+    ...(!isOfficeRole && canSeeVehicles ? [{ href: "/vehiculos", label: "Vehículos", key: "vehiculos" as const }] : []),
+    ...(canSeeBiblioteca ? [{ href: "/biblioteca", label: "Biblioteca", key: "biblioteca" as const }] : []),
     ...(canSeeAdministration ? [{ href: "/administracion", label: "Administración", key: "administracion" as const }] : [])
   ];
 
