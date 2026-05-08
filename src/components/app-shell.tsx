@@ -67,8 +67,8 @@ export function AppShell({
       navKey: "operaciones",
       anyChildActive: opcionesActivas.includes(activeNav),
       children: [
-        { href: "/operaciones", label: "Dashboard campamentos" },
-        { href: "/resumen-general", label: "Resumen general" },
+        { href: "/operaciones", label: "Estado hoy" },
+        { href: "/operaciones?vista=historico", label: "Histórico" },
         ...(canSeeCampOps ? [
           { href: "/carga-diaria", label: "Informe diario" },
           { href: "/control-tareas-diarias", label: "Control tareas" },

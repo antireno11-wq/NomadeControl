@@ -1,9 +1,32 @@
 import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatDisplayDate, formatShortDisplayDateValue, resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate, formatShortDisplayDateValue, normalizeDateOnly, resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
 import { getCampWeatherSummary } from "@/lib/weather";
 import { AppShell } from "@/components/app-shell";
+
+function parseDaysParam(raw: string | string[] | undefined) {
+  const value = typeof raw === "string" ? Number(raw) : NaN;
+  return [7, 14, 30, 60, 90].includes(value) ? value : 30;
+}
+function parseDateParam(raw: string | string[] | undefined) {
+  if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const date = normalizeDateOnly(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function countChecks(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { done: 0, total: 0 };
+  const entries = Object.values(value as Record<string, unknown>);
+  return { total: entries.length, done: entries.filter((e) => e === true).length };
+}
+
+const TAB_STYLES = {
+  base: { padding: "6px 18px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem", textDecoration: "none", display: "inline-block" } as React.CSSProperties,
+  active: { background: "#1e3a5f", color: "#fff" } as React.CSSProperties,
+  inactive: { background: "#f1f5f9", color: "#64748b" } as React.CSSProperties,
+};
+
+import React from "react";
 
 function estimateUtcDate(baseDate: Date, daysFromBase: number) {
   const projected = new Date(baseDate);
@@ -11,9 +34,239 @@ function estimateUtcDate(baseDate: Date, daysFromBase: number) {
   return formatDisplayDate(projected);
 }
 
-export default async function OperacionesPage({ searchParams }: { searchParams?: { campId?: string | string[] } }) {
+export default async function OperacionesPage({ searchParams }: { searchParams?: { campId?: string | string[]; vista?: string; days?: string | string[]; startDate?: string | string[]; endDate?: string | string[] } }) {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const vista = searchParams?.vista ?? "hoy";
+
+  // ── VISTA HISTÓRICA ─────────────────────────────────────────────────────────
+  if (vista === "historico") {
+    const selectedCampIdRaw = searchParams?.campId;
+    const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
+    const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
+    const days = parseDaysParam(searchParams?.days);
+    const customStartDate = parseDateParam(searchParams?.startDate);
+    const customEndDate = parseDateParam(searchParams?.endDate);
+    const hasCustomPeriod = Boolean(customStartDate || customEndDate);
+    const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
+    const today = new Date();
+    const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const defaultStartDate = new Date(todayDate); defaultStartDate.setUTCDate(defaultStartDate.getUTCDate() - days);
+    const rawPeriodStart = customStartDate ?? defaultStartDate;
+    const rawPeriodEnd = customEndDate ?? todayDate;
+    const periodStart = rawPeriodStart <= rawPeriodEnd ? rawPeriodStart : rawPeriodEnd;
+    const periodEnd = rawPeriodStart <= rawPeriodEnd ? rawPeriodEnd : rawPeriodStart;
+    const periodStartInput = hasCustomPeriod ? toInputDateValue(periodStart) : "";
+    const periodEndInput = hasCustomPeriod ? toInputDateValue(periodEnd) : "";
+    const [camps, reports, taskControls] = await Promise.all([
+      db.camp.findMany({ where: { isActive: true, ...(campFilter ? { id: campFilter } : {}) }, orderBy: { name: "asc" } }),
+      db.dailyReport.findMany({ where: { ...(campFilter ? { campId: campFilter } : {}), date: { gte: periodStart, lte: periodEnd } }, orderBy: [{ date: "asc" }, { camp: { name: "asc" } }], include: { camp: true, createdBy: true } }),
+      db.dailyTaskControl.findMany({ where: { ...(campFilter ? { campId: campFilter } : {}), date: { gte: periodStart, lte: periodEnd } }, orderBy: [{ date: "desc" }, { camp: { name: "asc" } }], include: { camp: true, createdBy: true } }),
+    ]);
+    const scopeCamps = scopedSelectedCampId ? camps.filter((c) => c.id === scopedSelectedCampId) : camps;
+    const scopeCampIds = new Set(scopeCamps.map((c) => c.id));
+    const scopedReports = reports.filter((r) => scopeCampIds.has(r.campId));
+    const scopedTaskControls = taskControls.filter((c) => scopeCampIds.has(c.campId));
+    const waterByReportId = new Map<string, number>();
+    const previousReportByCamp = new Map<string, { meterReading: number; waterLiters: number }>();
+    for (const report of scopedReports) {
+      const prev = previousReportByCamp.get(report.campId);
+      const w = resolveWaterLiters(report, prev);
+      waterByReportId.set(report.id, w);
+      previousReportByCamp.set(report.campId, report);
+    }
+    const summary = scopedReports.reduce((acc, r) => {
+      acc.people += r.peopleCount; acc.meals += r.breakfastCount + r.lunchCount + r.dinnerCount;
+      acc.snacks += r.snackSimpleCount + r.snackReplacementCount; acc.bottles += r.waterBottleCount;
+      acc.water += waterByReportId.get(r.id) ?? r.waterLiters; acc.fuel += r.fuelLiters;
+      acc.fuelRemaining += r.fuelRemainingLiters; acc.potable += r.potableWaterDeliveredM3;
+      acc.blackRemoved += r.blackWaterRemovedM3; acc.blackServices += r.blackWaterRemoved ? 1 : 0;
+      acc.potableServices += r.potableWaterDelivered ? 1 : 0;
+      acc.internetIssues += r.internetStatus === "FUNCIONANDO" ? 0 : 1;
+      return acc;
+    }, { people: 0, meals: 0, snacks: 0, bottles: 0, water: 0, fuel: 0, fuelRemaining: 0, potable: 0, blackRemoved: 0, blackServices: 0, potableServices: 0, internetIssues: 0 });
+    const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    const monthMap = new Map<string, { label: string; blackCount: number; blackM3: number; potableCount: number; potableM3: number; campBreakdown: Map<string, { name: string; blackCount: number; blackM3: number; potableCount: number; potableM3: number }> }>();
+    for (const r of scopedReports) {
+      if (!r.blackWaterRemoved && !r.potableWaterDelivered) continue;
+      const d = r.date; const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`;
+      const label = `${MONTHS_ES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+      const row = monthMap.get(key) ?? { label, blackCount:0, blackM3:0, potableCount:0, potableM3:0, campBreakdown: new Map() };
+      if (r.blackWaterRemoved) { row.blackCount++; row.blackM3 += r.blackWaterRemovedM3; }
+      if (r.potableWaterDelivered) { row.potableCount++; row.potableM3 += r.potableWaterDeliveredM3; }
+      const cr = row.campBreakdown.get(r.campId) ?? { name: r.camp.name, blackCount:0, blackM3:0, potableCount:0, potableM3:0 };
+      if (r.blackWaterRemoved) { cr.blackCount++; cr.blackM3 += r.blackWaterRemovedM3; }
+      if (r.potableWaterDelivered) { cr.potableCount++; cr.potableM3 += r.potableWaterDeliveredM3; }
+      row.campBreakdown.set(r.campId, cr); monthMap.set(key, row);
+    }
+    const monthlyServices = Array.from(monthMap.entries()).sort(([a],[b]) => a.localeCompare(b)).map(([,row]) => ({ ...row, campBreakdown: Array.from(row.campBreakdown.values()) }));
+    const showCampBreakdown = scopeCamps.length > 1 && !scopedSelectedCampId;
+    const taskSummary = scopedTaskControls.reduce((acc, c) => { const a=countChecks(c.administrativeChecks); const o=countChecks(c.operationalChecks); acc.done+=a.done+o.done; acc.total+=a.total+o.total; return acc; }, { done:0, total:0 });
+    const campTrendRows = scopeCamps.map((camp) => {
+      const cr = scopedReports.filter((r) => r.campId === camp.id);
+      const ct = scopedTaskControls.filter((c) => c.campId === camp.id);
+      const rt = cr.length; const tc = ct.reduce((a,c) => { const ad=countChecks(c.administrativeChecks); const op=countChecks(c.operationalChecks); a.done+=ad.done+op.done; a.total+=ad.total+op.total; return a; }, {done:0,total:0});
+      return { id: camp.id, name: camp.name, reportTotal: rt, peopleAvg: rt>0?Math.round(cr.reduce((s,r)=>s+r.peopleCount,0)/rt):0, mealsTotal: cr.reduce((s,r)=>s+r.breakfastCount+r.lunchCount+r.dinnerCount,0), waterTotal: cr.reduce((s,r)=>s+(waterByReportId.get(r.id)??r.waterLiters),0), fuelTotal: cr.reduce((s,r)=>s+r.fuelLiters,0), internetIssues: cr.filter((r)=>r.internetStatus!=="FUNCIONANDO").length, taskCompletionPercent: tc.total>0?Math.round((tc.done/tc.total)*100):0 };
+    });
+    const dayTrendMap = new Map<string,{date:string;people:number;meals:number;water:number;fuel:number;taskDone:number;taskTotal:number}>();
+    for (const r of scopedReports) { const k=toInputDateValue(r.date); const row=dayTrendMap.get(k)??{date:k,people:0,meals:0,water:0,fuel:0,taskDone:0,taskTotal:0}; row.people+=r.peopleCount; row.meals+=r.breakfastCount+r.lunchCount+r.dinnerCount; row.water+=waterByReportId.get(r.id)??r.waterLiters; row.fuel+=r.fuelLiters; dayTrendMap.set(k,row); }
+    for (const c of scopedTaskControls) { const k=toInputDateValue(c.date); const row=dayTrendMap.get(k)??{date:k,people:0,meals:0,water:0,fuel:0,taskDone:0,taskTotal:0}; const a=countChecks(c.administrativeChecks); const o=countChecks(c.operationalChecks); row.taskDone+=a.done+o.done; row.taskTotal+=a.total+o.total; dayTrendMap.set(k,row); }
+    const trendDays = Array.from(dayTrendMap.values()).sort((a,b)=>a.date.localeCompare(b.date)).slice(-Math.min(days,14));
+    const maxTP=Math.max(1,...trendDays.map(d=>d.people)), maxTM=Math.max(1,...trendDays.map(d=>d.meals)), maxTW=Math.max(1,...trendDays.map(d=>d.water)), maxTF=Math.max(1,...trendDays.map(d=>d.fuel));
+    const maxCW=Math.max(1,...campTrendRows.map(r=>r.waterTotal)), maxCF=Math.max(1,...campTrendRows.map(r=>r.fuelTotal)), maxCM=Math.max(1,...campTrendRows.map(r=>r.mealsTotal));
+    const summaryPeriodLabel=`${formatDisplayDate(periodStart)} al ${formatDisplayDate(periodEnd)}`;
+    const taskCompletionPercent=taskSummary.total>0?Math.round((taskSummary.done/taskSummary.total)*100):0;
+
+    return (
+      <AppShell title="Operaciones" user={user} activeNav="operaciones" showAdminSections={canSeeAdminSections}
+        rightSlot={
+          <form method="get" className="dashboard-filter">
+            <input type="hidden" name="vista" value="historico" />
+            <select name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
+              <option value="general">Todos</option>
+              {camps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select name="days" defaultValue={String(days)}>
+              {[7,14,30,60,90].map(d=><option key={d} value={d}>{d} días</option>)}
+            </select>
+            <input name="startDate" type="date" defaultValue={periodStartInput} aria-label="Desde" />
+            <input name="endDate" type="date" defaultValue={periodEndInput} aria-label="Hasta" />
+            <button type="submit">Ver</button>
+          </form>
+        }
+      >
+        <div className="page-stack">
+          {/* Pestañas */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <Link href="/operaciones" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Estado hoy</Link>
+            <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Histórico</span>
+          </div>
+
+          <div className="hero-panel">
+            <div className="hero-kicker">Torre de control</div>
+            <h2 style={{ marginTop:0, marginBottom:8 }}>Resumen consolidado de campamentos</h2>
+            <div className="dashboard-mini-stats" style={{ marginTop:12 }}>
+              <span>Período: {summaryPeriodLabel}</span>
+              <span>{scopeCamps.length} campamento(s)</span>
+              <span>{scopedReports.length} informe(s)</span>
+            </div>
+          </div>
+
+          <div className="dashboard-kpi-grid insight-kpi-grid">
+            <div className="dashboard-kpi teal"><div className="dashboard-kpi-label">Personas acumuladas</div><div className="dashboard-kpi-value">{summary.people.toLocaleString("es-CL")}</div><div className="dashboard-kpi-meta">prom. {scopedReports.length>0?Math.round(summary.people/scopedReports.length):0} por informe</div></div>
+            <div className="dashboard-kpi"><div className="dashboard-kpi-label">Servicios de alimentación</div><div className="dashboard-kpi-value">{summary.meals.toLocaleString("es-CL")}</div><div className="dashboard-kpi-meta">{summary.snacks.toLocaleString("es-CL")} colaciones</div></div>
+            <div className="dashboard-kpi"><div className="dashboard-kpi-label">Agua calculada</div><div className="dashboard-kpi-value">{summary.water.toLocaleString("es-CL")} L</div><div className="dashboard-kpi-meta">{summary.potable.toFixed(0)} m³ ingresados</div></div>
+            <div className="dashboard-kpi"><div className="dashboard-kpi-label">Combustible</div><div className="dashboard-kpi-value">{summary.fuel.toLocaleString("es-CL")} L</div><div className="dashboard-kpi-meta">{summary.fuelRemaining.toLocaleString("es-CL")} L restantes</div></div>
+            <div className={`dashboard-kpi ${taskCompletionPercent<80?"accent":"teal"}`}><div className="dashboard-kpi-label">Cumplimiento tareas</div><div className="dashboard-kpi-value">{taskCompletionPercent}%</div><div className="dashboard-kpi-meta">{scopedTaskControls.length} controles</div></div>
+            <div className={`dashboard-kpi ${summary.internetIssues>0?"accent":""}`}><div className="dashboard-kpi-label">Incidentes internet</div><div className="dashboard-kpi-value">{summary.internetIssues}</div><div className="dashboard-kpi-meta">{summary.blackRemoved.toFixed(0)} m³ AN retiradas</div></div>
+          </div>
+
+          <div className="dashboard-core-grid">
+            <section className="dashboard-panel dashboard-panel-large">
+              <div className="dashboard-panel-header"><h2>Tendencias del período</h2><span className="dashboard-chip small">Últimos {trendDays.length} días</span></div>
+              <div className="dashboard-chart-grid" style={{ gridTemplateColumns:"repeat(2,minmax(0,1fr))" }}>
+                {([["Personas","people",maxTP,"people"],["Comidas","meals",maxTM,"meals"],["Agua","water",maxTW,"water"],["Combustible","fuel",maxTF,"fuel"]] as [string,keyof typeof trendDays[0],number,string][]).map(([label,key,max,barClass]) => (
+                  <section key={label} className="dashboard-panel" style={{padding:0,background:"transparent",border:0,boxShadow:"none"}}>
+                    <div className="dashboard-panel-header"><h2>{label}</h2></div>
+                    <div className="chart-grid compact">
+                      {trendDays.map((day) => (
+                        <div key={`${label}-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date.slice(8,10)}/${day.date.slice(5,7)}: ${(day[key] as number).toLocaleString("es-CL")}`}>
+                          <div className="chart-track tall"><div className={`chart-bar ${barClass}`} style={{height:`${((day[key] as number)/max)*100}%`}} /></div>
+                          <div className="chart-label">{day.date.slice(8,10)}/{day.date.slice(5,7)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <div className="dashboard-bottom-grid">
+            <section className="dashboard-panel dashboard-panel-wide">
+              <div className="dashboard-panel-header"><h2>Tendencia cumplimiento diario</h2><span className="dashboard-chip small">{taskCompletionPercent}% promedio</span></div>
+              <div className="chart-grid compact">
+                {trendDays.map((day) => { const pct=day.taskTotal>0?Math.round((day.taskDone/day.taskTotal)*100):0; return (
+                  <div key={`tasks-${day.date}`} className="chart-col chart-tooltip-target" data-tooltip={`${day.date.slice(8,10)}/${day.date.slice(5,7)}: ${pct}%`}>
+                    <div className="chart-track tall"><div className="chart-bar meals" style={{height:`${pct}%`,background:"linear-gradient(180deg,#20b36c,#0d8a3b)"}} /></div>
+                    <div className="chart-label">{day.date.slice(8,10)}/{day.date.slice(5,7)}</div>
+                  </div>
+                ); })}
+              </div>
+            </section>
+          </div>
+
+          <div className="dashboard-bottom-grid">
+            <section className="dashboard-panel dashboard-panel-wide">
+              <div className="dashboard-panel-header"><h2>Servicios de saneamiento</h2><span className="dashboard-chip small">{summary.blackServices} retiro(s) AN · {summary.potableServices} ingreso(s) AP</span></div>
+              {monthlyServices.length === 0 ? <div className="section-caption">Sin servicios en el período.</div> : (
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.9rem"}}>
+                    <thead><tr style={{borderBottom:"2px solid var(--border)"}}>
+                      <th style={{textAlign:"left",padding:"8px 12px",color:"var(--muted)",fontWeight:600}}>Mes</th>
+                      <th style={{textAlign:"center",padding:"8px 12px",color:"var(--muted)",fontWeight:600}}>🚛 Retiros AN</th>
+                      <th style={{textAlign:"right",padding:"8px 12px",color:"var(--muted)",fontWeight:600}}>m³</th>
+                      <th style={{textAlign:"center",padding:"8px 12px",color:"var(--muted)",fontWeight:600}}>💧 Ingresos AP</th>
+                      <th style={{textAlign:"right",padding:"8px 12px",color:"var(--muted)",fontWeight:600}}>m³</th>
+                    </tr></thead>
+                    <tbody>
+                      {monthlyServices.map((row,i) => (<React.Fragment key={i}>
+                        <tr style={{borderBottom:"1px solid var(--border)",background:i%2===0?"transparent":"rgba(0,168,184,0.04)"}}>
+                          <td style={{padding:"10px 12px",fontWeight:700}}>{row.label}</td>
+                          <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{background:row.blackCount>0?"rgba(255,100,80,0.12)":"transparent",color:row.blackCount>0?"#c0392b":"var(--muted)",borderRadius:6,padding:"2px 10px",fontWeight:700}}>{row.blackCount}</span></td>
+                          <td style={{padding:"10px 12px",textAlign:"right",fontWeight:600}}>{row.blackM3>0?`${row.blackM3.toFixed(1)} m³`:"—"}</td>
+                          <td style={{padding:"10px 12px",textAlign:"center"}}><span style={{background:row.potableCount>0?"rgba(0,168,184,0.12)":"transparent",color:row.potableCount>0?"var(--teal)":"var(--muted)",borderRadius:6,padding:"2px 10px",fontWeight:700}}>{row.potableCount}</span></td>
+                          <td style={{padding:"10px 12px",textAlign:"right",fontWeight:600}}>{row.potableM3>0?`${row.potableM3.toFixed(1)} m³`:"—"}</td>
+                        </tr>
+                        {showCampBreakdown && row.campBreakdown.map((c) => (
+                          <tr key={`${i}-${c.name}`} style={{borderBottom:"1px solid var(--border)",opacity:0.75}}>
+                            <td style={{padding:"6px 12px 6px 28px",color:"var(--muted)",fontSize:"0.82rem"}}>↳ {c.name}</td>
+                            <td style={{padding:"6px 12px",textAlign:"center",color:"var(--muted)",fontSize:"0.82rem"}}>{c.blackCount||"—"}</td>
+                            <td style={{padding:"6px 12px",textAlign:"right",color:"var(--muted)",fontSize:"0.82rem"}}>{c.blackM3>0?`${c.blackM3.toFixed(1)} m³`:"—"}</td>
+                            <td style={{padding:"6px 12px",textAlign:"center",color:"var(--muted)",fontSize:"0.82rem"}}>{c.potableCount||"—"}</td>
+                            <td style={{padding:"6px 12px",textAlign:"right",color:"var(--muted)",fontSize:"0.82rem"}}>{c.potableM3>0?`${c.potableM3.toFixed(1)} m³`:"—"}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>))}
+                      <tr style={{borderTop:"2px solid var(--border)",background:"rgba(0,168,184,0.06)"}}>
+                        <td style={{padding:"10px 12px",fontWeight:700}}>Total período</td>
+                        <td style={{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"#c0392b"}}>{summary.blackServices}</td>
+                        <td style={{padding:"10px 12px",textAlign:"right",fontWeight:700}}>{summary.blackRemoved>0?`${summary.blackRemoved.toFixed(1)} m³`:"—"}</td>
+                        <td style={{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"var(--teal)"}}>{summary.potableServices}</td>
+                        <td style={{padding:"10px 12px",textAlign:"right",fontWeight:700}}>{summary.potable>0?`${summary.potable.toFixed(1)} m³`:"—"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+
+          <div className="dashboard-bottom-grid">
+            <section className="dashboard-panel dashboard-panel-wide">
+              <div className="dashboard-panel-header"><h2>Comparativo campamentos</h2></div>
+              <div className="summary-list">
+                {campTrendRows.map((row) => (
+                  <div key={row.id} className="summary-row" style={{alignItems:"stretch",gap:16}}>
+                    <div style={{minWidth:180}}><strong>{row.name}</strong><div style={{color:"var(--muted)"}}>{row.reportTotal} informe(s) · {row.peopleAvg} personas prom.</div></div>
+                    <div style={{flex:1,display:"grid",gap:8}}>
+                      <div className="progress-cell"><span style={{minWidth:58}}>Agua</span><div className="progress-track"><div className="progress-fill" style={{width:`${(row.waterTotal/maxCW)*100}%`}} /></div><strong>{row.waterTotal.toLocaleString("es-CL")} L</strong></div>
+                      <div className="progress-cell"><span style={{minWidth:58}}>Comb.</span><div className="progress-track"><div className="progress-fill" style={{width:`${(row.fuelTotal/maxCF)*100}%`,background:"linear-gradient(90deg,#ff7b2f,#ff9f1c)"}} /></div><strong>{row.fuelTotal.toLocaleString("es-CL")} L</strong></div>
+                      <div className="progress-cell"><span style={{minWidth:58}}>Comidas</span><div className="progress-track"><div className="progress-fill" style={{width:`${(row.mealsTotal/maxCM)*100}%`,background:"linear-gradient(90deg,#006878,#00a6b6)"}} /></div><strong>{row.mealsTotal.toLocaleString("es-CL")}</strong></div>
+                    </div>
+                    <div style={{minWidth:120,textAlign:"right"}}><div className={`status-pill ${row.taskCompletionPercent>=80?"ok":row.taskCompletionPercent>=60?"warn":"danger"}`}>{row.taskCompletionPercent}%</div><div style={{color:"var(--muted)",marginTop:8,fontSize:"0.8rem"}}>internet {row.internetIssues}</div></div>
+                  </div>
+                ))}
+                {campTrendRows.length === 0 && <div className="section-caption">Sin campamentos para comparar.</div>}
+              </div>
+            </section>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  // ── VISTA HOY ────────────────────────────────────────────────────────────────
   const selectedCampIdRaw = searchParams?.campId;
   const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
   const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
@@ -480,6 +733,12 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
         ) : undefined
       }
     >
+
+        {/* Pestañas */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Estado hoy</span>
+          <Link href="/operaciones?vista=historico" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Histórico</Link>
+        </div>
 
         <div className="dashboard-kpi-grid">
           <div
