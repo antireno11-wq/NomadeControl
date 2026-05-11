@@ -18,6 +18,22 @@ function prioridadColor(p: string) {
   return p === "alta" ? "#dc2626" : p === "media" ? "#f97316" : "#16a34a";
 }
 
+const TIPO_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  compromiso:    { label: "Compromiso",        icon: "🔵", color: "#1d4ed8", bg: "#dbeafe" },
+  correctiva:    { label: "Acción correctiva", icon: "🟠", color: "#9a3412", bg: "#ffedd5" },
+  preventiva:    { label: "Preventiva",        icon: "🟡", color: "#854d0e", bg: "#fef9c3" },
+  mejora:        { label: "Mejora",            icon: "🟢", color: "#166534", bg: "#dcfce7" },
+  urgente:       { label: "Urgente",           icon: "🔴", color: "#991b1b", bg: "#fee2e2" },
+  administrativa:{ label: "Administrativa",    icon: "⚫", color: "#374151", bg: "#f1f5f9" },
+  // legacy aliases
+  seguimiento:   { label: "Seguimiento",       icon: "🔵", color: "#1d4ed8", bg: "#dbeafe" },
+  correccion:    { label: "Corrección",        icon: "🟠", color: "#9a3412", bg: "#ffedd5" },
+};
+function tipoLabel(t: string) { return TIPO_META[t]?.label ?? t; }
+function tipoIcon(t: string)  { return TIPO_META[t]?.icon ?? "⚪"; }
+function tipoBg(t: string)    { return TIPO_META[t]?.bg ?? "#f1f5f9"; }
+function tipoColor(t: string) { return TIPO_META[t]?.color ?? "#374151"; }
+
 function estadoColor(e: string) {
   const map: Record<string, string> = {
     pendiente: "#f59e0b",
@@ -90,8 +106,31 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
   ]);
 
   const usuariosList = usuarios as { id: string; name: string }[];
-  const proyectosList = (proyectos as { nombre: string }[]).map(p => p.nombre);
-  const areasList = (areas as { nombre: string }[]).map(a => a.nombre);
+
+  // Proyectos fijos siempre al tope, luego los agregados en administración
+  const PROYECTOS_FIJOS = ["Oficina Central", "Llay Llay"];
+  const proyectosDB = (proyectos as { nombre: string }[]).map(p => p.nombre);
+  const proyectosList = [
+    ...PROYECTOS_FIJOS,
+    ...proyectosDB.filter(n => !PROYECTOS_FIJOS.includes(n)),
+  ];
+
+  // Áreas de la empresa (fijas + las que se agreguen en administración)
+  const AREAS_EMPRESA = [
+    "Operaciones",
+    "HSEC / Prevención",
+    "Recursos Humanos",
+    "Administración",
+    "Cocina",
+    "Mantenimiento",
+    "Transporte",
+    "Gerencia",
+  ];
+  const areasDB = (areas as { nombre: string }[]).map(a => a.nombre);
+  const areasList = [
+    ...AREAS_EMPRESA,
+    ...areasDB.filter(n => !AREAS_EMPRESA.includes(n)),
+  ];
 
   // Fetch extra data in parallel based on the current view
   const tareasTodas = (!esColaborador && (vista === "todas" || vista === "tablero" || vista === "gantt"))
@@ -339,6 +378,12 @@ function AsanaTareaRow({
               📌 {t.proyecto}{t.area ? ` · ${t.area}` : ""}
             </span>
           )}
+          <span style={{
+            fontSize: "0.72rem", padding: "1px 7px", borderRadius: 999,
+            background: tipoBg(t.tipo), color: tipoColor(t.tipo), fontWeight: 700,
+          }}>
+            {tipoIcon(t.tipo)} {tipoLabel(t.tipo)}
+          </span>
           <span style={{
             fontSize: "0.72rem", padding: "1px 7px", borderRadius: 999,
             background: `${pColor}18`, color: pColor, fontWeight: 700, textTransform: "uppercase",
@@ -610,7 +655,11 @@ function TodasTareasView({
                       </div>
                     )}
                   </td>
-                  <td style={{ fontSize: "0.82rem" }}>{t.tipo}</td>
+                  <td>
+                    <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: 999, fontWeight: 700, background: tipoBg(t.tipo), color: tipoColor(t.tipo), whiteSpace: "nowrap" }}>
+                      {tipoIcon(t.tipo)} {tipoLabel(t.tipo)}
+                    </span>
+                  </td>
                   <td style={{ fontSize: "0.85rem", fontWeight: 600 }}>{t.responsable ?? "—"}</td>
                   <td>
                     <span style={{
@@ -816,11 +865,13 @@ function TareaForm({ tarea, usuarios, proyectos, areas }: {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Tipo</label>
-          <select name="tipo" defaultValue={tarea?.tipo ?? "urgente"} style={{ padding: "7px 10px" }}>
-            <option value="urgente">🔴 Urgente</option>
-            <option value="seguimiento">🔵 Seguimiento</option>
-            <option value="correccion">🟠 Corrección</option>
+          <select name="tipo" defaultValue={tarea?.tipo ?? "compromiso"} style={{ padding: "7px 10px" }}>
+            <option value="compromiso">🔵 Compromiso</option>
+            <option value="correctiva">🟠 Acción correctiva</option>
+            <option value="preventiva">🟡 Preventiva</option>
             <option value="mejora">🟢 Mejora</option>
+            <option value="urgente">🔴 Urgente</option>
+            <option value="administrativa">⚫ Administrativa</option>
           </select>
         </div>
         <div>
