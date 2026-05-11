@@ -49,9 +49,10 @@ function diasAtraso(fechaCierre: Date | null, estado: string) {
 }
 
 function statusMsg(s?: string) {
-  if (s === "created") return { type: "success", text: "Tarea creada correctamente." };
-  if (s === "updated") return { type: "success", text: "Tarea actualizada correctamente." };
-  if (s === "invalid") return { type: "error", text: "Revisá los datos ingresados." };
+  if (s === "created")    return { type: "success", text: "Tarea creada correctamente." };
+  if (s === "updated")    return { type: "success", text: "Tarea actualizada correctamente." };
+  if (s === "completada") return { type: "success", text: "✅ Tarea completada y guardada en el historial." };
+  if (s === "invalid")    return { type: "error",   text: "Revisá los datos ingresados." };
   return null;
 }
 
@@ -263,6 +264,7 @@ type TareaRow = {
   prioridad: string;
   estado: string;
   fechaCierre: Date | null;
+  fechaCompletada: Date | null;
   comentario: string | null;
   fechaInicio: Date | null;
   comentarios?: TareaComentarioRow[];
@@ -346,9 +348,13 @@ function AsanaTareaRow({
         </div>
       </div>
 
-      {/* Due date */}
+      {/* Due date / completed date */}
       <div style={{ flexShrink: 0, fontSize: "0.8rem", minWidth: 80, textAlign: "right" }}>
-        {fecha ? (
+        {t.estado === "completada" && t.fechaCompletada ? (
+          <span style={{ color: "#16a34a", fontWeight: 600 }}>
+            ✓ {fmtDate(t.fechaCompletada)}
+          </span>
+        ) : fecha ? (
           atraso > 0 ? (
             <span style={{ color: "#dc2626", fontWeight: 700 }}>{fecha} · {atraso}d</span>
           ) : (

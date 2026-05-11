@@ -108,13 +108,25 @@ export async function editarTareaAction(tareaId: string, formData: FormData) {
 
 export async function cambiarEstadoTareaAction(tareaId: string, estado: string) {
   const user = await requireRole(TAREAS_ROLES);
-  await db.tarea.update({ where: { id: tareaId }, data: { estado } });
+  await db.tarea.update({
+    where: { id: tareaId },
+    data: {
+      estado,
+      // Registrar cuándo fue completada (o limpiar si vuelve a estar activa)
+      fechaCompletada: estado === "completada" ? new Date() : null,
+    },
+  });
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
     action: "TAREA_ESTADO", entityType: "tarea", entityId: tareaId,
     summary: `Cambió estado a «${estado}»`
   });
   revalidatePath("/gestion-tareas");
+  // Al completar, redirigir a la vista con completadas para que el usuario
+  // confirme visualmente que la tarea quedó guardada
+  if (estado === "completada") {
+    redirect("/gestion-tareas?ver=todas&status=completada");
+  }
 }
 
 export async function reasignarTareaAction(tareaId: string, nuevoResponsable: string) {

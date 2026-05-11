@@ -410,12 +410,13 @@ model Tarea {
   responsable String?
   comentario  String?
   prioridad   String    @default("media")
-  estado      String    @default("pendiente")
-  fechaInicio DateTime?
-  fechaCierre DateTime?
-  creadoPor   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  estado           String    @default("pendiente")
+  fechaInicio      DateTime?
+  fechaCierre      DateTime?
+  fechaCompletada  DateTime?
+  creadoPor        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   comentarios TareaComentario[]
 
