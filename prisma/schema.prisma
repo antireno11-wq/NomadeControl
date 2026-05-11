@@ -116,6 +116,7 @@ model Camp {
   incidentes        Incidente[]
   matricesRiesgo    MatrizRiesgo[]
   entregasEPP       EntregaEPP[]
+  documentosHSEC    DocumentoHSEC[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
@@ -255,6 +256,7 @@ model StaffMember {
   shiftDays      StaffShiftDay[]
   entregasEPP    EntregaEPP[]
   inducciones    InduccionUsuario[]
+  documentos     DocumentoTrabajador[]
 
   @@index([campId, isActive])
 }
@@ -626,4 +628,57 @@ model InduccionUsuario {
 
   @@index([cursoId, estado])
   @@index([staffMemberId])
+}
+
+// ─── DOCUMENTOS CON VENCIMIENTO (sistema transversal) ────────────────────────
+
+/// Documentos individuales de cada trabajador (contratos, licencias, exámenes, etc.)
+model DocumentoTrabajador {
+  id               String       @id @default(cuid())
+  staffMemberId    String
+  staffMember      StaffMember  @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  /// licencia_conducir | carnet_identidad | contrato | anexo_contrato | examen_preocupacional
+  /// examen_periodico | odi_firmada | induccion | capacitacion | credencial | altura_fisica
+  /// altura_trabajos | espacios_confinados | antecedentes | liquidacion | finiquito | otro
+  tipo             String
+  nombre           String
+  contenido        Bytes?
+  originalFilename String?
+  fileSize         Int?
+  mimeType         String?
+  fechaEmision     DateTime?
+  fechaVencimiento DateTime?
+  notas            String?
+  creadoPorNombre  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([staffMemberId, fechaVencimiento])
+  @@index([tipo])
+}
+
+/// Documentos del campamento (autorizaciones, planes, resoluciones, etc.)
+model DocumentoHSEC {
+  id               String    @id @default(cuid())
+  campId           String
+  camp             Camp      @relation(fields: [campId], references: [id], onDelete: Cascade)
+  /// plan_emergencia | prevencion_riesgos | reglamento_hsec | autorizacion_sanitaria
+  /// permiso_edificacion | resolucion_salud | cert_instalaciones | permiso_municipal
+  /// contrato_servicio | documento_legal | otro
+  tipo             String
+  nombre           String
+  contenido        Bytes?
+  originalFilename String?
+  fileSize         Int?
+  mimeType         String?
+  fechaEmision     DateTime?
+  fechaVencimiento DateTime?
+  responsable      String?
+  notas            String?
+  creadoPorNombre  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([campId, fechaVencimiento])
+  @@index([tipo])
 }

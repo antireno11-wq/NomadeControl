@@ -60,6 +60,7 @@ export default async function HsecPage() {
             { href: "/hsec/matrices/nueva", title: "+ Nueva matriz de riesgo", desc: "Evaluar probabilidad e impacto" },
             { href: "/hsec/incidentes", title: "Ver incidentes", desc: "Listado y seguimiento" },
             { href: "/hsec/matrices", title: "Ver matrices de riesgo", desc: "Listado por nivel de riesgo" },
+            { href: "/hsec/documentos", title: "Documentos del campamento", desc: "Planes, autorizaciones y permisos" },
           ].map((a) => (
             <Link key={a.href} href={a.href} className="card" style={{ textDecoration: "none", display: "block", padding: "1rem" }}>
               <strong style={{ display: "block", marginBottom: 4 }}>{a.title}</strong>

@@ -50,12 +50,13 @@ export default async function PerfilTrabajadorPage({
   const canAdmin = isAdminRole(user.role);
   const canEvaluar = canAccessEvaluaciones(user.role);
 
-  const [worker, camps] = await Promise.all([
+  const [worker, camps, docCount] = await Promise.all([
     db.staffMember.findUnique({ where: { id: params.id }, include: { camp: true } }),
     db.camp.findMany({
       where: { isActive: true, ...(isSupervisorRole(user.role) && user.campId ? { id: user.campId } : {}) },
       orderBy: { name: "asc" },
     }),
+    db.documentoTrabajador.count({ where: { staffMemberId: params.id } }),
   ]);
 
   if (!worker) notFound();
@@ -163,6 +164,16 @@ export default async function PerfilTrabajadorPage({
                   </button>
                 </Link>
               )}
+              <Link href={`/trabajadores/${worker.id}/documentos`}>
+                <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 8, padding: "8px 14px", fontSize: "0.88rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  📄 Documentos
+                  {docCount > 0 && (
+                    <span style={{ background: "var(--teal)", color: "#fff", borderRadius: "9999px", padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700 }}>
+                      {docCount}
+                    </span>
+                  )}
+                </button>
+              </Link>
               <Link href={`/trabajadores/${worker.id}?tab=editar`}>
                 <button type="button" style={{ borderRadius: 8, padding: "8px 14px", fontSize: "0.88rem", cursor: "pointer" }}>
                   ✏️ Editar ficha

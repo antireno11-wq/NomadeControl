@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole, OPERATION_ROLES, canAccessHSEC, isAdminRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
+import { getAlertasVencimiento, resumirAlertas, SEVERIDAD_BADGE, SEVERIDAD_ICON } from "@/lib/alertas-vencimiento";
 
 export default async function DashboardPage() {
   const user = await requireRole(OPERATION_ROLES);
@@ -49,12 +50,25 @@ export default async function DashboardPage() {
       : Promise.resolve([]),
   ]);
 
+  const alertas = await getAlertasVencimiento({ excludeOk: true });
+  const resumenAlertas = resumirAlertas(alertas);
+
+  const notifications = [
+    ...alertas
+      .filter(a => a.severidad === "vencido" || a.severidad === "critico")
+      .slice(0, 5)
+      .map(a => ({
+        text: `${a.nombre} — ${a.entidad} ${a.severidad === "vencido" ? "(VENCIDO)" : `(vence en ${a.diasRestantes}d)`}`,
+        severity: a.severidad === "vencido" ? "error" as const : "warning" as const,
+      })),
+  ];
+
   const prioridadColor: Record<string, string> = { alta: "#dc2626", media: "#d97706", baja: "#16a34a" };
   const criticidadBg: Record<string, string> = { critica: "#fee2e2", alta: "#ffedd5", media: "#fef9c3", baja: "#dcfce7" };
   const criticidadColor: Record<string, string> = { critica: "#991b1b", alta: "#9a3412", media: "#854d0e", baja: "#166534" };
 
   return (
-    <AppShell title="Dashboard" user={user} activeNav="dashboard">
+    <AppShell title="Dashboard" user={user} activeNav="dashboard" notifications={notifications}>
       <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: 1100 }}>
 
         {/* KPIs principales */}
@@ -119,6 +133,73 @@ export default async function DashboardPage() {
           </Link>
 
         </div>
+
+        {/* Panel de alertas */}
+        {resumenAlertas.total > 0 && (
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0 }}>⚠️ Alertas de documentos</h3>
+              <Link href="/alertas" style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Ver todas →</Link>
+            </div>
+
+            {/* Counters */}
+            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid #e2e8f0", display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+              {resumenAlertas.vencidos > 0 && (
+                <div style={{ padding: "6px 14px", borderRadius: 20, background: SEVERIDAD_BADGE.vencido.bg, color: SEVERIDAD_BADGE.vencido.color, fontWeight: 700, fontSize: "0.82rem" }}>
+                  {SEVERIDAD_ICON.vencido} {resumenAlertas.vencidos} Vencido{resumenAlertas.vencidos > 1 ? "s" : ""}
+                </div>
+              )}
+              {resumenAlertas.criticos > 0 && (
+                <div style={{ padding: "6px 14px", borderRadius: 20, background: SEVERIDAD_BADGE.critico.bg, color: SEVERIDAD_BADGE.critico.color, fontWeight: 700, fontSize: "0.82rem" }}>
+                  {SEVERIDAD_ICON.critico} {resumenAlertas.criticos} Crítico{resumenAlertas.criticos > 1 ? "s" : ""} ≤7d
+                </div>
+              )}
+              {resumenAlertas.medios > 0 && (
+                <div style={{ padding: "6px 14px", borderRadius: 20, background: SEVERIDAD_BADGE.medio.bg, color: SEVERIDAD_BADGE.medio.color, fontWeight: 700, fontSize: "0.82rem" }}>
+                  {SEVERIDAD_ICON.medio} {resumenAlertas.medios} En 30 días
+                </div>
+              )}
+              {resumenAlertas.preventivos > 0 && (
+                <div style={{ padding: "6px 14px", borderRadius: 20, background: SEVERIDAD_BADGE.preventivo.bg, color: SEVERIDAD_BADGE.preventivo.color, fontWeight: 700, fontSize: "0.82rem" }}>
+                  {SEVERIDAD_ICON.preventivo} {resumenAlertas.preventivos} En 60 días
+                </div>
+              )}
+            </div>
+
+            {/* Alert rows */}
+            <div>
+              {alertas.slice(0, 8).map(alerta => {
+                const badge = SEVERIDAD_BADGE[alerta.severidad];
+                return (
+                  <Link
+                    key={alerta.id}
+                    href={alerta.href}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 1.25rem", borderBottom: "1px solid #f1f5f9", textDecoration: "none", color: "inherit" }}
+                  >
+                    <span style={{ fontSize: "1rem", flexShrink: 0 }}>{SEVERIDAD_ICON[alerta.severidad]}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "0.875rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{alerta.nombre}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{alerta.entidad}</div>
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: "right" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: 2 }}>
+                        {alerta.fechaVencimiento.toLocaleDateString("es-CL")}
+                      </div>
+                      <span style={{ fontSize: "0.7rem", padding: "2px 8px", borderRadius: 4, background: badge.bg, color: badge.color, fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+              {alertas.length > 8 && (
+                <div style={{ padding: "0.75rem 1.25rem", fontSize: "0.82rem", color: "var(--muted)", textAlign: "center" }}>
+                  Y {alertas.length - 8} más...
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Detalle */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", alignItems: "start" }}>

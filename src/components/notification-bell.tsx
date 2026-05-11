@@ -5,12 +5,21 @@ type NotificationItem = {
 
 export function NotificationBell({ items }: { items: NotificationItem[] }) {
   const count = items.length;
+  const hasError = items.some(i => i.severity === "error");
+  const badgeBg = hasError ? "#dc2626" : "#d97706";
 
   return (
     <details className="notif-bell">
       <summary className="notif-summary">
         🔔
-        {count > 0 ? <span className="notif-badge">{count}</span> : null}
+        {count > 0 ? (
+          <span
+            className="notif-badge"
+            style={{ background: badgeBg, color: "#fff", borderRadius: "9999px", padding: "1px 6px", fontSize: "0.72rem", fontWeight: 700, marginLeft: 2 }}
+          >
+            {count}
+          </span>
+        ) : null}
       </summary>
       <div className="notif-panel">
         <h4 style={{ margin: "0 0 8px" }}>Notificaciones</h4>
