@@ -3,7 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
-import { canAccessAdministration, canAccessBiblioteca, canAccessCampOperations, canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas, isVehicleOnlyRole } from "@/lib/auth";
+import {
+  canAccessAdministration, canAccessBiblioteca, canAccessCampOperations,
+  canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas,
+  isVehicleOnlyRole, canAccessModule, parseModulePermissions
+} from "@/lib/auth";
 import { NavMenu, type NavEntry } from "@/components/nav-menu";
 
 type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
@@ -23,24 +27,28 @@ export function AppShell({
   children
 }: {
   title: string;
-  user: { name: string; role: string };
+  user: { name: string; role: string; modulePermissions?: unknown };
   activeNav: ShellNavKey;
   showAdminSections?: boolean;
   rightSlot?: ReactNode;
   notifications?: NotificationItem[];
   children: ReactNode;
 }) {
-  const canSeeDashboard = canAccessDashboard(user.role);
-  const canSeeVehicles = canAccessVehicles(user.role);
-  const canSeeCampOps = canAccessCampOperations(user.role) && !canAccessAdministration(user.role);
-  const canSeeWorkers = canAccessCampOperations(user.role);
+  const mods = parseModulePermissions(user.modulePermissions);
+  const mod = (key: Parameters<typeof canAccessModule>[2], defaultFn: (r: string) => boolean) =>
+    canAccessModule(user.role, mods, key, defaultFn);
+
+  const canSeeDashboard    = canAccessDashboard(user.role);
+  const canSeeVehicles     = mod("vehiculos",    canAccessVehicles);
+  const canSeeCampOps      = canAccessCampOperations(user.role) && !canAccessAdministration(user.role);
+  const canSeeWorkers      = mod("trabajadores", canAccessCampOperations);
+  const canSeeOperaciones  = mod("operaciones",  canAccessDashboard);
   const canSeeAdministration = canAccessAdministration(user.role);
-  const canSeeBiblioteca = canAccessBiblioteca(user.role);
-  const canSeeTareasBasic = canViewTareas(user.role);
-  const canSeeHSEC = canAccessHSEC(user.role);
+  const canSeeBiblioteca   = mod("biblioteca",   canAccessBiblioteca);
+  const canSeeTareasBasic  = mod("tareas",        canViewTareas);
+  const canSeeHSEC         = mod("hsec",          canAccessHSEC);
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
 
-  // Grupos activos según activeNav
   const opcionesActivas = ["resumen", "carga", "tareas", "operaciones"] as ShellNavKey[];
   const trabajadoresActivos = ["trabajadores"] as ShellNavKey[];
 
@@ -61,7 +69,7 @@ export function AppShell({
       active: activeNav === "gestion-tareas",
     }] : []),
 
-    ...(!isOfficeRole && canSeeDashboard ? [{
+    ...(!isOfficeRole && canSeeOperaciones ? [{
       type: "group" as const,
       label: "Operaciones",
       navKey: "operaciones",

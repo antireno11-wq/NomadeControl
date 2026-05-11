@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ADMIN_ROLES, isFullAdminRole, requireRole, roleLabel } from "@/lib/auth";
+import { ADMIN_ROLES, ALL_MODULES, isAdminRole, isFullAdminRole, parseModulePermissions, requireRole, roleLabel } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { deleteUserAction, resetUserPasswordAction, updateUserAccessAction } from "@/app/administracion/actions";
+import { deleteUserAction, resetUserPasswordAction, updateUserAccessAction, updateUserModulesAction } from "@/app/administracion/actions";
 
 export default async function EditarUsuarioPage({
   params,
@@ -24,6 +24,8 @@ export default async function EditarUsuarioPage({
 
   if (!targetUser) notFound();
   const canDeleteUsers = isFullAdminRole(user.role);
+  const targetIsAdmin = isAdminRole(targetUser.role);
+  const currentModules = parseModulePermissions(targetUser.modulePermissions);
 
   const statusRaw = searchParams?.status;
   const status = typeof statusRaw === "string" ? statusRaw : "";
@@ -130,6 +132,37 @@ export default async function EditarUsuarioPage({
             </div>
           </form>
         </div>
+
+        {!targetIsAdmin ? (
+          <div className="card" style={{ maxWidth: 760 }}>
+            <h2 style={{ marginTop: 0 }}>Módulos habilitados</h2>
+            <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+              Selecciona los módulos a los que este usuario tendrá acceso. Si no marcas ninguno, se usarán los accesos predeterminados según su rol.
+            </p>
+            <form action={updateUserModulesAction}>
+              <input type="hidden" name="userId" value={targetUser.id} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
+                {ALL_MODULES.map((mod) => (
+                  <label key={mod.key} style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", padding: "0.75rem 1rem", borderRadius: 8, border: "1px solid #e2e8f0", cursor: "pointer", background: currentModules.includes(mod.key) ? "#eff6ff" : "white" }}>
+                    <input
+                      type="checkbox"
+                      name={`mod_${mod.key}`}
+                      defaultChecked={currentModules.includes(mod.key)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: "0.875rem" }}>{mod.label}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: 1 }}>{mod.description}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button type="submit" className="secondary">Guardar permisos</button>
+              </div>
+            </form>
+          </div>
+        ) : null}
 
         {targetUser.id !== user.id && canDeleteUsers ? (
           <div className="card" style={{ maxWidth: 760 }}>

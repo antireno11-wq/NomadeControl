@@ -28,8 +28,9 @@ model User {
   shiftWorkDays Int?
   shiftOffDays  Int?
   shiftStartDate DateTime?
-  campId       String?
-  camp         Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
+  campId            String?
+  camp              Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
+  modulePermissions Json         @default("[]")
   sessions     Session[]
   reports      DailyReport[]
   dailyTaskControls DailyTaskControl[]

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { ADMIN_ROLES, FULL_ADMIN_ROLES, MANAGED_USER_ROLE_VALUES, isAdminRole, isFullAdminRole, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, ALL_MODULES, FULL_ADMIN_ROLES, MANAGED_USER_ROLE_VALUES, isAdminRole, isFullAdminRole, requireRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/mailer";
@@ -639,6 +639,53 @@ export async function deleteCampAction(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/carga-diaria");
   redirect("/administracion?campStatus=deleted");
+}
+
+export async function updateUserModulesAction(formData: FormData) {
+  const currentUser = await requireRole(ADMIN_ROLES);
+
+  const userId = formData.get("userId");
+  if (typeof userId !== "string" || !userId) {
+    throw new Error("Usuario inválido.");
+  }
+
+  const targetUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  });
+
+  if (!targetUser) {
+    throw new Error("Usuario no encontrado.");
+  }
+
+  // Full admins don't use module permissions — just skip silently
+  if (isAdminRole(targetUser.role)) {
+    revalidatePath(`/administracion/usuarios/${userId}`);
+    redirect(`/administracion/usuarios/${userId}?status=saved`);
+  }
+
+  const validKeys = ALL_MODULES.map((m) => m.key);
+  const selectedModules = validKeys.filter((key) => formData.get(`mod_${key}`) === "on");
+
+  await db.user.update({
+    where: { id: userId },
+    data: { modulePermissions: selectedModules }
+  });
+
+  await logAuditEvent({
+    actorUserId: currentUser.id,
+    actorName: currentUser.name,
+    actorEmail: currentUser.email,
+    action: "UPDATE_USER",
+    entityType: "user",
+    entityId: userId,
+    summary: `Actualizó permisos de módulos del usuario`,
+    metadata: { modules: selectedModules }
+  });
+
+  revalidatePath(`/administracion/usuarios/${userId}`);
+  revalidatePath("/administracion");
+  redirect(`/administracion/usuarios/${userId}?status=saved`);
 }
 
 export async function deleteRecordAction(formData: FormData) {

@@ -97,6 +97,42 @@ export function canAccessHSEC(role: string) {
   return HSEC_ROLES.includes(role as AppRole);
 }
 
+// ── Permisos por módulo ──────────────────────────────────────────────────────
+export const ALL_MODULES = [
+  { key: "operaciones",  label: "Operaciones",       description: "Dashboard de campamentos e histórico" },
+  { key: "tareas",       label: "Tareas",             description: "Gestión de tareas" },
+  { key: "hsec",         label: "HSEC / Prevención",  description: "Incidentes y matrices de riesgo" },
+  { key: "trabajadores", label: "Trabajadores",       description: "Inducciones y Control EPP" },
+  { key: "bodega",       label: "Bodega",             description: "Stock y movimientos de bodega" },
+  { key: "vehiculos",    label: "Vehículos",          description: "Control vehicular" },
+  { key: "biblioteca",   label: "Biblioteca",         description: "Documentos y recursos" },
+] as const;
+
+export type ModuleKey = typeof ALL_MODULES[number]["key"];
+
+/** Parsea el campo modulePermissions (Json) a string[]. Vacío = sin restricciones. */
+export function parseModulePermissions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is string => typeof x === "string");
+}
+
+/**
+ * Retorna true si el usuario puede ver el módulo dado.
+ * - Admins: siempre true
+ * - Si modulePermissions está vacío: usa los defaults del rol
+ * - Si tiene items: solo esos módulos están habilitados
+ */
+export function canAccessModule(
+  role: string,
+  modulePermissions: string[],
+  module: ModuleKey,
+  defaultCheck: (role: string) => boolean
+): boolean {
+  if (isAdminRole(role)) return true;
+  if (modulePermissions.length === 0) return defaultCheck(role);
+  return modulePermissions.includes(module) && defaultCheck(role);
+}
+
 export function roleLabel(role: string) {
   if (role === "ADMIN" || role === "ADMINISTRADOR") return "ADMINISTRADOR";
   if (role === "ADMIN_LIMITADO") return "ADMIN LIMITADO";
