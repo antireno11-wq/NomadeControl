@@ -257,6 +257,7 @@ model StaffMember {
   entregasEPP    EntregaEPP[]
   inducciones    InduccionUsuario[]
   documentos     DocumentoTrabajador[]
+  cierre         CierreContrato?
 
   @@index([campId, isActive])
 }
@@ -628,6 +629,44 @@ model InduccionUsuario {
 
   @@index([cursoId, estado])
   @@index([staffMemberId])
+}
+
+// ─── CIERRE / TÉRMINO DE CONTRATO ────────────────────────────────────────────
+
+/// Registro de baja del trabajador: tipo de término + evaluación de salida interna
+model CierreContrato {
+  id            String      @id @default(cuid())
+  staffMemberId String      @unique
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+
+  /// finiquito | no_renovacion | renuncia | mutuo_acuerdo | otro
+  tipo              String
+  fechaCierre       DateTime
+  motivoCierre      String?
+
+  // ── Evaluación de salida ──────────────────────────────────────────────────
+  /// excelente | bueno | regular | malo
+  desempenoGeneral      String
+  /// buena | regular | mala
+  puntualidad           String
+  /// bueno | regular | malo
+  trabajoEnEquipo       String
+  /// buena | regular | mala
+  calidadTrabajo        String
+  /// buena | regular | mala
+  actitudSeguridad      String
+  /// true = sí lo llamaríamos de vuelta
+  recontratarRecomendado Boolean
+  /// inmediata | normal | baja | no_aplica
+  prioridadRecontratacion String   @default("normal")
+  observaciones          String?
+  evaluadoPorNombre      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([recontratarRecomendado])
+  @@index([fechaCierre])
 }
 
 // ─── DOCUMENTOS CON VENCIMIENTO (sistema transversal) ────────────────────────

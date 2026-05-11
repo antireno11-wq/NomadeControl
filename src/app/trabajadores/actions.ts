@@ -226,3 +226,117 @@ export async function updateWorkerAction(formData: FormData) {
   });
   redirect(payload.successRedirectTo);
 }
+
+// ─── Renovar contrato ─────────────────────────────────────────────────────────
+
+export async function renovarContratoAction(formData: FormData) {
+  const user = await requireRole(OPERATION_ROLES);
+  const staffMemberId = formData.get("staffMemberId");
+  const nuevaFecha    = formData.get("nuevaFechaContrato");
+
+  if (typeof staffMemberId !== "string" || !staffMemberId) throw new Error("Trabajador inválido.");
+  if (typeof nuevaFecha !== "string" || !nuevaFecha) throw new Error("Fecha requerida.");
+
+  const worker = await db.staffMember.findUnique({ where: { id: staffMemberId }, select: { id: true, fullName: true, campId: true } });
+  if (!worker) throw new Error("Trabajador no encontrado.");
+  if (isSupervisorRole(user.role) && worker.campId !== user.campId) throw new Error("Sin permiso.");
+
+  const fecha = normalizeDateOnly(nuevaFecha);
+
+  await db.staffMember.update({
+    where: { id: staffMemberId },
+    data: { contractEndDate: fecha, isActive: true },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "UPDATE_WORKER", entityType: "staffMember", entityId: staffMemberId,
+    summary: `Renovó contrato de ${worker.fullName} hasta ${nuevaFecha}`,
+  });
+
+  revalidatePath(`/trabajadores/${staffMemberId}`);
+  redirect(`/trabajadores/${staffMemberId}?tab=contrato&status=renovado`);
+}
+
+// ─── Terminar contrato + evaluación de salida ─────────────────────────────────
+
+const cierreSchema = z.object({
+  staffMemberId:           z.string().min(1),
+  tipo:                    z.enum(["finiquito", "no_renovacion", "renuncia", "mutuo_acuerdo", "otro"]),
+  fechaCierre:             z.string().min(1),
+  motivoCierre:            z.string().optional(),
+  desempenoGeneral:        z.enum(["excelente", "bueno", "regular", "malo"]),
+  puntualidad:             z.enum(["buena", "regular", "mala"]),
+  trabajoEnEquipo:         z.enum(["bueno", "regular", "malo"]),
+  calidadTrabajo:          z.enum(["buena", "regular", "mala"]),
+  actitudSeguridad:        z.enum(["buena", "regular", "mala"]),
+  recontratarRecomendado:  z.string(),   // "on" | ""
+  prioridadRecontratacion: z.enum(["inmediata", "normal", "baja", "no_aplica"]).optional(),
+  observaciones:           z.string().optional(),
+});
+
+export async function terminarContratoAction(formData: FormData) {
+  const user = await requireRole(OPERATION_ROLES);
+
+  const parsed = cierreSchema.safeParse({
+    staffMemberId:           formData.get("staffMemberId"),
+    tipo:                    formData.get("tipo"),
+    fechaCierre:             formData.get("fechaCierre"),
+    motivoCierre:            formData.get("motivoCierre") ?? undefined,
+    desempenoGeneral:        formData.get("desempenoGeneral"),
+    puntualidad:             formData.get("puntualidad"),
+    trabajoEnEquipo:         formData.get("trabajoEnEquipo"),
+    calidadTrabajo:          formData.get("calidadTrabajo"),
+    actitudSeguridad:        formData.get("actitudSeguridad"),
+    recontratarRecomendado:  formData.get("recontratarRecomendado") ?? "",
+    prioridadRecontratacion: formData.get("prioridadRecontratacion") ?? "normal",
+    observaciones:           formData.get("observaciones") ?? undefined,
+  });
+
+  if (!parsed.success) throw new Error("Datos inválidos: " + parsed.error.issues.map(i => i.message).join(", "));
+  const p = parsed.data;
+
+  const worker = await db.staffMember.findUnique({ where: { id: p.staffMemberId }, select: { id: true, fullName: true, campId: true } });
+  if (!worker) throw new Error("Trabajador no encontrado.");
+  if (isSupervisorRole(user.role) && worker.campId !== user.campId) throw new Error("Sin permiso.");
+
+  const fecha = normalizeDateOnly(p.fechaCierre);
+  const recontratar = p.recontratarRecomendado === "on";
+
+  await db.$transaction([
+    db.staffMember.update({
+      where: { id: p.staffMemberId },
+      data: { isActive: false, contractEndDate: fecha },
+    }),
+    db.cierreContrato.upsert({
+      where:  { staffMemberId: p.staffMemberId },
+      update: {
+        tipo: p.tipo, fechaCierre: fecha, motivoCierre: p.motivoCierre ?? null,
+        desempenoGeneral: p.desempenoGeneral, puntualidad: p.puntualidad,
+        trabajoEnEquipo: p.trabajoEnEquipo, calidadTrabajo: p.calidadTrabajo,
+        actitudSeguridad: p.actitudSeguridad, recontratarRecomendado: recontratar,
+        prioridadRecontratacion: p.prioridadRecontratacion ?? "normal",
+        observaciones: p.observaciones ?? null, evaluadoPorNombre: user.name,
+      },
+      create: {
+        staffMemberId: p.staffMemberId, tipo: p.tipo, fechaCierre: fecha,
+        motivoCierre: p.motivoCierre ?? null, desempenoGeneral: p.desempenoGeneral,
+        puntualidad: p.puntualidad, trabajoEnEquipo: p.trabajoEnEquipo,
+        calidadTrabajo: p.calidadTrabajo, actitudSeguridad: p.actitudSeguridad,
+        recontratarRecomendado: recontratar,
+        prioridadRecontratacion: p.prioridadRecontratacion ?? "normal",
+        observaciones: p.observaciones ?? null, evaluadoPorNombre: user.name,
+      },
+    }),
+  ]);
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "UPDATE_WORKER", entityType: "staffMember", entityId: p.staffMemberId,
+    summary: `Terminó contrato de ${worker.fullName} (${p.tipo}). Recontratar: ${recontratar ? "Sí" : "No"}`,
+  });
+
+  revalidatePath(`/trabajadores/${p.staffMemberId}`);
+  revalidatePath("/trabajadores/ex-trabajadores");
+  redirect(`/trabajadores/${p.staffMemberId}?tab=contrato&status=terminado`);
+}

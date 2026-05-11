@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { canAccessEvaluaciones, isAdminRole, isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { updateWorkerAction } from "@/app/trabajadores/actions";
+import { renovarContratoAction, updateWorkerAction } from "@/app/trabajadores/actions";
 import { WorkerForm } from "@/app/trabajadores/worker-form";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
@@ -51,7 +51,7 @@ export default async function PerfilTrabajadorPage({
   const canEvaluar = canAccessEvaluaciones(user.role);
 
   const [worker, camps, docCount] = await Promise.all([
-    db.staffMember.findUnique({ where: { id: params.id }, include: { camp: true } }),
+    db.staffMember.findUnique({ where: { id: params.id }, include: { camp: true, cierre: true } }),
     db.camp.findMany({
       where: { isActive: true, ...(isSupervisorRole(user.role) && user.campId ? { id: user.campId } : {}) },
       orderBy: { name: "asc" },
@@ -189,6 +189,7 @@ export default async function PerfilTrabajadorPage({
             { key: "perfil", label: "👤 Perfil" },
             { key: "documentos", label: `📄 Documentos${expiredDocs.length > 0 ? ` (${expiredDocs.length} vencido${expiredDocs.length > 1 ? "s" : ""})` : dueSoonDocs.length > 0 ? ` (${dueSoonDocs.length} por vencer)` : ""}` },
             { key: "turno", label: "📅 Turno" },
+            { key: "contrato", label: `📋 Contrato${contractDays !== null && contractDays < 0 ? " ⚠️" : ""}` },
             { key: "editar", label: "✏️ Editar" },
           ].map(t => (
             <Link key={t.key} href={`/trabajadores/${worker.id}?tab=${t.key}`} style={{ textDecoration: "none" }}>
@@ -361,6 +362,150 @@ export default async function PerfilTrabajadorPage({
             ) : (
               <div style={{ color: "var(--muted)", fontSize: "0.9rem" }}>No hay suficiente información para proyectar el turno de este trabajador.</div>
             )}
+          </div>
+        )}
+
+        {/* ══ TAB: CONTRATO ════════════════════════════════════════════ */}
+        {tab === "contrato" && (
+          <div className="page-stack">
+
+            {/* Estado actual del contrato */}
+            <div className="card">
+              <h3 style={{ margin: "0 0 16px", fontSize: "1rem" }}>📋 Estado del contrato</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                {[
+                  {
+                    label: "Estado trabajador",
+                    value: worker.isActive ? "Activo" : "Inactivo",
+                    highlight: worker.isActive ? null : "danger" as const,
+                  },
+                  {
+                    label: "Vencimiento contrato",
+                    value: worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Sin fecha",
+                    highlight: contractDays !== null && contractDays < 0 ? "danger" as const : contractDays !== null && contractDays <= 30 ? "warn" as const : null,
+                    sub: worker.contractEndDate ? contractDaysLabel(worker.contractEndDate) : "Indefinido",
+                  },
+                  ...(worker.cierre ? [{
+                    label: "Tipo de cierre",
+                    value: ({ finiquito: "Finiquito", no_renovacion: "No renovación", renuncia: "Renuncia", mutuo_acuerdo: "Mutuo acuerdo", otro: "Otro" })[worker.cierre.tipo] ?? worker.cierre.tipo,
+                    highlight: "danger" as const,
+                  }] : []),
+                ].map(item => (
+                  <div key={item.label} style={{
+                    padding: "14px 16px", borderRadius: 10,
+                    background: item.highlight === "danger" ? "#fce9e8" : item.highlight === "warn" ? "#fff4dc" : "rgba(0,0,0,0.03)",
+                    border: `1px solid ${item.highlight === "danger" ? "#f5c0bb" : item.highlight === "warn" ? "#f5d98e" : "var(--border)"}`,
+                  }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>{item.label}</div>
+                    <div style={{ fontWeight: 700, fontSize: "1rem", color: item.highlight === "danger" ? "#9e2f23" : item.highlight === "warn" ? "#9a6300" : "var(--text)" }}>{item.value}</div>
+                    {"sub" in item && item.sub && <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 2 }}>{item.sub}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Evaluación de salida existente */}
+            {worker.cierre && (
+              <div className="card">
+                <h3 style={{ margin: "0 0 16px", fontSize: "1rem" }}>📊 Evaluación de salida</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 16 }}>
+                  {([
+                    ["Desempeño general",        worker.cierre.desempenoGeneral],
+                    ["Puntualidad",               worker.cierre.puntualidad],
+                    ["Trabajo en equipo",         worker.cierre.trabajoEnEquipo],
+                    ["Calidad del trabajo",       worker.cierre.calidadTrabajo],
+                    ["Actitud seguridad",         worker.cierre.actitudSeguridad],
+                  ] as [string, string][]).map(([label, val]) => {
+                    const isGood = ["excelente", "bueno", "buena"].includes(val);
+                    const isBad  = ["malo", "mala"].includes(val);
+                    return (
+                      <div key={label} style={{ padding: "10px 14px", borderRadius: 8, background: isGood ? "#dcfce7" : isBad ? "#fee2e2" : "#fef9c3", border: `1px solid ${isGood ? "#bbf7d0" : isBad ? "#fecaca" : "#fef08a"}` }}>
+                        <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: isGood ? "#166534" : isBad ? "#991b1b" : "#854d0e", textTransform: "capitalize" }}>{val}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: worker.cierre.observaciones ? 12 : 0 }}>
+                  <span style={{ padding: "4px 14px", borderRadius: 20, fontWeight: 700, fontSize: "0.85rem", background: worker.cierre.recontratarRecomendado ? "#dcfce7" : "#fee2e2", color: worker.cierre.recontratarRecomendado ? "#166534" : "#991b1b" }}>
+                    {worker.cierre.recontratarRecomendado ? "✅ Recontratar" : "❌ No recontratar"}
+                  </span>
+                  <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+                    Prioridad: <strong>{({ inmediata: "Inmediata", normal: "Normal", baja: "Baja", no_aplica: "No aplica" })[worker.cierre.prioridadRecontratacion] ?? worker.cierre.prioridadRecontratacion}</strong>
+                  </span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--muted)", marginLeft: "auto" }}>
+                    Evaluado por {worker.cierre.evaluadoPorNombre} · {formatDisplayDate(worker.cierre.fechaCierre)}
+                  </span>
+                </div>
+                {worker.cierre.observaciones && (
+                  <div style={{ padding: "10px 14px", background: "rgba(0,0,0,0.03)", borderRadius: 8, fontSize: "0.88rem", color: "var(--text)", borderLeft: "3px solid var(--teal)", marginTop: 4 }}>
+                    <strong style={{ color: "var(--muted)", fontSize: "0.72rem", textTransform: "uppercase" }}>Observaciones</strong>
+                    <p style={{ margin: "4px 0 0" }}>{worker.cierre.observaciones}</p>
+                  </div>
+                )}
+                <div style={{ marginTop: 16 }}>
+                  <Link href={`/trabajadores/${worker.id}/terminar-contrato`}>
+                    <button type="button" className="secondary">✏️ Editar evaluación de salida</button>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Acciones */}
+            {worker.isActive ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+
+                {/* Renovar contrato */}
+                <div className="card">
+                  <h3 style={{ margin: "0 0 4px", fontSize: "1rem" }}>🔄 Renovar contrato</h3>
+                  <p style={{ margin: "0 0 16px", color: "var(--muted)", fontSize: "0.875rem" }}>
+                    Actualiza la fecha de término. El trabajador continúa activo.
+                  </p>
+                  <form action={renovarContratoAction}>
+                    <input type="hidden" name="staffMemberId" value={worker.id} />
+                    <div style={{ marginBottom: 12 }}>
+                      <label htmlFor="nuevaFechaContrato" style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: 4 }}>
+                        Nueva fecha de término
+                      </label>
+                      <input
+                        id="nuevaFechaContrato"
+                        name="nuevaFechaContrato"
+                        type="date"
+                        required
+                        defaultValue={worker.contractEndDate ? toInputDateValue(worker.contractEndDate) : ""}
+                        style={{ width: "100%", boxSizing: "border-box" }}
+                      />
+                    </div>
+                    <button type="submit">Renovar contrato</button>
+                  </form>
+                </div>
+
+                {/* Terminar contrato */}
+                <div className="card" style={{ border: "1px solid #fecaca" }}>
+                  <h3 style={{ margin: "0 0 4px", fontSize: "1rem", color: "#991b1b" }}>🚪 Terminar contrato</h3>
+                  <p style={{ margin: "0 0 16px", color: "var(--muted)", fontSize: "0.875rem" }}>
+                    Marca al trabajador como inactivo y registra una evaluación de salida interna.
+                  </p>
+                  <Link href={`/trabajadores/${worker.id}/terminar-contrato`}>
+                    <button type="button" className="danger">Iniciar proceso de cierre →</button>
+                  </Link>
+                </div>
+
+              </div>
+            ) : !worker.cierre ? (
+              /* Inactivo sin evaluación */
+              <div className="card" style={{ border: "1px solid #fef08a", background: "#fefce8" }}>
+                <p style={{ margin: 0, color: "#854d0e", fontWeight: 600 }}>
+                  ⚠️ Este trabajador está inactivo pero no tiene evaluación de salida registrada.
+                </p>
+                <div style={{ marginTop: 12 }}>
+                  <Link href={`/trabajadores/${worker.id}/terminar-contrato`}>
+                    <button type="button">Completar evaluación de salida</button>
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+
           </div>
         )}
 

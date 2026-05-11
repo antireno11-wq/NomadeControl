@@ -102,6 +102,7 @@ export function AppShell({
         { href: "/trabajadores", label: "Trabajadores" },
         { href: "/trabajadores/inducciones", label: "Inducciones" },
         { href: "/trabajadores/epp", label: "Control EPP" },
+        { href: "/trabajadores/ex-trabajadores", label: "Ex trabajadores" },
       ],
     }] : []),
 
