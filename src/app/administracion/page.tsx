@@ -1,9 +1,33 @@
 import React from "react";
 import Link from "next/link";
-import { ADMIN_ROLES, isFullAdminRole, requireRole, roleLabel } from "@/lib/auth";
+import {
+  ADMIN_ROLES, ALL_MODULES, isAdminRole, isFullAdminRole, requireRole, roleLabel,
+  canAccessDashboard, canAccessHSEC, canAccessCampOperations, canAccessVehicles,
+  canAccessBiblioteca, canViewTareas, canAccessModule, parseModulePermissions,
+} from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { createCampAction, createProjectAction, deleteCampAction } from "./actions";
+
+const MODULE_DEFAULT_CHECK: Record<string, (role: string) => boolean> = {
+  operaciones:  canAccessDashboard,
+  tareas:       canViewTareas,
+  hsec:         canAccessHSEC,
+  trabajadores: canAccessCampOperations,
+  bodega:       canAccessCampOperations,
+  vehiculos:    canAccessVehicles,
+  biblioteca:   canAccessBiblioteca,
+};
+
+const MODULE_CHIP_COLOR: Record<string, { bg: string; color: string }> = {
+  operaciones:  { bg: "#dbeafe", color: "#1e40af" },
+  tareas:       { bg: "#fef3c7", color: "#92400e" },
+  hsec:         { bg: "#fee2e2", color: "#991b1b" },
+  trabajadores: { bg: "#dcfce7", color: "#14532d" },
+  bodega:       { bg: "#e0e7ff", color: "#3730a3" },
+  vehiculos:    { bg: "#f3e8ff", color: "#6b21a8" },
+  biblioteca:   { bg: "#fce7f3", color: "#831843" },
+};
 
 export default async function AdministracionPage({
   searchParams
@@ -133,6 +157,7 @@ export default async function AdministracionPage({
                   <th>Correo</th>
                   <th>Rol</th>
                   <th>Campamento</th>
+                  <th>Módulos</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -148,6 +173,32 @@ export default async function AdministracionPage({
                       </span>
                     </td>
                     <td>{row.camp?.name ?? <span style={{ color: "var(--muted)" }}>Sin asignar</span>}</td>
+                    <td>
+                      {isAdminRole(row.role) ? (
+                        <span style={{ fontSize: "0.72rem", padding: "2px 8px", borderRadius: 4, fontWeight: 700, background: "#eff6ff", color: "#1d4ed8" }}>
+                          Acceso total
+                        </span>
+                      ) : (() => {
+                        const mods = parseModulePermissions(row.modulePermissions);
+                        const activos = ALL_MODULES.filter(m =>
+                          canAccessModule(row.role, mods, m.key, MODULE_DEFAULT_CHECK[m.key] ?? (() => false))
+                        );
+                        return activos.length === 0 ? (
+                          <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Sin módulos</span>
+                        ) : (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                            {activos.map(m => {
+                              const c = MODULE_CHIP_COLOR[m.key] ?? { bg: "#f1f5f9", color: "#374151" };
+                              return (
+                                <span key={m.key} style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: 3, fontWeight: 700, background: c.bg, color: c.color }}>
+                                  {m.label}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td>
                       <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 4, fontWeight: 700, background: row.isActive ? "#dcfce7" : "#fee2e2", color: row.isActive ? "#166534" : "#991b1b" }}>
                         {row.isActive ? "Activo" : "Inactivo"}
