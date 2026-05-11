@@ -19,6 +19,7 @@ function prioridadColor(p: string) {
 }
 
 const TIPO_META: Record<string, { label: string; icon: string; color: string; bg: string }> = {
+  tarea:         { label: "Tarea",             icon: "⚪", color: "#374151", bg: "#f1f5f9" },
   compromiso:    { label: "Compromiso",        icon: "🔵", color: "#1d4ed8", bg: "#dbeafe" },
   correctiva:    { label: "Acción correctiva", icon: "🟠", color: "#9a3412", bg: "#ffedd5" },
   preventiva:    { label: "Preventiva",        icon: "🟡", color: "#854d0e", bg: "#fef9c3" },
@@ -99,7 +100,7 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
       orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
     }),
     puedeGestionar
-      ? db.user.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } })
+      ? db.user.findMany({ where: { isActive: true, NOT: { email: { endsWith: "@nomade.local" } } }, select: { id: true, name: true }, orderBy: { name: "asc" } })
       : Promise.resolve([] as { id: string; name: string }[]),
     (db as any).proyectoConfig.findMany({ where: { isActive: true }, orderBy: { nombre: "asc" } }),
     (db as any).areaConfig.findMany({ where: { isActive: true }, orderBy: { nombre: "asc" } }),
@@ -865,7 +866,8 @@ function TareaForm({ tarea, usuarios, proyectos, areas }: {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Tipo</label>
-          <select name="tipo" defaultValue={tarea?.tipo ?? "compromiso"} style={{ padding: "7px 10px" }}>
+          <select name="tipo" defaultValue={tarea?.tipo ?? "tarea"} style={{ padding: "7px 10px" }}>
+            <option value="tarea">⚪ Tarea</option>
             <option value="compromiso">🔵 Compromiso</option>
             <option value="correctiva">🟠 Acción correctiva</option>
             <option value="preventiva">🟡 Preventiva</option>
