@@ -3,12 +3,6 @@ import { notFound } from "next/navigation";
 import {
   ADMIN_ROLES,
   ALL_MODULES,
-  canAccessBiblioteca,
-  canAccessCampOperations,
-  canAccessDashboard,
-  canAccessHSEC,
-  canAccessVehicles,
-  canViewTareas,
   isAdminRole,
   isFullAdminRole,
   parseModulePermissions,
@@ -18,17 +12,7 @@ import {
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { deleteUserAction, updateUserAccessAction, updateUserModulesAction } from "@/app/administracion/actions";
-
-// Qué puede hacer cada rol por defecto, por módulo
-const MODULE_DEFAULT_CHECK: Record<string, (role: string) => boolean> = {
-  operaciones:  canAccessDashboard,
-  tareas:       canViewTareas,
-  hsec:         canAccessHSEC,
-  trabajadores: canAccessCampOperations,
-  bodega:       canAccessCampOperations,
-  vehiculos:    canAccessVehicles,
-  biblioteca:   canAccessBiblioteca,
-};
+import { ModulesChooser } from "@/components/modules-chooser";
 
 // Descripción legible de lo que puede hacer cada rol
 const ROLE_SUMMARY: Record<string, { puede: string[]; noPuede: string[] }> = {
@@ -228,44 +212,12 @@ export default async function EditarUsuarioPage({
               </p>
               <form action={updateUserModulesAction}>
                 <input type="hidden" name="userId" value={targetUser.id} />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.6rem", marginBottom: "1rem" }}>
-                  {ALL_MODULES.map((mod) => {
-                    const roleCanAccess = MODULE_DEFAULT_CHECK[mod.key]?.(targetUser.role) ?? false;
-                    // Si no hay lista de módulos, todos los que el rol permite están activos
-                    const isChecked = currentModules.length === 0
-                      ? roleCanAccess
-                      : currentModules.includes(mod.key);
-
-                    return (
-                      <label
-                        key={mod.key}
-                        style={{
-                          display: "flex", alignItems: "flex-start", gap: "0.6rem",
-                          padding: "0.75rem 1rem", borderRadius: 8,
-                          border: `1px solid ${roleCanAccess ? (isChecked ? "#bfdbfe" : "#e2e8f0") : "#e2e8f0"}`,
-                          cursor: roleCanAccess ? "pointer" : "not-allowed",
-                          background: roleCanAccess ? (isChecked ? "#eff6ff" : "white") : "#f8fafc",
-                          opacity: roleCanAccess ? 1 : 0.5,
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          name={`mod_${mod.key}`}
-                          defaultChecked={isChecked}
-                          disabled={!roleCanAccess}
-                          style={{ marginTop: 3 }}
-                        />
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: "0.875rem", color: roleCanAccess ? "var(--text)" : "var(--muted)" }}>
-                            {mod.label}
-                          </div>
-                          <div style={{ fontSize: "0.75rem", marginTop: 1, color: roleCanAccess ? "var(--muted)" : "#cbd5e1" }}>
-                            {roleCanAccess ? mod.description : "No disponible para este rol"}
-                          </div>
-                        </div>
-                      </label>
-                    );
-                  })}
+                <div style={{ marginBottom: "1rem" }}>
+                  <ModulesChooser
+                    modules={ALL_MODULES as unknown as { key: string; label: string; description: string }[]}
+                    role={targetUser.role}
+                    initialChecked={currentModules}
+                  />
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <button type="submit">Guardar permisos</button>

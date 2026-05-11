@@ -1,7 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { createUserAction, type CreateUserFormState } from "@/app/administracion/actions";
+import { ModulesChooser } from "@/components/modules-chooser";
+
+// Tiene que matchear ALL_MODULES de auth.ts
+const ALL_MODULES_CLIENT = [
+  { key: "operaciones",  label: "Operaciones",      description: "Dashboard de campamentos e histórico" },
+  { key: "tareas",       label: "Tareas",            description: "Gestión de tareas" },
+  { key: "hsec",         label: "HSEC / Prevención", description: "Incidentes y matrices de riesgo" },
+  { key: "trabajadores", label: "Trabajadores",      description: "Inducciones y Control EPP" },
+  { key: "bodega",       label: "Bodega",            description: "Stock y movimientos de bodega" },
+  { key: "vehiculos",    label: "Vehículos",         description: "Control vehicular" },
+  { key: "biblioteca",   label: "Biblioteca",        description: "Documentos y recursos" },
+];
+
+const ADMIN_ROLES_CLIENT = ["ADMINISTRADOR", "ADMIN_LIMITADO"];
 
 type CampOption = { id: string; name: string };
 
@@ -14,6 +29,9 @@ function SubmitButton() {
 
 export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]; canAssignFullAdmin: boolean }) {
   const [state, formAction] = useFormState(createUserAction, initialState);
+  const [selectedRole, setSelectedRole] = useState("SUPERVISOR");
+
+  const isAdmin = ADMIN_ROLES_CLIENT.includes(selectedRole);
 
   return (
     <form action={formAction} className="grid two">
@@ -27,7 +45,12 @@ export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]
       </div>
       <div>
         <label htmlFor="new-role">Rol</label>
-        <select id="new-role" name="role" defaultValue="SUPERVISOR">
+        <select
+          id="new-role"
+          name="role"
+          defaultValue="SUPERVISOR"
+          onChange={(e) => setSelectedRole(e.target.value)}
+        >
           <option value="SUPERVISOR">SUPERVISOR</option>
           {canAssignFullAdmin ? <option value="ADMINISTRADOR">ADMINISTRADOR</option> : null}
           <option value="ADMIN_LIMITADO">ADMIN LIMITADO</option>
@@ -37,7 +60,7 @@ export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]
         </select>
       </div>
       <div>
-        <label htmlFor="new-camp">Campamento (supervisor o solo vehículos)</label>
+        <label htmlFor="new-camp">Campamento</label>
         <select id="new-camp" name="campId" defaultValue="none">
           <option value="none">Sin asignar</option>
           {camps.map((camp) => (
@@ -58,8 +81,31 @@ export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]
         </label>
       </div>
 
-      {state.error ? <div className="alert error">{state.error}</div> : null}
-      {state.success ? <div className="alert success">{state.success}</div> : null}
+      {/* ── Módulos ─────────────────────────────────────────────────── */}
+      <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+        <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+          Acceso a módulos
+        </label>
+        {isAdmin ? (
+          <div style={{ padding: "12px 16px", borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe", fontSize: "0.875rem", color: "#1d4ed8" }}>
+            Los administradores tienen acceso total a todos los módulos.
+          </div>
+        ) : (
+          <>
+            <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 0.75rem" }}>
+              Elige los módulos habilitados. Los que el rol no contempla no se pueden marcar. Si dejas los defaults, el usuario verá todo lo que su rol permite.
+            </p>
+            <ModulesChooser
+              modules={ALL_MODULES_CLIENT}
+              role={selectedRole}
+              initialChecked={[]}
+            />
+          </>
+        )}
+      </div>
+
+      {state.error ? <div className="alert error" style={{ gridColumn: "1 / -1" }}>{state.error}</div> : null}
+      {state.success ? <div className="alert success" style={{ gridColumn: "1 / -1" }}>{state.success}</div> : null}
 
       <div style={{ display: "flex", alignItems: "end" }}>
         <SubmitButton />

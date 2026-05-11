@@ -139,6 +139,12 @@ export async function createUserAction(
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
 
+    // Módulos custom (vacío = usar defaults del rol)
+    const validModuleKeys = ALL_MODULES.map((m) => m.key);
+    const selectedModules = isAdminRole(payload.role)
+      ? []
+      : validModuleKeys.filter((key) => formData.get(`mod_${key}`) === "on");
+
     const createdUser = await db.user.create({
       data: {
         name: payload.name,
@@ -146,7 +152,8 @@ export async function createUserAction(
         role: payload.role,
         campId,
         isActive: true,
-        passwordHash
+        passwordHash,
+        ...(selectedModules.length > 0 ? { modulePermissions: selectedModules } : {}),
       }
     });
 
