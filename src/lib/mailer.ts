@@ -237,3 +237,131 @@ export async function sendTareasVencidasEmail(input: SendTareasVencidasEmailInpu
     }),
   }).catch(() => {});
 }
+
+// ─── Alerta diaria de documentos por vencer ───────────────────────────────────
+
+type AlertaDocItem = {
+  severidad: "vencido" | "critico" | "medio" | "preventivo";
+  categoria: string;
+  nombre: string;
+  entidad: string;
+  diasRestantes: number;
+  fechaVencimiento: Date;
+  href: string;
+};
+
+type SendAlertasVencimientoEmailInput = {
+  to: string[];
+  fechaLabel: string;
+  alertas: AlertaDocItem[];
+};
+
+export async function sendAlertasVencimientoEmail(input: SendAlertasVencimientoEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from || input.to.length === 0) return;
+
+  const url = appUrl();
+
+  const SEV_CONFIG: Record<AlertaDocItem["severidad"], { icon: string; color: string; label: string }> = {
+    vencido:    { icon: "⛔", color: "#991b1b", label: "VENCIDO" },
+    critico:    { icon: "🔴", color: "#9a3412", label: "Vence en ≤ 7 días" },
+    medio:      { icon: "🟠", color: "#854d0e", label: "Vence en ≤ 30 días" },
+    preventivo: { icon: "🟡", color: "#1d4ed8", label: "Vence en ≤ 60 días" },
+  };
+
+  const CATEGORIA_LABEL: Record<string, string> = {
+    trabajador: "Trabajador",
+    hsec: "HSEC Campamento",
+    vehiculo: "Vehículo",
+    epp: "EPP",
+  };
+
+  const counts = {
+    vencido: input.alertas.filter(a => a.severidad === "vencido").length,
+    critico: input.alertas.filter(a => a.severidad === "critico").length,
+    medio:   input.alertas.filter(a => a.severidad === "medio").length,
+    preventivo: input.alertas.filter(a => a.severidad === "preventivo").length,
+  };
+
+  const summaryItems = (Object.entries(counts) as [AlertaDocItem["severidad"], number][])
+    .filter(([, n]) => n > 0)
+    .map(([sev, n]) => {
+      const cfg = SEV_CONFIG[sev];
+      return `<td style="padding:10px 16px;text-align:center;background:#f8fafc;border-radius:8px;margin:0 4px">
+        <div style="font-size:1.4rem">${cfg.icon}</div>
+        <div style="font-size:1.5rem;font-weight:800;color:${cfg.color}">${n}</div>
+        <div style="font-size:0.75rem;color:#64748b">${cfg.label}</div>
+      </td>`;
+    })
+    .join('<td style="width:8px"></td>');
+
+  const rows = input.alertas.slice(0, 50).map(a => {
+    const cfg = SEV_CONFIG[a.severidad];
+    const diasText = a.diasRestantes < 0
+      ? `Vencido hace ${Math.abs(a.diasRestantes)} días`
+      : a.diasRestantes === 0
+        ? "Vence hoy"
+        : `Vence en ${a.diasRestantes} día${a.diasRestantes > 1 ? "s" : ""}`;
+    const fechaStr = a.fechaVencimiento.toLocaleDateString("es-CL");
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${cfg.icon}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:0.8rem;color:#64748b">${CATEGORIA_LABEL[a.categoria] ?? a.categoria}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:600">${a.nombre}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">${a.entidad}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:0.85rem">${fechaStr}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;color:${cfg.color};font-weight:700;font-size:0.8rem">${diasText}</td>
+    </tr>`;
+  }).join("");
+
+  const overflowNote = input.alertas.length > 50
+    ? `<p style="color:#64748b;font-size:0.85rem;margin-top:8px">Y ${input.alertas.length - 50} documentos más. <a href="${url}/dashboard">Ver todo en el dashboard →</a></p>`
+    : "";
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#10212b;line-height:1.6;max-width:700px">
+      <h2 style="color:#006878">📋 Resumen diario de documentos — ${input.fechaLabel}</h2>
+      <p>Los siguientes documentos requieren atención en <strong>NomadeControl</strong>:</p>
+
+      <table style="border-collapse:separate;border-spacing:8px 0;margin:16px 0">
+        <tr>${summaryItems}</tr>
+      </table>
+
+      <table style="border-collapse:collapse;width:100%;margin:16px 0;font-size:0.9rem">
+        <thead>
+          <tr style="background:#f1f5f9">
+            <th style="padding:8px 10px;border-bottom:2px solid #cbd5e1;width:28px"></th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Tipo</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Documento</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Entidad</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Vencimiento</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Estado</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      ${overflowNote}
+
+      <a href="${url}/dashboard" style="display:inline-block;margin-top:16px;padding:10px 24px;background:#006878;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+        Ver dashboard completo
+      </a>
+
+      <p style="color:#94a3b8;font-size:0.75rem;margin-top:24px">
+        Este correo se envía automáticamente cada día a las 8:00 AM.<br>
+        NomadeControl — control.nomadechile.cl
+      </p>
+    </div>
+  `;
+
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: input.to,
+      subject: `📋 Alertas NomadeControl ${input.fechaLabel}: ${counts.vencido} vencido${counts.vencido !== 1 ? "s" : ""}, ${counts.critico} crítico${counts.critico !== 1 ? "s" : ""}`,
+      html,
+    }),
+  }).catch(() => {});
+}
