@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireRole, OPERATION_ROLES, isSupervisorRole } from "@/lib/auth";
+import { requireRole, TRABAJADORES_ROLES, isSupervisorRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { terminarContratoAction } from "@/app/trabajadores/actions";
@@ -37,7 +37,7 @@ export default async function TerminarContratoPage({
 }: {
   params: { id: string };
 }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   const worker = await db.staffMember.findUnique({
     where: { id: params.id },

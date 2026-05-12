@@ -1,10 +1,10 @@
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { registrarEntregaEPPAction } from "./actions";
 
 export default async function NuevaEntregaEPPPage() {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
   const isAdmin = isAdminRole(user.role);
 
   const campFilter = isAdmin ? { isActive: true } : { isActive: true, campId: user.campId ?? undefined };

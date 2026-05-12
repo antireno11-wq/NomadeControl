@@ -6,7 +6,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import {
   canAccessAdministration, canAccessBiblioteca, canAccessCampOperations,
   canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas,
-  isVehicleOnlyRole, canAccessModule, parseModulePermissions
+  canAccessTrabajadores, isVehicleOnlyRole, canAccessModule, parseModulePermissions
 } from "@/lib/auth";
 import { NavMenu, type NavEntry } from "@/components/nav-menu";
 
@@ -41,7 +41,7 @@ export function AppShell({
   const canSeeDashboard    = canAccessDashboard(user.role);
   const canSeeVehicles     = mod("vehiculos",    canAccessVehicles);
   const canSeeCampOps      = canAccessCampOperations(user.role) && !canAccessAdministration(user.role);
-  const canSeeWorkers      = mod("trabajadores", canAccessCampOperations);
+  const canSeeWorkers      = mod("trabajadores", canAccessTrabajadores);
   const canSeeOperaciones  = mod("operaciones",  canAccessDashboard);
   const canSeeAdministration = canAccessAdministration(user.role);
   const canSeeBiblioteca   = mod("biblioteca",   canAccessBiblioteca);

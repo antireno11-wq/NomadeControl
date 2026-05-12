@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { canAccessEvaluaciones, isAdminRole, isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { canAccessEvaluaciones, isAdminRole, isSupervisorRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { renovarContratoAction, updateWorkerAction } from "@/app/trabajadores/actions";
@@ -46,7 +46,7 @@ export default async function PerfilTrabajadorPage({
   params: { id: string };
   searchParams?: { status?: string | string[]; tab?: string };
 }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
   const canAdmin = isAdminRole(user.role);
   const canEvaluar = canAccessEvaluaciones(user.role);
 

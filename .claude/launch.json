@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "nomade-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "cd /Users/sebastianantirenojoui/NomadeControl && /opt/homebrew/bin/npm run dev"],
       "port": 3001
     }
   ]

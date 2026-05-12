@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import type { CierreContrato } from "@prisma/client";
@@ -114,7 +114,7 @@ export default async function ExTrabajadoresPage({
 }: {
   searchParams?: SearchParams;
 }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   const recontratarFilter = searchParams?.recontratar;
 

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ADMIN_ROLES, isSupervisorRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isSupervisorRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
@@ -44,7 +44,7 @@ function normalizeOptionalDate(value?: string) {
 }
 
 async function ensureWorkerAccess(campId: string) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   if (isSupervisorRole(user.role)) {
     if (!user.campId) {
@@ -230,7 +230,7 @@ export async function updateWorkerAction(formData: FormData) {
 // ─── Renovar contrato ─────────────────────────────────────────────────────────
 
 export async function renovarContratoAction(formData: FormData) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
   const staffMemberId = formData.get("staffMemberId");
   const nuevaFecha    = formData.get("nuevaFechaContrato");
 
@@ -276,7 +276,7 @@ const cierreSchema = z.object({
 });
 
 export async function terminarContratoAction(formData: FormData) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   const parsed = cierreSchema.safeParse({
     staffMemberId:           formData.get("staffMemberId"),

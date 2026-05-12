@@ -52,6 +52,13 @@ const ROLES = [
     adminOnly: false,
   },
   {
+    value: "RRHH",
+    label: "Recursos Humanos",
+    icon: "🧑‍💼",
+    description: "Gestión de trabajadores, documentos, EPP e inducciones",
+    adminOnly: false,
+  },
+  {
     value: "ADMIN_LIMITADO",
     label: "Admin limitado",
     icon: "🔒",
@@ -68,6 +75,11 @@ const ROLES = [
 ];
 
 const ADMIN_VALUES = ["ADMINISTRADOR", "ADMIN_LIMITADO"];
+
+// Módulos pre-seleccionados por rol al crear usuario
+const DEFAULT_MODULES_BY_ROLE: Record<string, string[]> = {
+  RRHH: ["trabajadores", "tareas", "biblioteca"],
+};
 
 type CampOption = { id: string; name: string };
 const initialState: CreateUserFormState = { error: "", success: "" };
@@ -345,7 +357,11 @@ export function NewUserForm({
               </div>
             </div>
           ) : (
-            <ModulesChooser modules={ALL_MODULES_CLIENT} initialChecked={[]} />
+            <ModulesChooser
+              modules={ALL_MODULES_CLIENT}
+              initialChecked={DEFAULT_MODULES_BY_ROLE[selectedRole] ?? []}
+              key={selectedRole}
+            />
           )}
         </div>
 

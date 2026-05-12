@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireRole, OPERATION_ROLES } from "@/lib/auth";
+import { requireRole, TRABAJADORES_ROLES } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function createDocumentoTrabajadorAction(formData: FormData) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   const staffMemberId = String(formData.get("staffMemberId") ?? "").trim();
   const tipo = String(formData.get("tipo") ?? "").trim();
@@ -62,7 +62,7 @@ export async function createDocumentoTrabajadorAction(formData: FormData) {
 }
 
 export async function deleteDocumentoTrabajadorAction(formData: FormData) {
-  await requireRole(OPERATION_ROLES);
+  await requireRole(TRABAJADORES_ROLES);
 
   const docId = String(formData.get("docId") ?? "").trim();
   const staffMemberId = String(formData.get("staffMemberId") ?? "").trim();

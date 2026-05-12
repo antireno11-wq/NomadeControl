@@ -48,6 +48,10 @@ const ROLE_SUMMARY: Record<string, { puede: string[]; noPuede: string[] }> = {
     puede: ["Módulo de Vehículos únicamente"],
     noPuede: ["Todos los demás módulos"],
   },
+  RRHH: {
+    puede: ["Gestión completa de trabajadores", "Documentos, EPP e inducciones", "Tareas", "Biblioteca"],
+    noPuede: ["Operaciones de campamento", "HSEC / Prevención", "Bodega", "Vehículos", "Administración"],
+  },
 };
 
 export default async function EditarUsuarioPage({
@@ -147,6 +151,7 @@ export default async function EditarUsuarioPage({
                 <option value="SUPERVISOR">Supervisor</option>
                 {canDeleteUsers ? <option value="ADMINISTRADOR">Administrador</option> : null}
                 <option value="ADMIN_LIMITADO">Admin limitado</option>
+                <option value="RRHH">Recursos Humanos</option>
                 <option value="VEHICULOS">Solo vehículos</option>
                 <option value="OFICINA">Oficina</option>
                 <option value="COLABORADOR">Colaborador</option>

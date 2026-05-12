@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { canAccessEvaluaciones, isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { canAccessEvaluaciones, isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
@@ -21,7 +21,7 @@ function getStatusInfo(status: string) {
 }
 
 export default async function TrabajadoresPage({ searchParams }: { searchParams?: SearchParams }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
   const canEvaluar = canAccessEvaluaciones(user.role);
   const selectedCampIdRaw = searchParams?.campId;

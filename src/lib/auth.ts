@@ -15,16 +15,18 @@ export type AppRole =
   | "ADMIN"
   | "OPERADOR"
   | "OFICINA"
-  | "COLABORADOR";
-export const MANAGED_USER_ROLE_VALUES = ["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS", "OFICINA", "COLABORADOR"] as const;
+  | "COLABORADOR"
+  | "RRHH";
+export const MANAGED_USER_ROLE_VALUES = ["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS", "OFICINA", "COLABORADOR", "RRHH"] as const;
 export const FULL_ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
 export const ADMIN_ROLES: AppRole[] = [...FULL_ADMIN_ROLES, "ADMIN_LIMITADO"];
 export const VEHICLE_ROLES: AppRole[] = [...ADMIN_ROLES, "VEHICULOS"];
 export const OPERATION_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
-export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR"];
+export const TRABAJADORES_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "RRHH"];
+export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR", "RRHH"];
 export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
-export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR"];
-export const TAREAS_ROLES: AppRole[]        = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA"];
+export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR", "RRHH"];
+export const TAREAS_ROLES: AppRole[]        = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "RRHH"];
 export const TAREAS_VER_ROLES: AppRole[]    = [...TAREAS_ROLES, "COLABORADOR"];
 export const EVALUACIONES_ROLES: AppRole[]  = [...ADMIN_ROLES, "SUPERVISOR"];
 export const HSEC_ROLES: AppRole[]          = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
@@ -32,6 +34,10 @@ export const HSEC_ROLES: AppRole[]          = [...ADMIN_ROLES, "SUPERVISOR", "OP
 export function defaultRouteForRole(role: string) {
   if (role === "COLABORADOR") {
     return "/biblioteca";
+  }
+
+  if (role === "RRHH") {
+    return "/trabajadores";
   }
 
   if (isVehicleOnlyRole(role)) {
@@ -97,6 +103,10 @@ export function canAccessHSEC(role: string) {
   return HSEC_ROLES.includes(role as AppRole);
 }
 
+export function canAccessTrabajadores(role: string) {
+  return TRABAJADORES_ROLES.includes(role as AppRole);
+}
+
 // ── Permisos por módulo ──────────────────────────────────────────────────────
 export const ALL_MODULES = [
   { key: "operaciones",  label: "Operaciones",       description: "Dashboard de campamentos e histórico" },
@@ -139,6 +149,7 @@ export function roleLabel(role: string) {
   if (role === "VEHICULOS") return "SOLO VEHÍCULOS";
   if (role === "OFICINA") return "OFICINA";
   if (role === "COLABORADOR") return "COLABORADOR";
+  if (role === "RRHH") return "RRHH";
   return role;
 }
 

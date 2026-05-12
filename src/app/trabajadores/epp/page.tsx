@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 
 export default async function EPPPage({ searchParams }: { searchParams?: { q?: string; vencido?: string } }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
   const isAdmin = isAdminRole(user.role);
   const q = searchParams?.q?.trim() ?? "";
   const soloVencidos = searchParams?.vencido === "1";

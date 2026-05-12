@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireRole, OPERATION_ROLES } from "@/lib/auth";
+import { requireRole, TRABAJADORES_ROLES } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { createDocumentoTrabajadorAction, deleteDocumentoTrabajadorAction } from "@/app/trabajadores/documentos/actions";
@@ -33,7 +33,7 @@ export default async function DocumentosTrabajadorPage({
   params: { id: string };
   searchParams?: { status?: string };
 }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   const [worker, documentos] = await Promise.all([
     db.staffMember.findUnique({ where: { id: params.id }, include: { camp: true } }),

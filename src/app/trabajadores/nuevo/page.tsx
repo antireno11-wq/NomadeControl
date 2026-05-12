@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ADMIN_ROLES, isAdminRole, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, TRABAJADORES_ROLES, isAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { createWorkerAction } from "@/app/trabajadores/actions";
@@ -11,7 +11,7 @@ export default async function NuevoTrabajadorPage({
 }: {
   searchParams?: { status?: string | string[] };
 }) {
-  const user = await requireRole(ADMIN_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
 
   const camps = await db.camp.findMany({

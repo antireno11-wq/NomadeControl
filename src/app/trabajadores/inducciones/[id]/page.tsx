@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { actualizarInduccionAction } from "./actions";
@@ -19,7 +19,7 @@ export default async function InduccionDetallePage({
   params: { id: string };
   searchParams?: { status?: string };
 }) {
-  const user = await requireRole(OPERATION_ROLES);
+  const user = await requireRole(TRABAJADORES_ROLES);
 
   const induccion = await db.induccionUsuario.findUnique({
     where: { id: params.id },
