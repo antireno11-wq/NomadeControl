@@ -229,8 +229,8 @@ model InventoryItem {
 
 model StaffMember {
   id             String   @id @default(cuid())
-  campId         String
-  camp           Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  campId         String?
+  camp           Camp?    @relation(fields: [campId], references: [id], onDelete: SetNull)
   createdById    String
   createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
   fullName       String

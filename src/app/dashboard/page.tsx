@@ -8,9 +8,6 @@ export default async function DashboardPage() {
   const user = await requireRole(OPERATION_ROLES);
 
   const isAdmin = isAdminRole(user.role);
-  const today = new Date();
-  const en7dias = new Date(today); en7dias.setDate(today.getDate() + 7);
-  const en30dias = new Date(today); en30dias.setDate(today.getDate() + 30);
   const campFilter = !isAdmin && user.campId ? { campId: user.campId } : {};
 
   const [
@@ -18,8 +15,6 @@ export default async function DashboardPage() {
     trabajadoresActivos,
     vehiculosOperativos,
     tareasAbiertas,
-    eppVenceSemana,
-    eppVenceMes,
     incidentesAbiertos,
     induccionesPendientes,
     misTareas,
@@ -29,8 +24,6 @@ export default async function DashboardPage() {
     db.staffMember.count({ where: { isActive: true, ...campFilter } }),
     db.vehicle.count({ where: { status: "OPERATIVO" } }),
     db.tarea.count({ where: { estado: { in: ["pendiente", "en_progreso"] } } }),
-    db.entregaEPP.count({ where: { fechaVencimiento: { lte: en7dias, gte: today }, ...campFilter } }),
-    db.entregaEPP.count({ where: { fechaVencimiento: { lte: en30dias, gte: today }, ...campFilter } }),
     canAccessHSEC(user.role)
       ? db.incidente.count({ where: { estado: { in: ["abierto", "en_investigacion"] } } })
       : Promise.resolve(0),
@@ -99,20 +92,6 @@ export default async function DashboardPage() {
             <div className="card" style={{ textAlign: "center", padding: "1.1rem", cursor: "pointer" }}>
               <div style={{ fontSize: "2rem", fontWeight: 800, color: tareasAbiertas > 0 ? "#d97706" : "#16a34a" }}>{tareasAbiertas}</div>
               <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: 2 }}>Tareas pendientes</div>
-            </div>
-          </Link>
-
-          <Link href="/trabajadores/epp" style={{ textDecoration: "none" }}>
-            <div className="card" style={{ textAlign: "center", padding: "1.1rem", cursor: "pointer" }}>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: eppVenceSemana > 0 ? "#dc2626" : eppVenceMes > 0 ? "#d97706" : "#16a34a" }}>
-                {eppVenceMes}
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: 2 }}>
-                EPP vence en 30 días
-                {eppVenceSemana > 0 && (
-                  <div style={{ color: "#dc2626", fontWeight: 700 }}>{eppVenceSemana} esta semana</div>
-                )}
-              </div>
             </div>
           </Link>
 

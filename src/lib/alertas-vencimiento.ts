@@ -229,38 +229,6 @@ export async function getAlertasVencimiento(opts: GetAlertasOptions = {}): Promi
     });
   }
 
-  // ── 5. EPP próximo a vencer ────────────────────────────────────────────────
-  const epps = await db.entregaEPP.findMany({
-    where: {
-      ...(opts.campId ? { campId: opts.campId } : {}),
-    },
-    select: {
-      id: true,
-      nombreTrabajador: true,
-      fechaVencimiento: true,
-      tipoEpp: { select: { nombre: true } },
-      staffMember: { select: { id: true } },
-    },
-  });
-
-  for (const e of epps) {
-    const dias = calcularDias(e.fechaVencimiento, hoy);
-    const sev = severidad(dias);
-    if (opts.excludeOk && sev === "ok") continue;
-    if (opts.severidades && !opts.severidades.includes(sev)) continue;
-    alertas.push({
-      id: `epp-${e.id}`,
-      categoria: "epp",
-      nombre: `EPP: ${e.tipoEpp.nombre}`,
-      entidad: e.nombreTrabajador,
-      entidadId: e.staffMember?.id ?? "",
-      href: e.staffMember?.id ? `/trabajadores/${e.staffMember.id}` : "/trabajadores/epp",
-      fechaVencimiento: e.fechaVencimiento,
-      diasRestantes: dias,
-      severidad: sev,
-    });
-  }
-
   // ── Ordenar: vencidos primero, luego por proximidad ───────────────────────
   return alertas.sort((a, b) => a.diasRestantes - b.diasRestantes);
 }

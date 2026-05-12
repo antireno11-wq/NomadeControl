@@ -62,9 +62,9 @@ export function WorkerForm({
         </>
       ) : (
         <div>
-          <label htmlFor="worker-camp">Campamento</label>
-          <select id="worker-camp" name="campId" defaultValue={defaults.campId} required>
-            <option value="">Selecciona un campamento</option>
+          <label htmlFor="worker-camp">Campamento <span style={{ fontWeight: 400, color: "var(--muted)" }}>(opcional)</span></label>
+          <select id="worker-camp" name="campId" defaultValue={defaults.campId}>
+            <option value="">Sin asignar</option>
             {camps.map((camp) => (
               <option key={camp.id} value={camp.id}>
                 {camp.name}

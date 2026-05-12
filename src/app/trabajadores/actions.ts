@@ -17,7 +17,7 @@ const patternToDays: Record<string, { work: number; off: number }> = {
 
 const workerSchema = z.object({
   workerId: z.string().optional(),
-  campId: z.string().min(1),
+  campId: z.string().optional(),
   fullName: z.string().trim().min(2),
   role: z.string().trim().optional(),
   employerCompany: z.string().trim().optional(),
@@ -43,14 +43,17 @@ function normalizeOptionalDate(value?: string) {
   return normalizeDateOnly(value);
 }
 
-async function ensureWorkerAccess(campId: string) {
+async function ensureWorkerAccess(campId: string | null | undefined) {
   const user = await requireRole(TRABAJADORES_ROLES);
 
   if (isSupervisorRole(user.role)) {
     if (!user.campId) {
       return { user, error: "no-camp" as const };
     }
-
+    // Si el trabajador no tiene camp asignado, solo admins/RRHH pueden modificarlo
+    if (!campId) {
+      return { user, error: "forbidden" as const };
+    }
     if (user.campId !== campId) {
       return { user, error: "forbidden" as const };
     }
@@ -94,7 +97,7 @@ export async function createWorkerAction(formData: FormData) {
 
   const worker = await db.staffMember.create({
     data: {
-      campId: payload.campId,
+      campId: payload.campId || null,
       createdById: adminUser.id,
       fullName: payload.fullName,
       role: payload.role || null,
@@ -187,7 +190,7 @@ export async function updateWorkerAction(formData: FormData) {
   const updatedWorker = await db.staffMember.update({
     where: { id: worker.id },
     data: {
-      campId: payload.campId,
+      campId: payload.campId || null,
       fullName: payload.fullName,
       role: payload.role || null,
       employerCompany: payload.employerCompany || null,
