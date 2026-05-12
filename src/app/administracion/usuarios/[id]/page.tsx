@@ -208,14 +208,13 @@ export default async function EditarUsuarioPage({
           ) : (
             <>
               <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
-                Marca los módulos que quieres habilitar. Los módulos que el rol no contempla aparecen desactivados y no se pueden marcar. Si dejas todo marcado, se usan los permisos por defecto del rol.
+                Marca los módulos que este usuario puede ver. Los permisos son independientes del rol asignado.
               </p>
               <form action={updateUserModulesAction}>
                 <input type="hidden" name="userId" value={targetUser.id} />
                 <div style={{ marginBottom: "1rem" }}>
                   <ModulesChooser
                     modules={ALL_MODULES as unknown as { key: string; label: string; description: string }[]}
-                    role={targetUser.role}
                     initialChecked={currentModules}
                   />
                 </div>

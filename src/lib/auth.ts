@@ -130,7 +130,7 @@ export function canAccessModule(
 ): boolean {
   if (isAdminRole(role)) return true;
   if (modulePermissions.length === 0) return defaultCheck(role);
-  return modulePermissions.includes(module) && defaultCheck(role);
+  return modulePermissions.includes(module);
 }
 
 export function roleLabel(role: string) {

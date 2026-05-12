@@ -93,11 +93,10 @@ export function NewUserForm({ camps, canAssignFullAdmin }: { camps: CampOption[]
         ) : (
           <>
             <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 0.75rem" }}>
-              Elige los módulos habilitados. Los que el rol no contempla no se pueden marcar. Si dejas los defaults, el usuario verá todo lo que su rol permite.
+              Elige los módulos que este usuario puede ver. Los permisos son independientes del rol asignado.
             </p>
             <ModulesChooser
               modules={ALL_MODULES_CLIENT}
-              role={selectedRole}
               initialChecked={[]}
             />
           </>
