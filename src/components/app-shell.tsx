@@ -103,7 +103,6 @@ export function AppShell({
         { href: "/trabajadores/inducciones", label: "Capacitaciones" },
         { href: "/trabajadores/epp", label: "Control EPP" },
         { href: "/trabajadores/ex-trabajadores", label: "Ex trabajadores" },
-        ...(canSeeAdministration ? [{ href: "/trabajadores/importar", label: "⬆ Importar desde Excel" }] : []),
       ],
     }] : []),
 

@@ -144,6 +144,11 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                   </button>
                 </Link>
               )}
+              <Link href="/trabajadores/importar">
+                <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}>
+                  ⬆ Importar Excel
+                </button>
+              </Link>
               <Link href="/trabajadores/nuevo">
                 <button type="button">Nuevo trabajador</button>
               </Link>
