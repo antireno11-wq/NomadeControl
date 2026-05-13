@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ADMIN_ROLES, isFullAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { deleteCampAction, updateCampAction, updateCampShiftAction } from "@/app/administracion/actions";
+import { deleteCampAction, updateCampAction, updateCampShiftAction, cerrarCampamentoAction, reabrirCampamentoAction } from "@/app/administracion/actions";
 
 export default async function EditarCampamentoPage({
   params,
@@ -46,6 +46,8 @@ export default async function EditarCampamentoPage({
   const shiftStatusRaw = searchParams?.shiftStatus;
   const shiftStatus = typeof shiftStatusRaw === "string" ? shiftStatusRaw : "";
 
+  const workersCount = await db.staffMember.count({ where: { campId: params.id, isActive: true } });
+
   return (
     <AppShell
       title="Editar campamento"
@@ -59,7 +61,20 @@ export default async function EditarCampamentoPage({
       }
     >
       <div className="page-stack">
-        {shiftStatus === "updated" ? <div className="alert success">Nuevo turno iniciado correctamente.</div> : null}
+        {shiftStatus === "updated" && <div className="alert success">Nuevo turno iniciado correctamente.</div>}
+        {shiftStatus === "closed" && <div className="alert success">Campamento cerrado. Los trabajadores quedaron sin campamento asignado.</div>}
+
+        {!camp.isActive && (
+          <div style={{ padding: "12px 16px", borderRadius: 10, background: "#fef9c3", border: "1px solid #fde047", color: "#854d0e", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <span>🔒 Campamento cerrado el {camp.closedAt ? new Date(camp.closedAt).toLocaleDateString("es-CL") : "—"} · Solo lectura</span>
+            <form action={reabrirCampamentoAction}>
+              <input type="hidden" name="campId" value={camp.id} />
+              <button type="submit" style={{ background: "#854d0e", color: "#fff", border: "none", padding: "6px 16px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "0.85rem" }}>
+                Reabrir campamento
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Resumen</h2>
@@ -154,13 +169,7 @@ export default async function EditarCampamentoPage({
                 placeholder="-68.778899"
               />
             </div>
-            <div style={{ display: "flex", alignItems: "end" }}>
-              <label className="admin-inline-checkbox">
-                <input type="checkbox" name="isActive" defaultChecked={camp.isActive} style={{ width: "auto", padding: 0 }} />
-                Activo
-              </label>
-            </div>
-            <div style={{ display: "flex", alignItems: "end" }}>
+            <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "end" }}>
               <button type="submit">Guardar cambios</button>
             </div>
           </form>
@@ -213,6 +222,24 @@ export default async function EditarCampamentoPage({
           </form>
           {supervisors.length === 0 ? <div className="alert error" style={{ marginTop: 12 }}>No hay supervisores activos asignados a este campamento.</div> : null}
         </div>
+
+        {camp.isActive && (
+          <div className="card" style={{ maxWidth: 760 }}>
+            <h2 style={{ marginTop: 0 }}>Cerrar campamento</h2>
+            <div className="section-caption" style={{ marginBottom: 12 }}>
+              Al cerrar el campamento, los <strong>{workersCount}</strong> trabajador{workersCount !== 1 ? "es" : ""} activo{workersCount !== 1 ? "s" : ""} quedarán sin campamento asignado (siguen activos en la plataforma). Todo el historial se conserva y puede consultarse en Operaciones.
+            </div>
+            <form action={cerrarCampamentoAction}>
+              <input type="hidden" name="campId" value={camp.id} />
+              <button
+                type="submit"
+                style={{ background: "#92400e", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "0.9rem" }}
+              >
+                Cerrar campamento{workersCount > 0 ? ` · ${workersCount} trabajador${workersCount !== 1 ? "es" : ""} serán desvinculados` : ""}
+              </button>
+            </form>
+          </div>
+        )}
 
         {canDeleteData ? (
           <div className="card" style={{ maxWidth: 760 }}>

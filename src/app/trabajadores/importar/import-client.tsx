@@ -8,11 +8,28 @@ import type { WorkerImportRow, ImportResult } from "./actions";
 
 // ── Mapeo flexible de headers ─────────────────────────────────────────────────
 function norm(s: string) {
+  // Unicode escape explícito U+0300–U+036F para máxima compatibilidad con bundlers
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 }
 
+// Busca una columna que coincida exactamente o que contenga alguna de las palabras clave
+function findColByVariants(keys: string[], variants: string[]): string | undefined {
+  const normedKeys = keys.map(k => ({ orig: k, norm: norm(k) }));
+  // 1) Coincidencia exacta
+  for (const v of variants) {
+    const found = normedKeys.find(k => k.norm === v);
+    if (found) return found.orig;
+  }
+  // 2) Coincidencia por inclusión (fallback robusto)
+  for (const v of variants) {
+    const found = normedKeys.find(k => k.norm.includes(v) || v.includes(k.norm));
+    if (found) return found.orig;
+  }
+  return undefined;
+}
+
 const HEADER_MAP: Record<string, keyof WorkerImportRow> = {
-  // fullName
+  // fullName (nombre completo en una sola celda)
   "nombre": "fullName", "nombre completo": "fullName", "full name": "fullName", "nombre trabajador": "fullName",
   // nationalId
   "rut": "nationalId", "cedula": "nationalId", "nacional id": "nationalId", "dni": "nationalId",
@@ -44,6 +61,14 @@ const HEADER_MAP: Record<string, keyof WorkerImportRow> = {
   "notas": "notes", "observaciones": "notes", "comentarios": "notes", "notes": "notes",
 };
 
+// Columnas de nombre separado (formato dotación chilena típica)
+const SPLIT_NAME_COLS = {
+  apellidoPaterno: ["apellido paterno", "ap. paterno", "primer apellido", "apellido1", "paterno"],
+  apellidoMaterno: ["apellido materno", "ap. materno", "segundo apellido", "apellido2", "materno"],
+  nombres:         ["nombres", "nombre(s)", "primer nombre", "nombres propios"],
+  tipoContrato:    ["tipo contrato", "tipo de contrato"],
+};
+
 const VALID_SHIFTS = ["14x14", "10x10", "7x7", "4x3"];
 
 type ParsedRow = WorkerImportRow & {
@@ -58,11 +83,14 @@ function excelDateToStr(val: unknown): string {
     return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
   }
   if (typeof val === "number") {
-    // Excel serial date
     const d = XLSX.SSF.parse_date_code(val);
     if (d) return `${String(d.d).padStart(2, "0")}/${String(d.m).padStart(2, "0")}/${d.y}`;
   }
   return String(val);
+}
+
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function parseExcel(file: File): Promise<ParsedRow[]> {
@@ -77,22 +105,53 @@ function parseExcel(file: File): Promise<ParsedRow[]> {
 
         if (raw.length === 0) { resolve([]); return; }
 
-        // Mapear headers del primer row
         const sampleKeys = Object.keys(raw[0]);
+
+        // ── Mapeo de columnas estándar ──────────────────────────────────────
         const fieldMap: Record<string, keyof WorkerImportRow> = {};
         for (const key of sampleKeys) {
           const mapped = HEADER_MAP[norm(key)];
           if (mapped) fieldMap[key] = mapped;
         }
 
+        // ── Detección de columnas de nombre separado ────────────────────────
+        const colApePaterno   = findColByVariants(sampleKeys, SPLIT_NAME_COLS.apellidoPaterno);
+        const colApeMaterno   = findColByVariants(sampleKeys, SPLIT_NAME_COLS.apellidoMaterno);
+        const colNombres      = findColByVariants(sampleKeys, SPLIT_NAME_COLS.nombres);
+        const colTipoContrato = findColByVariants(sampleKeys, SPLIT_NAME_COLS.tipoContrato);
+        const hasSplitName    = Boolean(colApePaterno || colNombres);
+
         const rows: ParsedRow[] = raw.map((rawRow, idx) => {
           const row: Partial<WorkerImportRow> = {};
+
           for (const [colKey, field] of Object.entries(fieldMap)) {
             const val = rawRow[colKey];
             if (field.endsWith("Date") || field === "shiftStartDate") {
               row[field] = excelDateToStr(val) as never;
             } else {
               row[field] = (val != null ? String(val).trim() : "") as never;
+            }
+          }
+
+          // ── Combinar nombre desde columnas separadas ──────────────────────
+          if (hasSplitName && !row.fullName?.trim()) {
+            const nombres    = colNombres    ? String(rawRow[colNombres]    ?? "").trim() : "";
+            const apePaterno = colApePaterno ? String(rawRow[colApePaterno] ?? "").trim() : "";
+            const apeMaterno = colApeMaterno ? String(rawRow[colApeMaterno] ?? "").trim() : "";
+            const combined   = [nombres, apePaterno, apeMaterno].filter(Boolean).join(" ");
+            row.fullName     = toTitleCase(combined);
+          }
+
+          // ── Tipo de contrato → notas ──────────────────────────────────────
+          if (colTipoContrato) {
+            const tipo = String(rawRow[colTipoContrato] ?? "").trim();
+            if (tipo) {
+              const label = tipo === "PlazoFijo" ? "Plazo fijo"
+                          : tipo === "Indefinido" ? "Indefinido"
+                          : tipo;
+              row.notes = row.notes?.trim()
+                ? `${row.notes.trim()} · Contrato: ${label}`
+                : `Contrato: ${label}`;
             }
           }
 
@@ -141,17 +200,22 @@ function downloadTemplate() {
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export function ImportWorkers() {
+type Camp = { id: string; name: string };
+
+export function ImportWorkers({ camps = [] }: { camps?: Camp[] }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging]   = useState(false);
-  const [rows, setRows]           = useState<ParsedRow[] | null>(null);
-  const [filename, setFilename]   = useState("");
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [result, setResult]       = useState<ImportResult | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [dragging, setDragging]       = useState(false);
+  const [rows, setRows]               = useState<ParsedRow[] | null>(null);
+  const [filename, setFilename]       = useState("");
+  const [parseError, setParseError]   = useState<string | null>(null);
+  const [result, setResult]           = useState<ImportResult | null>(null);
+  const [selectedCampId, setSelectedCampId] = useState<string>("");
+  const [isPending, startTransition]  = useTransition();
 
   const validRows   = rows?.filter(r => r.__errors.length === 0) ?? [];
   const invalidRows = rows?.filter(r => r.__errors.length > 0)   ?? [];
+  // ¿Las filas traen campamento propio?
+  const hasFileCamp = validRows.some(r => r.campamento?.trim());
 
   async function handleFile(file: File) {
     setParseError(null);
@@ -180,7 +244,7 @@ export function ImportWorkers() {
   function handleImport() {
     if (validRows.length === 0) return;
     startTransition(async () => {
-      const res = await importarTrabajadoresAction(validRows);
+      const res = await importarTrabajadoresAction(validRows, selectedCampId || undefined);
       setResult(res);
     });
   }
@@ -243,17 +307,40 @@ export function ImportWorkers() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1000 }}>
 
+      {/* Campamento por defecto */}
+      {camps.length > 0 && (
+        <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontWeight: 700, fontSize: "0.9rem", display: "block", marginBottom: 4 }}>
+              🏕️ Campamento por defecto
+            </label>
+            <div style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+              Se asigna a todos los trabajadores del archivo que no tengan campamento propio.
+            </div>
+          </div>
+          <select
+            value={selectedCampId}
+            onChange={e => setSelectedCampId(e.target.value)}
+            style={{ minWidth: 220, padding: "8px 12px", borderRadius: 8, border: "1.5px solid var(--border)", fontWeight: 600 }}
+          >
+            <option value="">Sin asignar campamento</option>
+            {camps.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Instrucciones + plantilla */}
       <div className="card" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <div style={{ flex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: "0.95rem" }}>📋 Instrucciones</h3>
-          <ol style={{ margin: "8px 0 0 0", paddingLeft: 18, fontSize: "0.84rem", color: "var(--muted)", lineHeight: 1.7 }}>
-            <li>Descargá la plantilla Excel y completá los datos</li>
-            <li>Solo <strong>Nombre completo</strong> es obligatorio — el resto es opcional</li>
-            <li>Para el <strong>Turno</strong> usá: <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>14x14</code>, <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>10x10</code>, <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>7x7</code>, <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>4x3</code></li>
-            <li>Las fechas en formato <strong>DD/MM/YYYY</strong></li>
-            <li>El nombre del <strong>Campamento</strong> debe coincidir exactamente</li>
-          </ol>
+          <h3 style={{ margin: 0, fontSize: "0.95rem" }}>📋 Formatos soportados</h3>
+          <ul style={{ margin: "8px 0 0 0", paddingLeft: 18, fontSize: "0.84rem", color: "var(--muted)", lineHeight: 1.7 }}>
+            <li>Formato dotación RRHH: <strong>RUT · Apellido Paterno · Apellido Materno · Nombres · Cargo · Tipo Contrato</strong></li>
+            <li>Formato propio: <strong>Nombre completo · RUT · Cargo · Turno · Campamento · Fechas…</strong></li>
+            <li>Los nombres se convierten a título (Ej: <em>JUAN PÉREZ → Juan Pérez</em>)</li>
+            <li>Turno por defecto: <strong>14x14</strong> · Fecha inicio: <strong>hoy</strong></li>
+          </ul>
         </div>
         <button
           onClick={downloadTemplate}
@@ -263,7 +350,7 @@ export function ImportWorkers() {
             cursor: "pointer", fontSize: "0.9rem", whiteSpace: "nowrap",
           }}
         >
-          ⬇️ Descargar plantilla Excel
+          ⬇️ Plantilla Excel
         </button>
       </div>
 
@@ -329,6 +416,11 @@ export function ImportWorkers() {
                 ✗ {invalidRows.length} con errores (se omitirán)
               </span>
             )}
+            {!hasFileCamp && selectedCampId && (
+              <span style={{ padding: "3px 12px", borderRadius: 999, background: "#e0f2fe", color: "#0369a1", fontWeight: 700, fontSize: "0.82rem" }}>
+                🏕️ {camps.find(c => c.id === selectedCampId)?.name}
+              </span>
+            )}
             <button onClick={reset} style={{ marginLeft: "auto", padding: "5px 12px", borderRadius: 8, background: "#f1f5f9", border: "1px solid var(--border)", cursor: "pointer", fontSize: "0.82rem", color: "var(--muted)", fontWeight: 600 }}>
               ✕ Cambiar archivo
             </button>
@@ -340,7 +432,7 @@ export function ImportWorkers() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
                 <thead>
                   <tr style={{ background: "#f8fafc", borderBottom: "2px solid var(--border)" }}>
-                    {["#", "Nombre", "RUT", "Cargo", "Campamento", "Turno", "Inicio turno", "Venc. contrato", "Estado"].map(h => (
+                    {["#", "Nombre", "RUT", "Cargo", "Notas", "Campamento", "Estado"].map(h => (
                       <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--muted)", fontSize: "0.75rem", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -348,6 +440,9 @@ export function ImportWorkers() {
                 <tbody>
                   {rows.map(row => {
                     const hasError = row.__errors.length > 0;
+                    const campName = row.campamento?.trim()
+                      ? row.campamento
+                      : (selectedCampId ? camps.find(c => c.id === selectedCampId)?.name : "—");
                     return (
                       <tr key={row.__rowNum} style={{
                         borderBottom: "1px solid #f1f5f9",
@@ -355,16 +450,10 @@ export function ImportWorkers() {
                       }}>
                         <td style={{ padding: "7px 12px", color: "var(--muted)", fontSize: "0.75rem" }}>{row.__rowNum}</td>
                         <td style={{ padding: "7px 12px", fontWeight: 600 }}>{row.fullName || <span style={{ color: "#dc2626" }}>—</span>}</td>
-                        <td style={{ padding: "7px 12px", color: "var(--muted)" }}>{row.nationalId || "—"}</td>
+                        <td style={{ padding: "7px 12px", color: "var(--muted)", whiteSpace: "nowrap" }}>{row.nationalId || "—"}</td>
                         <td style={{ padding: "7px 12px", color: "var(--muted)" }}>{row.role || "—"}</td>
-                        <td style={{ padding: "7px 12px", color: "var(--muted)" }}>{row.campamento || "—"}</td>
-                        <td style={{ padding: "7px 12px" }}>
-                          <span style={{ padding: "1px 8px", borderRadius: 999, background: "#f1f5f9", fontSize: "0.78rem", fontWeight: 700 }}>
-                            {row.shiftPattern || "14x14"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "7px 12px", color: "var(--muted)" }}>{row.shiftStartDate || "—"}</td>
-                        <td style={{ padding: "7px 12px", color: "var(--muted)" }}>{row.contractEndDate || "—"}</td>
+                        <td style={{ padding: "7px 12px", color: "var(--muted)", fontSize: "0.75rem" }}>{row.notes || "—"}</td>
+                        <td style={{ padding: "7px 12px", color: "var(--muted)" }}>{campName || "—"}</td>
                         <td style={{ padding: "7px 12px" }}>
                           {hasError ? (
                             <div>

@@ -648,6 +648,62 @@ export async function deleteCampAction(formData: FormData) {
   redirect("/administracion?campStatus=deleted");
 }
 
+export async function cerrarCampamentoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+  const campId = formData.get("campId") as string;
+  if (!campId) redirect("/administracion?campStatus=invalid");
+
+  const camp = await db.camp.findUnique({
+    where: { id: campId },
+    select: { id: true, name: true, isActive: true },
+  });
+  if (!camp) redirect("/administracion?campStatus=not-found");
+
+  // Liberar trabajadores activos (quedan sin campamento, siguen activos)
+  await db.staffMember.updateMany({
+    where: { campId, isActive: true },
+    data: { campId: null },
+  });
+
+  // Cerrar el campamento
+  await db.camp.update({
+    where: { id: campId },
+    data: { isActive: false, closedAt: new Date() },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "CAMP_CLOSE", entityType: "camp", entityId: campId,
+    summary: `Cerró campamento «${camp.name}»`,
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/dashboard");
+  revalidatePath("/operaciones");
+  redirect(`/administracion/campamentos/${campId}?shiftStatus=closed`);
+}
+
+export async function reabrirCampamentoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+  const campId = formData.get("campId") as string;
+  if (!campId) redirect("/administracion?campStatus=invalid");
+
+  await db.camp.update({
+    where: { id: campId },
+    data: { isActive: true, closedAt: null },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "CAMP_REOPEN", entityType: "camp", entityId: campId,
+    summary: `Reabrió campamento`,
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/operaciones");
+  redirect(`/administracion/campamentos/${campId}`);
+}
+
 export async function updateUserModulesAction(formData: FormData) {
   const currentUser = await requireRole(ADMIN_ROLES);
 

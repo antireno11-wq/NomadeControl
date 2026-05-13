@@ -149,12 +149,13 @@ export default async function EditarUsuarioPage({
               <label htmlFor="edit-user-role">Rol</label>
               <select id="edit-user-role" name="role" defaultValue={targetUser.role === "ADMIN" ? "ADMINISTRADOR" : targetUser.role}>
                 <option value="SUPERVISOR">Supervisor</option>
-                {canDeleteUsers ? <option value="ADMINISTRADOR">Administrador</option> : null}
-                <option value="ADMIN_LIMITADO">Admin limitado</option>
+                <option value="OPERADOR">Operador</option>
                 <option value="RRHH">Recursos Humanos</option>
-                <option value="VEHICULOS">Solo vehículos</option>
                 <option value="OFICINA">Oficina</option>
                 <option value="COLABORADOR">Colaborador</option>
+                <option value="VEHICULOS">Solo vehículos</option>
+                <option value="ADMIN_LIMITADO">Admin limitado</option>
+                {canDeleteUsers ? <option value="ADMINISTRADOR">Administrador</option> : null}
               </select>
             </div>
             <div>

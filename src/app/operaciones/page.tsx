@@ -39,6 +39,60 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
   const canSeeAdminSections = isAdminRole(user.role);
   const vista = searchParams?.vista ?? "hoy";
 
+  // ── VISTA CAMPAMENTOS CERRADOS ───────────────────────────────────────────────
+  if (vista === "cerrados" && canSeeAdminSections) {
+    const closedCamps = await db.camp.findMany({
+      where: { isActive: false },
+      orderBy: { closedAt: "desc" },
+      include: {
+        _count: { select: { reports: true, dailyTaskControls: true, users: true } }
+      }
+    });
+    return (
+      <AppShell title="Operaciones" user={user} activeNav="operaciones" showAdminSections={canSeeAdminSections}>
+        <div className="page-stack">
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <Link href="/operaciones" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Estado hoy</Link>
+            <Link href="/operaciones?vista=historico" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Histórico</Link>
+            <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Campamentos cerrados</span>
+          </div>
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Campamentos cerrados</h2>
+            {closedCamps.length === 0 ? (
+              <div className="section-caption">No hay campamentos cerrados.</div>
+            ) : (
+              <div className="summary-list">
+                {closedCamps.map((camp) => (
+                  <div key={camp.id} className="summary-row" style={{ alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <strong>{camp.name}</strong>
+                      {camp.location && <span style={{ color: "var(--muted)", marginLeft: 8, fontSize: "0.85rem" }}>{camp.location}</span>}
+                      <div style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 3 }}>
+                        🔒 Cerrado el {camp.closedAt ? new Date(camp.closedAt).toLocaleDateString("es-CL") : "—"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 16, fontSize: "0.85rem", color: "var(--muted)" }}>
+                      <span>{camp._count.reports} informes</span>
+                      <span>{camp._count.dailyTaskControls} controles</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Link href={`/operaciones?vista=historico&campId=${camp.id}`}>
+                        <button type="button" className="secondary" style={{ fontSize: "0.82rem", padding: "4px 12px" }}>Ver historial</button>
+                      </Link>
+                      <Link href={`/administracion/campamentos/${camp.id}`}>
+                        <button type="button" className="secondary" style={{ fontSize: "0.82rem", padding: "4px 12px" }}>Configuración</button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   // ── VISTA HISTÓRICA ─────────────────────────────────────────────────────────
   if (vista === "historico") {
     const selectedCampIdRaw = searchParams?.campId;
@@ -59,7 +113,8 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
     const periodStartInput = hasCustomPeriod ? toInputDateValue(periodStart) : "";
     const periodEndInput = hasCustomPeriod ? toInputDateValue(periodEnd) : "";
     const [camps, reports, taskControls] = await Promise.all([
-      db.camp.findMany({ where: { isActive: true, ...(campFilter ? { id: campFilter } : {}) }, orderBy: { name: "asc" } }),
+      // Include closed camps when a specific campId is requested (so we can browse historical data for closed camps)
+      db.camp.findMany({ where: { ...(campFilter ? { id: campFilter } : {}), ...(selectedCampId ? { id: selectedCampId } : { isActive: true }) }, orderBy: { name: "asc" } }),
       db.dailyReport.findMany({ where: { ...(campFilter ? { campId: campFilter } : {}), date: { gte: periodStart, lte: periodEnd } }, orderBy: [{ date: "asc" }, { camp: { name: "asc" } }], include: { camp: true, createdBy: true } }),
       db.dailyTaskControl.findMany({ where: { ...(campFilter ? { campId: campFilter } : {}), date: { gte: periodStart, lte: periodEnd } }, orderBy: [{ date: "desc" }, { camp: { name: "asc" } }], include: { camp: true, createdBy: true } }),
     ]);
@@ -137,9 +192,10 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
       >
         <div className="page-stack">
           {/* Pestañas */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
             <Link href="/operaciones" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Estado hoy</Link>
             <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Histórico</span>
+            {canSeeAdminSections && <Link href="/operaciones?vista=cerrados" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Cerrados</Link>}
           </div>
 
           <div className="hero-panel">
@@ -735,9 +791,10 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
     >
 
         {/* Pestañas */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
           <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Estado hoy</span>
           <Link href="/operaciones?vista=historico" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Histórico</Link>
+          {canSeeAdminSections && <Link href="/operaciones?vista=cerrados" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Cerrados</Link>}
         </div>
 
         <div className="dashboard-kpi-grid">

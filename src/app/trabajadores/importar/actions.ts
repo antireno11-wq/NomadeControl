@@ -56,7 +56,8 @@ function parseDate(s?: string): Date | null {
 }
 
 export async function importarTrabajadoresAction(
-  rows: WorkerImportRow[]
+  rows: WorkerImportRow[],
+  defaultCampId?: string
 ): Promise<ImportResult> {
   const user = await requireRole(ADMIN_ROLES);
 
@@ -82,7 +83,7 @@ export async function importarTrabajadoresAction(
 
       const campId = row.campamento
         ? (campMap.get(row.campamento.toLowerCase().trim()) ?? null)
-        : null;
+        : (defaultCampId ?? null);
 
       const shiftStartDate = parseDate(row.shiftStartDate) ?? new Date();
 
