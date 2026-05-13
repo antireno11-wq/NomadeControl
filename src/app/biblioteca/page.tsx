@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/app-shell";
 import { requireRole, BIBLIOTECA_ROLES, isAdminRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { subirDocumentoAction, eliminarDocumentoAction } from "./actions";
+import { eliminarDocumentoAction } from "./actions";
+import { SubirForm } from "./biblioteca-upload";
 
 type SearchParams = { status?: string; categoria?: string; q?: string };
 
@@ -230,54 +231,6 @@ export default async function BibliotecaPage({ searchParams }: { searchParams?: 
         </div>
       )}
     </AppShell>
-  );
-}
-
-/* ─── Upload Form ──────────────────────────────────────────────── */
-function SubirForm() {
-  return (
-    <form action={subirDocumentoAction} encType="multipart/form-data" style={{ display: "grid", gap: 10 }}>
-      <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--teal)" }}>Subir documento</h3>
-
-      <div>
-        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Título *</label>
-        <input name="titulo" required placeholder="Ej: Procedimiento de emergencias" style={{ padding: "7px 10px" }} />
-      </div>
-
-      <div>
-        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Categoría *</label>
-        <select name="categoria" required style={{ padding: "7px 10px" }}>
-          <option value="">— Seleccionar —</option>
-          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-        <div>
-          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Descripción</label>
-          <input name="descripcion" placeholder="Breve descripción" style={{ padding: "7px 10px" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Versión</label>
-          <input name="version" placeholder="1.0" style={{ padding: "7px 10px" }} />
-        </div>
-      </div>
-
-      <div>
-        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Archivo *</label>
-        <input
-          type="file"
-          name="archivo"
-          required
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar,.txt,.csv"
-          style={{ padding: "6px 0", fontSize: "0.85rem" }}
-        />
-      </div>
-
-      <button type="submit" style={{ padding: "9px 0", borderRadius: 8 }}>
-        Subir
-      </button>
-    </form>
   );
 }
 
