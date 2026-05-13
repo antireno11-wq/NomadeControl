@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { DragEvent, ChangeEvent } from "react";
 import { subirDocumentoAction } from "./actions";
 
@@ -10,42 +10,75 @@ const CATEGORIAS = [
 ];
 
 export function SubirForm() {
+  const formRef     = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging]   = useState(false);
   const [file, setFile]           = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setDragging(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped && fileInputRef.current) {
-      const dt = new DataTransfer();
-      dt.items.add(dropped);
-      fileInputRef.current.files = dt.files;
-      setFile(dropped);
-    }
-  }
-
-  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+  /* ── drag handlers ── */
+  function onDragOver(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragging(true);
   }
-
-  function handleDragEnter(e: DragEvent<HTMLDivElement>) {
+  function onDragEnter(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragging(true);
   }
-
-  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
-    // Only leave if actually leaving the zone (not entering a child)
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+  function onDragLeave(e: DragEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       setDragging(false);
     }
   }
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) pickFile(dropped);
+  }
 
-  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    setFile(e.target.files?.[0] ?? null);
+  function onFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0];
+    if (picked) pickFile(picked);
+  }
+
+  function pickFile(f: File) {
+    // also sync to the real input so the form can read it natively
+    if (fileInputRef.current) {
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      fileInputRef.current.files = dt.files;
+    }
+    setFile(f);
+    setError(null);
+  }
+
+  /* ── submit: build FormData manually so the dragged file is included ── */
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = formRef.current;
+    if (!form) return;
+
+    const titulo     = (form.elements.namedItem("titulo")     as HTMLInputElement)?.value?.trim();
+    const categoria  = (form.elements.namedItem("categoria")  as HTMLSelectElement)?.value;
+    const descripcion = (form.elements.namedItem("descripcion") as HTMLInputElement)?.value?.trim();
+    const version    = (form.elements.namedItem("version")    as HTMLInputElement)?.value?.trim();
+
+    if (!titulo)    return setError("El título es obligatorio.");
+    if (!categoria) return setError("Seleccioná una categoría.");
+    if (!file)      return setError("Seleccioná o arrastrá un archivo.");
+
+    const fd = new FormData();
+    fd.append("titulo",      titulo);
+    fd.append("categoria",   categoria);
+    if (descripcion) fd.append("descripcion", descripcion);
+    if (version)     fd.append("version",     version);
+    fd.append("archivo", file, file.name);
+
+    startTransition(async () => {
+      await subirDocumentoAction(fd);
+    });
   }
 
   function fmtSize(bytes: number) {
@@ -55,12 +88,17 @@ export function SubirForm() {
 
   return (
     <form
-      action={subirDocumentoAction}
-      encType="multipart/form-data"
-      onSubmit={() => setSubmitting(true)}
+      ref={formRef}
+      onSubmit={handleSubmit}
       style={{ display: "grid", gap: 10 }}
     >
       <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--teal)" }}>Subir documento</h3>
+
+      {error && (
+        <div style={{ padding: "8px 12px", borderRadius: 8, background: "#fee2e2", color: "#dc2626", fontSize: "0.82rem", fontWeight: 600 }}>
+          {error}
+        </div>
+      )}
 
       <div>
         <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
@@ -99,24 +137,43 @@ export function SubirForm() {
         <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 }}>
           Archivo *
         </label>
+
+        {/* hidden real file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          name="archivo"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar,.txt,.csv"
+          style={{ display: "none" }}
+          onChange={onFileChange}
+          tabIndex={-1}
+        />
+
         <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
           onClick={() => fileInputRef.current?.click()}
           style={{
-            border: `2px dashed ${dragging ? "var(--teal)" : "#cbd5e1"}`,
+            border: `2px dashed ${dragging ? "var(--teal)" : file ? "#16a34a" : "#cbd5e1"}`,
             borderRadius: 12,
             padding: file ? "14px 16px" : "28px 16px",
             textAlign: "center",
             cursor: "pointer",
             background: dragging ? "#f0fdf4" : file ? "#f8fafc" : "#fafbfc",
-            transition: "all 0.15s ease",
+            transition: "border-color 0.15s, background 0.15s",
             userSelect: "none",
           }}
         >
-          {file ? (
+          {dragging ? (
+            <>
+              <div style={{ fontSize: "2.4rem", marginBottom: 6 }}>📂</div>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--teal)" }}>
+                Soltá el archivo acá
+              </div>
+            </>
+          ) : file ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: "1.8rem", flexShrink: 0 }}>📎</span>
               <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
@@ -132,13 +189,6 @@ export function SubirForm() {
               </div>
               <span style={{ fontSize: "1.2rem", color: "#16a34a", flexShrink: 0 }}>✓</span>
             </div>
-          ) : dragging ? (
-            <>
-              <div style={{ fontSize: "2.4rem", marginBottom: 6 }}>📂</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--teal)" }}>
-                Soltá el archivo acá
-              </div>
-            </>
           ) : (
             <>
               <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>☁️</div>
@@ -146,32 +196,22 @@ export function SubirForm() {
                 Arrastrá el archivo acá
               </div>
               <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 4 }}>
-                o hacé <span style={{ color: "var(--accent)", fontWeight: 600 }}>clic para seleccionar</span>
+                o hacé <span style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>clic para seleccionar</span>
               </div>
               <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 6 }}>
                 PDF · Word · Excel · PPT · Imagen · ZIP
               </div>
             </>
           )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            name="archivo"
-            required
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar,.txt,.csv"
-            style={{ display: "none" }}
-            onChange={handleFileChange}
-          />
         </div>
       </div>
 
       <button
         type="submit"
-        disabled={submitting}
-        style={{ padding: "9px 0", borderRadius: 8, opacity: submitting ? 0.7 : 1 }}
+        disabled={isPending}
+        style={{ padding: "9px 0", borderRadius: 8, opacity: isPending ? 0.6 : 1, cursor: isPending ? "not-allowed" : "pointer" }}
       >
-        {submitting ? "Subiendo…" : "↑ Subir documento"}
+        {isPending ? "Subiendo…" : "↑ Subir documento"}
       </button>
     </form>
   );
