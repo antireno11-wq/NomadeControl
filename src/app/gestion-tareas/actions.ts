@@ -19,6 +19,7 @@ const TareaSchema = z.object({
   estado:      z.enum(["pendiente", "en_progreso", "completada", "cancelada"]).default("pendiente"),
   fechaInicio: z.string().optional(),
   fechaCierre: z.string().optional(),
+  esPrivada:   z.string().optional(), // "on" cuando el checkbox está marcado
 });
 
 function parseDate(s?: string | null): Date | null {
@@ -40,12 +41,13 @@ export async function crearTareaAction(formData: FormData) {
       proyecto:    d.proyecto || null,
       area:        d.area || null,
       descripcion: d.descripcion,
-      responsable: d.responsable || null,
+      responsable: d.esPrivada === "on" ? null : (d.responsable || null),
       comentario:  d.comentario || null,
       prioridad:   d.prioridad,
       estado:      d.estado,
       fechaInicio: parseDate(d.fechaInicio),
       fechaCierre: parseDate(d.fechaCierre),
+      esPrivada:   d.esPrivada === "on",
       creadoPor:   user.name,
     }
   });
@@ -87,12 +89,13 @@ export async function editarTareaAction(tareaId: string, formData: FormData) {
       proyecto:    d.proyecto || null,
       area:        d.area || null,
       descripcion: d.descripcion,
-      responsable: d.responsable || null,
+      responsable: d.esPrivada === "on" ? null : (d.responsable || null),
       comentario:  d.comentario || null,
       prioridad:   d.prioridad,
       estado:      d.estado,
       fechaInicio: parseDate(d.fechaInicio),
       fechaCierre: parseDate(d.fechaCierre),
+      esPrivada:   d.esPrivada === "on",
     }
   });
 

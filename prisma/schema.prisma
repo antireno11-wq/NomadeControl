@@ -414,6 +414,7 @@ model Tarea {
   fechaInicio      DateTime?
   fechaCierre      DateTime?
   fechaCompletada  DateTime?
+  esPrivada        Boolean   @default(false)
   creadoPor        String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

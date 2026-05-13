@@ -90,9 +90,19 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
     ? {}
     : { estado: { notIn: ["completada", "cancelada"] } };
 
-  const whereFiltro = filtroResp
-    ? { ...whereBase, responsable: filtroResp }
-    : whereBase;
+  // Filtro de privacidad: tareas compartidas + mis propias privadas
+  const privacyFilter = {
+    OR: [
+      { esPrivada: false },
+      { esPrivada: true, creadoPor: user.name },
+    ] as const,
+  };
+
+  const whereFiltro = {
+    ...whereBase,
+    ...privacyFilter,
+    ...(filtroResp ? { responsable: filtroResp } : {}),
+  };
 
   const [tareas, usuarios, proyectos, areas] = await Promise.all([
     db.tarea.findMany({
@@ -135,12 +145,24 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
 
   // Fetch extra data in parallel based on the current view
   const tareasTodas = (!esColaborador && (vista === "todas" || vista === "tablero" || vista === "gantt"))
-    ? await db.tarea.findMany({ where: verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } } })
+    ? await db.tarea.findMany({
+        where: {
+          ...(verCompletadas ? {} : { estado: { notIn: ["completada", "cancelada"] } }),
+          ...privacyFilter,
+        },
+      })
     : tareas;
 
   const misTareasBase = (vista === "mis" || esColaborador)
     ? await db.tarea.findMany({
-        where: { responsable: user.name },
+        where: {
+          OR: [
+            // Tareas compartidas asignadas a mí
+            { esPrivada: false, responsable: user.name },
+            // Mis tareas privadas (solo las que yo creé)
+            { esPrivada: true, creadoPor: user.name },
+          ],
+        },
         orderBy: [{ fechaCierre: "asc" }, { createdAt: "desc" }],
       })
     : [];
@@ -307,6 +329,8 @@ type TareaRow = {
   fechaCompletada: Date | null;
   comentario: string | null;
   fechaInicio: Date | null;
+  esPrivada: boolean;
+  creadoPor: string | null;
   comentarios?: TareaComentarioRow[];
 };
 
@@ -391,6 +415,14 @@ function AsanaTareaRow({
           }}>
             {t.prioridad}
           </span>
+          {t.esPrivada && (
+            <span style={{
+              fontSize: "0.72rem", padding: "1px 7px", borderRadius: 999,
+              background: "#f3e8ff", color: "#7c3aed", fontWeight: 700,
+            }}>
+              🔒 Privada
+            </span>
+          )}
         </div>
       </div>
 
@@ -476,9 +508,8 @@ function MisTareasView({
   puedeGestionar: boolean;
   userName: string;
 }) {
-  const porHacer = tareas.filter(t => t.estado === "pendiente");
-  const enProgreso = tareas.filter(t => t.estado === "en_progreso");
-  const terminadas = tareas.filter(t => ["completada", "cancelada"].includes(t.estado));
+  const privadas = tareas.filter(t => t.esPrivada);
+  const compartidas = tareas.filter(t => !t.esPrivada);
 
   if (tareas.length === 0) {
     return (
@@ -488,51 +519,22 @@ function MisTareasView({
     );
   }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {porHacer.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <SeccionHeader label="Por hacer" count={porHacer.length} color="#f59e0b" />
-          {porHacer.map(t => (
-            <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
-              <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
-              </summary>
-              <div style={{ padding: "0 14px 12px 14px" }}>
-                <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
-              </div>
-            </details>
-          ))}
+  function TareaSubSection({ items, label, color }: { items: TareaRow[]; label: string; color: string }) {
+    const porHacer = items.filter(t => t.estado === "pendiente");
+    const enProgreso = items.filter(t => t.estado === "en_progreso");
+    const terminadas = items.filter(t => ["completada", "cancelada"].includes(t.estado));
+    if (items.length === 0) return null;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 2 }}>
+          <span style={{ fontWeight: 800, fontSize: "1rem" }}>{label}</span>
+          <span style={{ fontSize: "0.75rem", padding: "1px 9px", borderRadius: 999, background: `${color}22`, color, fontWeight: 700 }}>{items.length}</span>
         </div>
-      )}
 
-      {enProgreso.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <SeccionHeader label="En progreso" count={enProgreso.length} color="#3b82f6" />
-          {enProgreso.map(t => (
-            <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
-              <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
-              </summary>
-              <div style={{ padding: "0 14px 12px 14px" }}>
-                <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
-              </div>
-            </details>
-          ))}
-        </div>
-      )}
-
-      {terminadas.length > 0 && (
-        <details>
-          <summary style={{
-            cursor: "pointer", listStyle: "none", padding: "8px 14px",
-            background: "#f8fafc", borderRadius: 10, border: "1px solid var(--border)",
-            fontWeight: 700, fontSize: "0.85rem", color: "var(--muted)",
-          }}>
-            ▶ Completadas / Canceladas ({terminadas.length})
-          </summary>
-          <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 6 }}>
-            {terminadas.map(t => (
+        {porHacer.length > 0 && (
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <SeccionHeader label="Por hacer" count={porHacer.length} color="#f59e0b" />
+            {porHacer.map(t => (
               <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <summary style={{ listStyle: "none", cursor: "pointer" }}>
                   <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
@@ -543,8 +545,58 @@ function MisTareasView({
               </details>
             ))}
           </div>
-        </details>
+        )}
+
+        {enProgreso.length > 0 && (
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <SeccionHeader label="En progreso" count={enProgreso.length} color="#3b82f6" />
+            {enProgreso.map(t => (
+              <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <summary style={{ listStyle: "none", cursor: "pointer" }}>
+                  <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
+                </summary>
+                <div style={{ padding: "0 14px 12px 14px" }}>
+                  <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
+
+        {terminadas.length > 0 && (
+          <details>
+            <summary style={{
+              cursor: "pointer", listStyle: "none", padding: "8px 14px",
+              background: "#f8fafc", borderRadius: 10, border: "1px solid var(--border)",
+              fontWeight: 700, fontSize: "0.85rem", color: "var(--muted)",
+            }}>
+              ▶ Completadas / Canceladas ({terminadas.length})
+            </summary>
+            <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 6 }}>
+              {terminadas.map(t => (
+                <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <summary style={{ listStyle: "none", cursor: "pointer" }}>
+                    <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
+                  </summary>
+                  <div style={{ padding: "0 14px 12px 14px" }}>
+                    <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
+                  </div>
+                </details>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <TareaSubSection items={privadas} label="🔒 Privadas" color="#7c3aed" />
+      {privadas.length > 0 && compartidas.length > 0 && (
+        <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: 0 }} />
       )}
+      <TareaSubSection items={compartidas} label="📋 Asignadas a mí" color="#2563eb" />
     </div>
   );
 }
@@ -938,6 +990,10 @@ function TareaForm({ tarea, usuarios, proyectos, areas }: {
         <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>Comentario</label>
         <textarea name="comentario" defaultValue={tarea?.comentario ?? ""} style={{ minHeight: 50, padding: "7px 10px" }} />
       </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "4px 0" }}>
+        <input type="checkbox" name="esPrivada" defaultChecked={tarea?.esPrivada ?? false} style={{ width: "auto", accentColor: "#7c3aed" }} />
+        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#7c3aed" }}>🔒 Tarea privada (solo visible para mí)</span>
+      </label>
       <button type="submit" style={{ padding: "9px 0", borderRadius: 8 }}>
         {isEdit ? "Guardar cambios" : "Crear tarea"}
       </button>
