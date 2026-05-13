@@ -48,7 +48,6 @@ export function ModulesChooser({
         return (
           <label
             key={mod.key}
-            onClick={() => toggle(mod.key)}
             style={{
               display: "flex",
               alignItems: "flex-start",
@@ -65,8 +64,8 @@ export function ModulesChooser({
               type="checkbox"
               name={`mod_${mod.key}`}
               checked={isOn}
-              readOnly
-              style={{ marginTop: 3, pointerEvents: "none" }}
+              onChange={() => toggle(mod.key)}
+              style={{ marginTop: 3 }}
             />
             <div>
               <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text)" }}>
