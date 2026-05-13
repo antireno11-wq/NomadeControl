@@ -93,9 +93,9 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
   // Filtro de privacidad: tareas compartidas + mis propias privadas
   const privacyFilter = {
     OR: [
-      { esPrivada: false },
-      { esPrivada: true, creadoPor: user.name },
-    ] as const,
+      { esPrivada: false as boolean },
+      { esPrivada: true as boolean, creadoPor: user.name },
+    ],
   };
 
   const whereFiltro = {
