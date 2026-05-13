@@ -904,6 +904,7 @@ function TareaForm({ tarea, usuarios, proyectos, areas }: {
     id: string; tipo: string; proyecto: string | null; area: string | null;
     descripcion: string; responsable: string | null; comentario: string | null;
     prioridad: string; estado: string; fechaInicio: Date | null; fechaCierre: Date | null;
+    esPrivada: boolean;
   };
   usuarios: { id: string; name: string }[];
   proyectos: string[];
