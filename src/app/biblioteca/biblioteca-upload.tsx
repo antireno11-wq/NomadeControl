@@ -9,27 +9,59 @@ const CATEGORIAS = [
   "Contratos", "HSEC", "Capacitaciones", "Informes", "Otros",
 ];
 
+// ── Inferir campos desde el nombre de archivo ─────────────────────────────
+function inferFromFilename(filename: string) {
+  const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+
+  // versión: v1, v1.0, v2.3, V3, etc.
+  const versionMatch = nameWithoutExt.match(/[vV](\d+(?:[._]\d+)*)/);
+  const version = versionMatch ? versionMatch[1].replace("_", ".") : "";
+
+  // título: quitar la parte de versión, limpiar separadores
+  const sinVersion = nameWithoutExt
+    .replace(/[\s._-]*[vV]\d+(?:[._]\d+)*/g, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const titulo = sinVersion.charAt(0).toUpperCase() + sinVersion.slice(1);
+
+  // categoría por palabras clave
+  const lower = filename.toLowerCase();
+  let categoria = "";
+  if (/procedimiento|proc[_\s-]/.test(lower))                              categoria = "Procedimientos";
+  else if (/reglamento|rgto/.test(lower))                                   categoria = "Reglamentos";
+  else if (/formulario|form[_\s-]/.test(lower))                             categoria = "Formularios";
+  else if (/plano/.test(lower))                                             categoria = "Planos";
+  else if (/contrato/.test(lower))                                          categoria = "Contratos";
+  else if (/hsec|seguridad|prevenci[oó]n|accidente|incidente/.test(lower)) categoria = "HSEC";
+  else if (/capacitaci[oó]n|inducci[oó]n|curso|training/.test(lower))      categoria = "Capacitaciones";
+  else if (/informe|reporte|report/.test(lower))                            categoria = "Informes";
+
+  return { titulo, version, categoria };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function SubirForm() {
-  const formRef     = useRef<HTMLFormElement>(null);
+  const formRef      = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [dragging, setDragging]   = useState(false);
   const [file, setFile]           = useState<File | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // campos controlados para auto-relleno
+  const [titulo,      setTitulo]      = useState("");
+  const [categoria,   setCategoria]   = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [version,     setVersion]     = useState("");
+
   /* ── drag handlers ── */
-  function onDragOver(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setDragging(true);
-  }
-  function onDragEnter(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setDragging(true);
-  }
+  function onDragOver(e: DragEvent<HTMLDivElement>)  { e.preventDefault(); setDragging(true); }
+  function onDragEnter(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragging(true); }
   function onDragLeave(e: DragEvent<HTMLDivElement>) {
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-      setDragging(false);
-    }
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
   }
   function onDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
@@ -37,14 +69,12 @@ export function SubirForm() {
     const dropped = e.dataTransfer.files[0];
     if (dropped) pickFile(dropped);
   }
-
   function onFileChange(e: ChangeEvent<HTMLInputElement>) {
     const picked = e.target.files?.[0];
     if (picked) pickFile(picked);
   }
 
   function pickFile(f: File) {
-    // also sync to the real input so the form can read it natively
     if (fileInputRef.current) {
       const dt = new DataTransfer();
       dt.items.add(f);
@@ -52,33 +82,29 @@ export function SubirForm() {
     }
     setFile(f);
     setError(null);
+
+    // auto-rellenar solo si el campo está vacío (no pisar lo que el usuario ya escribió)
+    const inf = inferFromFilename(f.name);
+    if (!titulo)    setTitulo(inf.titulo);
+    if (!categoria) setCategoria(inf.categoria);
+    if (!version)   setVersion(inf.version);
   }
 
-  /* ── submit: build FormData manually so the dragged file is included ── */
+  /* ── submit ── */
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = formRef.current;
-    if (!form) return;
-
-    const titulo     = (form.elements.namedItem("titulo")     as HTMLInputElement)?.value?.trim();
-    const categoria  = (form.elements.namedItem("categoria")  as HTMLSelectElement)?.value;
-    const descripcion = (form.elements.namedItem("descripcion") as HTMLInputElement)?.value?.trim();
-    const version    = (form.elements.namedItem("version")    as HTMLInputElement)?.value?.trim();
-
-    if (!titulo)    return setError("El título es obligatorio.");
-    if (!categoria) return setError("Seleccioná una categoría.");
-    if (!file)      return setError("Seleccioná o arrastrá un archivo.");
+    if (!titulo.trim())   return setError("El título es obligatorio.");
+    if (!categoria)       return setError("Seleccioná una categoría.");
+    if (!file)            return setError("Seleccioná o arrastrá un archivo.");
 
     const fd = new FormData();
-    fd.append("titulo",      titulo);
+    fd.append("titulo",      titulo.trim());
     fd.append("categoria",   categoria);
-    if (descripcion) fd.append("descripcion", descripcion);
-    if (version)     fd.append("version",     version);
+    if (descripcion.trim()) fd.append("descripcion", descripcion.trim());
+    if (version.trim())     fd.append("version",     version.trim());
     fd.append("archivo", file, file.name);
 
-    startTransition(async () => {
-      await subirDocumentoAction(fd);
-    });
+    startTransition(async () => { await subirDocumentoAction(fd); });
   }
 
   function fmtSize(bytes: number) {
@@ -87,11 +113,7 @@ export function SubirForm() {
   }
 
   return (
-    <form
-      ref={formRef}
-      onSubmit={handleSubmit}
-      style={{ display: "grid", gap: 10 }}
-    >
+    <form ref={formRef} onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>
       <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--teal)" }}>Subir documento</h3>
 
       {error && (
@@ -100,49 +122,15 @@ export function SubirForm() {
         </div>
       )}
 
-      <div>
-        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
-          Título *
-        </label>
-        <input name="titulo" required placeholder="Ej: Procedimiento de emergencias" style={{ padding: "7px 10px" }} />
-      </div>
-
-      <div>
-        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
-          Categoría *
-        </label>
-        <select name="categoria" required style={{ padding: "7px 10px" }}>
-          <option value="">— Seleccionar —</option>
-          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-        <div>
-          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
-            Descripción
-          </label>
-          <input name="descripcion" placeholder="Breve descripción" style={{ padding: "7px 10px" }} />
-        </div>
-        <div>
-          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
-            Versión
-          </label>
-          <input name="version" placeholder="1.0" style={{ padding: "7px 10px" }} />
-        </div>
-      </div>
-
-      {/* ── Drop zone ── */}
+      {/* ── Drop zone — va primero para que al soltar se auto-rellene lo de abajo ── */}
       <div>
         <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 }}>
           Archivo *
         </label>
 
-        {/* hidden real file input */}
         <input
           ref={fileInputRef}
           type="file"
-          name="archivo"
           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.rar,.txt,.csv"
           style={{ display: "none" }}
           onChange={onFileChange}
@@ -169,18 +157,13 @@ export function SubirForm() {
           {dragging ? (
             <>
               <div style={{ fontSize: "2.4rem", marginBottom: 6 }}>📂</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--teal)" }}>
-                Soltá el archivo acá
-              </div>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--teal)" }}>Soltá el archivo acá</div>
             </>
           ) : file ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: "1.8rem", flexShrink: 0 }}>📎</span>
               <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                <div style={{
-                  fontWeight: 700, fontSize: "0.88rem", color: "var(--teal)",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
+                <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--teal)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {file.name}
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: 2 }}>
@@ -192,17 +175,61 @@ export function SubirForm() {
           ) : (
             <>
               <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>☁️</div>
-              <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#64748b" }}>
-                Arrastrá el archivo acá
-              </div>
+              <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#64748b" }}>Arrastrá el archivo acá</div>
               <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 4 }}>
                 o hacé <span style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>clic para seleccionar</span>
               </div>
-              <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 6 }}>
-                PDF · Word · Excel · PPT · Imagen · ZIP
-              </div>
+              <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 6 }}>PDF · Word · Excel · PPT · Imagen · ZIP</div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* ── Campos (auto-rellenados si se detectaron) ── */}
+      <div>
+        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
+          Título *
+        </label>
+        <input
+          value={titulo}
+          onChange={e => setTitulo(e.target.value)}
+          placeholder="Ej: Procedimiento de emergencias"
+          style={{ padding: "7px 10px" }}
+        />
+      </div>
+
+      <div>
+        <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
+          Categoría *
+        </label>
+        <select value={categoria} onChange={e => setCategoria(e.target.value)} style={{ padding: "7px 10px" }}>
+          <option value="">— Seleccionar —</option>
+          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
+        <div>
+          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
+            Descripción
+          </label>
+          <input
+            value={descripcion}
+            onChange={e => setDescripcion(e.target.value)}
+            placeholder="Breve descripción"
+            style={{ padding: "7px 10px" }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 3 }}>
+            Versión
+          </label>
+          <input
+            value={version}
+            onChange={e => setVersion(e.target.value)}
+            placeholder="1.0"
+            style={{ padding: "7px 10px" }}
+          />
         </div>
       </div>
 
