@@ -100,7 +100,7 @@ export function AppShell({
       anyChildActive: trabajadoresActivos.includes(activeNav),
       children: [
         { href: "/trabajadores", label: "Trabajadores" },
-        { href: "/trabajadores/inducciones", label: "Inducciones" },
+        { href: "/trabajadores/inducciones", label: "Capacitaciones" },
         { href: "/trabajadores/epp", label: "Control EPP" },
         { href: "/trabajadores/ex-trabajadores", label: "Ex trabajadores" },
       ],

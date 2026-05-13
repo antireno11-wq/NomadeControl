@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     vehiculosOperativos,
     tareasAbiertas,
     incidentesAbiertos,
-    induccionesPendientes,
+    capacitacionesVencidas,
     misTareas,
     ultimosIncidentes,
   ] = await Promise.all([
@@ -27,7 +27,13 @@ export default async function DashboardPage() {
     canAccessHSEC(user.role)
       ? db.incidente.count({ where: { estado: { in: ["abierto", "en_investigacion"] } } })
       : Promise.resolve(0),
-    db.induccionUsuario.count({ where: { estado: { in: ["pendiente", "en_progreso"] }, ...campFilter } }),
+    db.documentoTrabajador.count({
+      where: {
+        tipo: { in: ["induccion","capacitacion","odi_firmada","examen_preocupacional","examen_periodico","altura_fisica","altura_trabajos","espacios_confinados"] },
+        fechaVencimiento: { lte: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) },
+        staffMember: { isActive: true, ...campFilter },
+      },
+    }),
     db.tarea.findMany({
       where: { estado: { in: ["pendiente", "en_progreso"] }, responsable: user.name },
       orderBy: [{ prioridad: "asc" }, { createdAt: "desc" }],
@@ -106,8 +112,8 @@ export default async function DashboardPage() {
 
           <Link href="/trabajadores/inducciones" style={{ textDecoration: "none" }}>
             <div className="card" style={{ textAlign: "center", padding: "1.1rem", cursor: "pointer" }}>
-              <div style={{ fontSize: "2rem", fontWeight: 800, color: induccionesPendientes > 0 ? "#d97706" : "#16a34a" }}>{induccionesPendientes}</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: 2 }}>Inducciones pendientes</div>
+              <div style={{ fontSize: "2rem", fontWeight: 800, color: capacitacionesVencidas > 0 ? "#d97706" : "#16a34a" }}>{capacitacionesVencidas}</div>
+              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: 2 }}>Capacitaciones por vencer</div>
             </div>
           </Link>
 
@@ -245,7 +251,7 @@ export default async function DashboardPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 {[
                   { href: "/trabajadores/epp", icon: "🦺", label: "Control EPP" },
-                  { href: "/trabajadores/inducciones", icon: "🎓", label: "Inducciones" },
+                  { href: "/trabajadores/inducciones", icon: "🎓", label: "Capacitaciones" },
                   { href: "/bodega", icon: "📦", label: "Bodega" },
                   { href: "/operaciones", icon: "📊", label: "Operaciones" },
                 ].map((a) => (
