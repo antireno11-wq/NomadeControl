@@ -517,7 +517,7 @@ export default async function PerfilTrabajadorPage({
               action={updateWorkerAction}
               workerId={worker.id}
               camps={camps.map(c => ({ id: c.id, name: c.name }))}
-              fixedCampId={isSupervisorRole(user.role) ? worker.campId : undefined}
+              fixedCampId={isSupervisorRole(user.role) ? (worker.campId ?? undefined) : undefined}
               fixedCampName={isSupervisorRole(user.role) ? worker.camp?.name ?? "Sin asignar" : undefined}
               successRedirectTo={`/trabajadores/${worker.id}?tab=perfil&status=updated`}
               errorRedirectTo={`/trabajadores/${worker.id}?tab=editar`}
