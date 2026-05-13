@@ -3,6 +3,7 @@ import { requireRole, BIBLIOTECA_ROLES, isAdminRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { eliminarDocumentoAction } from "./actions";
 import { SubirForm } from "./biblioteca-upload";
+import { PreviewButton } from "./preview-modal";
 import { CATEGORIAS } from "./categorias";
 
 type SearchParams = { status?: string; categoria?: string; q?: string };
@@ -307,6 +308,12 @@ export default async function BibliotecaPage({ searchParams }: { searchParams?: 
 
                       {/* Acciones */}
                       <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                        <PreviewButton doc={{
+                          id: doc.id, titulo: doc.titulo,
+                          originalFilename: doc.originalFilename,
+                          mimeType: doc.mimeType, fileSize: doc.fileSize,
+                          categoria: doc.categoria, version: doc.version,
+                        }} />
                         <a
                           href={`/biblioteca/${doc.id}/download`}
                           style={{
