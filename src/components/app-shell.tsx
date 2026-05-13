@@ -140,16 +140,12 @@ export function AppShell({
             <Image src="/nomade-logo-v2.png" alt="Logo Nomade" width={112} height={112} priority />
             <div>
               <strong>Nomade Control</strong>
-              <span>{title}</span>
             </div>
           </Link>
 
           <NavMenu items={navEntries} />
 
           <div className="dashboard-sidebar-footer">
-            <Link href="/mi-perfil" className="dashboard-mini-link">
-              Mi perfil
-            </Link>
             <form action={logoutAction}>
               <button className="danger" type="submit">
                 Cerrar sesión
@@ -167,7 +163,9 @@ export function AppShell({
           <div className="dashboard-topbar-actions">
             {rightSlot}
             {notifications && notifications.length > 0 ? <NotificationBell items={notifications} /> : null}
-            <div className="dashboard-user">{user.name}</div>
+            <Link href="/mi-perfil" style={{ textDecoration: "none" }}>
+              <div className="dashboard-user" style={{ cursor: "pointer" }} title="Mi perfil">{user.name}</div>
+            </Link>
           </div>
         </div>
 
