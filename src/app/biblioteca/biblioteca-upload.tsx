@@ -4,10 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import type { DragEvent, ChangeEvent } from "react";
 import { subirDocumentoAction } from "./actions";
 
-const CATEGORIAS = [
-  "Procedimientos", "Reglamentos", "Formularios", "Planos",
-  "Contratos", "HSEC", "Capacitaciones", "Informes", "Otros",
-];
+import { CATEGORIAS } from "./categorias";
 
 // ── Inferir campos desde el nombre de archivo ─────────────────────────────
 function inferFromFilename(filename: string) {
@@ -42,7 +39,7 @@ function inferFromFilename(filename: string) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function SubirForm() {
+export function SubirForm({ defaultCategoria = "" }: { defaultCategoria?: string }) {
   const formRef      = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +50,7 @@ export function SubirForm() {
 
   // campos controlados para auto-relleno
   const [titulo,      setTitulo]      = useState("");
-  const [categoria,   setCategoria]   = useState("");
+  const [categoria,   setCategoria]   = useState(defaultCategoria);
   const [descripcion, setDescripcion] = useState("");
   const [version,     setVersion]     = useState("");
 
