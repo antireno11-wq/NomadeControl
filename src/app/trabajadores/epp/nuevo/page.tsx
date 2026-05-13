@@ -31,7 +31,7 @@ export default async function NuevaEntregaEPPPage() {
               <label className="label">Trabajador *</label>
               <select name="staffMemberId" required className="input">
                 <option value="">Seleccionar trabajador...</option>
-                {trabajadores.map((t) => <option key={t.id} value={t.id}>{t.fullName} — {t.camp.name}</option>)}
+                {trabajadores.map((t) => <option key={t.id} value={t.id}>{t.fullName} — {t.camp?.name ?? "Sin asignar"}</option>)}
               </select>
             </div>
             <div>

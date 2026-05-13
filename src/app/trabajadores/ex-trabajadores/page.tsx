@@ -280,7 +280,7 @@ export default async function ExTrabajadoresPage({
                       </td>
 
                       {/* Campamento */}
-                      <td style={{ color: "var(--text)" }}>{worker.camp.name}</td>
+                      <td style={{ color: "var(--text)" }}>{worker.camp?.name ?? "Sin asignar"}</td>
 
                       {/* Fecha cierre + tipo badge */}
                       <td>

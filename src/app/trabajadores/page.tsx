@@ -81,7 +81,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
     .map((row) => ({
       workerId: row.worker.id,
       workerName: row.worker.fullName,
-      campName: row.worker.camp.name,
+      campName: row.worker.camp?.name ?? "Sin asignar",
       shiftPattern: row.shiftProjection!.shiftPatternLabel,
       currentStateLabel: row.shiftProjection!.currentStateLabel,
       nextBlockLabel: row.shiftProjection!.nextBlockLabel,
@@ -102,7 +102,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
         .map((entry) => ({
           workerId: row.worker.id,
           workerName: row.worker.fullName,
-          campName: row.worker.camp.name,
+          campName: row.worker.camp?.name ?? "Sin asignar",
           label: entry.label,
           date: entry.date!,
           daysUntil: entry.daysUntil!,
@@ -275,7 +275,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                   {staffRows.map((row) => (
                     <tr key={row.worker.id}>
                       <td style={{ fontWeight: 600, color: "var(--text)" }}>{row.worker.fullName}</td>
-                      <td style={{ color: "var(--text)" }}>{row.worker.camp.name}</td>
+                      <td style={{ color: "var(--text)" }}>{row.worker.camp?.name ?? "Sin asignar"}</td>
                       <td style={{ color: "var(--text)" }}>{row.worker.role ?? "-"}</td>
                       <td>
                         {row.shiftProjection ? (

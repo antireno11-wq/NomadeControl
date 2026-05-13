@@ -60,7 +60,7 @@ export default async function InduccionDetallePage({
         <div className="card">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
             <div><span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Trabajador</span><div style={{ fontWeight: 500 }}>{induccion.nombreTrabajador}</div></div>
-            {induccion.staffMember?.camp && <div><span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Campamento</span><div>{induccion.staffMember.camp.name}</div></div>}
+            {induccion.staffMember?.camp && <div><span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Campamento</span><div>{induccion.staffMember.camp?.name}</div></div>}
             <div><span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Intentos</span><div>{induccion.intentos}</div></div>
             {induccion.puntaje !== null && <div><span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Puntaje</span><div style={{ fontWeight: 700, fontSize: "1.1rem", color: induccion.puntaje >= 60 ? "#16a34a" : "#ef4444" }}>{induccion.puntaje}%</div></div>}
             {induccion.fechaInicio && <div><span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>Inicio</span><div>{new Date(induccion.fechaInicio).toLocaleDateString("es-CL")}</div></div>}

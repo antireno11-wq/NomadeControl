@@ -126,7 +126,7 @@ export default async function PerfilTrabajadorPage({
                 <div>
                   <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--text)" }}>{worker.fullName}</h2>
                   <div style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: 2 }}>
-                    {worker.role ?? "Sin cargo"} · {worker.camp.name}
+                    {worker.role ?? "Sin cargo"} · {worker.camp?.name ?? "Sin asignar"}
                   </div>
                 </div>
                 <span style={{
@@ -518,7 +518,7 @@ export default async function PerfilTrabajadorPage({
               workerId={worker.id}
               camps={camps.map(c => ({ id: c.id, name: c.name }))}
               fixedCampId={isSupervisorRole(user.role) ? worker.campId : undefined}
-              fixedCampName={isSupervisorRole(user.role) ? worker.camp.name : undefined}
+              fixedCampName={isSupervisorRole(user.role) ? worker.camp?.name ?? "Sin asignar" : undefined}
               successRedirectTo={`/trabajadores/${worker.id}?tab=perfil&status=updated`}
               errorRedirectTo={`/trabajadores/${worker.id}?tab=editar`}
               submitLabel="Guardar cambios"

@@ -29,7 +29,7 @@ export default async function NuevaInduccionPage() {
             <select name="staffMemberId" required className="input">
               <option value="">Seleccionar trabajador...</option>
               {trabajadores.map((t) => (
-                <option key={t.id} value={t.id}>{t.fullName} — {t.camp.name}</option>
+                <option key={t.id} value={t.id}>{t.fullName} — {t.camp?.name ?? "Sin asignar"}</option>
               ))}
             </select>
           </div>
