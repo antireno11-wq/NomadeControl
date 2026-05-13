@@ -82,7 +82,7 @@ export default async function AdministracionRegistrosPage() {
             {dailyReports.map((row) => (
               <tr key={row.id}>
                 <td>{formatDisplayDate(row.date)}</td>
-                <td>{row.camp.name}</td>
+                <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.peopleCount}</td>
                 <td>{row.createdBy.name}</td>
                 <td>
@@ -120,7 +120,7 @@ export default async function AdministracionRegistrosPage() {
             {dailyTaskControls.map((row) => (
               <tr key={row.id}>
                 <td>{formatDisplayDate(row.date)}</td>
-                <td>{row.camp.name}</td>
+                <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.createdBy.name}</td>
                 <td>
                   <form action={deleteRecordAction}>
@@ -160,7 +160,7 @@ export default async function AdministracionRegistrosPage() {
             {stockMovements.map((row) => (
               <tr key={row.id}>
                 <td>{formatDisplayDate(row.date)}</td>
-                <td>{row.camp.name}</td>
+                <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.itemName}</td>
                 <td>{row.movementType}</td>
                 <td>{row.quantity.toFixed(2)} {row.unit}</td>
@@ -201,7 +201,7 @@ export default async function AdministracionRegistrosPage() {
           <tbody>
             {staffMembers.map((row) => (
               <tr key={row.id}>
-                <td>{row.camp.name}</td>
+                <td>{row.camp?.name ?? "Sin asignar"}</td>
                 <td>{row.fullName}</td>
                 <td>{row.role ?? "-"}</td>
                 <td>{row.shiftPattern}</td>
