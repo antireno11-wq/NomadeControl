@@ -523,7 +523,7 @@ export default async function PerfilTrabajadorPage({
               errorRedirectTo={`/trabajadores/${worker.id}?tab=editar`}
               submitLabel="Guardar cambios"
               defaults={{
-                campId: worker.campId,
+                campId: worker.campId ?? "",
                 fullName: worker.fullName,
                 role: worker.role ?? "",
                 employerCompany: worker.employerCompany ?? "",
