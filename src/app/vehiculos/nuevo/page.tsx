@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ADMIN_ROLES, requireRole } from "@/lib/auth";
+import { VEHICLE_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { VehicleForm } from "../vehicle-form";
 
 export default async function NuevoVehiculoPage() {
-  const user = await requireRole(ADMIN_ROLES);
+  const user = await requireRole(VEHICLE_ROLES);
   const [camps, projects] = await Promise.all([
     db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.project.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })

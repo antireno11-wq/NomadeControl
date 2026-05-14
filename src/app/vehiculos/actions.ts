@@ -103,7 +103,7 @@ function checked(value?: string) {
 
 export async function createVehicleAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const user = await requireRole(ADMIN_ROLES);
+    const user = await requireRole(VEHICLE_ROLES);
 
     const parsed = vehicleSchema.safeParse({
       plate: formData.get("plate"),
