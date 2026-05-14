@@ -200,7 +200,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
 
 export async function updateVehicleAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const user = await requireRole(ADMIN_ROLES);
+    const user = await requireRole(VEHICLE_ROLES);
 
     const parsed = updateVehicleSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
@@ -299,7 +299,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
 
 export async function addVehicleDocumentAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireRole(ADMIN_ROLES);
+    await requireRole(VEHICLE_ROLES);
 
     const parsed = vehicleDocumentSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
