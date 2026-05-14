@@ -12,6 +12,7 @@ import { VehicleForm } from "../vehicle-form";
 export default async function VehiculoDetallePage({ params }: { params: { id: string } }) {
   const user = await requireRole(VEHICLE_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const canManageVehicles = canSeeAdminSections || user.role === "VEHICULOS";
 
   const [vehicle, camps] = await Promise.all([
     db.vehicle.findUnique({
@@ -114,7 +115,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
         </div>
 
         <div className="vehicle-detail-grid">
-          {canSeeAdminSections ? (
+          {canManageVehicles ? (
             <div className="card">
               <h2 style={{ marginTop: 0 }}>Ficha del vehículo</h2>
               <VehicleForm
@@ -157,7 +158,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
             </div>
           </div>
 
-          {canSeeAdminSections ? (
+          {canManageVehicles ? (
             <div className="card">
               <h2 style={{ marginTop: 0 }}>Agregar documento controlado</h2>
               <VehicleDocumentForm vehicleId={vehicle.id} />

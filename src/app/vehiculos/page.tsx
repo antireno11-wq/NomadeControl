@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 export default async function VehiculosPage() {
   const user = await requireRole(VEHICLE_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const canManageVehicles = canSeeAdminSections || user.role === "VEHICULOS";
   const today = startOfDay(new Date());
 
   const vehicleWhere = canSeeAdminSections
@@ -94,7 +95,7 @@ export default async function VehiculosPage() {
       showAdminSections={canSeeAdminSections}
       notifications={notifications}
       rightSlot={
-        canSeeAdminSections ? (
+        canManageVehicles ? (
           <Link href="/vehiculos/nuevo">
             <button type="button">Nuevo vehículo</button>
           </Link>
