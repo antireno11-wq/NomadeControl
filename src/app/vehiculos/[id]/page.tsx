@@ -55,11 +55,13 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
       showAdminSections={canSeeAdminSections}
       rightSlot={
         <Link href="/vehiculos">
-          <button type="button" className="secondary">Volver</button>
+          <button type="button" className="secondary">← Flota</button>
         </Link>
       }
     >
       <div className="page-stack">
+
+        {/* ── KPIs ── */}
         <div className="dashboard-kpi-grid vehicle-kpi-grid">
           <div className={`dashboard-kpi ${health.tone === "danger" ? "accent" : health.tone === "warn" ? "teal" : ""}`}>
             <div className="dashboard-kpi-label">Estado general</div>
@@ -91,49 +93,45 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
           </div>
         </div>
 
-        <div className="summary-grid vehicle-summary-grid">
-          <div className="metric">
-            <div className="label">Empresa</div>
-            <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.company ?? "-"}</div>
+        {/* ── Ficha del vehículo (solo gestores) ── */}
+        {canManageVehicles ? (
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Ficha del vehículo</h2>
+            <VehicleForm
+              camps={campOptions.map((camp) => ({ id: camp.id, name: camp.name }))}
+              projects={projectOptions.map((project) => ({ id: project.id, name: project.name }))}
+              vehicle={vehicle}
+            />
           </div>
-          <div className="metric">
-            <div className="label">Proyecto</div>
-            <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.assignedProject?.name ?? "Sin proyecto"}</div>
-          </div>
-          <div className="metric">
-            <div className="label">Cert. GPS</div>
-            <div className="value">{vehicle.gpsCertificatePresent ? "Sí" : "No"}</div>
-          </div>
-          <div className="metric">
-            <div className="label">Fotos unidad</div>
-            <div className="value">{vehicle.unitPhotoSet ? "Sí" : "No"}</div>
-          </div>
-          <div className="metric">
-            <div className="label">Revisado por</div>
-            <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.reviewedByName ?? "-"}</div>
-          </div>
-        </div>
-
-        <div className="vehicle-detail-grid">
-          {canManageVehicles ? (
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Ficha del vehículo</h2>
-              <VehicleForm
-                camps={campOptions.map((camp) => ({ id: camp.id, name: camp.name }))}
-                projects={projectOptions.map((project) => ({ id: project.id, name: project.name }))}
-                vehicle={vehicle}
-              />
+        ) : (
+          /* Info resumida si el usuario no puede editar */
+          <div className="summary-grid" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+            <div className="metric">
+              <div className="label">Empresa</div>
+              <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.company ?? "-"}</div>
             </div>
-          ) : null}
-
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>Checklist de salida</h2>
-            <VehicleChecklistForm vehicleId={vehicle.id} odometerKm={vehicle.odometerKm} />
+            <div className="metric">
+              <div className="label">Proyecto</div>
+              <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.assignedProject?.name ?? "Sin proyecto"}</div>
+            </div>
+            <div className="metric">
+              <div className="label">Campamento</div>
+              <div className="value" style={{ fontSize: "1.1rem" }}>{vehicle.assignedCamp?.name ?? "-"}</div>
+            </div>
+            <div className="metric">
+              <div className="label">Cert. GPS</div>
+              <div className="value">{vehicle.gpsCertificatePresent ? "Sí" : "No"}</div>
+            </div>
+            <div className="metric">
+              <div className="label">Fotos unidad</div>
+              <div className="value">{vehicle.unitPhotoSet ? "Sí" : "No"}</div>
+            </div>
           </div>
-        </div>
+        )}
 
+        {/* ── Documentos ── */}
         <div className="vehicle-detail-grid">
-          <div className="card">
+          <div className="card" style={{ gridColumn: canManageVehicles ? "span 7" : "span 12" }}>
             <h2 style={{ marginTop: 0 }}>Documentos y vencimientos</h2>
             <div className="summary-list">
               {expirySummary.items.length === 0 ? (
@@ -159,49 +157,58 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
           </div>
 
           {canManageVehicles ? (
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Agregar documento controlado</h2>
+            <div className="card" style={{ gridColumn: "span 5" }}>
+              <h2 style={{ marginTop: 0 }}>Agregar documento</h2>
               <VehicleDocumentForm vehicleId={vehicle.id} />
             </div>
           ) : null}
         </div>
 
-        <div className="card table-card">
-          <h2 style={{ marginTop: 0 }}>Últimos checklists</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Chofer</th>
-                <th>Kilometraje</th>
-                <th>Combustible</th>
-                <th>Observaciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicle.checklists.map((checklist) => {
-                const issueCount = getChecklistIssueCount(checklist);
-                return (
-                  <tr key={checklist.id}>
-                    <td>{formatDisplayDate(checklist.date)}</td>
-                    <td>{checklist.driver.name}</td>
-                    <td>{checklist.odometerKm.toLocaleString("es-CL")} km</td>
-                    <td>{checklist.fuelPercent}%</td>
-                    <td>
-                      {issueCount > 0 ? `${issueCount} alerta(s)` : "Sin observaciones"}
-                      {checklist.observations ? ` · ${checklist.observations}` : ""}
-                    </td>
-                  </tr>
-                );
-              })}
-              {vehicle.checklists.length === 0 ? (
+        {/* ── Checklist ── */}
+        <div className="vehicle-detail-grid">
+          <div className="card" style={{ gridColumn: "span 5" }}>
+            <h2 style={{ marginTop: 0 }}>Checklist de salida</h2>
+            <VehicleChecklistForm vehicleId={vehicle.id} odometerKm={vehicle.odometerKm} />
+          </div>
+
+          <div className="card table-card" style={{ gridColumn: "span 7" }}>
+            <h2 style={{ marginTop: 0 }}>Historial de checklists</h2>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={5} style={{ color: "var(--muted)" }}>Todavía no hay checklists para este vehículo.</td>
+                  <th>Fecha</th>
+                  <th>Chofer</th>
+                  <th>Kilometraje</th>
+                  <th>Combustible</th>
+                  <th>Observaciones</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {vehicle.checklists.map((checklist) => {
+                  const issueCount = getChecklistIssueCount(checklist);
+                  return (
+                    <tr key={checklist.id}>
+                      <td>{formatDisplayDate(checklist.date)}</td>
+                      <td>{checklist.driver.name}</td>
+                      <td>{checklist.odometerKm.toLocaleString("es-CL")} km</td>
+                      <td>{checklist.fuelPercent}%</td>
+                      <td>
+                        {issueCount > 0 ? `${issueCount} alerta(s)` : "Sin observaciones"}
+                        {checklist.observations ? ` · ${checklist.observations}` : ""}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {vehicle.checklists.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ color: "var(--muted)" }}>Todavía no hay checklists para este vehículo.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
     </AppShell>
   );

@@ -1439,7 +1439,7 @@ th {
   .vehicle-list-grid > .card:first-child,
   .vehicle-list-grid > .card:last-child,
   .vehicle-detail-grid > .card {
-    grid-column: span 12;
+    grid-column: span 12 !important;
   }
 }
 

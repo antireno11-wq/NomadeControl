@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isAdminRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
-import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
+import { formatDisplayDate } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
 import { AppShell } from "@/components/app-shell";
@@ -103,14 +103,8 @@ export default async function VehiculosPage() {
       }
     >
       <div className="page-stack">
-        <div className="hero-panel">
-          <span className="hero-kicker">Nomade Control</span>
-          <h2 style={{ margin: "0 0 8px" }}>Control base de flota y documentos</h2>
-          <p className="section-caption" style={{ margin: 0 }}>
-            Este módulo deja lista la ficha del vehículo, los vencimientos y el checklist que cada chofer sube al tomar una unidad.
-          </p>
-        </div>
 
+        {/* ── Métricas rápidas ── */}
         <div className="summary-grid vehicle-summary-grid">
           <div className="metric">
             <div className="label">Vehículos registrados</div>
@@ -134,68 +128,83 @@ export default async function VehiculosPage() {
           </div>
         </div>
 
-        <div className="vehicle-list-grid">
-          <div className="card">
-            <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
-              <h2>Acreditación</h2>
-              <span className="dashboard-chip small">Estado general</span>
-            </div>
-            <div className="summary-list">
-              <div className="summary-row">
-                <div>
-                  <strong>Acreditados</strong>
-                  <div style={{ color: "var(--muted)" }}>Vehículos listos para operar</div>
-                </div>
-                <span className="status-pill ok">{accreditationSummary.acreditado}</span>
-              </div>
-              <div className="summary-row">
-                <div>
-                  <strong>Pendientes</strong>
-                  <div style={{ color: "var(--muted)" }}>Aún faltan respaldos o revisión</div>
-                </div>
-                <span className="status-pill warn">{accreditationSummary.pendiente}</span>
-              </div>
-              <div className="summary-row">
-                <div>
-                  <strong>No acreditados</strong>
-                  <div style={{ color: "var(--muted)" }}>Fuera de condición documental</div>
-                </div>
-                <span className="status-pill danger">{accreditationSummary.noAcreditado}</span>
-              </div>
-            </div>
+        {/* ── Flota completa ── */}
+        <div className="card table-card">
+          <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
+            <h2>Flota registrada</h2>
+            <span className="dashboard-chip small">Checklist + documentos</span>
           </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Patente</th>
+                <th>Vehículo</th>
+                <th>Campamento / proyecto</th>
+                <th>Estado</th>
+                <th>Acreditación</th>
+                <th>Próxima alerta</th>
+                <th>Último checklist</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((vehicle) => {
+                const alertText = vehicle.topAlert
+                  ? `${vehicle.topAlert.label} · ${formatDisplayDate(vehicle.topAlert.expiresAt)}`
+                  : vehicle.latestChecklist
+                    ? vehicle.checklistIssues > 0
+                      ? `${vehicle.checklistIssues} observación(es)`
+                      : "Sin alertas"
+                    : "Sin alertas";
 
-          <div className="card table-card">
-            <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
-              <h2>Resumen por documento</h2>
-              <span className="dashboard-chip small">Vigente / por vencer / vencido</span>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Documento</th>
-                  <th>Vigente</th>
-                  <th>Por vencer</th>
-                  <th>Vencido</th>
-                  <th>N/A</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documentSummary.map((row) => (
-                  <tr key={row.key}>
-                    <td>{row.label}</td>
-                    <td>{row.vigente}</td>
-                    <td>{row.porVencer}</td>
-                    <td>{row.vencido}</td>
-                    <td>{row.na}</td>
+                return (
+                  <tr key={vehicle.id}>
+                    <td><strong>{vehicle.plate}</strong></td>
+                    <td>
+                      {vehicle.brand} {vehicle.model}
+                      <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{vehicle.odometerKm.toLocaleString("es-CL")} km · {vehicle.company ?? "Sin empresa"}</div>
+                    </td>
+                    <td>
+                      {vehicle.assignedCamp?.name ?? "Sin campamento"}
+                      <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                        {vehicle.assignedProject?.name ?? "Sin proyecto"}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`status-pill ${vehicle.health.tone === "danger" ? "danger" : vehicle.health.tone === "warn" ? "warn" : "ok"}`}>
+                        {vehicle.health.label}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-pill ${vehicle.accreditationStatus === "ACREDITADO" ? "ok" : vehicle.accreditationStatus === "PENDIENTE" ? "warn" : "danger"}`}>
+                        {vehicle.accreditationStatus.replaceAll("_", " ")}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: "0.88rem" }}>{alertText}</td>
+                    <td style={{ fontSize: "0.88rem" }}>
+                      {vehicle.latestChecklist
+                        ? `${formatDisplayDate(vehicle.latestChecklist.date)} · ${vehicle.latestChecklist.driver.name}`
+                        : <span style={{ color: "var(--muted)" }}>Sin checklist</span>}
+                    </td>
+                    <td>
+                      <Link href={`/vehiculos/${vehicle.id}`} className="dashboard-mini-link">Abrir</Link>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ color: "var(--muted)" }}>Todavía no hay vehículos registrados.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
         </div>
 
+        {/* ── Panel inferior: alertas + acreditación/documentos ── */}
         <div className="vehicle-list-grid">
+
+          {/* Alertas activas */}
           <div className="card">
             <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
               <h2>Alertas activas</h2>
@@ -203,7 +212,7 @@ export default async function VehiculosPage() {
             </div>
             <div className="summary-list">
               {alertVehicles.length === 0 ? (
-                <div className="alert success">No hay alertas críticas activas en la flota visible.</div>
+                <div className="alert success">No hay alertas críticas activas.</div>
               ) : (
                 alertVehicles.map((vehicle) => {
                   const primaryExpired = vehicle.expirySummary.expired[0];
@@ -228,71 +237,54 @@ export default async function VehiculosPage() {
             </div>
           </div>
 
+          {/* Acreditación + resumen por documento */}
           <div className="card table-card">
             <div className="dashboard-panel-header" style={{ marginBottom: 12 }}>
-              <h2>Flota registrada</h2>
-              <span className="dashboard-chip small">Checklist + documentos</span>
+              <h2>Estado documental</h2>
+              <span className="dashboard-chip small">Acreditación · por tipo</span>
             </div>
+
+            {/* Acreditación pills */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: "var(--teal-light, #e8f7f5)", fontSize: "0.88rem" }}>
+                <span style={{ fontWeight: 600 }}>{accreditationSummary.acreditado}</span>
+                <span style={{ color: "var(--muted)" }}>acreditado{accreditationSummary.acreditado !== 1 ? "s" : ""}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: "#fefce8", fontSize: "0.88rem" }}>
+                <span style={{ fontWeight: 600 }}>{accreditationSummary.pendiente}</span>
+                <span style={{ color: "var(--muted)" }}>pendiente{accreditationSummary.pendiente !== 1 ? "s" : ""}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: "#fef2f2", fontSize: "0.88rem" }}>
+                <span style={{ fontWeight: 600 }}>{accreditationSummary.noAcreditado}</span>
+                <span style={{ color: "var(--muted)" }}>no acreditado{accreditationSummary.noAcreditado !== 1 ? "s" : ""}</span>
+              </div>
+            </div>
+
+            {/* Documentos por tipo */}
             <table>
               <thead>
                 <tr>
-                  <th>Patente</th>
-                  <th>Vehículo</th>
-                  <th>Campamento / proyecto</th>
-                  <th>Estado</th>
-                  <th>Próxima alerta</th>
-                  <th>Último checklist</th>
-                  <th></th>
+                  <th>Documento</th>
+                  <th>Vigente</th>
+                  <th>Por vencer</th>
+                  <th>Vencido</th>
+                  <th>N/A</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((vehicle) => {
-                  const alertText = vehicle.topAlert
-                    ? `${vehicle.topAlert.label} · ${formatDisplayDate(vehicle.topAlert.expiresAt)}`
-                    : vehicle.latestChecklist
-                      ? `${vehicle.checklistIssues} observación(es)`
-                      : "Sin alertas";
-
-                  return (
-                    <tr key={vehicle.id}>
-                      <td><strong>{vehicle.plate}</strong></td>
-                      <td>
-                        {vehicle.brand} {vehicle.model}
-                        <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{vehicle.odometerKm.toLocaleString("es-CL")} km</div>
-                        <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>{vehicle.company ?? "Sin empresa"}</div>
-                      </td>
-                      <td>
-                        {vehicle.assignedCamp?.name ?? "Sin campamento"}
-                        <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-                          {vehicle.assignedProject?.name ?? "Sin proyecto"}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-pill ${vehicle.health.tone === "danger" ? "danger" : vehicle.health.tone === "warn" ? "warn" : "ok"}`}>
-                          {vehicle.health.label}
-                        </span>
-                        <div style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 6 }}>
-                          {vehicle.accreditationStatus.replaceAll("_", " ")}
-                        </div>
-                      </td>
-                      <td>{alertText}</td>
-                      <td>
-                        {vehicle.latestChecklist ? `${formatDisplayDate(vehicle.latestChecklist.date)} · ${vehicle.latestChecklist.driver.name}` : "Sin checklist"}
-                      </td>
-                      <td>
-                        <Link href={`/vehiculos/${vehicle.id}`} className="dashboard-mini-link">Abrir</Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={{ color: "var(--muted)" }}>Todavía no hay vehículos registrados.</td>
+                {documentSummary.map((row) => (
+                  <tr key={row.key}>
+                    <td>{row.label}</td>
+                    <td>{row.vigente}</td>
+                    <td>{row.porVencer}</td>
+                    <td>{row.vencido}</td>
+                    <td>{row.na}</td>
                   </tr>
-                ) : null}
+                ))}
               </tbody>
             </table>
           </div>
+
         </div>
       </div>
     </AppShell>
