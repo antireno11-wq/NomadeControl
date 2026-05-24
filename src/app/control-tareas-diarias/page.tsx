@@ -3,6 +3,8 @@ import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildOperacionesTabs } from "@/lib/section-nav";
 import { TasksForm } from "./tasks-form";
 
 export default async function ControlTareasDiariasPage() {
@@ -75,6 +77,8 @@ export default async function ControlTareasDiariasPage() {
   return (
     <AppShell title="Control de tareas" user={user} activeNav="tareas" showAdminSections={canSeeAdminSections}>
       <div className="page-stack">
+        <SectionTabs items={buildOperacionesTabs(user.role, "control-tareas")} />
+
         {!canSeeAdminSections && !user.campId ? (
           <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
         ) : null}

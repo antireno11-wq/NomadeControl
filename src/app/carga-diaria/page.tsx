@@ -5,6 +5,8 @@ import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { ReportForm } from "@/app/dashboard/report-form";
 import { NotificationBell } from "@/components/notification-bell";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildOperacionesTabs } from "@/lib/section-nav";
 
 export default async function CargaDiariaPage() {
   const user = await requireRole(OPERATION_ROLES);
@@ -81,6 +83,8 @@ export default async function CargaDiariaPage() {
       notifications={notificationItems}
     >
       <div className="page-stack">
+        <SectionTabs items={buildOperacionesTabs(user.role, "carga-diaria")} />
+
         {!canSeeAdminSections && !user.campId ? (
           <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
         ) : null}

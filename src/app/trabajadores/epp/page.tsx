@@ -2,6 +2,8 @@ import Link from "next/link";
 import { isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildTrabajadoresTabs } from "@/lib/section-nav";
 
 export default async function EPPPage({ searchParams }: { searchParams?: { q?: string; vencido?: string } }) {
   const user = await requireRole(TRABAJADORES_ROLES);
@@ -35,6 +37,8 @@ export default async function EPPPage({ searchParams }: { searchParams?: { q?: s
   return (
     <AppShell title="Control de EPP" user={user} activeNav="trabajadores">
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+        <SectionTabs items={buildTrabajadoresTabs("epp")} />
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem" }}>

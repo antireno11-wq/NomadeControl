@@ -2,6 +2,8 @@ import Link from "next/link";
 import { canAccessEvaluaciones, isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { getNearestDocument, getStaffDocumentEntries } from "@/lib/staff-docs";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
@@ -161,6 +163,8 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
       }
     >
       <div className="page-stack">
+        <SectionTabs items={buildTrabajadoresTabs("trabajadores")} />
+
         {alert ? <div className={`alert ${alert.type}`}>{alert.text}</div> : null}
 
         <div className="dashboard-kpi-grid insight-kpi-grid">

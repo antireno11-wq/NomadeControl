@@ -4,7 +4,7 @@ import Link from "next/link";
 import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
 import {
-  canAccessAdministration, canAccessBiblioteca, canAccessCampOperations,
+  canAccessAdministration, canAccessBiblioteca,
   canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas,
   canAccessTrabajadores, isVehicleOnlyRole, canAccessModule, parseModulePermissions
 } from "@/lib/auth";
@@ -40,7 +40,6 @@ export function AppShell({
 
   const canSeeDashboard    = canAccessDashboard(user.role);
   const canSeeVehicles     = mod("vehiculos",    canAccessVehicles);
-  const canSeeCampOps      = canAccessCampOperations(user.role) && !canAccessAdministration(user.role);
   const canSeeWorkers      = mod("trabajadores", canAccessTrabajadores);
   const canSeeOperaciones  = mod("operaciones",  canAccessDashboard);
   const canSeeAdministration = canAccessAdministration(user.role);
@@ -70,21 +69,11 @@ export function AppShell({
     }] : []),
 
     ...(!isOfficeRole && canSeeOperaciones ? [{
-      type: "group" as const,
+      type: "link" as const,
+      href: "/operaciones",
       label: "Operaciones",
       navKey: "operaciones",
-      anyChildActive: opcionesActivas.includes(activeNav),
-      children: [
-        { href: "/operaciones", label: "Estado hoy" },
-        { href: "/operaciones?vista=historico", label: "Histórico" },
-        ...(canSeeCampOps ? [
-          { href: "/carga-diaria", label: "Informe diario" },
-          { href: "/control-tareas-diarias", label: "Control tareas" },
-        ] : []),
-        ...(canSeeAdministration ? [
-          { href: "/administracion?seccion=campamentos", label: "Campamentos" },
-        ] : []),
-      ],
+      active: opcionesActivas.includes(activeNav),
     }] : []),
 
     ...(canSeeHSEC ? [{
@@ -96,16 +85,11 @@ export function AppShell({
     }] : []),
 
     ...(!isOfficeRole && canSeeWorkers ? [{
-      type: "group" as const,
+      type: "link" as const,
+      href: "/trabajadores",
       label: "Trabajadores",
       navKey: "trabajadores",
-      anyChildActive: trabajadoresActivos.includes(activeNav),
-      children: [
-        { href: "/trabajadores", label: "Trabajadores" },
-        { href: "/trabajadores/inducciones", label: "Capacitaciones" },
-        { href: "/trabajadores/epp", label: "Control EPP" },
-        { href: "/trabajadores/ex-trabajadores", label: "Ex trabajadores" },
-      ],
+      active: trabajadoresActivos.includes(activeNav),
     }] : []),
 
     ...(!isOfficeRole && canSeeVehicles ? [{

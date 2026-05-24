@@ -1,9 +1,12 @@
 import Link from "next/link";
+import React from "react";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDisplayDate, formatShortDisplayDateValue, normalizeDateOnly, resolveWaterLiters, toInputDateValue } from "@/lib/report-utils";
 import { getCampWeatherSummary } from "@/lib/weather";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildOperacionesTabs } from "@/lib/section-nav";
 
 function parseDaysParam(raw: string | string[] | undefined) {
   const value = typeof raw === "string" ? Number(raw) : NaN;
@@ -19,14 +22,6 @@ function countChecks(value: unknown) {
   const entries = Object.values(value as Record<string, unknown>);
   return { total: entries.length, done: entries.filter((e) => e === true).length };
 }
-
-const TAB_STYLES = {
-  base: { padding: "6px 18px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600, fontSize: "0.9rem", textDecoration: "none", display: "inline-block" } as React.CSSProperties,
-  active: { background: "#1e3a5f", color: "#fff" } as React.CSSProperties,
-  inactive: { background: "#f1f5f9", color: "#64748b" } as React.CSSProperties,
-};
-
-import React from "react";
 
 function estimateUtcDate(baseDate: Date, daysFromBase: number) {
   const projected = new Date(baseDate);
@@ -51,11 +46,7 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
     return (
       <AppShell title="Operaciones" user={user} activeNav="operaciones" showAdminSections={canSeeAdminSections}>
         <div className="page-stack">
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <Link href="/operaciones" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Estado hoy</Link>
-            <Link href="/operaciones?vista=historico" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Histórico</Link>
-            <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Campamentos cerrados</span>
-          </div>
+          <SectionTabs items={buildOperacionesTabs(user.role, "cerrados")} />
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Campamentos cerrados</h2>
             {closedCamps.length === 0 ? (
@@ -191,12 +182,7 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
         }
       >
         <div className="page-stack">
-          {/* Pestañas */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-            <Link href="/operaciones" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Estado hoy</Link>
-            <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Histórico</span>
-            {canSeeAdminSections && <Link href="/operaciones?vista=cerrados" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Cerrados</Link>}
-          </div>
+          <SectionTabs items={buildOperacionesTabs(user.role, "historico")} />
 
           <div className="hero-panel">
             <div className="hero-kicker">Torre de control</div>
@@ -790,12 +776,7 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
       }
     >
 
-        {/* Pestañas */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-          <span style={{ ...TAB_STYLES.base, ...TAB_STYLES.active }}>Estado hoy</span>
-          <Link href="/operaciones?vista=historico" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Histórico</Link>
-          {canSeeAdminSections && <Link href="/operaciones?vista=cerrados" style={{ ...TAB_STYLES.base, ...TAB_STYLES.inactive }}>Cerrados</Link>}
-        </div>
+        <SectionTabs items={buildOperacionesTabs(user.role, "hoy")} />
 
         <div className="dashboard-kpi-grid">
           <div

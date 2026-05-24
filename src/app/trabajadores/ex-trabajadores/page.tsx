@@ -2,6 +2,8 @@ import Link from "next/link";
 import { TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import type { CierreContrato } from "@prisma/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -161,6 +163,8 @@ export default async function ExTrabajadoresPage({
       }
     >
       <div className="page-stack">
+        <SectionTabs items={buildTrabajadoresTabs("ex")} />
+
         {/* ── KPI cards ── */}
         <div className="dashboard-kpi-grid insight-kpi-grid">
           <div className="dashboard-kpi teal">

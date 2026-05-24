@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireRole, TRABAJADORES_ROLES, isAdminRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
+import { SectionTabs } from "@/components/section-tabs";
+import { buildTrabajadoresTabs } from "@/lib/section-nav";
 
 type SearchParams = { q?: string; tipo?: string; estado?: string };
 
@@ -84,6 +86,8 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
   return (
     <AppShell title="Capacitaciones e Inducciones" user={user} activeNav="trabajadores">
       <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1100 }}>
+
+        <SectionTabs items={buildTrabajadoresTabs("capacitaciones")} />
 
         {/* Stats */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
