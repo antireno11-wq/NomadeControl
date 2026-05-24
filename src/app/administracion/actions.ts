@@ -466,6 +466,51 @@ export async function createProjectAction(formData: FormData) {
   revalidatePath("/vehiculos");
 }
 
+export async function cerrarProyectoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+  const projectId = formData.get("projectId") as string;
+  if (!projectId) redirect("/administracion?seccion=proyectos&projectStatus=invalid");
+
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { id: true, name: true } });
+  if (!project) redirect("/administracion?seccion=proyectos&projectStatus=not-found");
+
+  await db.project.update({
+    where: { id: projectId },
+    data: { isActive: false },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "PROJECT_CLOSE", entityType: "project", entityId: projectId,
+    summary: `Finalizó proyecto «${project.name}»`,
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/vehiculos");
+  redirect("/administracion?seccion=proyectos&projectStatus=closed");
+}
+
+export async function reabrirProyectoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+  const projectId = formData.get("projectId") as string;
+  if (!projectId) redirect("/administracion?seccion=proyectos&projectStatus=invalid");
+
+  await db.project.update({
+    where: { id: projectId },
+    data: { isActive: true },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "PROJECT_REOPEN", entityType: "project", entityId: projectId,
+    summary: `Reabrió proyecto`,
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/vehiculos");
+  redirect("/administracion?seccion=proyectos");
+}
+
 export async function updateCampAction(formData: FormData) {
   const currentUser = await requireRole(ADMIN_ROLES);
 
@@ -680,7 +725,7 @@ export async function cerrarCampamentoAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/dashboard");
   revalidatePath("/operaciones");
-  redirect(`/administracion/campamentos/${campId}?shiftStatus=closed`);
+  redirect(`/operaciones/campamento/${campId}/resumen?status=closed`);
 }
 
 export async function reabrirCampamentoAction(formData: FormData) {

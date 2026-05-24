@@ -25,9 +25,7 @@ export function buildOperacionesTabs(role: string, activeKey:
       { href: "/carga-diaria", label: "Informe diario", active: activeKey === "carga-diaria" },
       { href: "/control-tareas-diarias", label: "Control tareas", active: activeKey === "control-tareas" },
     ] : []),
-    ...(canSeeAdmin ? [
-      { href: "/administracion?seccion=campamentos", label: "Campamentos", active: activeKey === "campamentos" },
-    ] : []),
+    { href: "/operaciones?vista=campamentos", label: "Campamentos", active: activeKey === "campamentos" },
   ];
 }
 

@@ -34,6 +34,110 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
   const canSeeAdminSections = isAdminRole(user.role);
   const vista = searchParams?.vista ?? "hoy";
 
+  // ── VISTA CAMPAMENTOS (listado de campamentos activos) ──────────────────────
+  if (vista === "campamentos") {
+    const campsList = await db.camp.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      include: {
+        _count: { select: { reports: true, dailyTaskControls: true, staffMembers: true, vehicles: true } },
+        reports: { take: 1, orderBy: { date: "desc" }, select: { date: true } },
+      },
+    });
+
+    return (
+      <AppShell title="Operaciones" user={user} activeNav="operaciones" showAdminSections={canSeeAdminSections}>
+        <div className="page-stack">
+          <SectionTabs items={buildOperacionesTabs(user.role, "campamentos")} />
+
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 12 }}>
+              <h2 style={{ margin: 0 }}>Campamentos activos</h2>
+              <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+                {campsList.length} {campsList.length === 1 ? "campamento" : "campamentos"} operativo{campsList.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <div className="section-caption" style={{ marginBottom: 16 }}>
+              Para crear un nuevo campamento, ve a Administración → Campamentos.
+            </div>
+
+            {campsList.length === 0 ? (
+              <div className="alert error">No hay campamentos activos.</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+                {campsList.map((camp) => {
+                  const lastReport = camp.reports[0]?.date;
+                  return (
+                    <div key={camp.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: "var(--surface, #fff)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)" }}>{camp.name}</div>
+                          {camp.location && <div style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 2 }}>📍 {camp.location}</div>}
+                        </div>
+                        <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: "0.7rem", fontWeight: 700, background: "#dcfce7", color: "#166534" }}>
+                          Activo
+                        </span>
+                      </div>
+
+                      {/* Stats */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 12, marginBottom: 12 }}>
+                        <div style={{ background: "rgba(0,0,0,0.03)", padding: "8px 10px", borderRadius: 8 }}>
+                          <div style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase" }}>Trabajadores</div>
+                          <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text)" }}>{camp._count.staffMembers}</div>
+                        </div>
+                        <div style={{ background: "rgba(0,0,0,0.03)", padding: "8px 10px", borderRadius: 8 }}>
+                          <div style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase" }}>Vehículos</div>
+                          <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text)" }}>{camp._count.vehicles}</div>
+                        </div>
+                        <div style={{ background: "rgba(0,0,0,0.03)", padding: "8px 10px", borderRadius: 8 }}>
+                          <div style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase" }}>Informes</div>
+                          <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text)" }}>{camp._count.reports}</div>
+                        </div>
+                        <div style={{ background: "rgba(0,0,0,0.03)", padding: "8px 10px", borderRadius: 8 }}>
+                          <div style={{ fontSize: "0.7rem", color: "var(--muted)", fontWeight: 600, textTransform: "uppercase" }}>Controles</div>
+                          <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text)" }}>{camp._count.dailyTaskControls}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginBottom: 12 }}>
+                        {lastReport
+                          ? <>Último informe: <strong style={{ color: "var(--text)" }}>{formatDisplayDate(lastReport)}</strong></>
+                          : "Sin informes cargados"}
+                      </div>
+
+                      {/* Acciones */}
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <Link href={`/operaciones?vista=historico&campId=${camp.id}`} style={{ flex: 1, minWidth: 110 }}>
+                          <button type="button" className="secondary" style={{ width: "100%", fontSize: "0.82rem", padding: "6px 10px" }}>
+                            📊 Ver historial
+                          </button>
+                        </Link>
+                        {canSeeAdminSections && (
+                          <>
+                            <Link href={`/administracion/campamentos/${camp.id}`} style={{ flex: 1, minWidth: 110 }}>
+                              <button type="button" className="secondary" style={{ width: "100%", fontSize: "0.82rem", padding: "6px 10px" }}>
+                                ⚙️ Ficha
+                              </button>
+                            </Link>
+                            <Link href={`/operaciones/campamento/${camp.id}/resumen`} style={{ flex: "1 1 100%" }}>
+                              <button type="button" style={{ width: "100%", fontSize: "0.82rem", padding: "6px 10px", background: "#1e3a5f", border: "none", color: "white", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>
+                                🏁 Finalizar campamento
+                              </button>
+                            </Link>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   // ── VISTA CAMPAMENTOS CERRADOS ───────────────────────────────────────────────
   if (vista === "cerrados" && canSeeAdminSections) {
     const closedCamps = await db.camp.findMany({
@@ -66,7 +170,10 @@ export default async function OperacionesPage({ searchParams }: { searchParams?:
                       <span>{camp._count.reports} informes</span>
                       <span>{camp._count.dailyTaskControls} controles</span>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <Link href={`/operaciones/campamento/${camp.id}/resumen`}>
+                        <button type="button" style={{ background: "var(--teal)", color: "#fff", border: "none", borderRadius: 8, fontSize: "0.82rem", padding: "4px 12px", cursor: "pointer", fontWeight: 600 }}>📈 Ver resumen</button>
+                      </Link>
                       <Link href={`/operaciones?vista=historico&campId=${camp.id}`}>
                         <button type="button" className="secondary" style={{ fontSize: "0.82rem", padding: "4px 12px" }}>Ver historial</button>
                       </Link>

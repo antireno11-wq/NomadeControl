@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, createProjectAction, deleteCampAction } from "./actions";
+import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction } from "./actions";
 
 const MODULE_DEFAULT_CHECK: Record<string, (role: string) => boolean> = {
   operaciones:  canAccessDashboard,
@@ -32,7 +32,7 @@ const MODULE_CHIP_COLOR: Record<string, { bg: string; color: string }> = {
 export default async function AdministracionPage({
   searchParams
 }: {
-  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; seccion?: string | string[] };
+  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; seccion?: string | string[] };
 }) {
   const user = await requireRole(ADMIN_ROLES);
   const canDeleteData = isFullAdminRole(user.role);
@@ -55,8 +55,16 @@ export default async function AdministracionPage({
 
   const campStatusRaw = searchParams?.campStatus;
   const userStatusRaw = searchParams?.userStatus;
+  const projectStatusRaw = searchParams?.projectStatus;
   const campStatus = typeof campStatusRaw === "string" ? campStatusRaw : "";
   const userStatus = typeof userStatusRaw === "string" ? userStatusRaw : "";
+  const projectStatus = typeof projectStatusRaw === "string" ? projectStatusRaw : "";
+
+  const projectAlert =
+    projectStatus === "closed" ? { type: "success", text: "Proyecto finalizado correctamente." }
+    : projectStatus === "not-found" ? { type: "error", text: "Proyecto no encontrado." }
+    : projectStatus === "invalid" ? { type: "error", text: "Solicitud inválida." }
+    : null;
 
   const campAlert =
     campStatus === "updated" ? { type: "success", text: "Cambios guardados correctamente." }
@@ -314,6 +322,7 @@ export default async function AdministracionPage({
       {/* ── PROYECTOS ────────────────────────────────────────────────── */}
       {seccion === "proyectos" && (
         <div className="page-stack">
+          {projectAlert && <div className={`alert ${projectAlert.type}`}>{projectAlert.text}</div>}
           <div className="card" style={{ maxWidth: 640 }}>
             <h2 style={{ marginTop: 0 }}>Crear proyecto</h2>
             <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
@@ -347,6 +356,7 @@ export default async function AdministracionPage({
                   <th>Código</th>
                   <th>Ubicación</th>
                   <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -357,14 +367,31 @@ export default async function AdministracionPage({
                     <td>{project.location ?? "-"}</td>
                     <td>
                       <span style={{ fontSize: "0.75rem", padding: "2px 8px", borderRadius: 4, fontWeight: 700, background: project.isActive ? "#dcfce7" : "#f1f5f9", color: project.isActive ? "#166534" : "#6b7280" }}>
-                        {project.isActive ? "Activo" : "Inactivo"}
+                        {project.isActive ? "Activo" : "Finalizado"}
                       </span>
+                    </td>
+                    <td>
+                      {project.isActive ? (
+                        <form action={cerrarProyectoAction}>
+                          <input type="hidden" name="projectId" value={project.id} />
+                          <button type="submit" style={{ background: "#9e2f23", color: "#fff", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
+                            🏁 Finalizar
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={reabrirProyectoAction}>
+                          <input type="hidden" name="projectId" value={project.id} />
+                          <button type="submit" className="secondary" style={{ fontSize: "0.78rem", padding: "4px 12px" }}>
+                            Reabrir
+                          </button>
+                        </form>
+                      )}
                     </td>
                   </tr>
                 ))}
                 {projects.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ color: "var(--muted)", padding: "1rem" }}>Todavía no hay proyectos creados.</td>
+                    <td colSpan={5} style={{ color: "var(--muted)", padding: "1rem" }}>Todavía no hay proyectos creados.</td>
                   </tr>
                 ) : null}
               </tbody>
