@@ -4,6 +4,7 @@ import { ADMIN_ROLES, isFullAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { deleteCampAction, updateCampAction, updateCampShiftAction, cerrarCampamentoAction, reabrirCampamentoAction } from "@/app/administracion/actions";
+import { toInputDateValue } from "@/lib/report-utils";
 
 export default async function EditarCampamentoPage({
   params,
@@ -227,15 +228,32 @@ export default async function EditarCampamentoPage({
           <div className="card" style={{ maxWidth: 760 }}>
             <h2 style={{ marginTop: 0 }}>Cerrar campamento</h2>
             <div className="section-caption" style={{ marginBottom: 12 }}>
-              Al cerrar el campamento, los <strong>{workersCount}</strong> trabajador{workersCount !== 1 ? "es" : ""} activo{workersCount !== 1 ? "s" : ""} quedarán sin campamento asignado (siguen activos en la plataforma). Todo el historial se conserva y puede consultarse en Operaciones.
+              Al cerrar el campamento, los <strong>{workersCount}</strong> trabajador{workersCount !== 1 ? "es" : ""} activo{workersCount !== 1 ? "s" : ""} quedarán sin campamento asignado (siguen activos en la plataforma). Todo el historial se conserva y se redirige al resumen con gráficos.
             </div>
-            <form action={cerrarCampamentoAction}>
+            <form action={cerrarCampamentoAction} style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
               <input type="hidden" name="campId" value={camp.id} />
+              <div style={{ flex: "1 1 220px", minWidth: 200 }}>
+                <label htmlFor="closedAt" style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: 4 }}>
+                  Fecha real de cierre
+                </label>
+                <input
+                  id="closedAt"
+                  name="closedAt"
+                  type="date"
+                  required
+                  max={toInputDateValue(new Date())}
+                  defaultValue={toInputDateValue(new Date())}
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+                <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginTop: 4 }}>
+                  Por defecto hoy. Cambia si el campamento cerró antes.
+                </div>
+              </div>
               <button
                 type="submit"
-                style={{ background: "#92400e", color: "#fff", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "0.9rem" }}
+                style={{ background: "#92400e", color: "#fff", border: "none", padding: "10px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "0.9rem" }}
               >
-                Cerrar campamento{workersCount > 0 ? ` · ${workersCount} trabajador${workersCount !== 1 ? "es" : ""} serán desvinculados` : ""}
+                🏁 Cerrar campamento{workersCount > 0 ? ` · ${workersCount} desvinculado${workersCount !== 1 ? "s" : ""}` : ""}
               </button>
             </form>
           </div>
