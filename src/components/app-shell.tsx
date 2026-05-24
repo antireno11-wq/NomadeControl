@@ -81,7 +81,9 @@ export function AppShell({
           { href: "/carga-diaria", label: "Informe diario" },
           { href: "/control-tareas-diarias", label: "Control tareas" },
         ] : []),
-        { href: "/bodega", label: "Bodega" },
+        ...(canSeeAdministration ? [
+          { href: "/administracion?seccion=campamentos", label: "Campamentos" },
+        ] : []),
       ],
     }] : []),
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -11,34 +10,6 @@ export type NavEntry =
 
 export function NavMenu({ items }: { items: NavEntry[] }) {
   const pathname = usePathname();
-
-  // Initialize open state: open any group that has an active child
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    for (const item of items) {
-      if (item.type === "group" && item.anyChildActive) {
-        initial[item.navKey] = true;
-      }
-    }
-    return initial;
-  });
-
-  // Re-evaluate when pathname changes
-  useEffect(() => {
-    setOpenGroups((prev) => {
-      const next = { ...prev };
-      for (const item of items) {
-        if (item.type === "group" && item.anyChildActive) {
-          next[item.navKey] = true;
-        }
-      }
-      return next;
-    });
-  }, [pathname, items]);
-
-  function toggle(key: string) {
-    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
 
   return (
     <nav className="dashboard-nav">
@@ -55,48 +26,38 @@ export function NavMenu({ items }: { items: NavEntry[] }) {
           );
         }
 
-        // Group
-        const isOpen = openGroups[item.navKey] ?? false;
+        // Group → etiqueta padre + hijos anidados visualmente (sin desplegable)
         return (
-          <div key={item.navKey}>
-            <button
-              onClick={() => toggle(item.navKey)}
+          <div key={item.navKey} style={{ display: "grid", gap: 2 }}>
+            <div
               className={`dashboard-nav-link ${item.anyChildActive ? "active" : ""}`}
+              style={{ cursor: "default", fontWeight: 700 }}
+            >
+              {item.label}
+            </div>
+            <div
               style={{
-                width: "100%",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                textAlign: "left",
-                fontFamily: "inherit",
-                fontSize: "inherit",
+                display: "grid",
+                gap: 2,
+                marginLeft: 10,
+                paddingLeft: 10,
+                borderLeft: "2px solid var(--border)",
               }}
             >
-              <span>{item.label}</span>
-              <span style={{ fontSize: "0.7rem", opacity: 0.6, transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                ▼
-              </span>
-            </button>
-            {isOpen && (
-              <div style={{ display: "grid", gap: 2, marginTop: 2, paddingLeft: 8 }}>
-                {item.children.map((child) => {
-                  const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
-                  return (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      className={`dashboard-nav-link ${childActive ? "active" : ""}`}
-                      style={{ padding: "8px 14px", fontSize: "0.875rem" }}
-                    >
-                      {child.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+              {item.children.map((child) => {
+                const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                return (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={`dashboard-nav-link ${childActive ? "active" : ""}`}
+                    style={{ padding: "6px 12px", fontSize: "0.88rem" }}
+                  >
+                    {child.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         );
       })}
