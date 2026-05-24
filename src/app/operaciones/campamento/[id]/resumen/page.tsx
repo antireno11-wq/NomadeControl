@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ADMIN_ROLES, isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatDisplayDate, formatShortDisplayDate } from "@/lib/report-utils";
+import { formatDisplayDate, formatShortDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { AppShell } from "@/components/app-shell";
 import { BarChart, LineChart, StackedBarChart, ChartColors } from "@/components/charts";
 import { cerrarCampamentoAction, reabrirCampamentoAction } from "@/app/administracion/actions";
@@ -99,6 +99,9 @@ export default async function ResumenCampamentoPage({
         {statusMsg === "closed" && (
           <div className="alert success">Campamento cerrado correctamente. Los trabajadores activos quedaron sin campamento asignado.</div>
         )}
+        {statusMsg === "invalid-date" && (
+          <div className="alert error">La fecha de cierre no puede ser futura. Selecciona una fecha igual o anterior a hoy.</div>
+        )}
 
         {/* ── Estado del campamento ── */}
         <div className="card" style={{ borderLeft: `4px solid ${isClosed ? "#9e2f23" : "#16a34a"}` }}>
@@ -116,32 +119,47 @@ export default async function ResumenCampamentoPage({
               </div>
             </div>
 
-            {/* Acciones de cierre */}
-            {canAdmin && (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {isClosed ? (
-                  <form action={reabrirCampamentoAction}>
-                    <input type="hidden" name="campId" value={camp.id} />
-                    <button type="submit" className="secondary" style={{ fontSize: "0.85rem" }}>Reabrir campamento</button>
-                  </form>
-                ) : (
-                  <form action={cerrarCampamentoAction}>
-                    <input type="hidden" name="campId" value={camp.id} />
-                    <button
-                      type="submit"
-                      style={{ background: "#9e2f23", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }}
-                    >
-                      🏁 Finalizar campamento
-                    </button>
-                  </form>
-                )}
-              </div>
+            {/* Acción rápida cuando ya está cerrado */}
+            {canAdmin && isClosed && (
+              <form action={reabrirCampamentoAction}>
+                <input type="hidden" name="campId" value={camp.id} />
+                <button type="submit" className="secondary" style={{ fontSize: "0.85rem" }}>Reabrir campamento</button>
+              </form>
             )}
           </div>
 
+          {/* Form de cierre con fecha (solo si activo) */}
           {!isClosed && canAdmin && (
-            <div style={{ marginTop: 12, padding: "10px 14px", background: "#fef9c3", border: "1px solid #fef08a", borderRadius: 8, fontSize: "0.85rem", color: "#854d0e" }}>
-              ⚠️ Al finalizar el campamento se guardará toda la data y los {camp._count.staffMembers} trabajadores activos quedarán sin campamento asignado (siguen activos en el sistema).
+            <div style={{ marginTop: 16, padding: 16, background: "#fef9c3", border: "1px solid #fef08a", borderRadius: 10 }}>
+              <div style={{ fontSize: "0.85rem", color: "#854d0e", marginBottom: 12, fontWeight: 600 }}>
+                ⚠️ Al finalizar el campamento se guardará toda la data y los {camp._count.staffMembers} trabajadores activos quedarán sin campamento asignado (siguen activos en el sistema).
+              </div>
+              <form action={cerrarCampamentoAction} style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <input type="hidden" name="campId" value={camp.id} />
+                <div style={{ flex: "1 1 220px", minWidth: 200 }}>
+                  <label htmlFor="closedAt" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#854d0e", marginBottom: 4 }}>
+                    Fecha real de cierre
+                  </label>
+                  <input
+                    id="closedAt"
+                    name="closedAt"
+                    type="date"
+                    required
+                    max={toInputDateValue(new Date())}
+                    defaultValue={toInputDateValue(new Date())}
+                    style={{ width: "100%", boxSizing: "border-box" }}
+                  />
+                  <div style={{ fontSize: "0.74rem", color: "#92691a", marginTop: 4 }}>
+                    Por defecto hoy. Cambia si el campamento cerró antes.
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  style={{ background: "#9e2f23", color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem" }}
+                >
+                  🏁 Finalizar campamento
+                </button>
+              </form>
             </div>
           )}
         </div>

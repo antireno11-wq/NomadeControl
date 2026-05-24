@@ -698,6 +698,25 @@ export async function cerrarCampamentoAction(formData: FormData) {
   const campId = formData.get("campId") as string;
   if (!campId) redirect("/administracion?campStatus=invalid");
 
+  // Parsear fecha de cierre (opcional, default = hoy).
+  // Formato esperado del <input type="date">: YYYY-MM-DD.
+  const closedAtRaw = String(formData.get("closedAt") ?? "").trim();
+  let closedAt: Date = new Date();
+  if (closedAtRaw && /^\d{4}-\d{2}-\d{2}$/.test(closedAtRaw)) {
+    const [y, m, d] = closedAtRaw.split("-").map(Number);
+    // Guardamos al mediodía UTC para evitar saltos de día por TZ
+    const parsed = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    if (!Number.isNaN(parsed.getTime())) closedAt = parsed;
+  }
+
+  // Validar que no sea futura (más de 1 día adelante)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  if (closedAt.getTime() >= tomorrow.getTime()) {
+    redirect(`/operaciones/campamento/${campId}/resumen?status=invalid-date`);
+  }
+
   const camp = await db.camp.findUnique({
     where: { id: campId },
     select: { id: true, name: true, isActive: true },
@@ -710,16 +729,16 @@ export async function cerrarCampamentoAction(formData: FormData) {
     data: { campId: null },
   });
 
-  // Cerrar el campamento
+  // Cerrar el campamento con la fecha indicada
   await db.camp.update({
     where: { id: campId },
-    data: { isActive: false, closedAt: new Date() },
+    data: { isActive: false, closedAt },
   });
 
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
     action: "CAMP_CLOSE", entityType: "camp", entityId: campId,
-    summary: `Cerró campamento «${camp.name}»`,
+    summary: `Cerró campamento «${camp.name}» con fecha ${closedAt.toISOString().slice(0, 10)}`,
   });
 
   revalidatePath("/administracion");
