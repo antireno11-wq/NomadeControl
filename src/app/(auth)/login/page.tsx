@@ -1,15 +1,7 @@
 import Image from "next/image";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage({ searchParams }: { searchParams?: { error?: string } }) {
-  const oauthError = searchParams?.error;
-  const oauthErrorText =
-    oauthError === "google_user_not_authorized"
-      ? "Tu cuenta Google no está autorizada en la plataforma."
-      : oauthError
-        ? "No se pudo iniciar sesión con Google. Inténtalo nuevamente."
-        : "";
-
+export default function LoginPage() {
   return (
     <main style={{ maxWidth: 460, paddingTop: 80 }}>
       <div className="card">
@@ -20,8 +12,7 @@ export default function LoginPage({ searchParams }: { searchParams?: { error?: s
         <p style={{ color: "var(--muted)" }}>
           Seleccioná tu tipo de acceso e iniciá sesión.
         </p>
-        <LoginForm oauthErrorText={oauthErrorText} />
-
+        <LoginForm />
       </div>
     </main>
   );

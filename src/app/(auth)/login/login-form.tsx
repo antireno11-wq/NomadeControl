@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
 import { loginAction } from "./actions";
 
@@ -11,18 +10,12 @@ function SubmitButton() {
   return <button type="submit">{pending ? "Ingresando..." : "Ingresar"}</button>;
 }
 
-export function LoginForm({ oauthErrorText }: { oauthErrorText?: string }) {
+export function LoginForm() {
   const [state, formAction] = useFormState(loginAction, initialState);
 
   return (
     <>
-      <Link href="/api/auth/google/start" style={{ textDecoration: "none" }}>
-        <button type="button" className="secondary">
-          Continuar con Google
-        </button>
-      </Link>
-
-      <form action={formAction} className="grid" style={{ marginTop: 16 }}>
+      <form action={formAction} className="grid">
         <div>
           <label htmlFor="accessRole">Tipo de acceso</label>
           <select id="accessRole" name="accessRole" defaultValue="SUPERVISOR" required>
@@ -48,7 +41,6 @@ export function LoginForm({ oauthErrorText }: { oauthErrorText?: string }) {
         </div>
 
         {state?.error ? <div className="alert error">{state.error}</div> : null}
-        {oauthErrorText ? <div className="alert error">{oauthErrorText}</div> : null}
 
         <SubmitButton />
       </form>
