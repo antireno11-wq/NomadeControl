@@ -155,7 +155,7 @@ export default async function PerfilTrabajadorPage({
               </div>
             </div>
 
-            {/* Right: actions */}
+            {/* Right: actions (sólo accesos directos que NO están en las pestañas) */}
             <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
               {canEvaluar && (
                 <Link href={`/evaluaciones/nueva?nombre=${encodeURIComponent(worker.fullName)}&cargo=${encodeURIComponent(worker.role ?? "")}`}>
@@ -166,17 +166,12 @@ export default async function PerfilTrabajadorPage({
               )}
               <Link href={`/trabajadores/${worker.id}/documentos`}>
                 <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)", borderRadius: 8, padding: "8px 14px", fontSize: "0.88rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                  📄 Documentos
+                  📎 Adjuntos
                   {docCount > 0 && (
                     <span style={{ background: "var(--teal)", color: "#fff", borderRadius: "9999px", padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700 }}>
                       {docCount}
                     </span>
                   )}
-                </button>
-              </Link>
-              <Link href={`/trabajadores/${worker.id}?tab=editar`}>
-                <button type="button" style={{ borderRadius: 8, padding: "8px 14px", fontSize: "0.88rem", cursor: "pointer" }}>
-                  ✏️ Editar ficha
                 </button>
               </Link>
             </div>
@@ -210,7 +205,7 @@ export default async function PerfilTrabajadorPage({
           <>
             {/* Contract summary */}
             <div className="card">
-              <h3 style={{ margin: "0 0 16px", color: "var(--text)", fontSize: "1rem" }}>📋 Resumen del contrato</h3>
+              <h3 style={{ margin: "0 0 16px", color: "var(--text)", fontSize: "1rem" }}>📋 Resumen del trabajador</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                 {[
                   {
@@ -230,9 +225,9 @@ export default async function PerfilTrabajadorPage({
                     sub: `${worker.shiftWorkDays} trabajo / ${worker.shiftOffDays} descanso`,
                   },
                   {
-                    label: "Estado documental",
-                    value: overallStatus === "expired" ? `${expiredDocs.length} vencido(s)` : overallStatus === "dueSoon" ? `${dueSoonDocs.length} por vencer` : "Al día",
-                    highlight: overallStatus === "expired" ? "danger" : overallStatus === "dueSoon" ? "warn" : null,
+                    label: "Adjuntos cargados",
+                    value: `${docCount}`,
+                    sub: docCount === 0 ? "Sin archivos" : docCount === 1 ? "archivo" : "archivos",
                   },
                 ].map(item => (
                   <div key={item.label} style={{

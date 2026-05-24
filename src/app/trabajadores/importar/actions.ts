@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireRole, ADMIN_ROLES } from "@/lib/auth";
+import { requireRole, ADMIN_ROLES, type AppRole } from "@/lib/auth";
+
+const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
 import { logAuditEvent } from "@/lib/audit";
 
 const SHIFT_MAP: Record<string, { work: number; off: number }> = {
@@ -59,7 +61,7 @@ export async function importarTrabajadoresAction(
   rows: WorkerImportRow[],
   defaultCampId?: string
 ): Promise<ImportResult> {
-  const user = await requireRole(ADMIN_ROLES);
+  const user = await requireRole(STAFF_MANAGER_ROLES);
 
   const camps = await db.camp.findMany({ select: { id: true, name: true } });
   const campMap = new Map(

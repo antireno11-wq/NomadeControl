@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ADMIN_ROLES, isSupervisorRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, isSupervisorRole, TRABAJADORES_ROLES, requireRole, type AppRole } from "@/lib/auth";
+
+const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
@@ -63,7 +65,7 @@ async function ensureWorkerAccess(campId: string | null | undefined) {
 }
 
 export async function createWorkerAction(formData: FormData) {
-  const adminUser = await requireRole(ADMIN_ROLES);
+  const adminUser = await requireRole(STAFF_MANAGER_ROLES);
   const parsed = workerSchema.safeParse({
     workerId: formData.get("workerId") ?? undefined,
     campId: formData.get("campId"),

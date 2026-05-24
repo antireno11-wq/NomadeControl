@@ -23,11 +23,14 @@ function getStatusInfo(status: string) {
 export default async function TrabajadoresPage({ searchParams }: { searchParams?: SearchParams }) {
   const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
+  const isHR = user.role === "RRHH";
+  // RRHH es un rol transversal (no tiene campId) y debe ver todos los trabajadores como admin.
+  const canSeeAllStaff = canSeeAdminSections || isHR;
   const canEvaluar = canAccessEvaluaciones(user.role);
   const selectedCampIdRaw = searchParams?.campId;
   const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
-  const scopedSelectedCampId = canSeeAdminSections ? selectedCampId : user.campId ?? selectedCampId;
-  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
+  const scopedSelectedCampId = canSeeAllStaff ? selectedCampId : user.campId ?? selectedCampId;
+  const campFilter = !canSeeAllStaff ? user.campId ?? "__none__" : undefined;
 
   const [camps, staffMembers] = await Promise.all([
     db.camp.findMany({
@@ -124,7 +127,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
       showAdminSections={canSeeAdminSections}
       rightSlot={
         <>
-          {canSeeAdminSections ? (
+          {canSeeAllStaff ? (
             <>
               <form method="get" className="dashboard-filter">
                 <select name="campId" defaultValue={scopedSelectedCampId ?? "general"}>
@@ -264,71 +267,119 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                 <thead>
                   <tr>
                     <th>Trabajador</th>
-                    <th>Campamento</th>
-                    <th>Cargo</th>
-                    <th>Turno proyectado</th>
+                    <th>Campamento / cargo</th>
+                    <th>Turno</th>
                     <th>Contrato</th>
-                    <th>Altura</th>
-                    <th>Acreditación</th>
                     <th>Próximo venc.</th>
                     <th>Estado</th>
-                    <th>Detalle</th>
-                    {canEvaluar && <th>Evaluar</th>}
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {staffRows.map((row) => (
-                    <tr key={row.worker.id}>
-                      <td style={{ fontWeight: 600, color: "var(--text)" }}>{row.worker.fullName}</td>
-                      <td style={{ color: "var(--text)" }}>{row.worker.camp?.name ?? "Sin asignar"}</td>
-                      <td style={{ color: "var(--text)" }}>{row.worker.role ?? "-"}</td>
-                      <td>
-                        {row.shiftProjection ? (
-                          <div style={{ display: "grid", gap: 3 }}>
-                            <strong style={{ lineHeight: 1.2, color: "var(--text)" }}>
-                              {row.shiftProjection.shiftPatternLabel} · {row.shiftProjection.currentStateLabel}
-                            </strong>
-                            <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-                              Día {row.shiftProjection.currentBlockDay}/{row.shiftProjection.currentBlockTotal}
-                            </span>
-                            <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
-                              Próx. cambio: {formatDisplayDate(row.shiftProjection.nextBlockStart)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span style={{ color: "var(--muted)" }}>Sin turno</span>
-                        )}
-                      </td>
-                      <td style={{ color: "var(--text)" }}>{row.worker.contractEndDate ? formatDisplayDate(row.worker.contractEndDate) : <span style={{ color: "var(--muted)" }}>Sin fecha</span>}</td>
-                      <td style={{ color: "var(--text)" }}>{row.worker.altitudeExamDueDate ? formatDisplayDate(row.worker.altitudeExamDueDate) : <span style={{ color: "var(--muted)" }}>Sin fecha</span>}</td>
-                      <td style={{ color: "var(--text)" }}>{row.worker.accreditationDueDate ? formatDisplayDate(row.worker.accreditationDueDate) : <span style={{ color: "var(--muted)" }}>Sin fecha</span>}</td>
-                      <td style={{ color: "var(--text)", fontSize: "0.85rem" }}>{row.nearest?.date ? `${row.nearest.label} · ${formatDisplayDate(row.nearest.date)}` : <span style={{ color: "var(--muted)" }}>Sin fechas</span>}</td>
-                      <td>
-                        <span className={`status-pill ${row.overallStatus}`}>
-                          {row.expiredCount > 0 ? `${row.expiredCount} vencido(s)` : row.dueSoonCount > 0 ? `${row.dueSoonCount} por vencer` : "OK"}
-                        </span>
-                      </td>
-                      <td>
-                        <Link href={`/trabajadores/${row.worker.id}`} className="dashboard-mini-link">
-                          Ver perfil →
-                        </Link>
-                      </td>
-                      {canEvaluar && (
+                  {staffRows.map((row) => {
+                    const contractDiff = row.worker.contractEndDate
+                      ? Math.ceil((row.worker.contractEndDate.getTime() - today.getTime()) / 86400000)
+                      : null;
+                    const contractTone = contractDiff === null ? null : contractDiff < 0 ? "danger" : contractDiff <= 30 ? "warn" : null;
+                    const nearestTone = row.nearest?.daysUntil == null ? null : row.nearest.daysUntil < 0 ? "danger" : row.nearest.daysUntil <= 30 ? "warn" : "ok";
+
+                    return (
+                      <tr key={row.worker.id}>
+                        {/* Trabajador (nombre + RUT) */}
                         <td>
-                          <Link
-                            href={`/evaluaciones/nueva?nombre=${encodeURIComponent(row.worker.fullName)}&cargo=${encodeURIComponent(row.worker.role ?? "")}`}
-                            className="dashboard-mini-link"
-                            style={{ color: "var(--accent)" }}
-                          >
-                            📊 Evaluar
-                          </Link>
+                          <div style={{ fontWeight: 600, color: "var(--text)" }}>{row.worker.fullName}</div>
+                          {row.worker.nationalId && (
+                            <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 2 }}>{row.worker.nationalId}</div>
+                          )}
                         </td>
-                      )}
-                    </tr>
-                  ))}
+
+                        {/* Campamento / cargo */}
+                        <td>
+                          <div style={{ color: "var(--text)" }}>{row.worker.camp?.name ?? <span style={{ color: "var(--muted)" }}>Sin asignar</span>}</div>
+                          <div style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{row.worker.role ?? "—"}</div>
+                        </td>
+
+                        {/* Turno */}
+                        <td>
+                          {row.shiftProjection ? (
+                            <>
+                              <div style={{ fontWeight: 600, color: "var(--text)", fontSize: "0.88rem" }}>
+                                {row.shiftProjection.shiftPatternLabel} · {row.shiftProjection.currentStateLabel}
+                              </div>
+                              <div style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+                                Día {row.shiftProjection.currentBlockDay}/{row.shiftProjection.currentBlockTotal} · cambia {formatDisplayDate(row.shiftProjection.nextBlockStart)}
+                              </div>
+                            </>
+                          ) : (
+                            <span style={{ color: "var(--muted)" }}>Sin turno</span>
+                          )}
+                        </td>
+
+                        {/* Contrato */}
+                        <td>
+                          {row.worker.contractEndDate ? (
+                            <>
+                              <div style={{ color: contractTone === "danger" ? "#9e2f23" : contractTone === "warn" ? "#9a6300" : "var(--text)", fontSize: "0.88rem" }}>
+                                {formatDisplayDate(row.worker.contractEndDate)}
+                              </div>
+                              {contractDiff !== null && (
+                                <div style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+                                  {contractDiff < 0 ? `${Math.abs(contractDiff)}d vencido` : contractDiff === 0 ? "Vence hoy" : `${contractDiff} días`}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Indefinido</span>
+                          )}
+                        </td>
+
+                        {/* Próximo vencimiento documental */}
+                        <td>
+                          {row.nearest?.date ? (
+                            <>
+                              <div style={{ color: "var(--text)", fontSize: "0.88rem" }}>{row.nearest.label}</div>
+                              <div style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+                                {formatDisplayDate(row.nearest.date)}
+                                {row.nearest.daysUntil != null && (
+                                  <> · <span style={{ color: nearestTone === "danger" ? "#9e2f23" : nearestTone === "warn" ? "#9a6300" : "var(--muted)" }}>
+                                    {row.nearest.daysUntil < 0 ? `${Math.abs(row.nearest.daysUntil)}d vencido` : `${row.nearest.daysUntil}d`}
+                                  </span></>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Sin fechas</span>
+                          )}
+                        </td>
+
+                        {/* Estado documental */}
+                        <td>
+                          <span className={`status-pill ${row.overallStatus}`}>
+                            {row.expiredCount > 0 ? `${row.expiredCount} vencido(s)` : row.dueSoonCount > 0 ? `${row.dueSoonCount} por vencer` : "OK"}
+                          </span>
+                        </td>
+
+                        {/* Acciones */}
+                        <td>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center", whiteSpace: "nowrap" }}>
+                            <Link href={`/trabajadores/${row.worker.id}`} className="dashboard-mini-link">Ver perfil →</Link>
+                            {canEvaluar && (
+                              <Link
+                                href={`/evaluaciones/nueva?nombre=${encodeURIComponent(row.worker.fullName)}&cargo=${encodeURIComponent(row.worker.role ?? "")}`}
+                                className="dashboard-mini-link"
+                                style={{ color: "var(--accent)" }}
+                              >
+                                📊 Evaluar
+                              </Link>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {staffRows.length === 0 ? (
                     <tr>
-                      <td colSpan={canEvaluar ? 11 : 10} style={{ color: "var(--muted)" }}>
+                      <td colSpan={7} style={{ color: "var(--muted)" }}>
                         No hay trabajadores cargados todavía.
                       </td>
                     </tr>
