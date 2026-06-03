@@ -423,6 +423,14 @@ function AsanaTareaRow({
               🔒 Privada
             </span>
           )}
+          {t.comentarios && t.comentarios.length > 0 && (
+            <span style={{
+              fontSize: "0.72rem", padding: "1px 7px", borderRadius: 999,
+              background: "#e0f2fe", color: "#0369a1", fontWeight: 700,
+            }}>
+              💬 {t.comentarios.length}
+            </span>
+          )}
         </div>
       </div>
 
@@ -453,22 +461,35 @@ function AsanaTareaRow({
       </div>
 
       {/* Actions */}
-      {puedeGestionar && (
-        <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-          <details style={{ position: "relative" }}>
-            <summary style={{
-              cursor: "pointer", padding: "3px 9px", borderRadius: 6,
-              background: "#334e5c", color: "#fff", fontWeight: 600,
-              fontSize: "0.78rem", listStyle: "none", display: "inline-block",
-            }}>✏️</summary>
-            <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-              <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
-            </div>
-          </details>
-          <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
-          <EliminarForm tareaId={t.id} />
-        </div>
-      )}
+      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+        <a
+          href={`/gestion-tareas/${t.id}`}
+          title="Abrir detalle y chat"
+          style={{
+            padding: "3px 12px", borderRadius: 6,
+            background: "var(--teal)", color: "#fff", fontWeight: 700,
+            fontSize: "0.78rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
+          }}
+        >
+          💬 Abrir
+        </a>
+        {puedeGestionar && (
+          <>
+            <details style={{ position: "relative" }}>
+              <summary style={{
+                cursor: "pointer", padding: "3px 9px", borderRadius: 6,
+                background: "#334e5c", color: "#fff", fontWeight: 600,
+                fontSize: "0.78rem", listStyle: "none", display: "inline-block",
+              }}>✏️</summary>
+              <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
+                <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
+              </div>
+            </details>
+            <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
+            <EliminarForm tareaId={t.id} />
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1050,6 +1071,17 @@ function EliminarForm({ tareaId }: { tareaId: string }) {
 
 // ─── ComentariosSection ───────────────────────────────────────────────────────
 
+function initialsOf(name: string | null | undefined) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+}
+function hashColor(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffffffff;
+  return `hsl(${Math.abs(h) % 360}, 55%, 45%)`;
+}
+
 function ComentariosSection({ tareaId, comentarios }: {
   tareaId: string;
   comentarios: { id: string; texto: string; autorNombre: string; createdAt: Date }[];
@@ -1057,18 +1089,37 @@ function ComentariosSection({ tareaId, comentarios }: {
   const action = agregarComentarioAction.bind(null, tareaId);
   return (
     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>
-        💬 Comentarios ({comentarios.length})
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)" }}>
+          💬 Conversación ({comentarios.length})
+        </div>
+        <a href={`/gestion-tareas/${tareaId}`} style={{ fontSize: "0.78rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
+          Abrir detalle →
+        </a>
       </div>
       {comentarios.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
           {comentarios.map(c => (
-            <div key={c.id} style={{ background: "#f8fafc", borderRadius: 8, padding: "7px 10px", fontSize: "0.82rem" }}>
-              <span style={{ fontWeight: 700, color: "var(--teal)" }}>{c.autorNombre}</span>
-              <span style={{ color: "var(--muted)", fontSize: "0.75rem", marginLeft: 8 }}>
-                {c.createdAt.toLocaleDateString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <div style={{ marginTop: 3, color: "var(--text)" }}>{c.texto}</div>
+            <div key={c.id} style={{ display: "flex", gap: 8 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: "50%",
+                background: hashColor(c.autorNombre), color: "#fff",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 700, fontSize: "0.7rem", flexShrink: 0,
+              }}>
+                {initialsOf(c.autorNombre)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 2, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 700, color: "var(--text)", fontSize: "0.82rem" }}>{c.autorNombre}</span>
+                  <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>
+                    {c.createdAt.toLocaleDateString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div style={{ background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 11px", fontSize: "0.85rem", color: "var(--text)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  {c.texto}
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -1076,11 +1127,11 @@ function ComentariosSection({ tareaId, comentarios }: {
       <form action={action} style={{ display: "flex", gap: 6 }}>
         <input
           name="texto"
-          placeholder="Agregar comentario..."
+          placeholder="Escribe un mensaje…"
           required
-          style={{ flex: 1, padding: "6px 10px", fontSize: "0.82rem", borderRadius: 8 }}
+          style={{ flex: 1, padding: "8px 12px", fontSize: "0.85rem", borderRadius: 8 }}
         />
-        <button type="submit" style={{ width: "auto", padding: "6px 14px", fontSize: "0.82rem", borderRadius: 8 }}>
+        <button type="submit" style={{ width: "auto", padding: "8px 16px", fontSize: "0.82rem", borderRadius: 8 }}>
           Enviar
         </button>
       </form>
