@@ -1,3 +1,4 @@
+import type React from "react";
 import { AppShell } from "@/components/app-shell";
 import { requireRole, canManageTareas, TAREAS_VER_ROLES } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -460,35 +461,15 @@ function AsanaTareaRow({
         {t.responsable ?? <span style={{ color: "var(--border)" }}>—</span>}
       </div>
 
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-        <a
-          href={`/gestion-tareas/${t.id}`}
-          title="Abrir detalle y chat"
-          style={{
-            padding: "3px 12px", borderRadius: 6,
-            background: "var(--teal)", color: "#fff", fontWeight: 700,
-            fontSize: "0.78rem", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
-          }}
-        >
-          💬 Abrir
-        </a>
-        {puedeGestionar && (
-          <>
-            <details style={{ position: "relative" }}>
-              <summary style={{
-                cursor: "pointer", padding: "3px 9px", borderRadius: 6,
-                background: "#334e5c", color: "#fff", fontWeight: 600,
-                fontSize: "0.78rem", listStyle: "none", display: "inline-block",
-              }}>✏️</summary>
-              <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-                <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
-              </div>
-            </details>
-            <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
-            <EliminarForm tareaId={t.id} />
-          </>
-        )}
+      {/* Actions: solo el menú de 3 puntitos */}
+      <div style={{ flexShrink: 0 }}>
+        <TareaMenu
+          tareaId={t.id}
+          estado={t.estado}
+          responsable={t.responsable}
+          usuarios={usuarios}
+          puedeGestionar={puedeGestionar}
+        />
       </div>
     </div>
   );
@@ -698,7 +679,7 @@ function TodasTareasView({
               <th>Cierre</th>
               <th>Atraso</th>
               <th>Estado</th>
-              {puedeGestionar && <th>Acciones</th>}
+              <th style={{ width: 40 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -760,25 +741,15 @@ function TodasTareasView({
                       {estadoLabel(t.estado)}
                     </span>
                   </td>
-                  {puedeGestionar && (
-                    <td>
-                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                        {!terminada && (
-                          <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
-                            <button type="submit" style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", borderRadius: 6, background: "#16a34a" }}>✓</button>
-                          </form>
-                        )}
-                        <details style={{ position: "relative" }}>
-                          <summary style={{ cursor: "pointer", padding: "4px 10px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.8rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
-                          <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-                            <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
-                          </div>
-                        </details>
-                        <ReasignarForm tareaId={t.id} usuarios={usuarios} responsableActual={t.responsable} />
-                        <EliminarForm tareaId={t.id} />
-                      </div>
-                    </td>
-                  )}
+                  <td style={{ textAlign: "right" }}>
+                    <TareaMenu
+                      tareaId={t.id}
+                      estado={t.estado}
+                      responsable={t.responsable}
+                      usuarios={usuarios}
+                      puedeGestionar={puedeGestionar}
+                    />
+                  </td>
                 </tr>
               );
             })}
@@ -837,27 +808,15 @@ function KanbanCard({
             : <span style={{ color: "var(--muted)" }}>{fecha}</span>
         )}
       </div>
-      {puedeGestionar && (
-        <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>
-          {t.estado === "pendiente" && (
-            <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "en_progreso"); }}>
-              <button type="submit" style={{ width: "auto", padding: "3px 8px", fontSize: "0.75rem", borderRadius: 6, background: "#3b82f6" }}>▶ Iniciar</button>
-            </form>
-          )}
-          {t.estado === "en_progreso" && (
-            <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
-              <button type="submit" style={{ width: "auto", padding: "3px 8px", fontSize: "0.75rem", borderRadius: 6, background: "#16a34a" }}>✓ Completar</button>
-            </form>
-          )}
-          <details style={{ position: "relative" }}>
-            <summary style={{ cursor: "pointer", padding: "3px 8px", borderRadius: 6, background: "#334e5c", color: "#fff", fontWeight: 600, fontSize: "0.75rem", listStyle: "none", display: "inline-block" }}>✏️</summary>
-            <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 380, marginTop: 4 }}>
-              <TareaForm tarea={t} usuarios={usuarios} proyectos={proyectos} areas={areas} />
-            </div>
-          </details>
-          <EliminarForm tareaId={t.id} />
-        </div>
-      )}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+        <TareaMenu
+          tareaId={t.id}
+          estado={t.estado}
+          responsable={t.responsable}
+          usuarios={usuarios}
+          puedeGestionar={puedeGestionar}
+        />
+      </div>
     </div>
   );
 }
@@ -1023,49 +982,150 @@ function TareaForm({ tarea, usuarios, proyectos, areas }: {
   );
 }
 
-// ─── ReasignarForm ────────────────────────────────────────────────────────────
+// ─── TareaMenu (kebab dropdown) ───────────────────────────────────────────────
 
-function ReasignarForm({ tareaId, usuarios, responsableActual }: {
+const menuItemStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "8px 12px",
+  border: "none",
+  background: "transparent",
+  textAlign: "left" as const,
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  fontWeight: 500,
+  color: "var(--text)",
+  borderRadius: 6,
+  display: "block",
+  textDecoration: "none",
+  whiteSpace: "nowrap" as const,
+};
+
+const menuDangerStyle: React.CSSProperties = {
+  ...menuItemStyle,
+  color: "#dc2626",
+};
+
+const menuSeparator: React.CSSProperties = {
+  height: 1,
+  background: "var(--border)",
+  margin: "4px 0",
+};
+
+function TareaMenu({
+  tareaId,
+  estado,
+  responsable,
+  usuarios,
+  puedeGestionar,
+}: {
   tareaId: string;
+  estado: string;
+  responsable: string | null;
   usuarios: { id: string; name: string }[];
-  responsableActual: string | null;
+  puedeGestionar: boolean;
 }) {
+  const terminada = ["completada", "cancelada"].includes(estado);
+
   return (
     <details style={{ position: "relative" }}>
-      <summary style={{ cursor: "pointer", padding: "4px 10px", borderRadius: 6, background: "#e2e8f0", color: "#334e5c", fontWeight: 600, fontSize: "0.8rem", listStyle: "none", display: "inline-block" }}>🔄</summary>
-      <div className="card" style={{ position: "absolute", right: 0, zIndex: 200, minWidth: 260, marginTop: 4 }}>
-        <p style={{ margin: "0 0 8px", fontSize: "0.85rem", color: "var(--muted)" }}>
-          Actualmente: <strong>{responsableActual ?? "—"}</strong>
-        </p>
-        <form
-          action={async (fd: FormData) => {
-            "use server";
-            await reasignarTareaAction(tareaId, fd.get("responsable") as string);
-          }}
-          style={{ display: "grid", gap: 8 }}
-        >
-          <select name="responsable" style={{ padding: "7px 10px" }}>
-            <option value="">— Sin asignar —</option>
-            {usuarios.filter(u => u.name !== responsableActual).map(u => (
-              <option key={u.id} value={u.name}>{u.name}</option>
-            ))}
-          </select>
-          <button type="submit" style={{ padding: "7px 0", borderRadius: 8, fontSize: "0.85rem" }}>Reasignar</button>
-        </form>
+      <summary
+        title="Más acciones"
+        style={{
+          cursor: "pointer",
+          width: 28, height: 28, borderRadius: 6,
+          background: "transparent",
+          color: "var(--muted)",
+          fontWeight: 800,
+          fontSize: "1.1rem",
+          lineHeight: "26px",
+          textAlign: "center",
+          listStyle: "none",
+          display: "inline-block",
+          userSelect: "none",
+        }}
+      >
+        ⋯
+      </summary>
+
+      <div
+        className="card"
+        style={{
+          position: "absolute",
+          right: 0,
+          top: "100%",
+          zIndex: 200,
+          minWidth: 220,
+          marginTop: 4,
+          padding: 6,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+        }}
+      >
+        <a href={`/gestion-tareas/${tareaId}`} style={menuItemStyle}>💬 Abrir detalle</a>
+
+        {puedeGestionar && !terminada && (
+          <>
+            <div style={menuSeparator} />
+            {estado === "pendiente" && (
+              <form action={async () => { "use server"; await cambiarEstadoTareaAction(tareaId, "en_progreso"); }}>
+                <button type="submit" style={menuItemStyle}>▶ Iniciar</button>
+              </form>
+            )}
+            <form action={async () => { "use server"; await cambiarEstadoTareaAction(tareaId, "completada"); }}>
+              <button type="submit" style={menuItemStyle}>✓ Marcar completada</button>
+            </form>
+            <form action={async () => { "use server"; await cambiarEstadoTareaAction(tareaId, "cancelada"); }}>
+              <button type="submit" style={menuItemStyle}>✕ Cancelar</button>
+            </form>
+          </>
+        )}
+
+        {puedeGestionar && terminada && (
+          <>
+            <div style={menuSeparator} />
+            <form action={async () => { "use server"; await cambiarEstadoTareaAction(tareaId, "pendiente"); }}>
+              <button type="submit" style={menuItemStyle}>↻ Reabrir tarea</button>
+            </form>
+          </>
+        )}
+
+        {puedeGestionar && usuarios.length > 0 && (
+          <>
+            <div style={menuSeparator} />
+            <div style={{ padding: "6px 12px", fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
+              Reasignar
+            </div>
+            <form
+              action={async (fd: FormData) => {
+                "use server";
+                const nuevo = String(fd.get("responsable") ?? "");
+                if (nuevo !== responsable) await reasignarTareaAction(tareaId, nuevo);
+              }}
+              style={{ padding: "0 8px 6px 8px", display: "flex", gap: 4 }}
+            >
+              <select name="responsable" defaultValue={responsable ?? ""} style={{ flex: 1, padding: "5px 8px", fontSize: "0.82rem" }}>
+                <option value="">— Sin asignar —</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.name}>{u.name}</option>
+                ))}
+                {responsable && !usuarios.some(u => u.name === responsable) && (
+                  <option value={responsable}>{responsable}</option>
+                )}
+              </select>
+              <button type="submit" className="secondary" style={{ padding: "4px 8px", fontSize: "0.75rem" }}>OK</button>
+            </form>
+          </>
+        )}
+
+        {puedeGestionar && (
+          <>
+            <div style={menuSeparator} />
+            <form action={async () => { "use server"; await eliminarTareaAction(tareaId); }}>
+              <button type="submit" style={menuDangerStyle}>🗑 Eliminar tarea</button>
+            </form>
+          </>
+        )}
       </div>
     </details>
-  );
-}
-
-// ─── EliminarForm ─────────────────────────────────────────────────────────────
-
-function EliminarForm({ tareaId }: { tareaId: string }) {
-  return (
-    <form action={async () => { "use server"; await eliminarTareaAction(tareaId); }}>
-      <button type="submit" className="danger" style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", borderRadius: 6 }}>
-        🗑
-      </button>
-    </form>
   );
 }
 
