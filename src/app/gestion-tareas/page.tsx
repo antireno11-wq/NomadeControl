@@ -133,6 +133,7 @@ export default async function GestionTareasPage({ searchParams }: { searchParams
     "HSEC / Prevención",
     "Recursos Humanos",
     "Administración",
+    "Comercial",
     "Cocina",
     "Mantenimiento",
     "Transporte",
