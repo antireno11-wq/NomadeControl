@@ -1563,3 +1563,13 @@ th {
     padding: 8px 10px;
   }
 }
+
+/* ── Botón circular para marcar tarea como completada (Asana style) ── */
+.task-complete-circle {
+  color: transparent !important;
+}
+.task-complete-circle:hover {
+  background: #dcfce7 !important;
+  border-color: #16a34a !important;
+  color: #16a34a !important;
+}

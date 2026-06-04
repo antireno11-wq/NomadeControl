@@ -8,7 +8,6 @@ import {
   eliminarTareaAction,
   cambiarEstadoTareaAction,
   reasignarTareaAction,
-  agregarComentarioAction,
 } from "./actions";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -362,28 +361,9 @@ function AsanaTareaRow({
       opacity: terminada ? 0.7 : 1,
       borderLeft: `4px solid ${pColor}`,
     }}>
-      {/* Complete button */}
+      {/* Complete button (círculo Asana) */}
       <div style={{ flexShrink: 0 }}>
-        {terminada ? (
-          <span style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 22, height: 22, borderRadius: "50%",
-            background: "#16a34a22", color: "#16a34a", fontWeight: 800, fontSize: "0.8rem",
-          }}>✓</span>
-        ) : puedeGestionar ? (
-          <form action={async () => { "use server"; await cambiarEstadoTareaAction(t.id, "completada"); }}>
-            <button type="submit" title="Marcar completada" style={{
-              width: 22, height: 22, borderRadius: "50%", padding: 0,
-              background: "transparent", border: "2px solid #cbd5e1",
-              cursor: "pointer", color: "#94a3b8", fontSize: "0.75rem", lineHeight: 1,
-            }}>○</button>
-          </form>
-        ) : (
-          <span style={{
-            display: "inline-block", width: 22, height: 22, borderRadius: "50%",
-            border: "2px solid #cbd5e1",
-          }} />
-        )}
+        <CompleteCircle tareaId={t.id} terminada={terminada} puedeGestionar={puedeGestionar} />
       </div>
 
       {/* Description + tags */}
@@ -535,33 +515,23 @@ function MisTareasView({
         </div>
 
         {porHacer.length > 0 && (
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="card" style={{ padding: 0, overflow: "visible" }}>
             <SeccionHeader label="Por hacer" count={porHacer.length} color="#f59e0b" />
             {porHacer.map(t => (
-              <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                  <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
-                </summary>
-                <div style={{ padding: "0 14px 12px 14px" }}>
-                  <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
-                </div>
-              </details>
+              <div key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
+              </div>
             ))}
           </div>
         )}
 
         {enProgreso.length > 0 && (
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="card" style={{ padding: 0, overflow: "visible" }}>
             <SeccionHeader label="En progreso" count={enProgreso.length} color="#3b82f6" />
             {enProgreso.map(t => (
-              <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                  <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
-                </summary>
-                <div style={{ padding: "0 14px 12px 14px" }}>
-                  <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
-                </div>
-              </details>
+              <div key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
+              </div>
             ))}
           </div>
         )}
@@ -575,16 +545,11 @@ function MisTareasView({
             }}>
               ▶ Completadas / Canceladas ({terminadas.length})
             </summary>
-            <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 6 }}>
+            <div className="card" style={{ padding: 0, overflow: "visible", marginTop: 6 }}>
               {terminadas.map(t => (
-                <details key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                    <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
-                  </summary>
-                  <div style={{ padding: "0 14px 12px 14px" }}>
-                    <ComentariosSection tareaId={t.id} comentarios={t.comentarios ?? []} />
-                  </div>
-                </details>
+                <div key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <AsanaTareaRow t={t} usuarios={usuarios} proyectos={proyectos} areas={areas} puedeGestionar={puedeGestionar} />
+                </div>
               ))}
             </div>
           </details>
@@ -669,10 +634,11 @@ function TodasTareasView({
       </div>
 
       {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ padding: 0, overflow: "visible" }}>
         <table className="dashboard-table">
           <thead>
             <tr>
+              <th style={{ width: 36 }}></th>
               <th>Descripción</th>
               <th>Tipo</th>
               <th>Responsable</th>
@@ -686,7 +652,7 @@ function TodasTareasView({
           <tbody>
             {tareas.length === 0 ? (
               <tr>
-                <td colSpan={puedeGestionar ? 8 : 7} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
+                <td colSpan={9} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
                   No hay tareas con estos filtros
                 </td>
               </tr>
@@ -697,6 +663,7 @@ function TodasTareasView({
               const eColor = estadoColor(t.estado);
               return (
                 <tr key={t.id} style={{ opacity: terminada ? 0.65 : 1 }}>
+                  <td><CompleteCircle tareaId={t.id} terminada={terminada} puedeGestionar={puedeGestionar} /></td>
                   <td>
                     <div style={{
                       fontWeight: 600, fontSize: "0.9rem",
@@ -788,8 +755,11 @@ function KanbanCard({
       borderLeft: `4px solid ${pColor}`,
       marginBottom: 10,
     }}>
-      <div style={{ fontWeight: 600, fontSize: "0.88rem", marginBottom: 6, textDecoration: terminada ? "line-through" : "none" }}>
-        {t.descripcion}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+        <CompleteCircle tareaId={t.id} terminada={terminada} puedeGestionar={puedeGestionar} size={20} />
+        <div style={{ fontWeight: 600, fontSize: "0.88rem", textDecoration: terminada ? "line-through" : "none", flex: 1, minWidth: 0 }}>
+          {t.descripcion}
+        </div>
       </div>
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
         {t.proyecto && (
@@ -983,6 +953,57 @@ function TareaForm({ tarea, usuarios, proyectos, areas }: {
   );
 }
 
+// ─── CompleteCircle ───────────────────────────────────────────────────────────
+
+function CompleteCircle({
+  tareaId,
+  terminada,
+  puedeGestionar,
+  size = 22,
+}: {
+  tareaId: string;
+  terminada: boolean;
+  puedeGestionar: boolean;
+  size?: number;
+}) {
+  if (terminada) {
+    return (
+      <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: size, height: size, borderRadius: "50%",
+        background: "#16a34a", color: "#fff", fontWeight: 800,
+        fontSize: size * 0.55, lineHeight: 1,
+      }}>✓</span>
+    );
+  }
+  if (!puedeGestionar) {
+    return (
+      <span style={{
+        display: "inline-block", width: size, height: size, borderRadius: "50%",
+        border: "2px solid #cbd5e1",
+      }} />
+    );
+  }
+  return (
+    <form action={async () => { "use server"; await cambiarEstadoTareaAction(tareaId, "completada"); }} style={{ display: "inline-block", lineHeight: 0 }}>
+      <button
+        type="submit"
+        title="Marcar como completada"
+        className="task-complete-circle"
+        style={{
+          width: size, height: size, borderRadius: "50%", padding: 0,
+          background: "transparent", border: "2px solid #cbd5e1",
+          cursor: "pointer", color: "#16a34a",
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          fontSize: size * 0.6, lineHeight: 1,
+        }}
+      >
+        ✓
+      </button>
+    </form>
+  );
+}
+
 // ─── TareaMenu (kebab dropdown) ───────────────────────────────────────────────
 
 const menuItemStyle: React.CSSProperties = {
@@ -1130,75 +1151,6 @@ function TareaMenu({
   );
 }
 
-// ─── ComentariosSection ───────────────────────────────────────────────────────
-
-function initialsOf(name: string | null | undefined) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
-}
-function hashColor(seed: string) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffffffff;
-  return `hsl(${Math.abs(h) % 360}, 55%, 45%)`;
-}
-
-function ComentariosSection({ tareaId, comentarios }: {
-  tareaId: string;
-  comentarios: { id: string; texto: string; autorNombre: string; createdAt: Date }[];
-}) {
-  const action = agregarComentarioAction.bind(null, tareaId);
-  return (
-    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)" }}>
-          💬 Conversación ({comentarios.length})
-        </div>
-        <a href={`/gestion-tareas/${tareaId}`} style={{ fontSize: "0.78rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
-          Abrir detalle →
-        </a>
-      </div>
-      {comentarios.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
-          {comentarios.map(c => (
-            <div key={c.id} style={{ display: "flex", gap: 8 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: "50%",
-                background: hashColor(c.autorNombre), color: "#fff",
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, fontSize: "0.7rem", flexShrink: 0,
-              }}>
-                {initialsOf(c.autorNombre)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "baseline", marginBottom: 2, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700, color: "var(--text)", fontSize: "0.82rem" }}>{c.autorNombre}</span>
-                  <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>
-                    {c.createdAt.toLocaleDateString("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-                <div style={{ background: "#f8fafc", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 11px", fontSize: "0.85rem", color: "var(--text)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                  {c.texto}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <form action={action} style={{ display: "flex", gap: 6 }}>
-        <input
-          name="texto"
-          placeholder="Escribe un mensaje…"
-          required
-          style={{ flex: 1, padding: "8px 12px", fontSize: "0.85rem", borderRadius: 8 }}
-        />
-        <button type="submit" style={{ width: "auto", padding: "8px 16px", fontSize: "0.82rem", borderRadius: 8 }}>
-          Enviar
-        </button>
-      </form>
-    </div>
-  );
-}
 
 // ─── Gantt View ───────────────────────────────────────────────────────────────
 
