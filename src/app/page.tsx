@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getCurrentUser, canAccessDashboard, canAccessCampOperations, canAccessVehicles, canAccessBiblioteca, canManageTareas, canViewTareas, canAccessAdministration } from "@/lib/auth";
+import { getCurrentUser, canAccessDashboard, canAccessCampOperations, canAccessVehicles, canAccessBiblioteca, canViewTareas, canAccessAdministration, canAccessTrabajadores } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { redirect } from "next/navigation";
+import { ENABLED_MODULES } from "@/lib/modules-config";
 
 type Module = {
   key: string;
@@ -12,28 +13,31 @@ type Module = {
   color: string;
 };
 
-export default async function HomePage() {
+const DISABLED_MODULE_LABEL: Record<string, string> = {
+  dashboard: "Dashboard",
+  tareas: "Gestión de tareas",
+  hsec: "HSEC / Prevención",
+  biblioteca: "Biblioteca",
+};
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: { moduloDeshabilitado?: string };
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const modules: Module[] = [
-    ...(canAccessDashboard(user.role) ? [{
-      key: "dashboard",
-      href: "/dashboard",
-      icon: "🏕️",
-      title: "Campamentos",
-      description: "Dashboard operacional, informes diarios, resumen general",
-      color: "#006878",
-    }] : []),
-    ...(canAccessCampOperations(user.role) ? [{
-      key: "trabajadores",
-      href: "/trabajadores",
-      icon: "👷",
-      title: "Trabajadores",
-      description: "Gestión de personal, turnos y acreditaciones",
+    ...(ENABLED_MODULES.trabajadores && canAccessTrabajadores(user.role) ? [{
+      key: "control-documental",
+      href: "/trabajadores/control-documental",
+      icon: "📄",
+      title: "Control documental",
+      description: "Vencimientos de documentos del personal — vigencias, alertas y estado",
       color: "#0369a1",
     }] : []),
-    ...(canAccessVehicles(user.role) ? [{
+    ...(ENABLED_MODULES.vehiculos && canAccessVehicles(user.role) ? [{
       key: "vehiculos",
       href: "/vehiculos",
       icon: "🚗",
@@ -41,7 +45,23 @@ export default async function HomePage() {
       description: "Control de flota, checklists y documentos",
       color: "#7c3aed",
     }] : []),
-    ...(canViewTareas(user.role) ? [{
+    ...(ENABLED_MODULES.operaciones && canAccessCampOperations(user.role) ? [{
+      key: "campamentos",
+      href: "/operaciones?vista=campamentos",
+      icon: "🏕️",
+      title: "Campamentos",
+      description: "Campamentos activos, cierre con resumen y gráficos",
+      color: "#006878",
+    }] : []),
+    ...(ENABLED_MODULES.dashboard && canAccessDashboard(user.role) ? [{
+      key: "dashboard",
+      href: "/dashboard",
+      icon: "📊",
+      title: "Dashboard",
+      description: "Resumen operacional general",
+      color: "#006878",
+    }] : []),
+    ...(ENABLED_MODULES.tareas && canViewTareas(user.role) ? [{
       key: "tareas",
       href: "/gestion-tareas",
       icon: "✅",
@@ -49,7 +69,7 @@ export default async function HomePage() {
       description: "Compromisos, pendientes y seguimiento de tareas",
       color: "#059669",
     }] : []),
-    ...(canAccessBiblioteca(user.role) ? [{
+    ...(ENABLED_MODULES.biblioteca && canAccessBiblioteca(user.role) ? [{
       key: "biblioteca",
       href: "/biblioteca",
       icon: "📚",
@@ -57,7 +77,7 @@ export default async function HomePage() {
       description: "Documentos, procedimientos y archivos compartidos",
       color: "#d97706",
     }] : []),
-    ...(canAccessAdministration(user.role) ? [{
+    ...(ENABLED_MODULES.administracion && canAccessAdministration(user.role) ? [{
       key: "administracion",
       href: "/administracion",
       icon: "⚙️",
@@ -66,6 +86,9 @@ export default async function HomePage() {
       color: "#dc2626",
     }] : []),
   ];
+
+  const moduloDeshab = searchParams?.moduloDeshabilitado;
+  const deshabLabel = moduloDeshab ? DISABLED_MODULE_LABEL[moduloDeshab] : null;
 
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
@@ -81,6 +104,16 @@ export default async function HomePage() {
           ¿A qué módulo querés acceder hoy?
         </p>
       </div>
+
+      {deshabLabel && (
+        <div style={{
+          marginBottom: 20, padding: "10px 14px", borderRadius: 10,
+          background: "#fef3c7", border: "1px solid #fde68a",
+          color: "#854d0e", fontSize: "0.88rem",
+        }}>
+          ⏸ El módulo <strong>{deshabLabel}</strong> está temporalmente deshabilitado.
+        </div>
+      )}
 
       {/* Module cards */}
       <div style={{

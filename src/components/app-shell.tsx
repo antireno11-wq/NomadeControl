@@ -8,6 +8,7 @@ import {
   canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas,
   canAccessTrabajadores, isVehicleOnlyRole, canAccessModule, parseModulePermissions
 } from "@/lib/auth";
+import { ENABLED_MODULES } from "@/lib/modules-config";
 import { NavMenu, type NavEntry } from "@/components/nav-menu";
 
 type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
@@ -52,7 +53,7 @@ export function AppShell({
   const trabajadoresActivos = ["trabajadores"] as ShellNavKey[];
 
   const navEntries: NavEntry[] = [
-    ...(!isOfficeRole && canSeeDashboard ? [{
+    ...(ENABLED_MODULES.dashboard && !isOfficeRole && canSeeDashboard ? [{
       type: "link" as const,
       href: "/dashboard",
       label: "Dashboard",
@@ -60,7 +61,7 @@ export function AppShell({
       active: activeNav === "dashboard",
     }] : []),
 
-    ...(canSeeTareasBasic ? [{
+    ...(ENABLED_MODULES.tareas && canSeeTareasBasic ? [{
       type: "link" as const,
       href: "/gestion-tareas",
       label: "Tareas",
@@ -68,15 +69,15 @@ export function AppShell({
       active: activeNav === "gestion-tareas",
     }] : []),
 
-    ...(!isOfficeRole && canSeeOperaciones ? [{
+    ...(ENABLED_MODULES.operaciones && !isOfficeRole && canSeeOperaciones ? [{
       type: "link" as const,
-      href: "/operaciones",
-      label: "Operaciones",
+      href: "/operaciones?vista=campamentos",
+      label: "Campamentos",
       navKey: "operaciones",
       active: opcionesActivas.includes(activeNav),
     }] : []),
 
-    ...(canSeeHSEC ? [{
+    ...(ENABLED_MODULES.hsec && canSeeHSEC ? [{
       type: "link" as const,
       href: "/hsec",
       label: "HSEC / Prevención",
@@ -84,15 +85,15 @@ export function AppShell({
       active: activeNav === "hsec",
     }] : []),
 
-    ...(!isOfficeRole && canSeeWorkers ? [{
+    ...(ENABLED_MODULES.trabajadores && !isOfficeRole && canSeeWorkers ? [{
       type: "link" as const,
-      href: "/trabajadores",
-      label: "Trabajadores",
+      href: "/trabajadores/control-documental",
+      label: "Personal",
       navKey: "trabajadores",
       active: trabajadoresActivos.includes(activeNav),
     }] : []),
 
-    ...(!isOfficeRole && canSeeVehicles ? [{
+    ...(ENABLED_MODULES.vehiculos && !isOfficeRole && canSeeVehicles ? [{
       type: "link" as const,
       href: "/vehiculos",
       label: "Vehículos",
@@ -100,7 +101,7 @@ export function AppShell({
       active: activeNav === "vehiculos",
     }] : []),
 
-    ...(canSeeBiblioteca ? [{
+    ...(ENABLED_MODULES.biblioteca && canSeeBiblioteca ? [{
       type: "link" as const,
       href: "/biblioteca",
       label: "Biblioteca",
@@ -108,7 +109,7 @@ export function AppShell({
       active: activeNav === "biblioteca",
     }] : []),
 
-    ...(canSeeAdministration ? [{
+    ...(ENABLED_MODULES.administracion && canSeeAdministration ? [{
       type: "link" as const,
       href: "/administracion",
       label: "Administración",

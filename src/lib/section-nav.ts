@@ -1,10 +1,12 @@
 import type { SectionTab } from "@/components/section-tabs";
-import { canAccessAdministration, canAccessCampOperations } from "@/lib/auth";
+import { canAccessAdministration } from "@/lib/auth";
 
 /**
  * Sub-navegación del módulo Operaciones.
- * - `activeKey`: identifica cuál tab debe quedar marcada
- * - `role`: rol del usuario, controla qué tabs son visibles
+ * Simplificado: solo "Campamentos" (activos) + "Cerrados" (admin).
+ * Los tabs de Estado hoy/Histórico/Informe diario/Control tareas están
+ * deshabilitados (ver lib/modules-config.ts) pero sus rutas siguen
+ * accesibles por URL directa.
  */
 export function buildOperacionesTabs(role: string, activeKey:
   | "hoy"
@@ -15,22 +17,18 @@ export function buildOperacionesTabs(role: string, activeKey:
   | "campamentos"
 ): SectionTab[] {
   const canSeeAdmin = canAccessAdministration(role);
-  const canSeeCampOps = canAccessCampOperations(role) && !canSeeAdmin;
 
   return [
-    { href: "/operaciones", label: "Estado hoy", active: activeKey === "hoy" },
-    { href: "/operaciones?vista=historico", label: "Histórico", active: activeKey === "historico" },
-    ...(canSeeAdmin ? [{ href: "/operaciones?vista=cerrados", label: "Cerrados", active: activeKey === "cerrados" }] : []),
-    ...(canSeeCampOps ? [
-      { href: "/carga-diaria", label: "Informe diario", active: activeKey === "carga-diaria" },
-      { href: "/control-tareas-diarias", label: "Control tareas", active: activeKey === "control-tareas" },
-    ] : []),
-    { href: "/operaciones?vista=campamentos", label: "Campamentos", active: activeKey === "campamentos" },
+    { href: "/operaciones?vista=campamentos", label: "Campamentos activos", active: activeKey === "campamentos" || activeKey === "hoy" },
+    ...(canSeeAdmin ? [{ href: "/operaciones?vista=cerrados", label: "Campamentos cerrados", active: activeKey === "cerrados" }] : []),
   ];
 }
 
 /**
  * Sub-navegación del módulo Trabajadores.
+ * Simplificado: solo "Trabajadores" (lista) + "Control documental".
+ * Los tabs de Capacitaciones/Control EPP/Ex trabajadores están
+ * deshabilitados; sus rutas siguen accesibles por URL directa.
  */
 export function buildTrabajadoresTabs(activeKey:
   | "trabajadores"
@@ -40,10 +38,7 @@ export function buildTrabajadoresTabs(activeKey:
   | "ex"
 ): SectionTab[] {
   return [
-    { href: "/trabajadores", label: "Trabajadores", active: activeKey === "trabajadores" },
     { href: "/trabajadores/control-documental", label: "📄 Control documental", active: activeKey === "control-documental" },
-    { href: "/trabajadores/inducciones", label: "Capacitaciones", active: activeKey === "capacitaciones" },
-    { href: "/trabajadores/epp", label: "Control EPP", active: activeKey === "epp" },
-    { href: "/trabajadores/ex-trabajadores", label: "Ex trabajadores", active: activeKey === "ex" },
+    { href: "/trabajadores", label: "Lista de trabajadores", active: activeKey === "trabajadores" },
   ];
 }
