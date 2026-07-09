@@ -533,6 +533,10 @@ export default async function PerfilTrabajadorPage({
                 inductionDueDate: worker.inductionDueDate ? toInputDateValue(worker.inductionDueDate) : "",
                 accreditationDueDate: worker.accreditationDueDate ? toInputDateValue(worker.accreditationDueDate) : "",
                 driversLicenseDueDate: worker.driversLicenseDueDate ? toInputDateValue(worker.driversLicenseDueDate) : "",
+                cedulaExpiryDate: worker.cedulaExpiryDate ? toInputDateValue(worker.cedulaExpiryDate) : "",
+                foodHandlingExamDueDate: worker.foodHandlingExamDueDate ? toInputDateValue(worker.foodHandlingExamDueDate) : "",
+                vaccineDueDate: worker.vaccineDueDate ? toInputDateValue(worker.vaccineDueDate) : "",
+                mutualExamDueDate: worker.mutualExamDueDate ? toInputDateValue(worker.mutualExamDueDate) : "",
                 notes: worker.notes ?? "",
                 isActive: worker.isActive,
               }}

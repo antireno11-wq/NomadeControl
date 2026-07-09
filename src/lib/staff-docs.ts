@@ -1,10 +1,14 @@
 export const STAFF_DOCUMENT_FIELDS = [
-  { key: "contractEndDate", label: "Contrato" },
-  { key: "altitudeExamDueDate", label: "Examen altura" },
-  { key: "occupationalExamDueDate", label: "Examen ocupacional" },
-  { key: "inductionDueDate", label: "Inducción" },
-  { key: "accreditationDueDate", label: "Acreditación" },
-  { key: "driversLicenseDueDate", label: "Carnet de manejar" }
+  { key: "contractEndDate",         label: "Contrato",             short: "Contrato" },
+  { key: "cedulaExpiryDate",        label: "Carnet de identidad",  short: "C. identidad" },
+  { key: "driversLicenseDueDate",   label: "Licencia de conducir", short: "Licencia" },
+  { key: "occupationalExamDueDate", label: "Examen ocupacional",   short: "Ocupacional" },
+  { key: "mutualExamDueDate",       label: "Examen de mutualidad", short: "Mutualidad" },
+  { key: "altitudeExamDueDate",     label: "Examen de altura",     short: "Altura" },
+  { key: "foodHandlingExamDueDate", label: "Manipulación alimentos", short: "Aliment." },
+  { key: "vaccineDueDate",          label: "Vacunas",              short: "Vacunas" },
+  { key: "inductionDueDate",        label: "Inducción",            short: "Inducción" },
+  { key: "accreditationDueDate",    label: "Acreditación",         short: "Acredit." }
 ] as const;
 
 export const STAFF_ROLE_OPTIONS = [

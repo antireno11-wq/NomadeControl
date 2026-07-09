@@ -21,6 +21,10 @@ type WorkerFormDefaults = {
   inductionDueDate: string;
   accreditationDueDate: string;
   driversLicenseDueDate: string;
+  cedulaExpiryDate: string;
+  foodHandlingExamDueDate: string;
+  vaccineDueDate: string;
+  mutualExamDueDate: string;
   notes: string;
   isActive: boolean;
 };

@@ -70,6 +70,10 @@ export default async function NuevoTrabajadorPage({
               inductionDueDate: "",
               accreditationDueDate: "",
               driversLicenseDueDate: "",
+              cedulaExpiryDate: "",
+              foodHandlingExamDueDate: "",
+              vaccineDueDate: "",
+              mutualExamDueDate: "",
               notes: "",
               isActive: true
             }}

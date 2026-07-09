@@ -246,6 +246,10 @@ model StaffMember {
   inductionDueDate DateTime?
   accreditationDueDate DateTime?
   driversLicenseDueDate DateTime?
+  cedulaExpiryDate DateTime?
+  foodHandlingExamDueDate DateTime?
+  vaccineDueDate DateTime?
+  mutualExamDueDate DateTime?
   shiftPattern   String   @default("14x14")
   shiftWorkDays  Int      @default(14)
   shiftOffDays   Int      @default(14)
@@ -259,8 +263,45 @@ model StaffMember {
   inducciones    InduccionUsuario[]
   documentos     DocumentoTrabajador[]
   cierre         CierreContrato?
+  documentosAdicionales DocumentoAdicional[]
+  alertasEnviadas       AlertaDocumento[]
 
   @@index([campId, isActive])
+}
+
+// Documento personalizado que HSEC puede agregar sin tocar código
+// (ej. "Curso PMSC", "ART renovada", "Anexo confidencialidad")
+model DocumentoAdicional {
+  id             String   @id @default(cuid())
+  staffMemberId  String
+  staffMember    StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  nombre         String
+  fechaVencimiento DateTime?
+  fechaEmision   DateTime?
+  notas          String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([staffMemberId])
+  @@index([fechaVencimiento])
+}
+
+// Registro de alertas ya enviadas — evita enviar duplicados en el mismo umbral
+// para la misma fecha de vencimiento. Cuando el documento se renueva (nueva
+// fechaVencimiento), los umbrales se resetean.
+model AlertaDocumento {
+  id             String   @id @default(cuid())
+  staffMemberId  String
+  staffMember    StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  docType        String   // "driversLicenseDueDate", "adicional:<uuid>", etc.
+  dueDate        DateTime
+  threshold      Int      // 30, 15, 7, 0 (día del vencimiento), -1 (vencido hace 1 día), etc.
+  sentAt         DateTime @default(now())
+  recipients     String   // csv de emails
+
+  @@unique([staffMemberId, docType, dueDate, threshold])
+  @@index([sentAt])
 }
 
 
