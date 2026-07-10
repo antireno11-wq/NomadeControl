@@ -4,7 +4,7 @@ import { useState, useRef, useTransition } from "react";
 import type { DragEvent } from "react";
 import * as XLSX from "xlsx";
 import { importarTrabajadoresAction } from "./actions";
-import type { WorkerImportRow, ImportResult } from "./actions";
+import type { WorkerImportRow, ImportResult, ImportMode } from "./actions";
 
 // ── Mapeo flexible de headers ─────────────────────────────────────────────────
 function norm(s: string) {
@@ -57,6 +57,16 @@ const HEADER_MAP: Record<string, keyof WorkerImportRow> = {
   "examen ocupacional": "occupationalExamDueDate", "venc examen ocupacional": "occupationalExamDueDate", "examen preocupacional": "occupationalExamDueDate",
   // accreditationDueDate
   "acreditacion": "accreditationDueDate", "venc acreditacion": "accreditationDueDate", "credencial": "accreditationDueDate",
+  // inductionDueDate
+  "induccion": "inductionDueDate", "venc induccion": "inductionDueDate", "inducciones": "inductionDueDate",
+  // cedulaExpiryDate
+  "cedula identidad": "cedulaExpiryDate", "carnet identidad": "cedulaExpiryDate", "venc cedula": "cedulaExpiryDate", "venc carnet": "cedulaExpiryDate", "vencimiento cedula": "cedulaExpiryDate", "vencimiento carnet": "cedulaExpiryDate",
+  // foodHandlingExamDueDate
+  "manipulacion alimentos": "foodHandlingExamDueDate", "manipulacion de alimentos": "foodHandlingExamDueDate", "venc manipulacion": "foodHandlingExamDueDate", "carnet manipulacion": "foodHandlingExamDueDate",
+  // vaccineDueDate
+  "vacunas": "vaccineDueDate", "vacuna": "vaccineDueDate", "venc vacunas": "vaccineDueDate", "vacunacion": "vaccineDueDate",
+  // mutualExamDueDate
+  "examen mutualidad": "mutualExamDueDate", "venc examen mutualidad": "mutualExamDueDate", "mutual": "mutualExamDueDate", "mutualidad": "mutualExamDueDate",
   // notes
   "notas": "notes", "observaciones": "notes", "comentarios": "notes", "notes": "notes",
 };
@@ -156,7 +166,11 @@ function parseExcel(file: File): Promise<ParsedRow[]> {
           }
 
           const errors: string[] = [];
-          if (!row.fullName?.trim()) errors.push("Nombre obligatorio");
+          // En update/sync, el matching es por RUT — el nombre puede faltar
+          // (la fila necesita solo uno de los dos para no ser omitida).
+          if (!row.fullName?.trim() && !row.nationalId?.trim()) {
+            errors.push("Falta nombre o RUT");
+          }
           if (row.shiftPattern && !VALID_SHIFTS.includes(row.shiftPattern.trim())) {
             errors.push(`Turno inválido (${row.shiftPattern}) — usar: 14x14, 10x10, 7x7, 4x3`);
           }
@@ -167,7 +181,7 @@ function parseExcel(file: File): Promise<ParsedRow[]> {
           return { ...row, __rowNum: idx + 2, __errors: errors } as ParsedRow;
         });
 
-        resolve(rows.filter(r => r.fullName?.trim() || r.__errors.length > 0));
+        resolve(rows.filter(r => r.fullName?.trim() || r.nationalId?.trim() || r.__errors.length > 0));
       } catch (err) {
         reject(err);
       }
@@ -182,15 +196,23 @@ function downloadTemplate() {
     "Nombre completo", "RUT", "Cargo", "Empresa empleadora",
     "Teléfono", "Email", "Campamento",
     "Turno", "Inicio turno",
-    "Venc. contrato", "Venc. licencia", "Examen altura",
-    "Examen ocupacional", "Acreditación", "Notas",
+    "Venc. contrato",
+    "Venc. cédula identidad", "Venc. licencia conducir",
+    "Examen ocupacional", "Examen mutualidad", "Examen altura",
+    "Manipulación alimentos", "Vacunas",
+    "Inducción", "Acreditación",
+    "Notas",
   ];
   const example = [
     "Juan Pérez González", "12.345.678-9", "SUPERVISOR", "Constructora Norte SpA",
     "+56912345678", "juan@email.com", "Campamento Norte",
     "14x14", "01/03/2025",
-    "31/12/2025", "15/06/2026", "30/03/2026",
-    "30/03/2026", "30/09/2025", "",
+    "31/12/2025",
+    "20/05/2030", "15/06/2026",
+    "30/03/2026", "30/03/2026", "30/03/2026",
+    "10/08/2026", "01/12/2025",
+    "01/04/2025", "30/09/2025",
+    "",
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, example]);
   ws["!cols"] = headers.map(() => ({ wch: 22 }));
@@ -210,6 +232,7 @@ export function ImportWorkers({ camps = [] }: { camps?: Camp[] }) {
   const [parseError, setParseError]   = useState<string | null>(null);
   const [result, setResult]           = useState<ImportResult | null>(null);
   const [selectedCampId, setSelectedCampId] = useState<string>("");
+  const [mode, setMode]               = useState<ImportMode>("create");
   const [isPending, startTransition]  = useTransition();
 
   const validRows   = rows?.filter(r => r.__errors.length === 0) ?? [];
@@ -244,7 +267,7 @@ export function ImportWorkers({ camps = [] }: { camps?: Camp[] }) {
   function handleImport() {
     if (validRows.length === 0) return;
     startTransition(async () => {
-      const res = await importarTrabajadoresAction(validRows, selectedCampId || undefined);
+      const res = await importarTrabajadoresAction(validRows, selectedCampId || undefined, mode);
       setResult(res);
     });
   }
@@ -262,11 +285,22 @@ export function ImportWorkers({ camps = [] }: { camps?: Camp[] }) {
           {result.errors.length === 0 ? "✅" : "⚠️"}
         </div>
         <h2 style={{ marginTop: 0 }}>Importación completada</h2>
-        <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ padding: "12px 24px", borderRadius: 12, background: "#dcfce7", color: "#166534" }}>
-            <div style={{ fontSize: "1.8rem", fontWeight: 900 }}>{result.created}</div>
-            <div style={{ fontSize: "0.82rem", fontWeight: 600 }}>creados</div>
-          </div>
+        <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginBottom: 16 }}>
+          Modo: <strong>{result.mode === "create" ? "Crear nuevos" : result.mode === "update" ? "Actualizar existentes" : "Sincronizar"}</strong>
+        </div>
+        <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
+          {result.created > 0 && (
+            <div style={{ padding: "12px 24px", borderRadius: 12, background: "#dcfce7", color: "#166534" }}>
+              <div style={{ fontSize: "1.8rem", fontWeight: 900 }}>{result.created}</div>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600 }}>creados</div>
+            </div>
+          )}
+          {result.updated > 0 && (
+            <div style={{ padding: "12px 24px", borderRadius: 12, background: "#dbeafe", color: "#1e40af" }}>
+              <div style={{ fontSize: "1.8rem", fontWeight: 900 }}>{result.updated}</div>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600 }}>actualizados</div>
+            </div>
+          )}
           {result.skipped > 0 && (
             <div style={{ padding: "12px 24px", borderRadius: 12, background: "#f1f5f9", color: "#64748b" }}>
               <div style={{ fontSize: "1.8rem", fontWeight: 900 }}>{result.skipped}</div>
@@ -304,8 +338,69 @@ export function ImportWorkers({ camps = [] }: { camps?: Camp[] }) {
     );
   }
 
+  const modeConfig = {
+    create: { icon: "➕", label: "Crear nuevos", desc: "Solo crea trabajadores que aún no existan. Salta duplicados por RUT." },
+    update: { icon: "🔄", label: "Actualizar existentes", desc: "Solo actualiza fechas/datos de trabajadores existentes (match por RUT). No crea nuevos." },
+    sync:   { icon: "🔀", label: "Sincronizar (crear + actualizar)", desc: "Crea si no existe, actualiza si ya existe. Ideal para dotación completa." },
+  } as const;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1000 }}>
+
+      {/* ── Selector de modo ── */}
+      <div className="card">
+        <div style={{ marginBottom: 10, fontWeight: 700, fontSize: "0.9rem" }}>
+          🎯 Modo de importación
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+          {(Object.keys(modeConfig) as ImportMode[]).map(m => {
+            const cfg = modeConfig[m];
+            const active = mode === m;
+            return (
+              <label
+                key={m}
+                style={{
+                  cursor: "pointer",
+                  padding: 12,
+                  border: `2px solid ${active ? "var(--teal)" : "var(--border)"}`,
+                  borderRadius: 10,
+                  background: active ? "#f0fdf4" : "#fafbfc",
+                  transition: "all 0.15s",
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="import-mode"
+                  value={m}
+                  checked={active}
+                  onChange={() => setMode(m)}
+                  style={{ marginTop: 3, width: "auto" }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.9rem", color: active ? "var(--teal)" : "var(--text)" }}>
+                    {cfg.icon} {cfg.label}
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 3, lineHeight: 1.4 }}>
+                    {cfg.desc}
+                  </div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+        {mode !== "create" && (
+          <div style={{
+            marginTop: 10, padding: "8px 12px", borderRadius: 8,
+            background: "#fef3c7", border: "1px solid #fde68a",
+            fontSize: "0.82rem", color: "#854d0e",
+          }}>
+            💡 <strong>Actualización:</strong> el matching es por RUT. Columnas vacías en el Excel <strong>no borran</strong> datos existentes — solo se actualizan los campos que traigan valor.
+          </div>
+        )}
+      </div>
 
       {/* Campamento por defecto */}
       {camps.length > 0 && (
