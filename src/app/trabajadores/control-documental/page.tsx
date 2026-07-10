@@ -11,7 +11,16 @@ type SearchParams = {
   campId?: string | string[];
   estado?: string | string[];
   tipo?: string | string[];
+  q?: string | string[];
 };
+
+function normalizeText(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+function normalizeRut(s: string) {
+  return s.replace(/[.\-\s]/g, "").toLowerCase();
+}
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; border: string; label: string }> = {
   ok:      { bg: "#e8f7ef", color: "#146c3d", border: "#b6e8c8", label: "Vigente" },
@@ -39,6 +48,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
   const selectedCampId = typeof searchParams?.campId === "string" && searchParams.campId !== "general" ? searchParams.campId : undefined;
   const filtroEstado = estadoParam(searchParams?.estado);
   const filtroTipo = tipoParam(searchParams?.tipo);
+  const busqueda = typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
 
   const campFilter = !canSeeAllStaff ? user.campId ?? "__none__" : undefined;
 
@@ -70,8 +80,22 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
     return { worker: w, entries, expiredCount, dueSoonCount, missingCount, okCount };
   });
 
+  // Búsqueda: matchea por nombre normalizado (case+acentos insensible) o RUT
+  // (normalizado sin puntos/guiones). Un solo query cubre ambos casos.
+  const queryNorm = busqueda ? normalizeText(busqueda) : "";
+  const queryRut = busqueda ? normalizeRut(busqueda) : "";
+  const matchesBusqueda = (worker: (typeof rows)[number]["worker"]) => {
+    if (!busqueda) return true;
+    const nameNorm = normalizeText(worker.fullName);
+    if (nameNorm.includes(queryNorm)) return true;
+    const rutNorm = normalizeRut(worker.nationalId ?? "");
+    if (rutNorm && rutNorm.includes(queryRut)) return true;
+    return false;
+  };
+
   // Filtro por estado (a nivel trabajador: si tiene al menos un doc en ese estado)
   const filteredRows = rows.filter(r => {
+    if (!matchesBusqueda(r.worker)) return false;
     if (filtroEstado === "expired" && r.expiredCount === 0) return false;
     if (filtroEstado === "dueSoon" && r.dueSoonCount === 0) return false;
     if (filtroEstado === "missing" && r.missingCount === 0) return false;
@@ -187,49 +211,86 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
           </div>
         </div>
 
-        {/* ── Filtros ── */}
+        {/* ── Buscador + Filtros ── */}
         <div className="card">
-          <form method="get" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
-            {canSeeAllStaff && (
+          <form method="get" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Buscador */}
+            <div style={{ position: "relative" }}>
+              <label htmlFor="q" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
+                Buscar trabajador
+              </label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: "1rem", color: "var(--muted)", pointerEvents: "none" }}>
+                  🔍
+                </span>
+                <input
+                  id="q"
+                  name="q"
+                  type="search"
+                  defaultValue={busqueda}
+                  placeholder="Escribí nombre, apellido o RUT — ej. Juan Pérez, 12345678, 12.345.678-9"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 12px 10px 38px",
+                    fontSize: "0.92rem",
+                    borderRadius: 10,
+                    border: "1.5px solid var(--border)",
+                  }}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            {/* Filtros adicionales */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+              {canSeeAllStaff && (
+                <div>
+                  <label htmlFor="campId" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
+                    Campamento
+                  </label>
+                  <select id="campId" name="campId" defaultValue={selectedCampId ?? "general"}>
+                    <option value="general">Todos</option>
+                    {camps.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
-                <label htmlFor="campId" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
-                  Campamento
+                <label htmlFor="estado" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
+                  Estado
                 </label>
-                <select id="campId" name="campId" defaultValue={selectedCampId ?? "general"}>
-                  <option value="general">Todos</option>
-                  {camps.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
+                <select id="estado" name="estado" defaultValue={filtroEstado}>
+                  <option value="">Todos</option>
+                  <option value="expired">🔴 Vencidos</option>
+                  <option value="dueSoon">🟡 Por vencer (30d)</option>
+                  <option value="missing">⚪ Sin fecha</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="tipo" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
+                  Tipo de documento
+                </label>
+                <select id="tipo" name="tipo" defaultValue={filtroTipo}>
+                  <option value="">Todos</option>
+                  {STAFF_DOCUMENT_FIELDS.map((f) => (
+                    <option key={f.key} value={f.key}>{f.label}</option>
                   ))}
                 </select>
               </div>
-            )}
-            <div>
-              <label htmlFor="estado" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
-                Estado
-              </label>
-              <select id="estado" name="estado" defaultValue={filtroEstado}>
-                <option value="">Todos</option>
-                <option value="expired">🔴 Vencidos</option>
-                <option value="dueSoon">🟡 Por vencer (30d)</option>
-                <option value="missing">⚪ Sin fecha</option>
-              </select>
+              <button type="submit">Aplicar</button>
+              {(busqueda || selectedCampId || filtroEstado || filtroTipo) && (
+                <Link href="/trabajadores/control-documental">
+                  <button type="button" className="secondary">Limpiar</button>
+                </Link>
+              )}
             </div>
-            <div>
-              <label htmlFor="tipo" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
-                Tipo de documento
-              </label>
-              <select id="tipo" name="tipo" defaultValue={filtroTipo}>
-                <option value="">Todos</option>
-                {STAFF_DOCUMENT_FIELDS.map((f) => (
-                  <option key={f.key} value={f.key}>{f.label}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit">Aplicar filtros</button>
-            {(selectedCampId || filtroEstado || filtroTipo) && (
-              <Link href="/trabajadores/control-documental">
-                <button type="button" className="secondary">Limpiar</button>
-              </Link>
+
+            {busqueda && (
+              <div style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
+                Mostrando <strong>{filteredRows.length}</strong> resultado{filteredRows.length !== 1 ? "s" : ""} para <strong>&quot;{busqueda}&quot;</strong>
+              </div>
             )}
           </form>
         </div>
