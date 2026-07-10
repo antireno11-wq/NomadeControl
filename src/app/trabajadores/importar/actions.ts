@@ -25,6 +25,7 @@ export type WorkerImportRow = {
   shiftPattern?:            string;
   shiftStartDate?:          string;
   contractEndDate?:         string;
+  contractIsIndefinite?:    string; // "true" | "1" | "on" | "indefinido" | ...
   driversLicenseDueDate?:   string;
   altitudeExamDueDate?:     string;
   occupationalExamDueDate?: string;
@@ -68,6 +69,12 @@ function normalizeRut(rut?: string): string {
   return (rut ?? "").replace(/[.\-\s]/g, "").toUpperCase();
 }
 
+function isTruthyFlag(v?: string): boolean {
+  if (!v) return false;
+  const s = v.toLowerCase().trim();
+  return ["true", "1", "on", "si", "sí", "yes", "indefinido"].includes(s);
+}
+
 /**
  * Cuando actualizamos, solo tocamos los campos que VIENEN con valor en el
  * Excel. Un campo vacío o ausente se mantiene sin tocar. Esto evita que una
@@ -105,6 +112,13 @@ function buildUpdatePayload(row: WorkerImportRow, campId: string | null) {
   }
   const shiftStart = parseDate(row.shiftStartDate);
   if (shiftStart) payload.shiftStartDate = shiftStart;
+
+  // Contrato indefinido: si viene el flag explícito
+  if (row.contractIsIndefinite && row.contractIsIndefinite.trim()) {
+    const isInd = isTruthyFlag(row.contractIsIndefinite);
+    payload.contractIsIndefinite = isInd;
+    if (isInd) payload.contractEndDate = null;
+  }
 
   // Fechas de documentos: solo si vienen con valor parseable
   const dateFields: Array<[keyof WorkerImportRow, string]> = [
@@ -215,7 +229,8 @@ export async function importarTrabajadoresAction(
             shiftWorkDays:           shift.work,
             shiftOffDays:            shift.off,
             shiftStartDate,
-            contractEndDate:         parseDate(row.contractEndDate),
+            contractIsIndefinite:    isTruthyFlag(row.contractIsIndefinite),
+            contractEndDate:         isTruthyFlag(row.contractIsIndefinite) ? null : parseDate(row.contractEndDate),
             driversLicenseDueDate:   parseDate(row.driversLicenseDueDate),
             altitudeExamDueDate:     parseDate(row.altitudeExamDueDate),
             occupationalExamDueDate: parseDate(row.occupationalExamDueDate),

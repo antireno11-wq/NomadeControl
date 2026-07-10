@@ -23,10 +23,11 @@ function normalizeRut(s: string) {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  ok:      { bg: "#e8f7ef", color: "#146c3d", border: "#b6e8c8", label: "Vigente" },
-  dueSoon: { bg: "#fff4dc", color: "#9a6300", border: "#f5d98e", label: "Por vencer" },
-  expired: { bg: "#fce9e8", color: "#9e2f23", border: "#f5c0bb", label: "Vencido" },
-  missing: { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1", label: "Sin fecha" },
+  ok:         { bg: "#e8f7ef", color: "#146c3d", border: "#b6e8c8", label: "Vigente" },
+  indefinite: { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc", label: "Indefinido" },
+  dueSoon:    { bg: "#fff4dc", color: "#9a6300", border: "#f5d98e", label: "Por vencer" },
+  expired:    { bg: "#fce9e8", color: "#9e2f23", border: "#f5c0bb", label: "Vencido" },
+  missing:    { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1", label: "Sin fecha" },
 };
 
 function estadoParam(s: string | string[] | undefined) {
@@ -70,13 +71,14 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
 
   const today = new Date();
 
-  // Enriquecer con estado de documentos
+  // Enriquecer con estado de documentos.
+  // Los contratos indefinidos cuentan como "ok" para el cálculo de cumplimiento.
   const rows = staff.map(w => {
     const entries = getStaffDocumentEntries(w, today);
     const expiredCount = entries.filter(e => e.status === "expired").length;
     const dueSoonCount = entries.filter(e => e.status === "dueSoon").length;
     const missingCount = entries.filter(e => e.status === "missing").length;
-    const okCount      = entries.filter(e => e.status === "ok").length;
+    const okCount      = entries.filter(e => e.status === "ok" || e.status === "indefinite").length;
     return { worker: w, entries, expiredCount, dueSoonCount, missingCount, okCount };
   });
 
@@ -392,8 +394,12 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                               minWidth: 78,
                               whiteSpace: "nowrap",
                             }} title={`${e.label}: ${style.label}`}>
-                              {e.date ? formatDisplayDate(e.date) : "—"}
-                              {e.status !== "missing" && e.daysUntil != null && (
+                              {e.status === "indefinite"
+                                ? "∞ Indefinido"
+                                : e.date
+                                  ? formatDisplayDate(e.date)
+                                  : "—"}
+                              {e.status !== "missing" && e.status !== "indefinite" && e.daysUntil != null && (
                                 <div style={{ fontSize: "0.68rem", fontWeight: 500, opacity: 0.9 }}>
                                   {e.status === "expired"
                                     ? `${Math.abs(e.daysUntil)}d vencido`

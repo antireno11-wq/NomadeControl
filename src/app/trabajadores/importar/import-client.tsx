@@ -152,10 +152,14 @@ function parseExcel(file: File): Promise<ParsedRow[]> {
             row.fullName     = toTitleCase(combined);
           }
 
-          // ── Tipo de contrato → notas ──────────────────────────────────────
+          // ── Tipo de contrato → notas + flag indefinido ────────────────────
           if (colTipoContrato) {
             const tipo = String(rawRow[colTipoContrato] ?? "").trim();
             if (tipo) {
+              const tipoNorm = tipo.toLowerCase();
+              const isIndefinido = tipoNorm === "indefinido" || tipoNorm === "indefinida" || tipoNorm === "sin plazo";
+              if (isIndefinido) row.contractIsIndefinite = "true";
+
               const label = tipo === "PlazoFijo" ? "Plazo fijo"
                           : tipo === "Indefinido" ? "Indefinido"
                           : tipo;

@@ -65,6 +65,7 @@ export default async function NuevoTrabajadorPage({
               shiftPattern: "14x14",
               shiftStartDate: toInputDateValue(new Date()),
               contractEndDate: "",
+              contractIsIndefinite: false,
               altitudeExamDueDate: "",
               occupationalExamDueDate: "",
               inductionDueDate: "",

@@ -29,6 +29,7 @@ const workerSchema = z.object({
   shiftPattern: z.enum(["14x14", "10x10", "7x7", "4x3"]),
   shiftStartDate: z.string().min(1),
   contractEndDate: z.string().optional(),
+  contractIsIndefinite: z.union([z.literal("on"), z.literal(""), z.literal("true"), z.literal("false")]).optional(),
   altitudeExamDueDate: z.string().optional(),
   occupationalExamDueDate: z.string().optional(),
   inductionDueDate: z.string().optional(),
@@ -82,6 +83,7 @@ export async function createWorkerAction(formData: FormData) {
     shiftPattern: formData.get("shiftPattern"),
     shiftStartDate: formData.get("shiftStartDate"),
     contractEndDate: String(formData.get("contractEndDate") ?? ""),
+    contractIsIndefinite: String(formData.get("contractIsIndefinite") ?? ""),
     altitudeExamDueDate: String(formData.get("altitudeExamDueDate") ?? ""),
     occupationalExamDueDate: String(formData.get("occupationalExamDueDate") ?? ""),
     inductionDueDate: String(formData.get("inductionDueDate") ?? ""),
@@ -119,7 +121,10 @@ export async function createWorkerAction(formData: FormData) {
       shiftWorkDays: rule.work,
       shiftOffDays: rule.off,
       shiftStartDate: normalizeDateOnly(payload.shiftStartDate),
-      contractEndDate: normalizeOptionalDate(payload.contractEndDate),
+      contractEndDate: payload.contractIsIndefinite === "on" || payload.contractIsIndefinite === "true"
+        ? null
+        : normalizeOptionalDate(payload.contractEndDate),
+      contractIsIndefinite: payload.contractIsIndefinite === "on" || payload.contractIsIndefinite === "true",
       altitudeExamDueDate: normalizeOptionalDate(payload.altitudeExamDueDate),
       occupationalExamDueDate: normalizeOptionalDate(payload.occupationalExamDueDate),
       inductionDueDate: normalizeOptionalDate(payload.inductionDueDate),
@@ -164,6 +169,7 @@ export async function updateWorkerAction(formData: FormData) {
     shiftPattern: formData.get("shiftPattern"),
     shiftStartDate: formData.get("shiftStartDate"),
     contractEndDate: String(formData.get("contractEndDate") ?? ""),
+    contractIsIndefinite: String(formData.get("contractIsIndefinite") ?? ""),
     altitudeExamDueDate: String(formData.get("altitudeExamDueDate") ?? ""),
     occupationalExamDueDate: String(formData.get("occupationalExamDueDate") ?? ""),
     inductionDueDate: String(formData.get("inductionDueDate") ?? ""),
@@ -219,7 +225,10 @@ export async function updateWorkerAction(formData: FormData) {
       shiftWorkDays: rule.work,
       shiftOffDays: rule.off,
       shiftStartDate: normalizeDateOnly(payload.shiftStartDate),
-      contractEndDate: normalizeOptionalDate(payload.contractEndDate),
+      contractEndDate: payload.contractIsIndefinite === "on" || payload.contractIsIndefinite === "true"
+        ? null
+        : normalizeOptionalDate(payload.contractEndDate),
+      contractIsIndefinite: payload.contractIsIndefinite === "on" || payload.contractIsIndefinite === "true",
       altitudeExamDueDate: normalizeOptionalDate(payload.altitudeExamDueDate),
       occupationalExamDueDate: normalizeOptionalDate(payload.occupationalExamDueDate),
       inductionDueDate: normalizeOptionalDate(payload.inductionDueDate),

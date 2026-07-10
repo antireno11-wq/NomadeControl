@@ -321,7 +321,9 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
 
                         {/* Contrato */}
                         <td>
-                          {row.worker.contractEndDate ? (
+                          {row.worker.contractIsIndefinite ? (
+                            <span style={{ color: "#0369a1", fontSize: "0.85rem", fontWeight: 600 }}>∞ Indefinido</span>
+                          ) : row.worker.contractEndDate ? (
                             <>
                               <div style={{ color: contractTone === "danger" ? "#9e2f23" : contractTone === "warn" ? "#9a6300" : "var(--text)", fontSize: "0.88rem" }}>
                                 {formatDisplayDate(row.worker.contractEndDate)}
@@ -333,7 +335,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                               )}
                             </>
                           ) : (
-                            <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Indefinido</span>
+                            <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>Sin fecha</span>
                           )}
                         </td>
 

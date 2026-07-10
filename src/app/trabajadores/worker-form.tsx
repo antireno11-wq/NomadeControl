@@ -16,6 +16,7 @@ type WorkerFormDefaults = {
   shiftPattern: string;
   shiftStartDate: string;
   contractEndDate: string;
+  contractIsIndefinite: boolean;
   altitudeExamDueDate: string;
   occupationalExamDueDate: string;
   inductionDueDate: string;
@@ -127,7 +128,28 @@ export function WorkerForm({
         <h3 style={{ marginBottom: 8 }}>Vencimientos documentales</h3>
       </div>
 
-      {STAFF_DOCUMENT_FIELDS.map((field) => (
+      {/* Contrato con opción "Indefinido" */}
+      <div>
+        <label htmlFor="worker-contractEndDate">Contrato</label>
+        <input
+          id="worker-contractEndDate"
+          name="contractEndDate"
+          type="date"
+          defaultValue={defaults.contractEndDate}
+        />
+        <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: "0.82rem", color: "var(--muted)", fontWeight: 400, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            name="contractIsIndefinite"
+            defaultChecked={defaults.contractIsIndefinite}
+            style={{ width: "auto", margin: 0 }}
+          />
+          Contrato indefinido (sin fecha de término)
+        </label>
+      </div>
+
+      {/* Resto de documentos (excluye contrato porque se renderiza arriba con checkbox) */}
+      {STAFF_DOCUMENT_FIELDS.filter(f => f.key !== "contractEndDate").map((field) => (
         <div key={field.key}>
           <label htmlFor={`worker-${field.key}`}>{field.label}</label>
           <input

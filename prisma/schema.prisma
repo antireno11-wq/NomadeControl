@@ -241,6 +241,7 @@ model StaffMember {
   phone          String?
   personalEmail  String?
   contractEndDate DateTime?
+  contractIsIndefinite Boolean @default(false)
   altitudeExamDueDate DateTime?
   occupationalExamDueDate DateTime?
   inductionDueDate DateTime?

@@ -24,7 +24,9 @@ export const STAFF_ROLE_OPTIONS = [
 
 export type StaffDocumentFieldKey = (typeof STAFF_DOCUMENT_FIELDS)[number]["key"];
 
-export type StaffDocumentCarrier = Partial<Record<StaffDocumentFieldKey, Date | null>>;
+export type StaffDocumentCarrier = Partial<Record<StaffDocumentFieldKey, Date | null>> & {
+  contractIsIndefinite?: boolean;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -38,6 +40,16 @@ export function daysUntilDate(target?: Date | null, referenceDate = new Date()) 
 
 export function getStaffDocumentEntries(staffMember: StaffDocumentCarrier, referenceDate = new Date()) {
   return STAFF_DOCUMENT_FIELDS.map((field) => {
+    // Contrato indefinido: caso especial — no vence
+    if (field.key === "contractEndDate" && staffMember.contractIsIndefinite) {
+      return {
+        ...field,
+        date: null,
+        daysUntil: null,
+        status: "indefinite",
+      } as const;
+    }
+
     const date = staffMember[field.key] ?? null;
     const daysUntil = daysUntilDate(date, referenceDate);
     return {

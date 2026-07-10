@@ -11,12 +11,13 @@ import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function docStatusStyle(status: "ok" | "dueSoon" | "expired" | "missing") {
+function docStatusStyle(status: "ok" | "dueSoon" | "expired" | "missing" | "indefinite") {
   const map = {
-    ok:       { bg: "#e8f7ef", color: "#146c3d", border: "#b6e8c8", label: "Al día" },
-    dueSoon:  { bg: "#fff4dc", color: "#9a6300", border: "#f5d98e", label: "Por vencer" },
-    expired:  { bg: "#fce9e8", color: "#9e2f23", border: "#f5c0bb", label: "Vencido" },
-    missing:  { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1", label: "Sin fecha" },
+    ok:         { bg: "#e8f7ef", color: "#146c3d", border: "#b6e8c8", label: "Al día" },
+    indefinite: { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc", label: "Indefinido" },
+    dueSoon:    { bg: "#fff4dc", color: "#9a6300", border: "#f5d98e", label: "Por vencer" },
+    expired:    { bg: "#fce9e8", color: "#9e2f23", border: "#f5c0bb", label: "Vencido" },
+    missing:    { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1", label: "Sin fecha" },
   };
   return map[status];
 }
@@ -29,8 +30,9 @@ function daysLabel(daysUntil: number | null) {
   return `Vence en ${daysUntil} días`;
 }
 
-function contractDaysLabel(contractEndDate: Date | null): string {
-  if (!contractEndDate) return "Indefinido";
+function contractDaysLabel(contractEndDate: Date | null, isIndefinite = false): string {
+  if (isIndefinite) return "Indefinido";
+  if (!contractEndDate) return "Sin fecha cargada";
   const diff = Math.ceil((contractEndDate.getTime() - Date.now()) / 86400000);
   if (diff < 0) return `Venció hace ${Math.abs(diff)} días`;
   if (diff === 0) return "Vence hoy";
@@ -215,9 +217,13 @@ export default async function PerfilTrabajadorPage({
                   },
                   {
                     label: "Vencimiento contrato",
-                    value: worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Indefinido",
-                    sub: worker.contractEndDate ? contractDaysLabel(worker.contractEndDate) : "Sin fecha de término",
-                    highlight: contractDays !== null && contractDays <= 30 ? (contractDays < 0 ? "danger" : "warn") : null,
+                    value: worker.contractIsIndefinite
+                      ? "∞ Indefinido"
+                      : worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Sin fecha",
+                    sub: worker.contractIsIndefinite
+                      ? "Contrato sin fecha de término"
+                      : worker.contractEndDate ? contractDaysLabel(worker.contractEndDate, false) : "Falta cargar fecha",
+                    highlight: worker.contractIsIndefinite ? null : (contractDays !== null && contractDays <= 30 ? (contractDays < 0 ? "danger" : "warn") : null),
                   },
                   {
                     label: "Patrón de turno",
@@ -376,9 +382,15 @@ export default async function PerfilTrabajadorPage({
                   },
                   {
                     label: "Vencimiento contrato",
-                    value: worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Sin fecha",
-                    highlight: contractDays !== null && contractDays < 0 ? "danger" as const : contractDays !== null && contractDays <= 30 ? "warn" as const : null,
-                    sub: worker.contractEndDate ? contractDaysLabel(worker.contractEndDate) : "Indefinido",
+                    value: worker.contractIsIndefinite
+                      ? "∞ Indefinido"
+                      : worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Sin fecha",
+                    highlight: worker.contractIsIndefinite
+                      ? null
+                      : contractDays !== null && contractDays < 0 ? "danger" as const : contractDays !== null && contractDays <= 30 ? "warn" as const : null,
+                    sub: worker.contractIsIndefinite
+                      ? "Sin fecha de término"
+                      : worker.contractEndDate ? contractDaysLabel(worker.contractEndDate, false) : "Falta cargar fecha",
                   },
                   ...(worker.cierre ? [{
                     label: "Tipo de cierre",
@@ -528,6 +540,7 @@ export default async function PerfilTrabajadorPage({
                 shiftPattern: worker.shiftPattern,
                 shiftStartDate: toInputDateValue(worker.shiftStartDate),
                 contractEndDate: worker.contractEndDate ? toInputDateValue(worker.contractEndDate) : "",
+                contractIsIndefinite: worker.contractIsIndefinite ?? false,
                 altitudeExamDueDate: worker.altitudeExamDueDate ? toInputDateValue(worker.altitudeExamDueDate) : "",
                 occupationalExamDueDate: worker.occupationalExamDueDate ? toInputDateValue(worker.occupationalExamDueDate) : "",
                 inductionDueDate: worker.inductionDueDate ? toInputDateValue(worker.inductionDueDate) : "",
