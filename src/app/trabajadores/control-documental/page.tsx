@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { canAccessEvaluaciones, isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
@@ -113,6 +113,31 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
       user={user}
       activeNav="trabajadores"
       showAdminSections={canSeeAdmin}
+      rightSlot={
+        canSeeAllStaff ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link href="/trabajadores/importar">
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)",
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                ⬆ Importar Excel
+              </button>
+            </Link>
+            <Link href="/trabajadores/nuevo">
+              <button type="button">+ Nuevo trabajador</button>
+            </Link>
+          </div>
+        ) : undefined
+      }
     >
       <div className="page-stack">
         <SectionTabs items={buildTrabajadoresTabs("control-documental")} />
@@ -317,14 +342,21 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
           </div>
         </div>
 
-        {/* ── Leyenda de colores ── */}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: "0.8rem", color: "var(--muted)", padding: "0 4px" }}>
-          {Object.entries(STATUS_STYLES).map(([key, s]) => (
-            <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 12, height: 12, borderRadius: 3, background: s.bg, border: `1px solid ${s.border}`, display: "inline-block" }} />
-              {s.label}
+        {/* ── Leyenda de colores + ayuda ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, padding: "0 4px" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: "0.8rem", color: "var(--muted)" }}>
+            {Object.entries(STATUS_STYLES).map(([key, s]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 3, background: s.bg, border: `1px solid ${s.border}`, display: "inline-block" }} />
+                {s.label}
+              </div>
+            ))}
+          </div>
+          {canSeeAllStaff && (
+            <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+              💡 Para <strong>editar fechas</strong> click en "Ver ficha →" · para <strong>dar de baja</strong> un trabajador ir a su ficha → pestaña Contrato → Terminar contrato
             </div>
-          ))}
+          )}
         </div>
       </div>
     </AppShell>
