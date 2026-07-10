@@ -25,7 +25,6 @@ type WorkerFormDefaults = {
   cedulaExpiryDate: string;
   foodHandlingExamDueDate: string;
   vaccineDueDate: string;
-  mutualExamDueDate: string;
   notes: string;
   isActive: boolean;
 };

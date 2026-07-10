@@ -549,7 +549,6 @@ export default async function PerfilTrabajadorPage({
                 cedulaExpiryDate: worker.cedulaExpiryDate ? toInputDateValue(worker.cedulaExpiryDate) : "",
                 foodHandlingExamDueDate: worker.foodHandlingExamDueDate ? toInputDateValue(worker.foodHandlingExamDueDate) : "",
                 vaccineDueDate: worker.vaccineDueDate ? toInputDateValue(worker.vaccineDueDate) : "",
-                mutualExamDueDate: worker.mutualExamDueDate ? toInputDateValue(worker.mutualExamDueDate) : "",
                 notes: worker.notes ?? "",
                 isActive: worker.isActive,
               }}

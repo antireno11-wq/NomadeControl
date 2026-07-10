@@ -65,8 +65,8 @@ const HEADER_MAP: Record<string, keyof WorkerImportRow> = {
   "manipulacion alimentos": "foodHandlingExamDueDate", "manipulacion de alimentos": "foodHandlingExamDueDate", "venc manipulacion": "foodHandlingExamDueDate", "carnet manipulacion": "foodHandlingExamDueDate",
   // vaccineDueDate
   "vacunas": "vaccineDueDate", "vacuna": "vaccineDueDate", "venc vacunas": "vaccineDueDate", "vacunacion": "vaccineDueDate",
-  // mutualExamDueDate
-  "examen mutualidad": "mutualExamDueDate", "venc examen mutualidad": "mutualExamDueDate", "mutual": "mutualExamDueDate", "mutualidad": "mutualExamDueDate",
+  // "Examen mutualidad" es el mismo que ocupacional — se mapean al mismo campo
+  "examen mutualidad": "occupationalExamDueDate", "venc examen mutualidad": "occupationalExamDueDate", "mutual": "occupationalExamDueDate", "mutualidad": "occupationalExamDueDate",
   // notes
   "notas": "notes", "observaciones": "notes", "comentarios": "notes", "notes": "notes",
 };
@@ -202,7 +202,7 @@ function downloadTemplate() {
     "Turno", "Inicio turno",
     "Venc. contrato",
     "Venc. cédula identidad", "Venc. licencia conducir",
-    "Examen ocupacional", "Examen mutualidad", "Examen altura",
+    "Examen ocupacional (mutualidad)", "Examen altura",
     "Manipulación alimentos", "Vacunas",
     "Inducción", "Acreditación",
     "Notas",
@@ -213,7 +213,7 @@ function downloadTemplate() {
     "14x14", "01/03/2025",
     "31/12/2025",
     "20/05/2030", "15/06/2026",
-    "30/03/2026", "30/03/2026", "30/03/2026",
+    "30/03/2026", "30/03/2026",
     "10/08/2026", "01/12/2025",
     "01/04/2025", "30/09/2025",
     "",

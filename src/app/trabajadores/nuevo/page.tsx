@@ -74,7 +74,6 @@ export default async function NuevoTrabajadorPage({
               cedulaExpiryDate: "",
               foodHandlingExamDueDate: "",
               vaccineDueDate: "",
-              mutualExamDueDate: "",
               notes: "",
               isActive: true
             }}

@@ -38,7 +38,6 @@ const workerSchema = z.object({
   cedulaExpiryDate: z.string().optional(),
   foodHandlingExamDueDate: z.string().optional(),
   vaccineDueDate: z.string().optional(),
-  mutualExamDueDate: z.string().optional(),
   notes: z.string().optional(),
   isActive: z.union([z.literal("on"), z.literal("true"), z.literal("")]).optional(),
   successRedirectTo: z.string().min(1),
@@ -92,7 +91,6 @@ export async function createWorkerAction(formData: FormData) {
     cedulaExpiryDate: String(formData.get("cedulaExpiryDate") ?? ""),
     foodHandlingExamDueDate: String(formData.get("foodHandlingExamDueDate") ?? ""),
     vaccineDueDate: String(formData.get("vaccineDueDate") ?? ""),
-    mutualExamDueDate: String(formData.get("mutualExamDueDate") ?? ""),
     notes: String(formData.get("notes") ?? ""),
     isActive: String(formData.get("isActive") ?? ""),
     successRedirectTo: formData.get("successRedirectTo"),
@@ -133,7 +131,6 @@ export async function createWorkerAction(formData: FormData) {
       cedulaExpiryDate: normalizeOptionalDate(payload.cedulaExpiryDate),
       foodHandlingExamDueDate: normalizeOptionalDate(payload.foodHandlingExamDueDate),
       vaccineDueDate: normalizeOptionalDate(payload.vaccineDueDate),
-      mutualExamDueDate: normalizeOptionalDate(payload.mutualExamDueDate),
       notes: payload.notes || null,
       isActive: payload.isActive === "on" || payload.isActive === "true"
     }
@@ -178,7 +175,6 @@ export async function updateWorkerAction(formData: FormData) {
     cedulaExpiryDate: String(formData.get("cedulaExpiryDate") ?? ""),
     foodHandlingExamDueDate: String(formData.get("foodHandlingExamDueDate") ?? ""),
     vaccineDueDate: String(formData.get("vaccineDueDate") ?? ""),
-    mutualExamDueDate: String(formData.get("mutualExamDueDate") ?? ""),
     notes: String(formData.get("notes") ?? ""),
     isActive: String(formData.get("isActive") ?? ""),
     successRedirectTo: formData.get("successRedirectTo"),
@@ -237,7 +233,6 @@ export async function updateWorkerAction(formData: FormData) {
       cedulaExpiryDate: normalizeOptionalDate(payload.cedulaExpiryDate),
       foodHandlingExamDueDate: normalizeOptionalDate(payload.foodHandlingExamDueDate),
       vaccineDueDate: normalizeOptionalDate(payload.vaccineDueDate),
-      mutualExamDueDate: normalizeOptionalDate(payload.mutualExamDueDate),
       notes: payload.notes || null,
       isActive: payload.isActive === "on" || payload.isActive === "true"
     }

@@ -250,7 +250,6 @@ model StaffMember {
   cedulaExpiryDate DateTime?
   foodHandlingExamDueDate DateTime?
   vaccineDueDate DateTime?
-  mutualExamDueDate DateTime?
   shiftPattern   String   @default("14x14")
   shiftWorkDays  Int      @default(14)
   shiftOffDays   Int      @default(14)

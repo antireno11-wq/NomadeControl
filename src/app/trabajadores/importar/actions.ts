@@ -34,7 +34,6 @@ export type WorkerImportRow = {
   cedulaExpiryDate?:        string;
   foodHandlingExamDueDate?: string;
   vaccineDueDate?:          string;
-  mutualExamDueDate?:       string;
   notes?:                   string;
 };
 
@@ -131,7 +130,6 @@ function buildUpdatePayload(row: WorkerImportRow, campId: string | null) {
     ["cedulaExpiryDate", "cedulaExpiryDate"],
     ["foodHandlingExamDueDate", "foodHandlingExamDueDate"],
     ["vaccineDueDate", "vaccineDueDate"],
-    ["mutualExamDueDate", "mutualExamDueDate"],
   ];
   for (const [src, dst] of dateFields) {
     const raw = row[src]?.toString().trim();
@@ -239,7 +237,6 @@ export async function importarTrabajadoresAction(
             cedulaExpiryDate:        parseDate(row.cedulaExpiryDate),
             foodHandlingExamDueDate: parseDate(row.foodHandlingExamDueDate),
             vaccineDueDate:          parseDate(row.vaccineDueDate),
-            mutualExamDueDate:       parseDate(row.mutualExamDueDate),
             notes:                   row.notes?.trim()            || null,
             isActive:                true,
             createdById:             user.id,
