@@ -116,6 +116,22 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
       rightSlot={
         canSeeAllStaff ? (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link href="/trabajadores/control-documental/extraer">
+              <button
+                type="button"
+                style={{
+                  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+                  border: "none",
+                  color: "#fff",
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🤖 Extraer con IA
+              </button>
+            </Link>
             <Link href="/trabajadores/importar">
               <button
                 type="button"
