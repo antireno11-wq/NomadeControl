@@ -28,10 +28,10 @@ main {
 }
 
 main.dashboard-shell {
-  max-width: 1380px;
+  max-width: 1600px;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 22px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 

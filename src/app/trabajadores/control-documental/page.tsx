@@ -346,77 +346,82 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
             <span className="dashboard-chip small">{filteredRows.length} trabajadores</span>
           </div>
           <div style={{ overflowX: "auto" }}>
-            <table className="dashboard-table" style={{ minWidth: 1100 }}>
+            <table className="dashboard-table" style={{ width: "100%", tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: 220 }} />
+                {STAFF_DOCUMENT_FIELDS.map((f) => (
+                  <col key={f.key} />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ position: "sticky", left: 0, background: "var(--bg)", zIndex: 2 }}>Trabajador</th>
-                  <th>Campamento</th>
+                  <th style={{ textAlign: "left" }}>Trabajador</th>
                   {STAFF_DOCUMENT_FIELDS.map((f) => (
-                    <th key={f.key} style={{ minWidth: 100, whiteSpace: "nowrap", textAlign: "center" }}>
+                    <th key={f.key} style={{ whiteSpace: "nowrap", textAlign: "center", fontSize: "0.72rem", padding: "8px 4px" }}>
                       {f.short}
                     </th>
                   ))}
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={STAFF_DOCUMENT_FIELDS.length + 3} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
+                    <td colSpan={STAFF_DOCUMENT_FIELDS.length + 1} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
                       No hay trabajadores con estos filtros.
                     </td>
                   </tr>
                 ) : (
                   filteredRows.map(r => (
                     <tr key={r.worker.id}>
-                      <td style={{ position: "sticky", left: 0, background: "#fff", fontWeight: 600, zIndex: 1 }}>
-                        {r.worker.fullName}
-                        {r.worker.nationalId && (
-                          <div style={{ color: "var(--muted)", fontSize: "0.75rem", fontWeight: 400 }}>{r.worker.nationalId}</div>
-                        )}
-                      </td>
-                      <td style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
-                        {r.worker.camp?.name ?? "—"}
+                      <td style={{ padding: "8px 12px" }}>
+                        <Link
+                          href={`/trabajadores/${r.worker.id}?tab=documentos`}
+                          style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                        >
+                          <div style={{ fontWeight: 600, color: "var(--teal)", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {r.worker.fullName}
+                          </div>
+                          <div style={{ color: "var(--muted)", fontSize: "0.72rem", fontWeight: 400, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {r.worker.nationalId && <span>{r.worker.nationalId}</span>}
+                            {r.worker.camp?.name && <span>· {r.worker.camp.name}</span>}
+                          </div>
+                        </Link>
                       </td>
                       {r.entries.map((e) => {
                         const style = STATUS_STYLES[e.status];
                         return (
-                          <td key={e.key} style={{ textAlign: "center", padding: 4 }}>
+                          <td key={e.key} style={{ textAlign: "center", padding: "4px 3px" }}>
                             <div style={{
                               display: "inline-block",
-                              padding: "5px 8px",
-                              borderRadius: 6,
+                              padding: "4px 4px",
+                              borderRadius: 5,
                               background: style.bg,
                               color: style.color,
                               border: `1px solid ${style.border}`,
-                              fontSize: "0.75rem",
+                              fontSize: "0.7rem",
                               fontWeight: 600,
-                              minWidth: 78,
-                              whiteSpace: "nowrap",
+                              lineHeight: 1.2,
+                              width: "100%",
+                              boxSizing: "border-box",
                             }} title={`${e.label}: ${style.label}`}>
                               {e.status === "indefinite"
-                                ? "∞ Indefinido"
+                                ? "∞"
                                 : e.date
                                   ? formatDisplayDate(e.date)
                                   : "—"}
                               {e.status !== "missing" && e.status !== "indefinite" && e.daysUntil != null && (
-                                <div style={{ fontSize: "0.68rem", fontWeight: 500, opacity: 0.9 }}>
+                                <div style={{ fontSize: "0.62rem", fontWeight: 500, opacity: 0.9 }}>
                                   {e.status === "expired"
                                     ? `${Math.abs(e.daysUntil)}d vencido`
                                     : e.status === "dueSoon"
-                                      ? `${e.daysUntil}d`
-                                      : "vigente"}
+                                      ? `en ${e.daysUntil}d`
+                                      : ""}
                                 </div>
                               )}
                             </div>
                           </td>
                         );
                       })}
-                      <td>
-                        <Link href={`/trabajadores/${r.worker.id}?tab=documentos`} className="dashboard-mini-link" style={{ whiteSpace: "nowrap" }}>
-                          Ver ficha →
-                        </Link>
-                      </td>
                     </tr>
                   ))
                 )}
