@@ -7,104 +7,142 @@ import { logAuditEvent } from "@/lib/audit";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "camp_session";
 const SESSION_TTL_DAYS = 7;
-export type AppRole =
-  | "ADMINISTRADOR"
-  | "ADMIN_LIMITADO"
-  | "SUPERVISOR"
-  | "VEHICULOS"
-  | "ADMIN"
-  | "OPERADOR"
-  | "OFICINA"
-  | "COLABORADOR"
-  | "RRHH";
-export const MANAGED_USER_ROLE_VALUES = ["SUPERVISOR", "ADMINISTRADOR", "ADMIN_LIMITADO", "VEHICULOS", "OFICINA", "COLABORADOR", "RRHH"] as const;
-export const FULL_ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR", "ADMIN"];
-export const ADMIN_ROLES: AppRole[] = [...FULL_ADMIN_ROLES, "ADMIN_LIMITADO"];
-export const VEHICLE_ROLES: AppRole[] = [...ADMIN_ROLES, "VEHICULOS"];
-export const OPERATION_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
-export const TRABAJADORES_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "RRHH"];
-export const PROFILE_ROLES: AppRole[] = [...VEHICLE_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR", "RRHH"];
-export const SUPERVISOR_ROLES: AppRole[] = ["SUPERVISOR", "OPERADOR"];
-export const BIBLIOTECA_ROLES: AppRole[] = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "COLABORADOR", "RRHH"];
-export const TAREAS_ROLES: AppRole[]        = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR", "OFICINA", "RRHH"];
-export const TAREAS_VER_ROLES: AppRole[]    = [...TAREAS_ROLES, "COLABORADOR"];
-export const EVALUACIONES_ROLES: AppRole[]  = [...ADMIN_ROLES, "SUPERVISOR"];
-export const HSEC_ROLES: AppRole[]          = [...ADMIN_ROLES, "SUPERVISOR", "OPERADOR"];
+
+// ─── Sistema de roles simplificado a 3 niveles ─────────────────────────────
+// Administrador → todo (usuarios, config, todo el operativo)
+// Operativo    → crea/edita en Personal + Vehículos + Campamentos, no toca usuarios
+// Consulta     → solo lectura
+//
+// Los valores antiguos (RRHH, SUPERVISOR, ADMIN, ADMIN_LIMITADO, etc.) siguen
+// funcionando gracias a `normalizeRole()`: si un usuario existente tiene
+// rol="RRHH", el sistema lo trata como "OPERATIVO" sin necesidad de migrar
+// la BD. Al editar el usuario, se persiste con el nombre nuevo.
+export type AppRole = "ADMINISTRADOR" | "OPERATIVO" | "CONSULTA";
+
+export const MANAGED_USER_ROLE_VALUES = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"] as const;
+
+export const ROLE_LABEL: Record<AppRole, string> = {
+  ADMINISTRADOR: "Administrador",
+  OPERATIVO:     "Operativo",
+  CONSULTA:      "Consulta",
+};
+
+export const ROLE_DESCRIPTION: Record<AppRole, string> = {
+  ADMINISTRADOR: "Todo: gestión de usuarios, configuración, campamentos, personal, vehículos, borrar cosas",
+  OPERATIVO:     "Crea/edita en Personal, Vehículos y Campamentos. No gestiona usuarios ni config",
+  CONSULTA:      "Solo lectura de todos los paneles y fichas",
+};
+
+// Mapeo de roles legacy → nuevos. Se aplica en memoria al leer el usuario.
+const LEGACY_ROLE_MAP: Record<string, AppRole> = {
+  ADMIN:           "ADMINISTRADOR",
+  ADMIN_LIMITADO:  "ADMINISTRADOR",
+  RRHH:            "OPERATIVO",
+  SUPERVISOR:      "OPERATIVO",
+  OPERADOR:        "OPERATIVO",
+  VEHICULOS:       "OPERATIVO",
+  OFICINA:         "CONSULTA",
+  COLABORADOR:     "CONSULTA",
+};
+
+export function normalizeRole(role: string): AppRole {
+  if (role === "ADMINISTRADOR" || role === "OPERATIVO" || role === "CONSULTA") {
+    return role;
+  }
+  return LEGACY_ROLE_MAP[role] ?? "CONSULTA";
+}
+
+// Constantes de listas de roles — se mantienen los nombres viejos por
+// compatibilidad con requireRole(ADMIN_ROLES) etc., pero el chequeo interno
+// ya normaliza. Todos apuntan a los nuevos valores.
+export const FULL_ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR"];
+export const ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR"];
+export const VEHICLE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
+export const OPERATION_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
+export const TRABAJADORES_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
+export const PROFILE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
+export const SUPERVISOR_ROLES: AppRole[] = ["OPERATIVO"];
+export const BIBLIOTECA_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
+export const TAREAS_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
+export const TAREAS_VER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
+export const EVALUACIONES_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
+export const HSEC_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 export function defaultRouteForRole(role: string) {
-  if (role === "COLABORADOR") {
-    return "/biblioteca";
-  }
-
-  if (role === "RRHH") {
-    return "/trabajadores";
-  }
-
-  if (isVehicleOnlyRole(role)) {
-    return "/vehiculos";
-  }
-
+  const norm = normalizeRole(role);
+  if (norm === "CONSULTA") return "/trabajadores/control-documental";
   return "/";
 }
 
 export function isAdminRole(role: string) {
-  return ADMIN_ROLES.includes(role as AppRole);
+  return normalizeRole(role) === "ADMINISTRADOR";
 }
 
 export function isFullAdminRole(role: string) {
-  return FULL_ADMIN_ROLES.includes(role as AppRole);
+  return normalizeRole(role) === "ADMINISTRADOR";
 }
 
-export function isSupervisorRole(role: string) {
-  return role === "SUPERVISOR" || role === "OPERADOR";
+// isSupervisorRole quedó legacy pero algunos endpoints lo usan para
+// distinguir roles operativos con restricción por campamento. Ahora los
+// operativos ven todos los campamentos (transversal). Devolvemos false
+// para desactivar cualquier restricción de scope-por-camp.
+export function isSupervisorRole(_role: string) {
+  return false;
 }
 
-export function isVehicleOnlyRole(role: string) {
-  return role === "VEHICULOS";
+export function isVehicleOnlyRole(_role: string) {
+  return false;
 }
 
 export function canAccessAdministration(role: string) {
-  return isAdminRole(role);
+  return normalizeRole(role) === "ADMINISTRADOR";
 }
 
 export function canAccessDashboard(role: string) {
-  return OPERATION_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
 export function canAccessCampOperations(role: string) {
-  return OPERATION_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
 export function canAccessVehicles(role: string) {
-  return VEHICLE_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
 export function canAccessBiblioteca(role: string) {
-  return BIBLIOTECA_ROLES.includes(role as AppRole);
+  return true; // los 3 niveles ven biblioteca cuando está habilitada
 }
 
 export function canAccessTareas(role: string) {
-  return TAREAS_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
 export function canManageTareas(role: string) {
-  return TAREAS_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
-export function canViewTareas(role: string) {
-  return TAREAS_VER_ROLES.includes(role as AppRole);
+export function canViewTareas(_role: string) {
+  return true; // los 3 niveles ven tareas cuando está habilitado
 }
 
 export function canAccessEvaluaciones(role: string) {
-  return EVALUACIONES_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
 export function canAccessHSEC(role: string) {
-  return HSEC_ROLES.includes(role as AppRole);
+  const norm = normalizeRole(role);
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
-export function canAccessTrabajadores(role: string) {
-  return TRABAJADORES_ROLES.includes(role as AppRole);
+export function canAccessTrabajadores(_role: string) {
+  return true; // los 3 niveles ven trabajadores (consulta = solo lectura)
 }
 
 // ── Permisos por módulo ──────────────────────────────────────────────────────
@@ -144,13 +182,7 @@ export function canAccessModule(
 }
 
 export function roleLabel(role: string) {
-  if (role === "ADMIN" || role === "ADMINISTRADOR") return "ADMINISTRADOR";
-  if (role === "ADMIN_LIMITADO") return "ADMIN LIMITADO";
-  if (role === "VEHICULOS") return "SOLO VEHÍCULOS";
-  if (role === "OFICINA") return "OFICINA";
-  if (role === "COLABORADOR") return "COLABORADOR";
-  if (role === "RRHH") return "RRHH";
-  return role;
+  return ROLE_LABEL[normalizeRole(role)];
 }
 
 function sessionExpirationDate() {
@@ -268,10 +300,9 @@ export async function requireUser() {
 
 export async function requireRole(allowed: AppRole[]) {
   const user = await requireUser();
-
-  if (!allowed.includes(user.role as AppRole)) {
+  const norm = normalizeRole(user.role);
+  if (!allowed.includes(norm)) {
     redirect(defaultRouteForRole(user.role));
   }
-
   return user;
 }

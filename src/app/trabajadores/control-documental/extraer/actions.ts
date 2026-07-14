@@ -7,7 +7,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { STAFF_DOCUMENT_FIELDS, type StaffDocumentFieldKey } from "@/lib/staff-docs";
 
-const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
+const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 export type ExtractedRow = ExtractedDoc & {
   clientFileId: string;

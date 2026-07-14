@@ -1,19 +1,19 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession, defaultRouteForRole, isAdminRole, isSupervisorRole, isVehicleOnlyRole, verifyPassword } from "@/lib/auth";
+import { createSession, defaultRouteForRole, normalizeRole, verifyPassword, type AppRole, ROLE_LABEL } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function loginAction(_: { error?: string } | undefined, formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const accessRole = String(formData.get("accessRole") ?? "").trim().toUpperCase();
+  const accessRole = String(formData.get("accessRole") ?? "").trim().toUpperCase() as AppRole;
 
   if (!email || !password || !accessRole) {
     return { error: "Tipo de acceso, correo y contraseña son obligatorios." };
   }
 
-  const VALID_ACCESS_ROLES = ["SUPERVISOR", "OPERADOR", "RRHH", "OFICINA", "COLABORADOR", "VEHICULOS", "ADMIN_LIMITADO", "ADMINISTRADOR"];
+  const VALID_ACCESS_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
   if (!VALID_ACCESS_ROLES.includes(accessRole)) {
     return { error: "Selecciona un tipo de acceso válido." };
   }
@@ -34,30 +34,14 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
     return { error: "Credenciales inválidas." };
   }
 
-  // Validar que el tipo de acceso seleccionado coincida con el rol real del usuario
-  if (accessRole === "ADMINISTRADOR" && !isAdminRole(user.role)) {
-    return { error: "Este usuario no tiene perfil de administrador." };
-  }
-  if (accessRole === "ADMIN_LIMITADO" && user.role !== "ADMIN_LIMITADO") {
-    return { error: "Este usuario no tiene perfil de admin limitado." };
-  }
-  if (accessRole === "SUPERVISOR" && !isSupervisorRole(user.role)) {
-    return { error: "Este usuario no tiene perfil de supervisor." };
-  }
-  if (accessRole === "OPERADOR" && user.role !== "OPERADOR") {
-    return { error: "Este usuario no tiene perfil de operador." };
-  }
-  if (accessRole === "RRHH" && user.role !== "RRHH") {
-    return { error: "Este usuario no tiene perfil de Recursos Humanos." };
-  }
-  if (accessRole === "OFICINA" && user.role !== "OFICINA") {
-    return { error: "Este usuario no tiene perfil de oficina." };
-  }
-  if (accessRole === "VEHICULOS" && user.role !== "VEHICULOS") {
-    return { error: "Este usuario no tiene perfil de vehículos." };
-  }
-  if (accessRole === "COLABORADOR" && user.role !== "COLABORADOR") {
-    return { error: "Este usuario no tiene perfil de colaborador." };
+  // Validar que el tipo de acceso seleccionado coincida con el rol real del
+  // usuario. Se compara contra el rol normalizado (los usuarios existentes
+  // con roles legacy — RRHH, SUPERVISOR, etc. — se mapean automáticamente).
+  const userRoleNorm = normalizeRole(user.role);
+  if (accessRole !== userRoleNorm) {
+    return {
+      error: `Este usuario tiene perfil de "${ROLE_LABEL[userRoleNorm]}". Selecciona ese tipo de acceso.`,
+    };
   }
 
   await createSession(user.id);

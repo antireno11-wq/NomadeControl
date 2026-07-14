@@ -17,68 +17,34 @@ const ALL_MODULES_CLIENT = [
 
 const ROLES = [
   {
-    value: "SUPERVISOR",
-    label: "Supervisor",
-    icon: "👷",
-    description: "Operaciones, HSEC, trabajadores y tareas del campamento",
+    value: "OPERATIVO",
+    label: "Operativo",
+    icon: "🛠️",
+    description: "Crea/edita en Personal, Vehículos y Campamentos. No gestiona usuarios",
     adminOnly: false,
   },
   {
-    value: "OPERADOR",
-    label: "Operador",
-    icon: "🔧",
-    description: "Acceso operativo básico: operaciones, tareas, bodega y HSEC",
-    adminOnly: false,
-  },
-  {
-    value: "OFICINA",
-    label: "Oficina",
-    icon: "📋",
-    description: "Tareas y biblioteca de documentos",
-    adminOnly: false,
-  },
-  {
-    value: "COLABORADOR",
-    label: "Colaborador",
-    icon: "👤",
-    description: "Solo tareas asignadas y biblioteca",
-    adminOnly: false,
-  },
-  {
-    value: "VEHICULOS",
-    label: "Solo vehículos",
-    icon: "🚗",
-    description: "Acceso exclusivo al módulo de vehículos",
-    adminOnly: false,
-  },
-  {
-    value: "RRHH",
-    label: "Recursos Humanos",
-    icon: "🧑‍💼",
-    description: "Gestión de trabajadores, documentos, EPP e inducciones",
-    adminOnly: false,
-  },
-  {
-    value: "ADMIN_LIMITADO",
-    label: "Admin limitado",
-    icon: "🔒",
-    description: "Gestión de usuarios y módulos operativos, sin eliminar datos",
+    value: "CONSULTA",
+    label: "Consulta",
+    icon: "👁️",
+    description: "Solo lectura de paneles, fichas y matriz documental",
     adminOnly: false,
   },
   {
     value: "ADMINISTRADOR",
     label: "Administrador",
     icon: "⚙️",
-    description: "Acceso total al sistema, incluyendo configuración",
+    description: "Acceso total: usuarios, config, personal, vehículos, campamentos",
     adminOnly: true,
   },
 ];
 
-const ADMIN_VALUES = ["ADMINISTRADOR", "ADMIN_LIMITADO"];
+const ADMIN_VALUES = ["ADMINISTRADOR"];
 
 // Módulos pre-seleccionados por rol al crear usuario
 const DEFAULT_MODULES_BY_ROLE: Record<string, string[]> = {
-  RRHH: ["trabajadores", "tareas", "biblioteca"],
+  OPERATIVO: ["trabajadores", "vehiculos", "operaciones"],
+  CONSULTA:  ["trabajadores"],
 };
 
 type CampOption = { id: string; name: string };
@@ -114,7 +80,7 @@ export function NewUserForm({
   canAssignFullAdmin: boolean;
 }) {
   const [state, formAction] = useFormState(createUserAction, initialState);
-  const [selectedRole, setSelectedRole] = useState("SUPERVISOR");
+  const [selectedRole, setSelectedRole] = useState("OPERATIVO");
   const [showPassword, setShowPassword] = useState(false);
 
   const isAdmin = ADMIN_VALUES.includes(selectedRole);

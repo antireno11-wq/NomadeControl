@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { ImportWorkers } from "./import-client";
 
-const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
+const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 export default async function ImportarTrabajadoresPage() {
   const user = await requireRole(STAFF_MANAGER_ROLES);

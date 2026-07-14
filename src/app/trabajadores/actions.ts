@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ADMIN_ROLES, isSupervisorRole, TRABAJADORES_ROLES, requireRole, type AppRole } from "@/lib/auth";
 
-const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
+const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";

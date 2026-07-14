@@ -7,7 +7,7 @@ import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { STAFF_DOCUMENT_FIELDS } from "@/lib/staff-docs";
 import { ExtractClient } from "./extract-client";
 
-const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
+const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 export default async function ExtraerDocumentosPage() {
   const user = await requireRole(STAFF_MANAGER_ROLES);

@@ -18,15 +18,10 @@ export function LoginForm() {
       <form action={formAction} className="grid">
         <div>
           <label htmlFor="accessRole">Tipo de acceso</label>
-          <select id="accessRole" name="accessRole" defaultValue="SUPERVISOR" required>
-            <option value="SUPERVISOR">Supervisor</option>
-            <option value="OPERADOR">Operador</option>
-            <option value="RRHH">Recursos Humanos</option>
-            <option value="OFICINA">Oficina</option>
-            <option value="COLABORADOR">Colaborador</option>
-            <option value="VEHICULOS">Solo vehículos</option>
-            <option value="ADMIN_LIMITADO">Admin limitado</option>
+          <select id="accessRole" name="accessRole" defaultValue="OPERATIVO" required>
             <option value="ADMINISTRADOR">Administrador</option>
+            <option value="OPERATIVO">Operativo</option>
+            <option value="CONSULTA">Consulta</option>
           </select>
         </div>
 

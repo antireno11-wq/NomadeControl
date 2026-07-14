@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireRole, ADMIN_ROLES, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 
-const STAFF_MANAGER_ROLES: AppRole[] = [...ADMIN_ROLES, "RRHH"];
+const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 const SHIFT_MAP: Record<string, { work: number; off: number }> = {
   "14x14": { work: 14, off: 14 },
