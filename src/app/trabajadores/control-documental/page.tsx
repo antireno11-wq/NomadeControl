@@ -43,8 +43,9 @@ function tipoParam(s: string | string[] | undefined) {
 export default async function ControlDocumentalPage({ searchParams }: { searchParams?: SearchParams }) {
   const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdmin = isAdminRole(user.role);
-  const isHR = user.role === "RRHH";
-  const canSeeAllStaff = canSeeAdmin || isHR;
+  // Los 3 niveles (Admin / Operativo / Consulta) ven todos los trabajadores
+  // — no hay restricción por campamento en el sistema simplificado.
+  const canSeeAllStaff = true;
 
   const selectedCampId = typeof searchParams?.campId === "string" && searchParams.campId !== "general" ? searchParams.campId : undefined;
   const filtroEstado = estadoParam(searchParams?.estado);

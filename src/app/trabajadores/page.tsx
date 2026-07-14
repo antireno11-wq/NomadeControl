@@ -25,9 +25,9 @@ function getStatusInfo(status: string) {
 export default async function TrabajadoresPage({ searchParams }: { searchParams?: SearchParams }) {
   const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
-  const isHR = user.role === "RRHH";
-  // RRHH es un rol transversal (no tiene campId) y debe ver todos los trabajadores como admin.
-  const canSeeAllStaff = canSeeAdminSections || isHR;
+  // Los 3 niveles (Admin / Operativo / Consulta) ven todos los trabajadores
+  // — no hay restricción por campamento en el sistema simplificado.
+  const canSeeAllStaff = true;
   const canEvaluar = canAccessEvaluaciones(user.role);
   const selectedCampIdRaw = searchParams?.campId;
   const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
