@@ -200,37 +200,9 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
           </div>
         </div>
 
+        {/* Alertas documentales van primero: es lo que exige acción */}
         <div className="dashboard-core-grid">
-          <section className="dashboard-panel dashboard-panel-large">
-            <div className="dashboard-panel-header">
-              <h2>Proyección de todo el turno</h2>
-              <span className="dashboard-chip small">Bloque actual y siguiente</span>
-            </div>
-            <div className="summary-list">
-              {nextShiftChanges.map((entry) => (
-                <div key={entry.workerId} className="summary-row">
-                  <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "32%" }}>
-                    <Link href={`/trabajadores/${entry.workerId}?tab=turno`} style={{ textDecoration: "none" }}>
-                      <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--teal)" }}>{entry.workerName}</strong>
-                    </Link>
-                    <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, color: "var(--text)" }}>{entry.shiftPattern} · {entry.currentStateLabel}</div>
-                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>Actual: {entry.currentBlockRange}</div>
-                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>Luego: {entry.nextBlockLabel} · {entry.nextBlockRange}</div>
-                  </div>
-                  <div style={{ flexShrink: 0, fontSize: "0.88rem", color: "var(--text)" }}>{formatDisplayDate(entry.nextBlockStart)}</div>
-                  <div className={`status-pill ${entry.daysRemainingInBlock <= 2 ? "danger" : entry.daysRemainingInBlock <= 7 ? "warn" : "ok"}`} style={{ flexShrink: 0 }}>
-                    {entry.daysRemainingInBlock === 0 ? "Mañana" : `${entry.daysRemainingInBlock} día(s)`}
-                  </div>
-                </div>
-              ))}
-              {nextShiftChanges.length === 0 ? <div className="section-caption">Todavía no hay turnos configurados en los trabajadores activos.</div> : null}
-            </div>
-          </section>
-
-          <section className="dashboard-panel dashboard-panel-large">
+          <section className="dashboard-panel dashboard-panel-wide">
             <div className="dashboard-panel-header">
               <h2>Alertas documentales</h2>
               <span className="dashboard-chip small">Próximos vencimientos</span>
@@ -256,6 +228,37 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                 </Link>
               ))}
               {upcomingEntries.length === 0 ? <div className="section-caption">Todavía no hay vencimientos cargados.</div> : null}
+            </div>
+          </section>
+        </div>
+
+        <div className="dashboard-core-grid">
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="dashboard-panel-header">
+              <h2>Proyección de todo el turno</h2>
+              <span className="dashboard-chip small">Bloque actual y siguiente</span>
+            </div>
+            <div className="summary-list">
+              {nextShiftChanges.map((entry) => (
+                <div key={entry.workerId} className="summary-row">
+                  <div style={{ minWidth: 0, flex: "0 0 auto", maxWidth: "32%" }}>
+                    <Link href={`/trabajadores/${entry.workerId}?tab=turno`} style={{ textDecoration: "none" }}>
+                      <strong style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--teal)" }}>{entry.workerName}</strong>
+                    </Link>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.campName}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: "var(--text)" }}>{entry.shiftPattern} · {entry.currentStateLabel}</div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>Actual: {entry.currentBlockRange}</div>
+                    <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>Luego: {entry.nextBlockLabel} · {entry.nextBlockRange}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, fontSize: "0.88rem", color: "var(--text)" }}>{formatDisplayDate(entry.nextBlockStart)}</div>
+                  <div className={`status-pill ${entry.daysRemainingInBlock <= 2 ? "danger" : entry.daysRemainingInBlock <= 7 ? "warn" : "ok"}`} style={{ flexShrink: 0 }}>
+                    {entry.daysRemainingInBlock === 0 ? "Mañana" : `${entry.daysRemainingInBlock} día(s)`}
+                  </div>
+                </div>
+              ))}
+              {nextShiftChanges.length === 0 ? <div className="section-caption">Todavía no hay turnos configurados en los trabajadores activos.</div> : null}
             </div>
           </section>
         </div>

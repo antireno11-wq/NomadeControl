@@ -43,17 +43,21 @@ Reglas:
 - Fechas SIEMPRE en formato YYYY-MM-DD. Si el documento muestra 15/06/2027, devuelve "2027-06-15".
 - Si NO puedes leer una fecha, devuelve null. NO la inventes ni la estimes.
 - Elige el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
-- Distinguí bien EMISIÓN de VENCIMIENTO. El que importa es el vencimiento (expiryDate); la emisión (issueDate) es informativa.
+- CRÍTICO — NO CONFUNDAS EMISIÓN CON VENCIMIENTO. Es el error más grave posible: pone como "vencido" un documento que está vigente.
+  · Van en issueDate (fecha de emisión/realización): "realizado con fecha", "de fecha", "efectuado el", "emitido el", "Santiago, a <fecha>", "fecha de examen", "fecha de la muestra", "fecha de aprobación", "fecha del curso", la fecha junto a una firma.
+  · Van en expiryDate SOLO si el texto lo dice explícitamente: "vence el", "válido hasta", "vigente hasta", "fecha de vencimiento", "expira el", "caduca el", "válido por ... hasta".
+  · Si el documento tiene UNA SOLA fecha y no dice explícitamente que sea de vencimiento, va en issueDate y expiryDate queda null. NO asumas que la única fecha es el vencimiento.
+  · Ejemplo: "El examen de detección de consumo de drogas realizado con fecha 15/07/2026..." → issueDate "2026-07-15", expiryDate null. Esa fecha es cuándo se hizo el examen, NO cuándo caduca.
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
 - Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
-- Los certificados de capacitación suelen traer solo la fecha de realización: esa va en issueDate.
+- Los certificados de capacitación y los exámenes casi siempre traen solo la fecha de realización: esa va en issueDate y expiryDate queda null.
 - workerName: tal como aparece en el documento, con apellidos.
 - workerRut: formato chileno, ej. "12.345.678-9".
 - paginaInicio: número de página (empezando en 1) donde arranca el documento. Si es un archivo de una sola página o una foto, pon 1.
 - confidence por documento:
-  - "high" = vencimiento claramente visible y legible
-  - "medium" = alguna ambigüedad (borroso, formato raro, falta contexto)
-  - "low" = imagen mala, campos no visibles, o dudás del tipo
+  - "high" = identificaste bien el tipo y las fechas que hay están claras (incluye el caso de un documento sin vencimiento)
+  - "medium" = alguna ambigüedad: borroso, formato raro, o dudas sobre si una fecha es emisión o vencimiento
+  - "low" = imagen mala, campos no visibles, o dudas sobre el tipo
 - reasoning: 1-2 frases sobre en qué te basaste.
 - Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devolvelo UNA sola vez.
 - Si no reconoces ningún documento, devuelve {"documentos": []}.

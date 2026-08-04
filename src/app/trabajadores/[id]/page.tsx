@@ -317,27 +317,71 @@ export default async function PerfilTrabajadorPage({
               </div>
             </div>
 
-            {/* Quick doc overview */}
+            {/* Estado de documentos con el detalle a la vista */}
             <div className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                 <h3 style={{ margin: 0, color: "var(--text)", fontSize: "1rem" }}>📄 Estado de documentos</h3>
-                <Link href={`/trabajadores/${worker.id}?tab=documentos`} style={{ fontSize: "0.85rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
-                  Ver detalle completo →
+                <Link href="/trabajadores/control-documental/extraer" style={{ fontSize: "0.85rem", color: "#7c3aed", fontWeight: 700, textDecoration: "none" }}>
+                  🤖 Cargar con IA →
                 </Link>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 18 }}>
                 {[
-                  { count: expiredDocs.length, label: "Vencidos", bg: "#fce9e8", color: "#9e2f23", icon: "🔴" },
-                  { count: dueSoonDocs.length, label: "Por vencer (30 días)", bg: "#fff4dc", color: "#9a6300", icon: "🟡" },
-                  { count: okDocs.length, label: "Vigentes", bg: "#e8f7ef", color: "#146c3d", icon: "🟢" },
-                  { count: missingDocs.length, label: "Sin fecha cargada", bg: "#f1f5f9", color: "#64748b", icon: "⚪" },
+                  { count: docsAcreditacion.filter(d => d.entry.estado === "vencido").length,    label: "Vencidos",      bg: "#fce9e8", color: "#9e2f23", icon: "🔴" },
+                  { count: docsAcreditacion.filter(d => d.entry.estado === "por_vencer").length, label: "Por vencer",    bg: "#fff4dc", color: "#9a6300", icon: "🟡" },
+                  { count: docsAcreditacion.filter(d => d.entry.estado === "vigente" || d.entry.estado === "sin_vencimiento").length, label: "Vigentes", bg: "#e8f7ef", color: "#146c3d", icon: "🟢" },
+                  { count: docsAcreditacion.filter(d => d.entry.estado === "sin_fecha").length,  label: "Sin cargar",    bg: "#f1f5f9", color: "#64748b", icon: "⚪" },
                 ].map(stat => (
-                  <div key={stat.label} style={{ background: stat.bg, border: `1px solid ${stat.color}33`, borderRadius: 10, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: "1.5rem", fontWeight: 900, color: stat.color }}>{stat.count}</div>
-                    <div style={{ fontSize: "0.78rem", color: stat.color, fontWeight: 600, marginTop: 2 }}>{stat.icon} {stat.label}</div>
+                  <div key={stat.label} style={{ background: stat.bg, border: `1px solid ${stat.color}33`, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 900, color: stat.color }}>{stat.count}</div>
+                    <div style={{ fontSize: "0.75rem", color: stat.color, fontWeight: 600 }}>{stat.icon} {stat.label}</div>
                   </div>
                 ))}
               </div>
+
+              {/* Detalle de cada documento, sin tener que cambiar de pestaña */}
+              <div style={{ display: "grid", gap: 6 }}>
+                {docsAcreditacion.map(({ tipo, entry }) => {
+                  const style = ESTADO_STYLE[entry.estado];
+                  const doc = entry.documento;
+                  return (
+                    <div key={tipo.id} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      gap: 10, flexWrap: "wrap",
+                      padding: "8px 12px", borderRadius: 8,
+                      background: style.bg, border: `1px solid ${style.border}`,
+                      borderStyle: doc?.vencimientoCalculado ? "dashed" : "solid",
+                    }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "baseline", minWidth: 0, flex: 1 }}>
+                        <span style={{ fontWeight: 600, color: style.color, fontSize: "0.86rem" }}>{tipo.nombre}</span>
+                        {doc?.archivoId && (
+                          <a href={`/api/archivo/${doc.archivoId}`} target="_blank" rel="noreferrer"
+                             style={{ fontSize: "0.72rem", color: style.color, textDecoration: "underline", flexShrink: 0 }}>
+                            📎 ver
+                          </a>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+                        <span style={{ fontSize: "0.82rem", color: style.color }}>
+                          {entry.estado === "sin_vencimiento" ? "∞ No vence"
+                            : doc?.fechaVencimiento ? formatDisplayDate(doc.fechaVencimiento)
+                            : "—"}
+                        </span>
+                        <span style={{
+                          padding: "2px 10px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700,
+                          background: `${style.color}22`, color: style.color, whiteSpace: "nowrap",
+                        }}>
+                          {entry.dias != null
+                            ? (entry.dias < 0 ? `${Math.abs(entry.dias)}d vencido` : entry.dias === 0 ? "Vence hoy" : `${entry.dias}d`)
+                            : style.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               {worker.notes && (
                 <div style={{ marginTop: 16, padding: "12px 14px", background: "rgba(0,0,0,0.03)", borderRadius: 8, fontSize: "0.88rem", color: "var(--text)", borderLeft: "3px solid var(--teal)" }}>
                   <strong style={{ color: "var(--muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>Notas</strong>

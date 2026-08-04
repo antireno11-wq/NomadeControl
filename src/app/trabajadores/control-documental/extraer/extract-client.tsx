@@ -259,6 +259,7 @@ export function ExtractClient({
           confidence: r.confidence,
           expiryDate: necesitaFecha(r.detectedTipoId) ? r.expiryDate : null,
           issueDate: r.issueDate,
+          vencimientoCalculado: false,
           archivo: (() => {
             const a = infoDe(r.clientFileId);
             return a ? { clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 } : null;
@@ -403,6 +404,7 @@ export function ExtractClient({
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)" }}>Confianza</th>
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)", minWidth: 210 }}>Trabajador</th>
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)", minWidth: 170 }}>Tipo de documento</th>
+                    <th style={{ padding: "10px 12px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)" }}>Emisión</th>
                     <th style={{ padding: "10px 12px", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "var(--muted)" }}>Vencimiento</th>
                     <th style={{ padding: "10px 12px", width: 34 }}></th>
                   </tr>
@@ -413,6 +415,11 @@ export function ExtractClient({
                     const conf = CONFIDENCE_STYLE[row.confidence];
                     const tipo = tipoDe(row.detectedTipoId);
                     const pideFecha = necesitaFecha(row.detectedTipoId);
+                    // Un vencimiento en el pasado suele significar que la IA
+                    // tomó la fecha de emisión por la de caducidad.
+                    const yaVencido = Boolean(
+                      row.expiryDate && new Date(row.expiryDate + "T12:00:00") < new Date()
+                    );
                     const listo = !row.procesando && !row.applied && !row.error
                       && row.detectedTipoId
                       && (pideFecha ? row.expiryDate : true)
@@ -534,6 +541,23 @@ export function ExtractClient({
                           {row.procesando ? (
                             <span style={{ color: "var(--muted)" }}>—</span>
                           ) : tipo?.esFoto ? (
+                            <span style={{ color: "var(--muted)" }}>—</span>
+                          ) : (
+                            <input
+                              type="date"
+                              value={row.issueDate ?? ""}
+                              onChange={e => updateRow(row.rowId, { issueDate: e.target.value || null })}
+                              disabled={row.applied}
+                              title="Fecha en que se emitió o realizó el documento"
+                              style={{ padding: "4px 8px", fontSize: "0.82rem", width: 135 }}
+                            />
+                          )}
+                        </td>
+
+                        <td style={{ padding: "8px 12px" }}>
+                          {row.procesando ? (
+                            <span style={{ color: "var(--muted)" }}>—</span>
+                          ) : tipo?.esFoto ? (
                             <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
                               Se guarda como foto
                             </span>
@@ -542,16 +566,25 @@ export function ExtractClient({
                               ∞ No vence
                             </span>
                           ) : (
-                            <input
-                              type="date"
-                              value={row.expiryDate ?? ""}
-                              onChange={e => updateRow(row.rowId, { expiryDate: e.target.value || null })}
-                              disabled={row.applied}
-                              style={{
-                                padding: "4px 8px", fontSize: "0.82rem", width: 135,
-                                border: row.expiryDate ? "1px solid var(--border)" : "1.5px solid #f59e0b",
-                              }}
-                            />
+                            <>
+                              <input
+                                type="date"
+                                value={row.expiryDate ?? ""}
+                                onChange={e => updateRow(row.rowId, { expiryDate: e.target.value || null })}
+                                disabled={row.applied}
+                                style={{
+                                  padding: "4px 8px", fontSize: "0.82rem", width: 135,
+                                  border: yaVencido
+                                    ? "1.5px solid #dc2626"
+                                    : row.expiryDate ? "1px solid var(--border)" : "1.5px solid #f59e0b",
+                                }}
+                              />
+                              {yaVencido && (
+                                <div style={{ fontSize: "0.68rem", color: "#dc2626", marginTop: 3, maxWidth: 150, lineHeight: 1.3 }}>
+                                  ⚠️ Fecha pasada. ¿Es de emisión y no de vencimiento?
+                                </div>
+                              )}
+                            </>
                           )}
                         </td>
 

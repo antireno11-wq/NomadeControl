@@ -53,18 +53,25 @@ export async function extractDocumentsAction(
       });
 
       if (encontrados.length === 0) {
+        // Una imagen sin texto de documento es, casi siempre, la foto del
+        // trabajador. La proponemos en vez de dejar la fila inservible.
+        const esImagen = file.mimeType.startsWith("image/");
+        const tipoFoto = esImagen ? tipos.find(t => t.esFoto) ?? null : null;
+
         results.push({
           clientFileId: file.clientFileId,
           rowId: `${file.clientFileId}#0`,
           fileName: file.fileName,
-          detectedCodigo: "unknown",
-          detectedTipoId: null,
-          detectedDocTypeLabel: "Sin documentos reconocidos",
+          detectedCodigo: tipoFoto?.codigo ?? "unknown",
+          detectedTipoId: tipoFoto?.id ?? null,
+          detectedDocTypeLabel: tipoFoto?.nombre ?? "Sin documentos reconocidos",
           expiryDate: null, issueDate: null,
           workerName: null, workerRut: null,
           paginaInicio: null,
           confidence: "low",
-          reasoning: "La IA no reconoció ningún documento en el archivo.",
+          reasoning: tipoFoto
+            ? "Imagen sin texto de documento: se propone como foto del trabajador."
+            : "La IA no reconoció ningún documento en el archivo.",
           matches: [],
         });
         continue;
@@ -124,6 +131,8 @@ export type FilaAplicar = {
   expiryDate?: string | null;  // YYYY-MM-DD
   issueDate?: string | null;   // YYYY-MM-DD
   confidence?: "high" | "medium" | "low";
+  /** true si la fecha se infirió de emisión + vigencia, en vez de leerse. */
+  vencimientoCalculado?: boolean;
   /** Archivo del que salió, para poder verlo después. */
   archivo?: { clientFileId: string; fileName: string; mimeType: string; base64: string } | null;
 };
@@ -139,7 +148,7 @@ export async function applyExtractionsAction(
 
   const tipos = await db.tipoDocumento.findMany({
     where: { activo: true },
-    select: { id: true, codigo: true, legacyField: true, noVence: true, esFoto: true },
+    select: { id: true, codigo: true, legacyField: true, noVence: true, esFoto: true, vigenciaDias: true },
   });
   const tipoPorId = new Map(tipos.map(t => [t.id, t]));
 
@@ -265,17 +274,29 @@ export async function applyExtractionsAction(
         continue;
       }
 
-      const tieneFecha = Boolean(row.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate));
+      const fechaEmision =
+        row.issueDate && /^\d{4}-\d{2}-\d{2}$/.test(row.issueDate) ? toUtcNoon(row.issueDate) : null;
+
+      let fechaVencimiento =
+        row.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate) ? toUtcNoon(row.expiryDate) : null;
+      let calculado = Boolean(row.vencimientoCalculado);
+
+      // Si el documento no trae vencimiento impreso pero el tipo tiene una
+      // vigencia por defecto, la derivamos de la emisión. Queda marcada como
+      // calculada: ante un reclamo del mandante hay que poder distinguir una
+      // fecha inferida de una que estaba escrita en el papel.
+      if (!fechaVencimiento && fechaEmision && tipo.vigenciaDias && tipo.vigenciaDias > 0) {
+        fechaVencimiento = new Date(fechaEmision.getTime() + tipo.vigenciaDias * 86_400_000);
+        calculado = true;
+      }
+
+      const tieneFecha = Boolean(fechaVencimiento);
 
       // Los tipos de constancia se guardan sin vencimiento; los demás lo exigen
       if (!tieneFecha && !tipo.noVence) {
         errors.push({ workerId, error: "Falta la fecha de vencimiento" });
         continue;
       }
-
-      const fechaVencimiento = tieneFecha ? toUtcNoon(row.expiryDate!) : null;
-      const fechaEmision =
-        row.issueDate && /^\d{4}-\d{2}-\d{2}$/.test(row.issueDate) ? toUtcNoon(row.issueDate) : null;
 
       await db.documentoAcreditacion.create({
         data: {
@@ -284,7 +305,7 @@ export async function applyExtractionsAction(
           fechaEmision,
           fechaVencimiento,
           sinVencimiento: !tieneFecha,
-          vencimientoCalculado: false,
+          vencimientoCalculado: calculado,
           origen: "extraido",
           confianzaExtraccion:
             row.confidence === "high" ? "alta" : row.confidence === "medium" ? "media" : "baja",
