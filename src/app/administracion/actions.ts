@@ -853,3 +853,47 @@ export async function deleteRecordAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/administracion/registros");
 }
+
+/**
+ * Borra TODA la dotación de trabajadores para empezar de cero.
+ *
+ * Irreversible. Se lleva por delante documentos de acreditación,
+ * adjuntos, alertas enviadas, días de turno y cierres de contrato.
+ * NO toca el catálogo de tipos, campamentos, usuarios ni vehículos.
+ *
+ * Requiere escribir "BORRAR" en el formulario como confirmación: el
+ * botón solo no alcanza para algo que no tiene deshacer.
+ */
+export async function resetTrabajadoresAction(formData: FormData) {
+  const user = await requireRole(FULL_ADMIN_ROLES);
+
+  const confirmacion = String(formData.get("confirmacion") ?? "").trim().toUpperCase();
+  if (confirmacion !== "BORRAR") {
+    redirect("/administracion?seccion=sistema&resetStatus=sin-confirmar");
+  }
+
+  const antes = await db.staffMember.count();
+
+  await db.alertaDocumento.deleteMany({});
+  await db.documentoAcreditacion.deleteMany({});
+  await db.documentoTrabajador.deleteMany({});
+  await db.documentoAdicional.deleteMany({});
+  await db.staffShiftDay.deleteMany({});
+  await db.cierreContrato.deleteMany({});
+  const res = await db.staffMember.deleteMany({});
+
+  await logAuditEvent({
+    actorUserId: user.id,
+    actorName: user.name,
+    actorEmail: user.email,
+    action: "RESET_TRABAJADORES",
+    entityType: "staffMember",
+    summary: `Borró toda la dotación: ${res.count} trabajadores`,
+    metadata: { antes, borrados: res.count },
+  }).catch(() => {});
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores");
+  revalidatePath("/trabajadores/control-documental");
+  redirect(`/administracion?seccion=sistema&resetStatus=ok&n=${res.count}`);
+}

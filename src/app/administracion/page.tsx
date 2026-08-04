@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction } from "./actions";
+import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction, resetTrabajadoresAction } from "./actions";
 
 const MODULE_DEFAULT_CHECK: Record<string, (role: string) => boolean> = {
   operaciones:  canAccessDashboard,
@@ -32,7 +32,7 @@ const MODULE_CHIP_COLOR: Record<string, { bg: string; color: string }> = {
 export default async function AdministracionPage({
   searchParams
 }: {
-  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; seccion?: string | string[] };
+  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; resetStatus?: string | string[]; n?: string | string[]; seccion?: string | string[] };
 }) {
   const user = await requireRole(ADMIN_ROLES);
   const canDeleteData = isFullAdminRole(user.role);
@@ -40,7 +40,7 @@ export default async function AdministracionPage({
   const seccionRaw = searchParams?.seccion;
   const seccion = typeof seccionRaw === "string" ? seccionRaw : "usuarios";
 
-  const [users, camps, projects, reports, tareas, incidentes] = await Promise.all([
+  const [users, camps, projects, reports, tareas, incidentes, staffCount] = await Promise.all([
     db.user.findMany({
       where: { NOT: { email: { endsWith: "@nomade.local" } } },
       include: { camp: true },
@@ -50,7 +50,8 @@ export default async function AdministracionPage({
     db.project.findMany({ orderBy: { name: "asc" } }),
     db.dailyReport.count(),
     db.tarea.count({ where: { estado: { in: ["pendiente", "en_progreso"] } } }),
-    db.incidente.count({ where: { estado: { in: ["abierto", "en_investigacion"] } } })
+    db.incidente.count({ where: { estado: { in: ["abierto", "en_investigacion"] } } }),
+    db.staffMember.count()
   ]);
 
   const campStatusRaw = searchParams?.campStatus;
@@ -59,6 +60,13 @@ export default async function AdministracionPage({
   const campStatus = typeof campStatusRaw === "string" ? campStatusRaw : "";
   const userStatus = typeof userStatusRaw === "string" ? userStatusRaw : "";
   const projectStatus = typeof projectStatusRaw === "string" ? projectStatusRaw : "";
+
+  const resetStatus = typeof searchParams?.resetStatus === "string" ? searchParams.resetStatus : "";
+  const resetN = typeof searchParams?.n === "string" ? searchParams.n : "0";
+  const resetAlert =
+    resetStatus === "ok" ? { type: "success", text: `Se borraron ${resetN} trabajadores. La dotación quedó vacía.` }
+    : resetStatus === "sin-confirmar" ? { type: "error", text: 'No se borró nada: hay que escribir exactamente "BORRAR" para confirmar.' }
+    : null;
 
   const projectAlert =
     projectStatus === "closed" ? { type: "success", text: "Proyecto finalizado correctamente." }
@@ -413,6 +421,7 @@ export default async function AdministracionPage({
       {/* ── SISTEMA ──────────────────────────────────────────────────── */}
       {seccion === "sistema" && (
         <div className="page-stack">
+          {resetAlert && <div className={`alert ${resetAlert.type}`}>{resetAlert.text}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
 
             <div className="card">
@@ -428,6 +437,38 @@ export default async function AdministracionPage({
                 <p style={{ color: "var(--muted)", fontSize: "0.8rem", fontStyle: "italic" }}>Solo el administrador principal puede borrar registros.</p>
               )}
             </div>
+
+            {canDeleteData && (
+              <div className="card" style={{ border: "1px solid #fecaca", background: "#fffbfb" }}>
+                <h3 style={{ marginTop: 0, color: "#991b1b" }}>🗑 Borrar toda la dotación</h3>
+                <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 8px" }}>
+                  Elimina <strong>los {staffCount} trabajadores</strong> y todo lo que cuelga de ellos:
+                  documentos, adjuntos, alertas enviadas, turnos y cierres de contrato.
+                </p>
+                <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0 0 12px" }}>
+                  No toca el catálogo de tipos de documento, campamentos, usuarios ni vehículos.
+                </p>
+                <div style={{ padding: "8px 12px", background: "#fee2e2", borderRadius: 8, fontSize: "0.82rem", color: "#991b1b", marginBottom: 12, fontWeight: 600 }}>
+                  ⚠️ Es irreversible. No hay papelera ni deshacer.
+                </div>
+                <form action={resetTrabajadoresAction} style={{ display: "grid", gap: 8 }}>
+                  <label htmlFor="reset-confirm" style={{ fontSize: "0.82rem", fontWeight: 600 }}>
+                    Escribí <code>BORRAR</code> para habilitar
+                  </label>
+                  <input
+                    id="reset-confirm"
+                    name="confirmacion"
+                    placeholder="BORRAR"
+                    autoComplete="off"
+                    required
+                    style={{ width: "100%", boxSizing: "border-box" }}
+                  />
+                  <button type="submit" className="danger" style={{ width: "auto", justifySelf: "start" }}>
+                    Borrar los {staffCount} trabajadores
+                  </button>
+                </form>
+              </div>
+            )}
 
             <div className="card">
               <h3 style={{ marginTop: 0 }}>Información del sistema</h3>
