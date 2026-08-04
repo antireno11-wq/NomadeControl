@@ -4,8 +4,9 @@ import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
 import { buildTrabajadoresTabs } from "@/lib/section-nav";
-import { STAFF_DOCUMENT_FIELDS, getStaffDocumentEntries } from "@/lib/staff-docs";
 import { formatDisplayDate } from "@/lib/report-utils";
+import { ESTADO_STYLE, esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
+import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
 
 type SearchParams = {
   campId?: string | string[];
@@ -22,117 +23,136 @@ function normalizeRut(s: string) {
   return s.replace(/[.\-\s]/g, "").toLowerCase();
 }
 
-const STATUS_STYLES: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  ok:         { bg: "#e8f7ef", color: "#146c3d", border: "#b6e8c8", label: "Vigente" },
-  indefinite: { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc", label: "Indefinido" },
-  dueSoon:    { bg: "#fff4dc", color: "#9a6300", border: "#f5d98e", label: "Por vencer" },
-  expired:    { bg: "#fce9e8", color: "#9e2f23", border: "#f5c0bb", label: "Vencido" },
-  missing:    { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1", label: "Sin fecha" },
-};
+const ESTADOS_FILTRABLES: Array<{ value: EstadoDocumento; label: string }> = [
+  { value: "vencido",    label: "🔴 Vencidos" },
+  { value: "por_vencer", label: "🟡 Por vencer (30d)" },
+  { value: "sin_fecha",  label: "⚪ Sin cargar" },
+];
 
-function estadoParam(s: string | string[] | undefined) {
+function estadoParam(s: string | string[] | undefined): EstadoDocumento | "" {
   const v = typeof s === "string" ? s : "";
-  return ["expired", "dueSoon", "missing", ""].includes(v) ? v : "";
-}
-
-function tipoParam(s: string | string[] | undefined) {
-  const v = typeof s === "string" ? s : "";
-  return STAFF_DOCUMENT_FIELDS.find(f => f.key === v) ? v : "";
+  return ESTADOS_FILTRABLES.some(e => e.value === v) ? (v as EstadoDocumento) : "";
 }
 
 export default async function ControlDocumentalPage({ searchParams }: { searchParams?: SearchParams }) {
   const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdmin = isAdminRole(user.role);
-  // Los 3 niveles (Admin / Operativo / Consulta) ven todos los trabajadores
-  // — no hay restricción por campamento en el sistema simplificado.
+  // Los 3 niveles (Admin / Operativo / Consulta) ven todos los trabajadores.
   const canSeeAllStaff = true;
 
   const selectedCampId = typeof searchParams?.campId === "string" && searchParams.campId !== "general" ? searchParams.campId : undefined;
   const filtroEstado = estadoParam(searchParams?.estado);
-  const filtroTipo = tipoParam(searchParams?.tipo);
   const busqueda = typeof searchParams?.q === "string" ? searchParams.q.trim() : "";
 
-  const campFilter = !canSeeAllStaff ? user.campId ?? "__none__" : undefined;
-
-  const [camps, staff] = await Promise.all([
-    db.camp.findMany({
-      where: { isActive: true, ...(campFilter ? { id: campFilter } : {}) },
-      orderBy: { name: "asc" },
-    }),
+  const [camps, staff, tipos] = await Promise.all([
+    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     db.staffMember.findMany({
       where: {
         isActive: true,
-        ...(campFilter ? { campId: campFilter } : {}),
-        ...(selectedCampId && canSeeAllStaff ? { campId: selectedCampId } : {}),
+        ...(selectedCampId ? { campId: selectedCampId } : {}),
       },
       include: { camp: true },
       orderBy: [{ fullName: "asc" }],
     }),
+    getTiposDocumento(true),
   ]);
 
-  const today = new Date();
+  // El catálogo aún no fue sembrado — la migración no corrió.
+  if (tipos.length === 0) {
+    return (
+      <AppShell title="Control documental" user={user} activeNav="trabajadores" showAdminSections={canSeeAdmin}>
+        <div className="page-stack">
+          <SectionTabs items={buildTrabajadoresTabs("control-documental")} />
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Falta inicializar el módulo de acreditación</h2>
+            <p className="section-caption">
+              El catálogo de tipos de documento todavía no existe. Un administrador
+              tiene que correr la migración una sola vez para sembrar el catálogo y
+              convertir las fechas actuales de las fichas en documentos.
+            </p>
+            {canSeeAdmin ? (
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                <a href="/api/admin/migrar-acreditacion?dryRun=1" target="_blank" rel="noreferrer">
+                  <button type="button" className="secondary">1. Simular migración</button>
+                </a>
+                <form action="/api/admin/migrar-acreditacion" method="post">
+                  <button type="submit">2. Ejecutar migración</button>
+                </form>
+              </div>
+            ) : (
+              <div className="alert error" style={{ marginTop: 12 }}>
+                Pedile a un administrador que ejecute la migración.
+              </div>
+            )}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
-  // Enriquecer con estado de documentos.
-  // Los contratos indefinidos cuentan como "ok" para el cálculo de cumplimiento.
-  const rows = staff.map(w => {
-    const entries = getStaffDocumentEntries(w, today);
-    const expiredCount = entries.filter(e => e.status === "expired").length;
-    const dueSoonCount = entries.filter(e => e.status === "dueSoon").length;
-    const missingCount = entries.filter(e => e.status === "missing").length;
-    const okCount      = entries.filter(e => e.status === "ok" || e.status === "indefinite").length;
-    return { worker: w, entries, expiredCount, dueSoonCount, missingCount, okCount };
+  const filtroTipo = (() => {
+    const v = typeof searchParams?.tipo === "string" ? searchParams.tipo : "";
+    return tipos.some(t => t.id === v) ? v : "";
+  })();
+
+  const today = new Date();
+  const estadoPorTrabajador = await getEstadoDocumental(staff.map(w => w.id), tipos, today);
+
+  const rows = staff.map(worker => {
+    const estado = estadoPorTrabajador.get(worker.id)!;
+    return { worker, estado };
   });
 
-  // Búsqueda: matchea por nombre normalizado (case+acentos insensible) o RUT
-  // (normalizado sin puntos/guiones). Un solo query cubre ambos casos.
+  // ── Búsqueda por nombre o RUT ──
   const queryNorm = busqueda ? normalizeText(busqueda) : "";
   const queryRut = busqueda ? normalizeRut(busqueda) : "";
   const matchesBusqueda = (worker: (typeof rows)[number]["worker"]) => {
     if (!busqueda) return true;
-    const nameNorm = normalizeText(worker.fullName);
-    if (nameNorm.includes(queryNorm)) return true;
+    if (normalizeText(worker.fullName).includes(queryNorm)) return true;
     const rutNorm = normalizeRut(worker.nationalId ?? "");
-    if (rutNorm && rutNorm.includes(queryRut)) return true;
-    return false;
+    return Boolean(rutNorm && rutNorm.includes(queryRut));
   };
 
-  // Filtro por estado (a nivel trabajador: si tiene al menos un doc en ese estado)
   const filteredRows = rows.filter(r => {
     if (!matchesBusqueda(r.worker)) return false;
-    if (filtroEstado === "expired" && r.expiredCount === 0) return false;
-    if (filtroEstado === "dueSoon" && r.dueSoonCount === 0) return false;
-    if (filtroEstado === "missing" && r.missingCount === 0) return false;
+
     if (filtroTipo) {
-      const entry = r.entries.find(e => e.key === filtroTipo);
+      const entry = r.estado.porTipo.get(filtroTipo);
       if (!entry) return false;
-      if (filtroEstado && entry.status !== filtroEstado) return false;
+      if (filtroEstado && entry.estado !== filtroEstado) return false;
+      return true;
     }
+
+    if (filtroEstado === "vencido"    && r.estado.vencidos === 0) return false;
+    if (filtroEstado === "por_vencer" && r.estado.porVencer === 0) return false;
+    if (filtroEstado === "sin_fecha"  && r.estado.sinFecha === 0) return false;
     return true;
   });
 
-  // KPIs globales (sobre todos los trabajadores, no filtrados)
-  const totalDocs   = rows.reduce((s, r) => s + r.entries.length, 0);
-  const totalOk     = rows.reduce((s, r) => s + r.okCount, 0);
-  const totalExp    = rows.reduce((s, r) => s + r.expiredCount, 0);
-  const totalDue    = rows.reduce((s, r) => s + r.dueSoonCount, 0);
-  const totalMiss   = rows.reduce((s, r) => s + r.missingCount, 0);
-  const compliance  = totalDocs === 0 ? 100 : Math.round((totalOk / totalDocs) * 100);
-  const workersAtRisk = rows.filter(r => r.expiredCount > 0 || r.dueSoonCount > 0).length;
+  // ── KPIs globales ──
+  const totalDocs  = rows.length * tipos.length;
+  const totalOk    = rows.reduce((s, r) => s + r.estado.ok, 0);
+  const totalExp   = rows.reduce((s, r) => s + r.estado.vencidos, 0);
+  const totalDue   = rows.reduce((s, r) => s + r.estado.porVencer, 0);
+  const totalMiss  = rows.reduce((s, r) => s + r.estado.sinFecha, 0);
+  const compliance = totalDocs === 0 ? 100 : Math.round((totalOk / totalDocs) * 100);
+  const workersAtRisk = rows.filter(r => r.estado.vencidos > 0 || r.estado.porVencer > 0).length;
 
-  // Próximos vencimientos (60 días) — todos los docs de todos los trabajadores
+  // ── Próximos vencimientos (60 días) ──
+  const tipoNombre = new Map(tipos.map(t => [t.id, t.nombre]));
   const upcoming = rows.flatMap(r =>
-    r.entries
-      .filter(e => e.date && e.daysUntil != null && e.daysUntil >= -3 && e.daysUntil <= 60)
+    Array.from(r.estado.porTipo.values())
+      .filter(e => e.documento?.fechaVencimiento && e.dias != null && e.dias >= -3 && e.dias <= 60)
       .map(e => ({
         workerId: r.worker.id,
         workerName: r.worker.fullName,
         campName: r.worker.camp?.name ?? "Sin asignar",
-        label: e.label,
-        date: e.date!,
-        daysUntil: e.daysUntil!,
-        status: e.status,
+        label: tipoNombre.get(e.tipoId) ?? "",
+        date: e.documento!.fechaVencimiento!,
+        dias: e.dias!,
+        estado: e.estado,
       }))
-  ).sort((a, b) => a.daysUntil - b.daysUntil);
+  ).sort((a, b) => a.dias - b.dias);
 
   return (
     <AppShell
@@ -144,34 +164,12 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
         canSeeAllStaff ? (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Link href="/trabajadores/control-documental/extraer">
-              <button
-                type="button"
-                style={{
-                  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
-                  border: "none",
-                  color: "#fff",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
+              <button type="button" style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>
                 🤖 Extraer con IA
               </button>
             </Link>
             <Link href="/trabajadores/importar">
-              <button
-                type="button"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
+              <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 14px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
                 ⬆ Importar Excel
               </button>
             </Link>
@@ -208,7 +206,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
             <div className="dashboard-kpi-meta">renovar pronto</div>
           </div>
           <div className="dashboard-kpi">
-            <div className="dashboard-kpi-label">Sin fecha cargada</div>
+            <div className="dashboard-kpi-label">Sin cargar</div>
             <div className="dashboard-kpi-value">{totalMiss}</div>
             <div className="dashboard-kpi-meta">ficha incompleta</div>
           </div>
@@ -217,69 +215,41 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
         {/* ── Buscador + Filtros ── */}
         <div className="card">
           <form method="get" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* Buscador */}
-            <div style={{ position: "relative" }}>
+            <div>
               <label htmlFor="q" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
                 Buscar trabajador
               </label>
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: "1rem", color: "var(--muted)", pointerEvents: "none" }}>
-                  🔍
-                </span>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: "1rem", color: "var(--muted)", pointerEvents: "none" }}>🔍</span>
                 <input
-                  id="q"
-                  name="q"
-                  type="search"
-                  defaultValue={busqueda}
+                  id="q" name="q" type="search" defaultValue={busqueda}
                   placeholder="Escribí nombre, apellido o RUT — ej. Juan Pérez, 12345678, 12.345.678-9"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "10px 12px 10px 38px",
-                    fontSize: "0.92rem",
-                    borderRadius: 10,
-                    border: "1.5px solid var(--border)",
-                  }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 38px", fontSize: "0.92rem", borderRadius: 10, border: "1.5px solid var(--border)" }}
                   autoComplete="off"
                 />
               </div>
             </div>
 
-            {/* Filtros adicionales */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
-              {canSeeAllStaff && (
-                <div>
-                  <label htmlFor="campId" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
-                    Campamento
-                  </label>
-                  <select id="campId" name="campId" defaultValue={selectedCampId ?? "general"}>
-                    <option value="general">Todos</option>
-                    {camps.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div>
-                <label htmlFor="estado" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
-                  Estado
-                </label>
-                <select id="estado" name="estado" defaultValue={filtroEstado}>
-                  <option value="">Todos</option>
-                  <option value="expired">🔴 Vencidos</option>
-                  <option value="dueSoon">🟡 Por vencer (30d)</option>
-                  <option value="missing">⚪ Sin fecha</option>
+                <label htmlFor="campId" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Campamento</label>
+                <select id="campId" name="campId" defaultValue={selectedCampId ?? "general"}>
+                  <option value="general">Todos</option>
+                  {camps.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="tipo" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
-                  Tipo de documento
-                </label>
+                <label htmlFor="estado" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Estado</label>
+                <select id="estado" name="estado" defaultValue={filtroEstado}>
+                  <option value="">Todos</option>
+                  {ESTADOS_FILTRABLES.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="tipo" style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>Tipo de documento</label>
                 <select id="tipo" name="tipo" defaultValue={filtroTipo}>
                   <option value="">Todos</option>
-                  {STAFF_DOCUMENT_FIELDS.map((f) => (
-                    <option key={f.key} value={f.key}>{f.label}</option>
-                  ))}
+                  {tipos.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                 </select>
               </div>
               <button type="submit">Aplicar</button>
@@ -298,7 +268,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
           </form>
         </div>
 
-        {/* ── Próximos vencimientos (timeline compacto) ── */}
+        {/* ── Próximos vencimientos ── */}
         {upcoming.length > 0 && (
           <div className="card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -307,24 +277,19 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {upcoming.slice(0, 12).map((u, i) => {
-                const style = STATUS_STYLES[u.status] ?? STATUS_STYLES.ok;
+                const style = ESTADO_STYLE[u.estado];
                 return (
                   <Link key={i} href={`/trabajadores/${u.workerId}?tab=documentos`} style={{ textDecoration: "none" }}>
-                    <div style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "8px 12px", borderRadius: 8,
-                      background: style.bg, border: `1px solid ${style.border}`,
-                      cursor: "pointer",
-                    }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: 8, background: style.bg, border: `1px solid ${style.border}`, cursor: "pointer" }}>
                       <div style={{ display: "flex", gap: 12, alignItems: "baseline", minWidth: 0 }}>
-                        <strong style={{ color: style.color, minWidth: 100 }}>{u.label}</strong>
+                        <strong style={{ color: style.color, minWidth: 140 }}>{u.label}</strong>
                         <span style={{ color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.workerName}</span>
                         <span style={{ color: "var(--muted)", fontSize: "0.82rem" }}>{u.campName}</span>
                       </div>
                       <div style={{ display: "flex", gap: 12, alignItems: "center", flexShrink: 0 }}>
                         <span style={{ color: "var(--text)", fontSize: "0.85rem" }}>{formatDisplayDate(u.date)}</span>
                         <span style={{ color: style.color, fontWeight: 700, fontSize: "0.82rem", minWidth: 70, textAlign: "right" }}>
-                          {u.daysUntil < 0 ? `${Math.abs(u.daysUntil)}d vencido` : u.daysUntil === 0 ? "Vence hoy" : `${u.daysUntil}d`}
+                          {u.dias < 0 ? `${Math.abs(u.dias)}d vencido` : u.dias === 0 ? "Vence hoy" : `${u.dias}d`}
                         </span>
                       </div>
                     </div>
@@ -340,7 +305,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
           </div>
         )}
 
-        {/* ── Matriz principal: Trabajador × Documento ── */}
+        {/* ── Matriz ── */}
         <div className="card table-card" style={{ padding: 0 }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <h2 style={{ margin: 0, fontSize: "1rem" }}>Matriz de documentos por trabajador</h2>
@@ -350,16 +315,14 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
             <table className="dashboard-table" style={{ width: "100%", tableLayout: "fixed" }}>
               <colgroup>
                 <col style={{ width: 220 }} />
-                {STAFF_DOCUMENT_FIELDS.map((f) => (
-                  <col key={f.key} />
-                ))}
+                {tipos.map((t) => <col key={t.id} />)}
               </colgroup>
               <thead>
                 <tr>
                   <th style={{ textAlign: "left" }}>Trabajador</th>
-                  {STAFF_DOCUMENT_FIELDS.map((f) => (
-                    <th key={f.key} style={{ whiteSpace: "nowrap", textAlign: "center", fontSize: "0.72rem", padding: "8px 4px" }}>
-                      {f.short}
+                  {tipos.map((t) => (
+                    <th key={t.id} title={t.nombre} style={{ whiteSpace: "nowrap", textAlign: "center", fontSize: "0.72rem", padding: "8px 4px" }}>
+                      {t.etiquetaCorta ?? t.nombre}
                     </th>
                   ))}
                 </tr>
@@ -367,56 +330,50 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={STAFF_DOCUMENT_FIELDS.length + 1} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
+                    <td colSpan={tipos.length + 1} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
                       No hay trabajadores con estos filtros.
                     </td>
                   </tr>
                 ) : (
-                  filteredRows.map(r => (
-                    <tr key={r.worker.id}>
+                  filteredRows.map(({ worker, estado }) => (
+                    <tr key={worker.id}>
                       <td style={{ padding: "8px 12px" }}>
-                        <Link
-                          href={`/trabajadores/${r.worker.id}?tab=documentos`}
-                          style={{ textDecoration: "none", color: "inherit", display: "block" }}
-                        >
+                        <Link href={`/trabajadores/${worker.id}?tab=documentos`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
                           <div style={{ fontWeight: 600, color: "var(--teal)", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {r.worker.fullName}
+                            {worker.fullName}
                           </div>
-                          <div style={{ color: "var(--muted)", fontSize: "0.72rem", fontWeight: 400, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {r.worker.nationalId && <span>{r.worker.nationalId}</span>}
-                            {r.worker.camp?.name && <span>· {r.worker.camp.name}</span>}
+                          <div style={{ color: "var(--muted)", fontSize: "0.72rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {worker.nationalId && <span>{worker.nationalId}</span>}
+                            {worker.camp?.name && <span>· {worker.camp.name}</span>}
                           </div>
                         </Link>
                       </td>
-                      {r.entries.map((e) => {
-                        const style = STATUS_STYLES[e.status];
+                      {tipos.map((t) => {
+                        const e = estado.porTipo.get(t.id)!;
+                        const style = ESTADO_STYLE[e.estado];
+                        const calculada = e.documento?.vencimientoCalculado;
                         return (
-                          <td key={e.key} style={{ textAlign: "center", padding: "4px 3px" }}>
-                            <div style={{
-                              display: "inline-block",
-                              padding: "4px 4px",
-                              borderRadius: 5,
-                              background: style.bg,
-                              color: style.color,
-                              border: `1px solid ${style.border}`,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              lineHeight: 1.2,
-                              width: "100%",
-                              boxSizing: "border-box",
-                            }} title={`${e.label}: ${style.label}`}>
-                              {e.status === "indefinite"
+                          <td key={t.id} style={{ textAlign: "center", padding: "4px 3px" }}>
+                            <div
+                              title={`${t.nombre}: ${style.label}${calculada ? " · fecha calculada, no impresa" : ""}`}
+                              style={{
+                                display: "inline-block", padding: "4px 4px", borderRadius: 5,
+                                background: style.bg, color: style.color,
+                                border: `1px solid ${style.border}`,
+                                fontSize: "0.7rem", fontWeight: 600, lineHeight: 1.2,
+                                width: "100%", boxSizing: "border-box",
+                                // Borde punteado = vigencia inferida, no impresa en el documento
+                                borderStyle: calculada ? "dashed" : "solid",
+                              }}
+                            >
+                              {e.estado === "sin_vencimiento"
                                 ? "∞"
-                                : e.date
-                                  ? formatDisplayDate(e.date)
+                                : e.documento?.fechaVencimiento
+                                  ? formatDisplayDate(e.documento.fechaVencimiento)
                                   : "—"}
-                              {e.status !== "missing" && e.status !== "indefinite" && e.daysUntil != null && (
+                              {(e.estado === "vencido" || e.estado === "por_vencer") && e.dias != null && (
                                 <div style={{ fontSize: "0.62rem", fontWeight: 500, opacity: 0.9 }}>
-                                  {e.status === "expired"
-                                    ? `${Math.abs(e.daysUntil)}d vencido`
-                                    : e.status === "dueSoon"
-                                      ? `en ${e.daysUntil}d`
-                                      : ""}
+                                  {e.estado === "vencido" ? `${Math.abs(e.dias)}d vencido` : `en ${e.dias}d`}
                                 </div>
                               )}
                             </div>
@@ -431,19 +388,26 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
           </div>
         </div>
 
-        {/* ── Leyenda de colores + ayuda ── */}
+        {/* ── Leyenda ── */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, padding: "0 4px" }}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: "0.8rem", color: "var(--muted)" }}>
-            {Object.entries(STATUS_STYLES).map(([key, s]) => (
-              <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 12, height: 12, borderRadius: 3, background: s.bg, border: `1px solid ${s.border}`, display: "inline-block" }} />
-                {s.label}
-              </div>
-            ))}
+            {(Object.keys(ESTADO_STYLE) as EstadoDocumento[]).map((key) => {
+              const s = ESTADO_STYLE[key];
+              return (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, background: s.bg, border: `1px solid ${s.border}`, display: "inline-block" }} />
+                  {s.label}
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 12, height: 12, borderRadius: 3, background: "#fff", border: "1px dashed #94a3b8", display: "inline-block" }} />
+              Fecha calculada
+            </div>
           </div>
           {canSeeAllStaff && (
             <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
-              💡 Para <strong>editar fechas</strong> click en "Ver ficha →" · para <strong>dar de baja</strong> un trabajador ir a su ficha → pestaña Contrato → Terminar contrato
+              💡 Click en el nombre para abrir la ficha y editar fechas
             </div>
           )}
         </div>

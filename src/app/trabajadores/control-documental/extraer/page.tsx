@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { requireRole, ADMIN_ROLES, type AppRole } from "@/lib/auth";
+import { requireRole, type AppRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
 import { buildTrabajadoresTabs } from "@/lib/section-nav";
-import { STAFF_DOCUMENT_FIELDS } from "@/lib/staff-docs";
 import { ExtractClient } from "./extract-client";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
@@ -12,11 +11,18 @@ const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 export default async function ExtraerDocumentosPage() {
   const user = await requireRole(STAFF_MANAGER_ROLES);
 
-  const workers = await db.staffMember.findMany({
-    where: { isActive: true },
-    select: { id: true, fullName: true, nationalId: true },
-    orderBy: { fullName: "asc" },
-  });
+  const [workers, tipos] = await Promise.all([
+    db.staffMember.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, nationalId: true },
+      orderBy: { fullName: "asc" },
+    }),
+    db.tipoDocumento.findMany({
+      where: { activo: true },
+      select: { id: true, codigo: true, nombre: true },
+      orderBy: { orden: "asc" },
+    }),
+  ]);
 
   const hasKey = Boolean(process.env.OPENAI_API_KEY);
 
@@ -56,15 +62,23 @@ export default async function ExtraerDocumentosPage() {
           </ul>
         </div>
 
-        <ExtractClient
-          workers={workers.map(w => ({
-            id: w.id,
-            fullName: w.fullName,
-            nationalId: w.nationalId,
-          }))}
-          docTypes={STAFF_DOCUMENT_FIELDS.map(f => ({ key: f.key, label: f.label, short: f.short }))}
-          apiKeyMissing={!hasKey}
-        />
+        {tipos.length === 0 ? (
+          <div className="alert error">
+            El catálogo de tipos de documento todavía no está inicializado.
+            Volvé a <Link href="/trabajadores/control-documental">Control documental</Link> y
+            ejecutá la migración primero.
+          </div>
+        ) : (
+          <ExtractClient
+            workers={workers.map(w => ({
+              id: w.id,
+              fullName: w.fullName,
+              nationalId: w.nationalId,
+            }))}
+            docTypes={tipos}
+            apiKeyMissing={!hasKey}
+          />
+        )}
       </div>
     </AppShell>
   );

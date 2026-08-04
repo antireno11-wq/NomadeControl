@@ -3,17 +3,16 @@
 import { useRef, useState, useTransition } from "react";
 import type { DragEvent } from "react";
 import { extractDocumentsAction, applyExtractionsAction, type ExtractedRow } from "./actions";
-import type { StaffDocumentFieldKey } from "@/lib/staff-docs";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
-type DocType = { key: StaffDocumentFieldKey; label: string; short: string };
+type DocType = { id: string; codigo: string; nombre: string };
 
 // Fila que gestionamos en el cliente — parte de ExtractedRow pero editable
 type EditableRow = {
   clientFileId: string;
   fileName: string;
   fileUrl: string;          // preview local (blob URL)
-  detectedDocType: StaffDocumentFieldKey | "unknown";
+  detectedTipoId: string | null;
   detectedDocTypeLabel: string;
   expiryDate: string | null;
   workerName: string | null;
@@ -89,7 +88,7 @@ export function ExtractClient({
         clientFileId: `${Date.now()}-${i}`,
         fileName: f.name,
         fileUrl: URL.createObjectURL(f),
-        detectedDocType: "unknown",
+        detectedTipoId: null,
         detectedDocTypeLabel: "Procesando…",
         expiryDate: null,
         workerName: null,
@@ -122,7 +121,7 @@ export function ExtractClient({
           const bestMatch = result.matches[0] ?? null;
           return {
             ...r,
-            detectedDocType: result.detectedDocType,
+            detectedTipoId: result.detectedTipoId,
             detectedDocTypeLabel: result.detectedDocTypeLabel,
             expiryDate: result.expiryDate,
             workerName: result.workerName,
@@ -169,7 +168,7 @@ export function ExtractClient({
     !r.error &&
     r.workerId &&
     r.expiryDate &&
-    r.detectedDocType !== "unknown"
+    r.detectedTipoId
   );
 
   function handleApply() {
@@ -178,7 +177,8 @@ export function ExtractClient({
       const result = await applyExtractionsAction(
         readyRows.map(r => ({
           workerId: r.workerId!,
-          docType: r.detectedDocType as StaffDocumentFieldKey,
+          tipoDocumentoId: r.detectedTipoId!,
+          confidence: r.confidence,
           expiryDate: r.expiryDate!,
         }))
       );
@@ -275,7 +275,7 @@ export function ExtractClient({
                   {rows.map(row => {
                     const conf = CONFIDENCE_STYLE[row.confidence];
                     const isProcessing = row.detectedDocTypeLabel === "Procesando…";
-                    const canApply = !row.applied && !row.error && row.workerId && row.expiryDate && row.detectedDocType !== "unknown";
+                    const canApply = !row.applied && !row.error && row.workerId && row.expiryDate && row.detectedTipoId;
                     return (
                       <tr key={row.clientFileId} style={{ borderBottom: "1px solid #f1f5f9", background: row.applied ? "#f0fdf4" : row.error ? "#fef2f2" : undefined }}>
                         <td style={{ padding: "8px 12px" }}>
@@ -332,14 +332,14 @@ export function ExtractClient({
                             <span style={{ color: "var(--muted)" }}>—</span>
                           ) : (
                             <select
-                              value={row.detectedDocType}
-                              onChange={e => updateRow(row.clientFileId, { detectedDocType: e.target.value as StaffDocumentFieldKey | "unknown" })}
+                              value={row.detectedTipoId ?? ""}
+                              onChange={e => updateRow(row.clientFileId, { detectedTipoId: e.target.value || null })}
                               disabled={row.applied}
                               style={{ padding: "5px 8px", fontSize: "0.82rem" }}
                             >
                               <option value="unknown">— Elegir —</option>
                               {docTypes.map(t => (
-                                <option key={t.key} value={t.key}>{t.label}</option>
+                                <option key={t.id} value={t.id}>{t.nombre}</option>
                               ))}
                             </select>
                           )}

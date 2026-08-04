@@ -1,19 +1,16 @@
 import { openaiChatCompletion } from "./openai";
-import { STAFF_DOCUMENT_FIELDS, type StaffDocumentFieldKey } from "./staff-docs";
 
-/**
- * Tipos de documento que el LLM debe intentar clasificar.
- * Se envían al prompt para restringir las salidas.
- */
-const DOC_TYPES = STAFF_DOCUMENT_FIELDS.map(f => ({
-  key: f.key,
-  label: f.label,
-}));
-
-const DOC_TYPES_PROMPT = DOC_TYPES.map(t => `- ${t.key}: ${t.label}`).join("\n");
+/** Tipo del catálogo, tal como lo espera el extractor. */
+export type TipoParaExtraccion = {
+  id: string;
+  codigo: string;
+  nombre: string;
+};
 
 export type ExtractedDoc = {
-  detectedDocType: StaffDocumentFieldKey | "unknown";
+  /** Código del catálogo, o "unknown" si no pudo clasificarlo. */
+  detectedCodigo: string;
+  detectedTipoId: string | null;
   detectedDocTypeLabel: string;
   expiryDate: string | null;         // YYYY-MM-DD o null
   issueDate: string | null;          // YYYY-MM-DD o null
@@ -21,13 +18,14 @@ export type ExtractedDoc = {
   workerRut: string | null;          // según el documento
   confidence: "high" | "medium" | "low";
   reasoning: string;                 // breve, para debug
-  rawText?: string;                  // opcional
 };
 
-const SYSTEM_PROMPT = `Eres un asistente experto en documentos laborales chilenos. Tu trabajo es extraer información estructurada de fotos/scans de documentos que RRHH sube para el control documental de sus trabajadores.
+function buildSystemPrompt(tipos: TipoParaExtraccion[]) {
+  const lista = tipos.map(t => `- ${t.codigo}: ${t.nombre}`).join("\n");
+  return `Eres un asistente experto en documentos laborales chilenos. Tu trabajo es extraer información estructurada de fotos/scans de documentos que RRHH sube para el control documental de sus trabajadores.
 
 Los tipos de documento posibles son:
-${DOC_TYPES_PROMPT}
+${lista}
 
 Reglas:
 - Devuelve SIEMPRE JSON válido con la estructura solicitada.
@@ -45,7 +43,7 @@ Reglas:
 
 Formato JSON exacto:
 {
-  "detectedDocType": "<key o unknown>",
+  "detectedCodigo": "<codigo de la lista, o unknown>",
   "expiryDate": "<YYYY-MM-DD o null>",
   "issueDate": "<YYYY-MM-DD o null>",
   "workerName": "<nombre o null>",
@@ -53,15 +51,21 @@ Formato JSON exacto:
   "confidence": "high|medium|low",
   "reasoning": "<breve>"
 }`;
+}
 
 /**
- * Recibe el buffer de una imagen (JPG/PNG/WEBP) y su MIME type, pregunta a
- * OpenAI Vision qué documento es y extrae fecha de vencimiento.
+ * Recibe una imagen (JPG/PNG/WEBP) en base64, pregunta a OpenAI Vision qué
+ * documento es y extrae la fecha de vencimiento.
+ *
+ * El resultado NUNCA se escribe directo: pasa por confirmación humana. Una
+ * fecha mal leída marcaría como vigente algo que no lo está, que es peor
+ * que no tener sistema.
  */
 export async function extractDocumentInfo(input: {
   imageBase64: string;
   mimeType: string;
   fileName: string;
+  tipos: TipoParaExtraccion[];
   model?: string;
 }): Promise<ExtractedDoc> {
   const dataUrl = `data:${input.mimeType};base64,${input.imageBase64}`;
@@ -70,7 +74,7 @@ export async function extractDocumentInfo(input: {
     model: input.model ?? "gpt-4o-mini",
     responseFormat: "json_object",
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: buildSystemPrompt(input.tipos) },
       {
         role: "user",
         content: [
@@ -84,22 +88,20 @@ export async function extractDocumentInfo(input: {
   });
 
   const raw = response.choices[0]?.message.content ?? "";
-  let parsed: Partial<ExtractedDoc> = {};
+  let parsed: Record<string, unknown> = {};
   try {
     parsed = JSON.parse(raw);
   } catch {
     throw new Error(`Respuesta de OpenAI no es JSON válido: ${raw.slice(0, 200)}`);
   }
 
-  // Normalizar y validar
-  const detectedDocType = (parsed.detectedDocType ?? "unknown") as string;
-  const validKey = DOC_TYPES.find(t => t.key === detectedDocType);
-  const finalDocType: StaffDocumentFieldKey | "unknown" = validKey?.key ?? "unknown";
-  const detectedDocTypeLabel = validKey?.label ?? "Desconocido";
+  const codigo = cleanString(parsed.detectedCodigo) ?? "unknown";
+  const tipo = input.tipos.find(t => t.codigo === codigo) ?? null;
 
   return {
-    detectedDocType: finalDocType,
-    detectedDocTypeLabel,
+    detectedCodigo: tipo?.codigo ?? "unknown",
+    detectedTipoId: tipo?.id ?? null,
+    detectedDocTypeLabel: tipo?.nombre ?? "Desconocido",
     expiryDate: normalizeDate(parsed.expiryDate),
     issueDate: normalizeDate(parsed.issueDate),
     workerName: cleanString(parsed.workerName),

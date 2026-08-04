@@ -265,8 +265,100 @@ model StaffMember {
   cierre         CierreContrato?
   documentosAdicionales DocumentoAdicional[]
   alertasEnviadas       AlertaDocumento[]
+  acreditacionDocs      DocumentoAcreditacion[]
 
   @@index([campId, isActive])
+}
+
+/// Catálogo de tipos de documento. Editable desde Administración.
+/// `legacyField` mapea al nombre de la columna plana en StaffMember para
+/// los 9 tipos que ya existían — permite el backfill y mantener el
+/// formulario de ficha funcionando durante la transición.
+model TipoDocumento {
+  id              String   @id @default(cuid())
+  codigo          String   @unique
+  nombre          String
+  /// Vigencia por defecto cuando el documento no trae vencimiento impreso.
+  /// NULL = no vence, o siempre se lee del documento.
+  vigenciaDias    Int?
+  requiereArchivo Boolean  @default(false)
+  /// identidad | previsional | salud_ocupacional | formacion | laboral
+  categoria       String   @default("laboral")
+  /// Si aparece como columna en la matriz de control documental.
+  /// Con ~24 tipos la matriz sería ilegible; solo los core se muestran.
+  mostrarEnMatriz Boolean  @default(false)
+  /// Etiqueta corta para el encabezado de columna en la matriz.
+  etiquetaCorta   String?
+  /// Nombre de la columna equivalente en StaffMember (solo tipos legacy).
+  legacyField     String?  @unique
+  orden           Int      @default(100)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  documentos      DocumentoAcreditacion[]
+
+  @@index([activo, orden])
+}
+
+/// Documento de acreditación. Append-only: cada renovación es una fila nueva.
+/// Nunca se hace UPDATE de fechas ni DELETE — para corregir se marca `anulado`.
+/// (El modelo `Documento` a secas es el de Biblioteca, sin relación con esto.)
+model DocumentoAcreditacion {
+  id                   String   @id @default(cuid())
+  staffMemberId        String
+  staffMember          StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  tipoDocumentoId      String
+  tipoDocumento        TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
+
+  fechaEmision         DateTime?
+  fechaVencimiento     DateTime?
+  /// true = la fecha se infirió (emisión + vigenciaDias). false = venía impresa.
+  /// Se muestra distinto en la UI: ante un reclamo del mandante hay que poder
+  /// distinguir una fecha leída de una calculada.
+  vencimientoCalculado Boolean  @default(false)
+  /// Contrato indefinido u otro documento que no vence.
+  sinVencimiento       Boolean  @default(false)
+
+  // ── Archivo ──────────────────────────────────────────────────────────
+  /// Temporal: binario en Postgres. Migra a R2/S3 en Fase C.
+  contenido            Bytes?
+  /// Ruta en R2/S3 una vez migrado.
+  archivoUrl           String?
+  /// sha256 del archivo, para detectar cargas duplicadas.
+  archivoHash          String?
+  originalFilename     String?
+  fileSize             Int?
+  mimeType             String?
+  /// Página de inicio dentro de un PDF consolidado.
+  paginaInicio         Int?
+
+  // ── Trazabilidad ─────────────────────────────────────────────────────
+  /// manual | extraido | migracion | excel
+  origen               String   @default("manual")
+  /// alta | media | baja — solo cuando origen = extraido
+  confianzaExtraccion  String?
+  confirmadoPorId      String?
+  confirmadoPorNombre  String?
+  confirmadoAt         DateTime?
+
+  anulado              Boolean  @default(false)
+  anuladoPorNombre     String?
+  anuladoAt            DateTime?
+  motivoAnulacion      String?
+
+  nota                 String?
+  /// Clave de origen cuando la fila vino del backfill, para que la
+  /// migración sea idempotente. Ej: "staff:<id>:contractEndDate",
+  /// "dt:<documentoTrabajadorId>". NULL en documentos creados normalmente.
+  migradoDesde         String?  @unique
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([staffMemberId, tipoDocumentoId, fechaVencimiento])
+  @@index([anulado, fechaVencimiento])
+  @@index([archivoHash])
 }
 
 // Documento personalizado que HSEC puede agregar sin tocar código

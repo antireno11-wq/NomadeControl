@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ADMIN_ROLES, isSupervisorRole, TRABAJADORES_ROLES, requireRole, type AppRole } from "@/lib/auth";
+import { sincronizarDesdeFicha } from "@/lib/acreditacion-db";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 import { logAuditEvent } from "@/lib/audit";
@@ -136,7 +137,11 @@ export async function createWorkerAction(formData: FormData) {
     }
   });
 
+  // Espeja las fechas de la ficha al modelo de acreditación (append-only)
+  await sincronizarDesdeFicha(worker.id, { id: adminUser.id, nombre: adminUser.name }).catch(() => {});
+
   revalidatePath("/trabajadores");
+  revalidatePath("/trabajadores/control-documental");
   await logAuditEvent({
     actorUserId: adminUser.id,
     actorName: adminUser.name,
@@ -238,7 +243,12 @@ export async function updateWorkerAction(formData: FormData) {
     }
   });
 
+  // Espeja las fechas de la ficha al modelo de acreditación (append-only):
+  // si alguna cambió, queda una versión nueva y la anterior como historial.
+  await sincronizarDesdeFicha(updatedWorker.id, { id: user.id, nombre: user.name }).catch(() => {});
+
   revalidatePath("/trabajadores");
+  revalidatePath("/trabajadores/control-documental");
   revalidatePath(`/trabajadores/${worker.id}`);
   await logAuditEvent({
     actorUserId: user.id,
