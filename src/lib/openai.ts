@@ -10,6 +10,9 @@ type ChatMessage = {
   content: string | Array<
     | { type: "text"; text: string }
     | { type: "image_url"; image_url: { url: string; detail?: "low" | "high" | "auto" } }
+    // PDF directo: OpenAI extrae texto y renderiza cada página como imagen.
+    // Evita tener que convertir el PDF a imágenes en el cliente.
+    | { type: "file"; file: { filename: string; file_data: string } }
   >;
 };
 

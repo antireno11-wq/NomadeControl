@@ -10,16 +10,22 @@ import { getTiposDocumento } from "@/lib/acreditacion-db";
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 export type ExtractedRow = ExtractedDoc & {
+  /** Id del archivo que lo originó (un archivo puede dar varias filas). */
   clientFileId: string;
+  /** Id único de esta fila: `${clientFileId}#${indice}`. */
+  rowId: string;
   fileName: string;
   matches: Array<{ workerId: string; workerName: string; score: number; reason: string }>;
   error?: string;
 };
 
 /**
- * Analiza los archivos con OpenAI Vision y devuelve una PROPUESTA.
- * No escribe nada en la base — eso pasa recién en applyExtractionsAction,
- * después de que el usuario revisa y corrige.
+ * Analiza los archivos y devuelve una PROPUESTA. Un archivo puede producir
+ * varias filas: los PDFs de acreditación suelen traer contrato, cédula y
+ * exámenes concatenados.
+ *
+ * No escribe nada — eso pasa recién en applyExtractionsAction, después de
+ * que el usuario revisa y corrige.
  */
 export async function extractDocumentsAction(
   files: Array<{ clientFileId: string; fileName: string; mimeType: string; base64: string }>,
@@ -38,33 +44,59 @@ export async function extractDocumentsAction(
 
   for (const file of files) {
     try {
-      const extracted = await extractDocumentInfo({
-        imageBase64: file.base64,
+      const encontrados = await extractDocumentInfo({
+        fileBase64: file.base64,
         mimeType: file.mimeType,
         fileName: file.fileName,
         tipos,
       });
 
-      const matches = matchWorker(
-        { name: extracted.workerName, rut: extracted.workerRut },
-        workers,
-      ).map(m => {
-        const w = workers.find(x => x.id === m.workerId)!;
-        return { workerId: m.workerId, workerName: w.fullName, score: m.score, reason: m.reason };
-      });
+      if (encontrados.length === 0) {
+        results.push({
+          clientFileId: file.clientFileId,
+          rowId: `${file.clientFileId}#0`,
+          fileName: file.fileName,
+          detectedCodigo: "unknown",
+          detectedTipoId: null,
+          detectedDocTypeLabel: "Sin documentos reconocidos",
+          expiryDate: null, issueDate: null,
+          workerName: null, workerRut: null,
+          paginaInicio: null,
+          confidence: "low",
+          reasoning: "La IA no reconoció ningún documento en el archivo.",
+          matches: [],
+        });
+        continue;
+      }
 
-      results.push({ clientFileId: file.clientFileId, fileName: file.fileName, ...extracted, matches });
+      encontrados.forEach((doc, i) => {
+        const matches = matchWorker(
+          { name: doc.workerName, rut: doc.workerRut },
+          workers,
+        ).map(m => {
+          const w = workers.find(x => x.id === m.workerId)!;
+          return { workerId: m.workerId, workerName: w.fullName, score: m.score, reason: m.reason };
+        });
+
+        results.push({
+          clientFileId: file.clientFileId,
+          rowId: `${file.clientFileId}#${i}`,
+          fileName: file.fileName,
+          ...doc,
+          matches,
+        });
+      });
     } catch (e) {
       results.push({
         clientFileId: file.clientFileId,
+        rowId: `${file.clientFileId}#err`,
         fileName: file.fileName,
         detectedCodigo: "unknown",
         detectedTipoId: null,
         detectedDocTypeLabel: "Error",
-        expiryDate: null,
-        issueDate: null,
-        workerName: null,
-        workerRut: null,
+        expiryDate: null, issueDate: null,
+        workerName: null, workerRut: null,
+        paginaInicio: null,
         confidence: "low",
         reasoning: "",
         matches: [],

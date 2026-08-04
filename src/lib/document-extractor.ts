@@ -7,6 +7,7 @@ export type TipoParaExtraccion = {
   nombre: string;
 };
 
+/** Un documento detectado dentro de un archivo. */
 export type ExtractedDoc = {
   /** Código del catálogo, o "unknown" si no pudo clasificarlo. */
   detectedCodigo: string;
@@ -14,77 +15,101 @@ export type ExtractedDoc = {
   detectedDocTypeLabel: string;
   expiryDate: string | null;         // YYYY-MM-DD o null
   issueDate: string | null;          // YYYY-MM-DD o null
-  workerName: string | null;         // según el documento
-  workerRut: string | null;          // según el documento
+  workerName: string | null;
+  workerRut: string | null;
+  /** Página donde empieza, en PDFs con varios documentos. */
+  paginaInicio: number | null;
   confidence: "high" | "medium" | "low";
-  reasoning: string;                 // breve, para debug
+  reasoning: string;
 };
+
+const MIME_PDF = "application/pdf";
 
 function buildSystemPrompt(tipos: TipoParaExtraccion[]) {
   const lista = tipos.map(t => `- ${t.codigo}: ${t.nombre}`).join("\n");
-  return `Eres un asistente experto en documentos laborales chilenos. Tu trabajo es extraer información estructurada de fotos/scans de documentos que RRHH sube para el control documental de sus trabajadores.
+  return `Eres un asistente experto en documentos laborales chilenos. Extraes información estructurada de documentos que RRHH sube para el control documental de sus trabajadores.
 
-Los tipos de documento posibles son:
+IMPORTANTE: un archivo puede contener VARIOS documentos distintos concatenados (las carpetas de acreditación suelen ser un PDF con contrato, cédula, exámenes y certificados uno detrás de otro). Tenés que identificarlos TODOS y devolver uno por cada uno.
+
+Tipos de documento posibles:
 ${lista}
 
 Reglas:
-- Devuelve SIEMPRE JSON válido con la estructura solicitada.
-- Fechas: SIEMPRE en formato YYYY-MM-DD. Si el documento muestra la fecha como 15/06/2027, devuelve "2027-06-15".
-- Si NO puedes leer una fecha, devuelve null (no inventes).
-- Para el tipo de documento, elige la key EXACTA de la lista de arriba, o "unknown" si no coincide con ninguno.
-- Distinguí bien entre fecha de EMISIÓN y fecha de VENCIMIENTO. La que nos interesa es el vencimiento (expiryDate). La emisión (issueDate) es informativa.
-- Para el nombre del trabajador: extraé tal como aparece en el documento (incluyendo apellidos).
-- Para el RUT: formato chileno, ejemplo "12.345.678-9" o "12345678-9".
-- Confidence:
-  - "high" = fecha de vencimiento claramente visible y legible
-  - "medium" = alguna ambigüedad (fecha borrosa, formato raro, o falta contexto)
-  - "low" = imagen mala, campos no visibles, o no seguro si es el tipo correcto
-- En "reasoning" pon 1-2 frases explicando en qué te basaste.
+- Devolvé SIEMPRE JSON válido con la estructura pedida.
+- Fechas SIEMPRE en formato YYYY-MM-DD. Si el documento muestra 15/06/2027, devolvé "2027-06-15".
+- Si NO podés leer una fecha, devolvé null. NO la inventes ni la estimes.
+- Elegí el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
+- Distinguí bien EMISIÓN de VENCIMIENTO. El que importa es el vencimiento (expiryDate); la emisión (issueDate) es informativa.
+- Si un documento no tiene fecha de vencimiento impresa (ej. un contrato indefinido), poné expiryDate en null y explicalo en reasoning.
+- workerName: tal como aparece en el documento, con apellidos.
+- workerRut: formato chileno, ej. "12.345.678-9".
+- paginaInicio: número de página (empezando en 1) donde arranca el documento. Si es un archivo de una sola página o una foto, poné 1.
+- confidence por documento:
+  - "high" = vencimiento claramente visible y legible
+  - "medium" = alguna ambigüedad (borroso, formato raro, falta contexto)
+  - "low" = imagen mala, campos no visibles, o dudás del tipo
+- reasoning: 1-2 frases sobre en qué te basaste.
+- Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devolvelo UNA sola vez.
+- Si no reconocés ningún documento, devolvé {"documentos": []}.
 
 Formato JSON exacto:
 {
-  "detectedCodigo": "<codigo de la lista, o unknown>",
-  "expiryDate": "<YYYY-MM-DD o null>",
-  "issueDate": "<YYYY-MM-DD o null>",
-  "workerName": "<nombre o null>",
-  "workerRut": "<rut o null>",
-  "confidence": "high|medium|low",
-  "reasoning": "<breve>"
+  "documentos": [
+    {
+      "detectedCodigo": "<codigo de la lista, o unknown>",
+      "expiryDate": "<YYYY-MM-DD o null>",
+      "issueDate": "<YYYY-MM-DD o null>",
+      "workerName": "<nombre o null>",
+      "workerRut": "<rut o null>",
+      "paginaInicio": <número>,
+      "confidence": "high|medium|low",
+      "reasoning": "<breve>"
+    }
+  ]
 }`;
 }
 
 /**
- * Recibe una imagen (JPG/PNG/WEBP) en base64, pregunta a OpenAI Vision qué
- * documento es y extrae la fecha de vencimiento.
+ * Analiza un archivo (imagen o PDF) y devuelve TODOS los documentos que
+ * encuentra dentro.
  *
- * El resultado NUNCA se escribe directo: pasa por confirmación humana. Una
- * fecha mal leída marcaría como vigente algo que no lo está, que es peor
- * que no tener sistema.
+ * Los PDFs se mandan directo a OpenAI, que extrae el texto y renderiza las
+ * páginas — no hace falta convertirlos a imagen antes.
+ *
+ * El resultado NUNCA se escribe sin confirmación humana: una fecha mal
+ * leída marcaría como vigente algo que no lo está, y eso es peor que no
+ * tener sistema.
  */
 export async function extractDocumentInfo(input: {
-  imageBase64: string;
+  fileBase64: string;
   mimeType: string;
   fileName: string;
   tipos: TipoParaExtraccion[];
   model?: string;
-}): Promise<ExtractedDoc> {
-  const dataUrl = `data:${input.mimeType};base64,${input.imageBase64}`;
+}): Promise<ExtractedDoc[]> {
+  const esPdf = input.mimeType === MIME_PDF;
+  const dataUrl = `data:${input.mimeType};base64,${input.fileBase64}`;
+
+  const contenido = esPdf
+    ? [
+        { type: "file" as const, file: { filename: input.fileName, file_data: dataUrl } },
+        { type: "text" as const, text: `Analizá este PDF (${input.fileName}). Puede tener varios documentos adentro: identificalos todos y devolvé el JSON.` },
+      ]
+    : [
+        { type: "text" as const, text: `Analizá este documento (${input.fileName}) y devolvé el JSON.` },
+        { type: "image_url" as const, image_url: { url: dataUrl, detail: "high" as const } },
+      ];
 
   const response = await openaiChatCompletion({
     model: input.model ?? "gpt-4o-mini",
     responseFormat: "json_object",
     messages: [
       { role: "system", content: buildSystemPrompt(input.tipos) },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: `Analizá este documento (${input.fileName}) y extraé la info en JSON.` },
-          { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
-        ],
-      },
+      { role: "user", content: contenido },
     ],
     temperature: 0,
-    maxTokens: 600,
+    // Un PDF consolidado puede traer 15+ documentos
+    maxTokens: esPdf ? 4000 : 900,
   });
 
   const raw = response.choices[0]?.message.content ?? "";
@@ -95,20 +120,26 @@ export async function extractDocumentInfo(input: {
     throw new Error(`Respuesta de OpenAI no es JSON válido: ${raw.slice(0, 200)}`);
   }
 
-  const codigo = cleanString(parsed.detectedCodigo) ?? "unknown";
-  const tipo = input.tipos.find(t => t.codigo === codigo) ?? null;
+  const lista = Array.isArray(parsed.documentos) ? parsed.documentos : [];
 
-  return {
-    detectedCodigo: tipo?.codigo ?? "unknown",
-    detectedTipoId: tipo?.id ?? null,
-    detectedDocTypeLabel: tipo?.nombre ?? "Desconocido",
-    expiryDate: normalizeDate(parsed.expiryDate),
-    issueDate: normalizeDate(parsed.issueDate),
-    workerName: cleanString(parsed.workerName),
-    workerRut: normalizeRut(parsed.workerRut),
-    confidence: (parsed.confidence as "high" | "medium" | "low") ?? "low",
-    reasoning: cleanString(parsed.reasoning) ?? "",
-  };
+  return (lista as Array<Record<string, unknown>>).map(d => {
+    const codigo = cleanString(d.detectedCodigo) ?? "unknown";
+    const tipo = input.tipos.find(t => t.codigo === codigo) ?? null;
+    const pagina = typeof d.paginaInicio === "number" ? d.paginaInicio : null;
+
+    return {
+      detectedCodigo: tipo?.codigo ?? "unknown",
+      detectedTipoId: tipo?.id ?? null,
+      detectedDocTypeLabel: tipo?.nombre ?? "Desconocido",
+      expiryDate: normalizeDate(d.expiryDate),
+      issueDate: normalizeDate(d.issueDate),
+      workerName: cleanString(d.workerName),
+      workerRut: normalizeRut(d.workerRut),
+      paginaInicio: pagina && pagina > 0 ? pagina : null,
+      confidence: (d.confidence as "high" | "medium" | "low") ?? "low",
+      reasoning: cleanString(d.reasoning) ?? "",
+    };
+  });
 }
 
 function cleanString(v: unknown): string | null {
@@ -120,20 +151,17 @@ function cleanString(v: unknown): string | null {
 function normalizeDate(v: unknown): string | null {
   const s = cleanString(v);
   if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
 function normalizeRut(v: unknown): string | null {
   const s = cleanString(v);
   if (!s) return null;
-  // Deja tal como viene si parece un RUT chileno básico
-  if (/^\d{1,2}\.?\d{3}\.?\d{3}-?[0-9kK]$/.test(s)) return s;
-  return s;
+  return /^\d{1,2}\.?\d{3}\.?\d{3}-?[0-9kK]$/.test(s) ? s : s;
 }
 
 /**
- * Fuzzy match entre el nombre extraído y una lista de trabajadores del sistema.
+ * Empareja el nombre/RUT extraído con los trabajadores del sistema.
  * Devuelve los mejores candidatos ordenados por score.
  */
 export function matchWorker(
@@ -142,7 +170,7 @@ export function matchWorker(
 ): Array<{ workerId: string; score: number; reason: string }> {
   if (workers.length === 0) return [];
 
-  // 1. Match exacto por RUT normalizado (score 100)
+  // RUT exacto gana sobre cualquier similitud de nombre
   if (extracted.rut) {
     const rutClean = extracted.rut.replace(/[.\-\s]/g, "").toUpperCase();
     for (const w of workers) {
@@ -155,7 +183,6 @@ export function matchWorker(
 
   if (!extracted.name) return [];
 
-  // 2. Score por similaridad de nombre
   const normName = (s: string) =>
     s.toLowerCase()
       .normalize("NFD")
@@ -167,17 +194,13 @@ export function matchWorker(
   const extractedTokens = normName(extracted.name);
   if (extractedTokens.length === 0) return [];
 
-  const candidates = workers.map(w => {
-    const workerTokens = normName(w.fullName);
-    let common = 0;
-    for (const t of extractedTokens) {
-      if (workerTokens.includes(t)) common++;
-    }
-    const score = Math.round((common / Math.max(extractedTokens.length, workerTokens.length)) * 100);
-    return { workerId: w.id, score, reason: `${common} palabra${common !== 1 ? "s" : ""} en común` };
-  });
-
-  return candidates
+  return workers
+    .map(w => {
+      const workerTokens = normName(w.fullName);
+      const common = extractedTokens.filter(t => workerTokens.includes(t)).length;
+      const score = Math.round((common / Math.max(extractedTokens.length, workerTokens.length)) * 100);
+      return { workerId: w.id, score, reason: `${common} palabra${common !== 1 ? "s" : ""} en común` };
+    })
     .filter(c => c.score >= 40)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
