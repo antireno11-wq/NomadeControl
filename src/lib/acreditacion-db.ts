@@ -17,6 +17,8 @@ export type TipoDocumentoRow = {
   vigenciaDias: number | null;
   mostrarEnMatriz: boolean;
   legacyField: string | null;
+  noVence: boolean;
+  esFoto: boolean;
   orden: number;
 };
 
@@ -53,22 +55,30 @@ export type EstadoTrabajador = {
 const SELECT_TIPO = {
   id: true, codigo: true, nombre: true, categoria: true,
   etiquetaCorta: true, vigenciaDias: true, mostrarEnMatriz: true,
-  legacyField: true, orden: true,
+  legacyField: true, noVence: true, esFoto: true, orden: true,
 } as const;
 
 /**
- * Siembra el catálogo si está vacío. Se ejecuta sola la primera vez que
- * alguien entra al módulo — no hay que apretar ningún botón.
+ * Mantiene el catálogo al día: siembra los tipos que falten.
  *
- * `skipDuplicates` + `codigo` único la hacen segura ante requests
- * concurrentes: si dos usuarios entran a la vez, la segunda no duplica.
+ * No solo cubre la primera vez — cuando se agregan tipos nuevos al SEED,
+ * los inserta en instalaciones que ya tenían catálogo. No pisa los que
+ * ya existen, para respetar ediciones hechas desde Administración.
+ *
+ * `skipDuplicates` + `codigo` único la hacen segura ante concurrencia.
  */
 async function asegurarCatalogo(): Promise<void> {
   const existentes = await db.tipoDocumento.count();
-  if (existentes > 0) return;
+  if (existentes >= TIPOS_DOCUMENTO_SEED.length) return;
+
+  const codigos = new Set(
+    (await db.tipoDocumento.findMany({ select: { codigo: true } })).map(t => t.codigo),
+  );
+  const faltantes = TIPOS_DOCUMENTO_SEED.filter(t => !codigos.has(t.codigo));
+  if (faltantes.length === 0) return;
 
   await db.tipoDocumento.createMany({
-    data: TIPOS_DOCUMENTO_SEED.map(t => ({
+    data: faltantes.map(t => ({
       codigo: t.codigo,
       nombre: t.nombre,
       categoria: t.categoria,
@@ -77,6 +87,8 @@ async function asegurarCatalogo(): Promise<void> {
       mostrarEnMatriz: t.mostrarEnMatriz,
       etiquetaCorta: t.etiquetaCorta,
       legacyField: t.legacyField,
+      noVence: t.noVence ?? false,
+      esFoto: t.esFoto ?? false,
       orden: t.orden,
     })),
     skipDuplicates: true,
@@ -87,18 +99,10 @@ async function asegurarCatalogo(): Promise<void> {
 export async function getTiposDocumento(soloMatriz = false): Promise<TipoDocumentoRow[]> {
   const where = { activo: true, ...(soloMatriz ? { mostrarEnMatriz: true } : {}) };
 
-  let tipos = await db.tipoDocumento.findMany({
+  await asegurarCatalogo();
+  return db.tipoDocumento.findMany({
     where, orderBy: { orden: "asc" }, select: SELECT_TIPO,
   });
-
-  if (tipos.length === 0) {
-    await asegurarCatalogo();
-    tipos = await db.tipoDocumento.findMany({
-      where, orderBy: { orden: "asc" }, select: SELECT_TIPO,
-    });
-  }
-
-  return tipos;
 }
 
 /**

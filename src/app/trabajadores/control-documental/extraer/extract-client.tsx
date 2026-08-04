@@ -6,7 +6,7 @@ import { extractDocumentsAction, applyExtractionsAction } from "./actions";
 import { agruparPorPersona } from "@/lib/acreditacion";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
-type DocType = { id: string; codigo: string; nombre: string };
+type DocType = { id: string; codigo: string; nombre: string; noVence: boolean; esFoto: boolean };
 
 /** Info del archivo subido, compartida por todas las filas que produjo. */
 type ArchivoInfo = {
@@ -83,6 +83,12 @@ export function ExtractClient({
   const [isPending, startTransition] = useTransition();
 
   const infoDe = (clientFileId: string) => archivos.find(a => a.clientFileId === clientFileId);
+  const tipoDe = (tipoId: string | null) => (tipoId ? docTypes.find(t => t.id === tipoId) ?? null : null);
+  /** Las constancias y la foto se guardan sin fecha de vencimiento. */
+  const necesitaFecha = (tipoId: string | null) => {
+    const t = tipoDe(tipoId);
+    return t ? !t.noVence && !t.esFoto : true;
+  };
 
   async function handleFiles(fileList: FileList | File[]) {
     setGlobalError(null);
@@ -201,7 +207,8 @@ export function ExtractClient({
 
   const readyRows = rows.filter(r =>
     !r.procesando && !r.applied && !r.error &&
-    r.expiryDate && r.detectedTipoId &&
+    r.detectedTipoId &&
+    (necesitaFecha(r.detectedTipoId) ? Boolean(r.expiryDate) : true) &&
     (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId))
   );
 
@@ -250,7 +257,7 @@ export function ExtractClient({
             : null,
           tipoDocumentoId: r.detectedTipoId!,
           confidence: r.confidence,
-          expiryDate: r.expiryDate!,
+          expiryDate: necesitaFecha(r.detectedTipoId) ? r.expiryDate : null,
           issueDate: r.issueDate,
           archivo: (() => {
             const a = infoDe(r.clientFileId);
@@ -404,8 +411,11 @@ export function ExtractClient({
                   {rows.map(row => {
                     const info = infoDe(row.clientFileId);
                     const conf = CONFIDENCE_STYLE[row.confidence];
+                    const tipo = tipoDe(row.detectedTipoId);
+                    const pideFecha = necesitaFecha(row.detectedTipoId);
                     const listo = !row.procesando && !row.applied && !row.error
-                      && row.expiryDate && row.detectedTipoId
+                      && row.detectedTipoId
+                      && (pideFecha ? row.expiryDate : true)
                       && (row.workerId === CREAR_NUEVO ? row.nuevoNombre.trim() : row.workerId);
 
                     return (
@@ -523,13 +533,24 @@ export function ExtractClient({
                         <td style={{ padding: "8px 12px" }}>
                           {row.procesando ? (
                             <span style={{ color: "var(--muted)" }}>—</span>
+                          ) : tipo?.esFoto ? (
+                            <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
+                              Se guarda como foto
+                            </span>
+                          ) : !pideFecha ? (
+                            <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
+                              ∞ No vence
+                            </span>
                           ) : (
                             <input
                               type="date"
                               value={row.expiryDate ?? ""}
                               onChange={e => updateRow(row.rowId, { expiryDate: e.target.value || null })}
                               disabled={row.applied}
-                              style={{ padding: "4px 8px", fontSize: "0.82rem", width: 135 }}
+                              style={{
+                                padding: "4px 8px", fontSize: "0.82rem", width: 135,
+                                border: row.expiryDate ? "1px solid var(--border)" : "1.5px solid #f59e0b",
+                              }}
                             />
                           )}
                         </td>

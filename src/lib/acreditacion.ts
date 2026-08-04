@@ -31,6 +31,10 @@ export type TipoDocumentoSeed = {
   etiquetaCorta: string | null;
   /** Columna equivalente en StaffMember, para el backfill. */
   legacyField: string | null;
+  /** Documento de constancia: no caduca, se guarda sin fecha. */
+  noVence?: boolean;
+  /** Al cargarlo se guarda como foto del trabajador. */
+  esFoto?: boolean;
   orden: number;
 };
 
@@ -51,7 +55,7 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "altura_geografica",      nombre: "Examen de altura geográfica",      categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Altura",      legacyField: "altitudeExamDueDate",     orden: 50 },
   { codigo: "manipulacion_alimentos", nombre: "Manipulación de alimentos",        categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Aliment.",    legacyField: "foodHandlingExamDueDate", orden: 60 },
   { codigo: "vacunas",                nombre: "Vacunas",                          categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Vacunas",     legacyField: "vaccineDueDate",          orden: 70 },
-  { codigo: "odi",                    nombre: "ODI / Inducción",                  categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Inducción",   legacyField: "inductionDueDate",        orden: 80 },
+  { codigo: "odi",                    nombre: "ODI / IRL / Inducción",                  categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Inducción",   legacyField: "inductionDueDate",        orden: 80 },
   { codigo: "acreditacion",           nombre: "Acreditación",                     categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Acredit.",    legacyField: "accreditationDueDate",    orden: 90 },
 
   // ── Identidad ────────────────────────────────────────────────────────
@@ -67,16 +71,31 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   // ── Salud ocupacional ────────────────────────────────────────────────
   { codigo: "altura_fisica",            nombre: "Examen de altura física",        categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Altura fís.",  legacyField: null, orden: 170 },
   { codigo: "psicosensotecnico",        nombre: "Psicosensotécnico",              categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Psicosens.",   legacyField: null, orden: 180 },
+  { codigo: "examen_alcohol_drogas",    nombre: "Examen de alcohol y drogas",     categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Alcohol/drogas", legacyField: null, orden: 185 },
 
   // ── Formación ────────────────────────────────────────────────────────
   { codigo: "conduccion_defensiva",     nombre: "Conducción a la defensiva",      categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Cond. def.",   legacyField: null, orden: 190 },
   { codigo: "certificacion_competencias", nombre: "Certificación de competencias", categoria: "formacion",        vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Competencias", legacyField: null, orden: 200 },
   { codigo: "titulo_estudios",          nombre: "Título o certificado de estudios", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Título",       legacyField: null, orden: 210 },
+  { codigo: "curso_primeros_auxilios",  nombre: "Curso de primeros auxilios",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux.",   legacyField: null, orden: 212 },
+  { codigo: "curso_extintores",         nombre: "Curso de uso de extintores",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Extintores",   legacyField: null, orden: 213 },
+  { codigo: "curso_epp",                nombre: "Curso de uso y mantención de EPP", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Curso EPP",    legacyField: null, orden: 214 },
+  { codigo: "capacitacion_ruv",         nombre: "Capacitación RUV",               categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "RUV",          legacyField: null, orden: 215 },
+  { codigo: "capacitacion_mmc",         nombre: "Capacitación manejo manual de cargas", categoria: "formacion",   vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "MMC",          legacyField: null, orden: 216 },
+  { codigo: "capacitacion_sustancias",  nombre: "Capacitación sustancias peligrosas", categoria: "formacion",     vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Sust. pelig.", legacyField: null, orden: 217 },
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },
   { codigo: "ficha_ingreso",            nombre: "Ficha de ingreso",               categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "F. ingreso",   legacyField: null, orden: 230 },
   { codigo: "finiquito",                nombre: "Finiquito",                      categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Finiquito",    legacyField: null, orden: 240 },
+
+  // ── Constancias: no caducan, solo tienen que existir ──────────────────
+  { codigo: "entrega_epp",              nombre: "Acta de entrega de EPP",         categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entrega EPP",  legacyField: null, noVence: true, orden: 250 },
+  { codigo: "recepcion_riohs",          nombre: "Recepción del RIOHS",            categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "RIOHS",        legacyField: null, noVence: true, orden: 251 },
+  { codigo: "declaracion_jurada",       nombre: "Declaración jurada",             categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Decl. jurada", legacyField: null, noVence: true, orden: 252 },
+
+  // ── Foto ─────────────────────────────────────────────────────────────
+  { codigo: "foto",                     nombre: "Foto del trabajador",            categoria: "identidad",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Foto",         legacyField: null, noVence: true, esFoto: true, orden: 5 },
 ];
 
 /** Mapa legacyField → codigo, para el backfill y la sincronización. */

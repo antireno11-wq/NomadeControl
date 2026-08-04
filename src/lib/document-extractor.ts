@@ -5,6 +5,8 @@ export type TipoParaExtraccion = {
   id: string;
   codigo: string;
   nombre: string;
+  /** Documento de constancia: no lleva fecha de vencimiento. */
+  noVence?: boolean;
 };
 
 /** Un documento detectado dentro de un archivo. */
@@ -26,7 +28,9 @@ export type ExtractedDoc = {
 const MIME_PDF = "application/pdf";
 
 function buildSystemPrompt(tipos: TipoParaExtraccion[]) {
-  const lista = tipos.map(t => `- ${t.codigo}: ${t.nombre}`).join("\n");
+  const lista = tipos
+    .map(t => `- ${t.codigo}: ${t.nombre}${t.noVence ? "  [NO VENCE — es una constancia]" : ""}`)
+    .join("\n");
   return `Eres un asistente experto en documentos laborales chilenos. Extraes información estructurada de documentos que RRHH sube para el control documental de sus trabajadores.
 
 IMPORTANTE: un archivo puede contener VARIOS documentos distintos concatenados (las carpetas de acreditación suelen ser un PDF con contrato, cédula, exámenes y certificados uno detrás de otro). Tenés que identificarlos TODOS y devolver uno por cada uno.
@@ -40,7 +44,9 @@ Reglas:
 - Si NO podés leer una fecha, devolvé null. NO la inventes ni la estimes.
 - Elegí el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
 - Distinguí bien EMISIÓN de VENCIMIENTO. El que importa es el vencimiento (expiryDate); la emisión (issueDate) es informativa.
-- Si un documento no tiene fecha de vencimiento impresa (ej. un contrato indefinido), poné expiryDate en null y explicalo en reasoning.
+- Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos poné expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
+- Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), poné expiryDate en null y explicalo en reasoning.
+- Los certificados de capacitación suelen traer solo la fecha de realización: esa va en issueDate.
 - workerName: tal como aparece en el documento, con apellidos.
 - workerRut: formato chileno, ej. "12.345.678-9".
 - paginaInicio: número de página (empezando en 1) donde arranca el documento. Si es un archivo de una sola página o una foto, poné 1.

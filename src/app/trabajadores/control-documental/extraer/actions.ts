@@ -49,7 +49,7 @@ export async function extractDocumentsAction(
         fileBase64: file.base64,
         mimeType: file.mimeType,
         fileName: file.fileName,
-        tipos,
+        tipos: tipos.map(t => ({ id: t.id, codigo: t.codigo, nombre: t.nombre, noVence: t.noVence })),
       });
 
       if (encontrados.length === 0) {
@@ -120,7 +120,8 @@ export type FilaAplicar = {
   /** Datos para crear el trabajador cuando workerId es null. */
   nuevoTrabajador?: { nombre: string; rut?: string | null } | null;
   tipoDocumentoId: string;
-  expiryDate: string;          // YYYY-MM-DD
+  /** Vacío cuando el tipo no vence (constancias, foto). */
+  expiryDate?: string | null;  // YYYY-MM-DD
   issueDate?: string | null;   // YYYY-MM-DD
   confidence?: "high" | "medium" | "low";
   /** Archivo del que salió, para poder verlo después. */
@@ -138,7 +139,7 @@ export async function applyExtractionsAction(
 
   const tipos = await db.tipoDocumento.findMany({
     where: { activo: true },
-    select: { id: true, codigo: true, legacyField: true },
+    select: { id: true, codigo: true, legacyField: true, noVence: true, esFoto: true },
   });
   const tipoPorId = new Map(tipos.map(t => [t.id, t]));
 
@@ -243,17 +244,36 @@ export async function applyExtractionsAction(
         errors.push({ workerId, error: "Tipo de documento inválido" });
         continue;
       }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate)) {
-        errors.push({ workerId, error: `Fecha inválida: ${row.expiryDate}` });
-        continue;
-      }
-
       const toUtcNoon = (s: string) => {
         const [y, m, d] = s.split("-").map(Number);
         return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
       };
 
-      const fechaVencimiento = toUtcNoon(row.expiryDate);
+      const archivoId = row.archivo ? archivoIdPorClientFileId.get(row.archivo.clientFileId) ?? null : null;
+
+      // Foto del trabajador: no es un documento con vencimiento
+      if (tipo.esFoto) {
+        if (archivoId) {
+          await db.staffMember.update({
+            where: { id: workerId },
+            data: { fotoArchivoId: archivoId },
+          });
+          applied++;
+        } else {
+          errors.push({ workerId, error: "La foto no se pudo guardar (archivo faltante)" });
+        }
+        continue;
+      }
+
+      const tieneFecha = Boolean(row.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate));
+
+      // Los tipos de constancia se guardan sin vencimiento; los demás lo exigen
+      if (!tieneFecha && !tipo.noVence) {
+        errors.push({ workerId, error: "Falta la fecha de vencimiento" });
+        continue;
+      }
+
+      const fechaVencimiento = tieneFecha ? toUtcNoon(row.expiryDate!) : null;
       const fechaEmision =
         row.issueDate && /^\d{4}-\d{2}-\d{2}$/.test(row.issueDate) ? toUtcNoon(row.issueDate) : null;
 
@@ -263,6 +283,7 @@ export async function applyExtractionsAction(
           tipoDocumentoId: row.tipoDocumentoId,
           fechaEmision,
           fechaVencimiento,
+          sinVencimiento: !tieneFecha,
           vencimientoCalculado: false,
           origen: "extraido",
           confianzaExtraccion:
@@ -271,12 +292,12 @@ export async function applyExtractionsAction(
           confirmadoPorNombre: user.name,
           confirmadoAt: new Date(),
           nota: "Extraído con IA y confirmado manualmente",
-          archivoId: row.archivo ? archivoIdPorClientFileId.get(row.archivo.clientFileId) ?? null : null,
+          archivoId,
         },
       });
 
       // Espejo a la columna plana para que la ficha muestre lo mismo
-      if (tipo.legacyField) {
+      if (tipo.legacyField && fechaVencimiento) {
         await db.staffMember.update({
           where: { id: workerId },
           data: { [tipo.legacyField]: fechaVencimiento },

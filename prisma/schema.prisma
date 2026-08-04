@@ -292,6 +292,13 @@ model TipoDocumento {
   mostrarEnMatriz Boolean  @default(false)
   /// Etiqueta corta para el encabezado de columna en la matriz.
   etiquetaCorta   String?
+  /// Documento de constancia: prueba que algo se entregó o se firmó, no
+  /// caduca (acta de entrega de EPP, recepción del RIOHS, declaración
+  /// jurada). Se puede guardar sin fecha de vencimiento.
+  noVence         Boolean  @default(false)
+  /// Tipo especial: al cargarlo se guarda como foto del trabajador en vez
+  /// de como documento con vencimiento.
+  esFoto          Boolean  @default(false)
   /// Nombre de la columna equivalente en StaffMember (solo tipos legacy).
   legacyField     String?  @unique
   orden           Int      @default(100)
