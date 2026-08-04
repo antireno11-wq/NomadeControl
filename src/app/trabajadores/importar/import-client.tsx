@@ -478,13 +478,13 @@ export function ImportWorkers({ camps = [] }: { camps?: Camp[] }) {
           >
             {dragging ? (
               <><div style={{ fontSize: "3rem", marginBottom: 8 }}>📂</div>
-              <div style={{ fontWeight: 700, color: "var(--teal)" }}>Soltá el archivo acá</div></>
+              <div style={{ fontWeight: 700, color: "var(--teal)" }}>Suelta el archivo aquí</div></>
             ) : (
               <>
                 <div style={{ fontSize: "3rem", marginBottom: 10 }}>📊</div>
-                <div style={{ fontWeight: 700, fontSize: "1rem", color: "#475569" }}>Arrastrá el Excel acá</div>
+                <div style={{ fontWeight: 700, fontSize: "1rem", color: "#475569" }}>Arrastra el Excel aquí</div>
                 <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: 6 }}>
-                  o hacé <span style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "underline" }}>clic para seleccionar</span>
+                  o haz <span style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "underline" }}>clic para seleccionar</span>
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 8 }}>.xlsx · .xls · .csv</div>
               </>

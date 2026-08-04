@@ -235,7 +235,7 @@ export default async function BibliotecaPage({ searchParams }: { searchParams?: 
                 {enCarpeta ? `Carpeta «${catFiltro}» vacía` : `Sin resultados para «${query}»`}
               </div>
               <div style={{ fontSize: "0.85rem", marginTop: 6 }}>
-                Usá el botón "Subir documento" para agregar el primero.
+                Usa el botón "Subir documento" para agregar el primero.
               </div>
             </div>
           ) : (

@@ -33,30 +33,30 @@ function buildSystemPrompt(tipos: TipoParaExtraccion[]) {
     .join("\n");
   return `Eres un asistente experto en documentos laborales chilenos. Extraes información estructurada de documentos que RRHH sube para el control documental de sus trabajadores.
 
-IMPORTANTE: un archivo puede contener VARIOS documentos distintos concatenados (las carpetas de acreditación suelen ser un PDF con contrato, cédula, exámenes y certificados uno detrás de otro). Tenés que identificarlos TODOS y devolver uno por cada uno.
+IMPORTANTE: un archivo puede contener VARIOS documentos distintos concatenados (las carpetas de acreditación suelen ser un PDF con contrato, cédula, exámenes y certificados uno detrás de otro). Tienes que identificarlos TODOS y devolver uno por cada uno.
 
 Tipos de documento posibles:
 ${lista}
 
 Reglas:
-- Devolvé SIEMPRE JSON válido con la estructura pedida.
-- Fechas SIEMPRE en formato YYYY-MM-DD. Si el documento muestra 15/06/2027, devolvé "2027-06-15".
-- Si NO podés leer una fecha, devolvé null. NO la inventes ni la estimes.
-- Elegí el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
+- Devuelve SIEMPRE JSON válido con la estructura pedida.
+- Fechas SIEMPRE en formato YYYY-MM-DD. Si el documento muestra 15/06/2027, devuelve "2027-06-15".
+- Si NO puedes leer una fecha, devuelve null. NO la inventes ni la estimes.
+- Elige el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
 - Distinguí bien EMISIÓN de VENCIMIENTO. El que importa es el vencimiento (expiryDate); la emisión (issueDate) es informativa.
-- Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos poné expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
-- Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), poné expiryDate en null y explicalo en reasoning.
+- Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
+- Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
 - Los certificados de capacitación suelen traer solo la fecha de realización: esa va en issueDate.
 - workerName: tal como aparece en el documento, con apellidos.
 - workerRut: formato chileno, ej. "12.345.678-9".
-- paginaInicio: número de página (empezando en 1) donde arranca el documento. Si es un archivo de una sola página o una foto, poné 1.
+- paginaInicio: número de página (empezando en 1) donde arranca el documento. Si es un archivo de una sola página o una foto, pon 1.
 - confidence por documento:
   - "high" = vencimiento claramente visible y legible
   - "medium" = alguna ambigüedad (borroso, formato raro, falta contexto)
   - "low" = imagen mala, campos no visibles, o dudás del tipo
 - reasoning: 1-2 frases sobre en qué te basaste.
 - Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devolvelo UNA sola vez.
-- Si no reconocés ningún documento, devolvé {"documentos": []}.
+- Si no reconoces ningún documento, devuelve {"documentos": []}.
 
 Formato JSON exacto:
 {
@@ -99,10 +99,10 @@ export async function extractDocumentInfo(input: {
   const contenido = esPdf
     ? [
         { type: "file" as const, file: { filename: input.fileName, file_data: dataUrl } },
-        { type: "text" as const, text: `Analizá este PDF (${input.fileName}). Puede tener varios documentos adentro: identificalos todos y devolvé el JSON.` },
+        { type: "text" as const, text: `Analiza este PDF (${input.fileName}). Puede tener varios documentos adentro: identifícalos todos y devuelve el JSON.` },
       ]
     : [
-        { type: "text" as const, text: `Analizá este documento (${input.fileName}) y devolvé el JSON.` },
+        { type: "text" as const, text: `Analiza este documento (${input.fileName}) y devuelve el JSON.` },
         { type: "image_url" as const, image_url: { url: dataUrl, detail: "high" as const } },
       ];
 

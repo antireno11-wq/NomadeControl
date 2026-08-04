@@ -91,8 +91,8 @@ export function SubirForm({ defaultCategoria = "" }: { defaultCategoria?: string
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!titulo.trim())   return setError("El título es obligatorio.");
-    if (!categoria)       return setError("Seleccioná una categoría.");
-    if (!file)            return setError("Seleccioná o arrastrá un archivo.");
+    if (!categoria)       return setError("Selecciona una categoría.");
+    if (!file)            return setError("Selecciona o arrastra un archivo.");
 
     const fd = new FormData();
     fd.append("titulo",      titulo.trim());
@@ -154,7 +154,7 @@ export function SubirForm({ defaultCategoria = "" }: { defaultCategoria?: string
           {dragging ? (
             <>
               <div style={{ fontSize: "2.4rem", marginBottom: 6 }}>📂</div>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--teal)" }}>Soltá el archivo acá</div>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--teal)" }}>Suelta el archivo aquí</div>
             </>
           ) : file ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -172,9 +172,9 @@ export function SubirForm({ defaultCategoria = "" }: { defaultCategoria?: string
           ) : (
             <>
               <div style={{ fontSize: "2.2rem", marginBottom: 6 }}>☁️</div>
-              <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#64748b" }}>Arrastrá el archivo acá</div>
+              <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#64748b" }}>Arrastra el archivo aquí</div>
               <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 4 }}>
-                o hacé <span style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>clic para seleccionar</span>
+                o haz <span style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>clic para seleccionar</span>
               </div>
               <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 6 }}>PDF · Word · Excel · PPT · Imagen · ZIP</div>
             </>

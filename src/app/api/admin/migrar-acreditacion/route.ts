@@ -91,7 +91,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       dryRun,
-      aviso: "El catálogo aún no existe. Corré el POST para sembrarlo y después revisá de nuevo.",
+      aviso: "El catálogo aún no existe. Ejecuta el POST para sembrarlo y después revisa de nuevo.",
       tiposASembrar: TIPOS_DOCUMENTO_SEED.length,
     });
   }

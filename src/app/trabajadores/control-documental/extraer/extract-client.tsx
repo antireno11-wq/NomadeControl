@@ -105,7 +105,7 @@ export function ExtractClient({
 
     const pesados = files.filter(f => f.size > MAX_FILE_MB * 1024 * 1024);
     if (pesados.length > 0) {
-      setGlobalError(`Estos archivos superan ${MAX_FILE_MB} MB: ${pesados.map(f => f.name).join(", ")}. Comprimilos o dividí el PDF.`);
+      setGlobalError(`Estos archivos superan ${MAX_FILE_MB} MB: ${pesados.map(f => f.name).join(", ")}. Comprímelos o divide el PDF.`);
       return;
     }
 
@@ -305,7 +305,7 @@ export function ExtractClient({
         <div style={{ fontWeight: 700, fontSize: "1rem", color: "#475569" }}>
           {apiKeyMissing
             ? "OPENAI_API_KEY no configurada"
-            : dragging ? "Soltá acá" : "Arrastrá PDFs o fotos, o hacé clic para elegir"}
+            : dragging ? "Suelta aquí" : "Arrastra PDFs o fotos, o haz clic para elegir"}
         </div>
         <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginTop: 6 }}>
           PDF, JPG, PNG, WEBP — varios a la vez · hasta {MAX_FILE_MB} MB cada uno
@@ -359,7 +359,7 @@ export function ExtractClient({
                     ⚠️ Se detectaron <strong>{aCrear} personas distintas</strong>:{" "}
                     {grupos.map(g => g.nombre).join(" · ")}
                     <div style={{ fontSize: "0.78rem", marginTop: 4, opacity: 0.9 }}>
-                      Si en realidad son la misma, unificalas. Suele pasar cuando los documentos
+                      Si en realidad son la misma, unifícalas. Suele pasar cuando los documentos
                       escriben el nombre en distinto orden.
                     </div>
                   </>

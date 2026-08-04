@@ -149,7 +149,7 @@ export function PreviewButton({ doc }: { doc: DocMeta }) {
                     {doc.mimeType?.includes("presentation") && "Los archivos PowerPoint deben descargarse para verse."}
                     {(doc.mimeType?.includes("zip") || doc.mimeType?.includes("rar")) && "Los archivos comprimidos deben descargarse para verse."}
                     {!doc.mimeType?.includes("word") && !doc.mimeType?.includes("sheet") && !doc.mimeType?.includes("presentation") && !doc.mimeType?.includes("zip") && !doc.mimeType?.includes("rar")
-                      && "Descargá el archivo para abrirlo."}
+                      && "Descarga el archivo para abrirlo."}
                   </div>
                   <a
                     href={`/biblioteca/${doc.id}/download`}

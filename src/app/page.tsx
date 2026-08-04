@@ -101,7 +101,7 @@ export default async function HomePage({
           {saludo}, {user.name.split(" ")[0]} 👋
         </h2>
         <p style={{ margin: "6px 0 0", color: "var(--muted)", fontSize: "0.95rem" }}>
-          ¿A qué módulo querés acceder hoy?
+          ¿A qué módulo quieres acceder hoy?
         </p>
       </div>
 

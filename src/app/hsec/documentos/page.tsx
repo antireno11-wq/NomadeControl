@@ -302,7 +302,7 @@ export default async function DocumentosHSECPage({
                   <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>📂</div>
                   <div style={{ fontWeight: 600 }}>No hay documentos cargados para este campamento.</div>
                   <div style={{ fontSize: "0.82rem", marginTop: 4 }}>
-                    Usá el formulario de la izquierda para subir el primero.
+                    Usa el formulario de la izquierda para subir el primero.
                   </div>
                 </div>
               ) : (

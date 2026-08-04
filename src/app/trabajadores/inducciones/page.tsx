@@ -143,7 +143,7 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
               {q || tipo || estado ? "Sin resultados con esos filtros" : "No hay registros de capacitaciones aún"}
             </div>
             <div style={{ fontSize: "0.85rem", marginTop: 8 }}>
-              Subí los certificados desde el perfil de cada trabajador →{" "}
+              Sube los certificados desde el perfil de cada trabajador →{" "}
               <Link href="/trabajadores" style={{ color: "var(--teal)", fontWeight: 600 }}>Ver trabajadores</Link>
             </div>
           </div>
@@ -236,7 +236,7 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
         )}
 
         <p style={{ fontSize: "0.8rem", color: "var(--muted)", margin: 0 }}>
-          💡 Para registrar una capacitación, andá al perfil del trabajador → Documentos → cargá el certificado con el tipo correspondiente.
+          💡 Para registrar una capacitación, ve al perfil del trabajador → Documentos → carga el certificado con el tipo correspondiente.
         </p>
       </div>
     </AppShell>

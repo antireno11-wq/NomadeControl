@@ -46,11 +46,11 @@ export default async function ExtraerDocumentosPage() {
 
         <div className="hero-panel">
           <span className="hero-kicker">Extractor con IA</span>
-          <h2 style={{ margin: "0 0 8px" }}>Subí las carpetas de documentos, la IA lee las fechas</h2>
+          <h2 style={{ margin: "0 0 8px" }}>Sube las carpetas de documentos, la IA lee las fechas</h2>
           <p className="section-caption" style={{ margin: 0 }}>
             Arrastrá PDFs o fotos de contratos, licencias, cédulas, exámenes, vacunas o certificados.
-            La IA identifica cada documento, su vencimiento y a qué trabajador corresponde. Vos revisás
-            y confirmás antes de que se guarde nada.
+            La IA identifica cada documento, su vencimiento y a qué trabajador corresponde. Tú revisas
+            y confirmas antes de que se guarde nada.
           </p>
           <ul style={{ margin: "12px 0 0", paddingLeft: 20, fontSize: "0.85rem", color: "var(--muted)" }}>
             <li><strong>Un PDF con la carpeta completa se separa solo</strong> en contrato, cédula, exámenes, etc.</li>
@@ -63,7 +63,7 @@ export default async function ExtraerDocumentosPage() {
         {tipos.length === 0 ? (
           <div className="alert error">
             El catálogo de tipos de documento todavía no está inicializado.
-            Volvé a <Link href="/trabajadores/control-documental">Control documental</Link> y
+            Vuelve a <Link href="/trabajadores/control-documental">Control documental</Link> y
             ejecutá la migración primero.
           </div>
         ) : (

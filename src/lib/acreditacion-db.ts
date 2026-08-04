@@ -143,7 +143,7 @@ export async function getEstadoDocumental(
       vencimientoCalculado: true, anulado: true, origen: true,
       confianzaExtraccion: true, nota: true, createdAt: true,
       archivoUrl: true, archivoId: true,
-      // No traemos `contenido` (Bytes) — pesa y no se usa acá.
+      // No traemos `contenido` (Bytes) — pesa y no se usa aquí.
     },
   });
 

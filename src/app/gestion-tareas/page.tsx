@@ -69,7 +69,7 @@ function statusMsg(s?: string) {
   if (s === "created")    return { type: "success", text: "Tarea creada correctamente." };
   if (s === "updated")    return { type: "success", text: "Tarea actualizada correctamente." };
   if (s === "completada") return { type: "success", text: "✅ Tarea completada y guardada en el historial." };
-  if (s === "invalid")    return { type: "error",   text: "Revisá los datos ingresados." };
+  if (s === "invalid")    return { type: "error",   text: "Revisa los datos ingresados." };
   return null;
 }
 
@@ -497,7 +497,7 @@ function MisTareasView({
   if (tareas.length === 0) {
     return (
       <div className="card" style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
-        No tenés tareas asignadas.
+        No tienes tareas asignadas.
       </div>
     );
   }

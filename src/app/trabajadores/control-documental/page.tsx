@@ -190,7 +190,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                 <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: "1rem", color: "var(--muted)", pointerEvents: "none" }}>🔍</span>
                 <input
                   id="q" name="q" type="search" defaultValue={busqueda}
-                  placeholder="Escribí nombre, apellido o RUT — ej. Juan Pérez, 12345678, 12.345.678-9"
+                  placeholder="Escribe nombre, apellido o RUT — ej. Juan Pérez, 12345678, 12.345.678-9"
                   style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px 10px 38px", fontSize: "0.92rem", borderRadius: 10, border: "1.5px solid var(--border)" }}
                   autoComplete="off"
                 />

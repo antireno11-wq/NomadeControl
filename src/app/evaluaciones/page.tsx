@@ -26,7 +26,7 @@ function statusMsg(s?: string) {
   if (s === "created")  return { type: "success", text: "Evaluación guardada correctamente." };
   if (s === "updated")  return { type: "success", text: "Evaluación actualizada correctamente." };
   if (s === "deleted")  return { type: "success", text: "Evaluación eliminada." };
-  if (s === "invalid")  return { type: "error",   text: "Revisá los datos ingresados." };
+  if (s === "invalid")  return { type: "error",   text: "Revisa los datos ingresados." };
   return null;
 }
 

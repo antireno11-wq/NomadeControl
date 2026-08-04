@@ -67,7 +67,7 @@ export default async function AdministracionPage({
   const tipoAlert =
     tipoStatus === "creado" ? { type: "success", text: "Tipo de documento creado." }
     : tipoStatus === "guardado" ? { type: "success", text: "Cambios guardados." }
-    : tipoStatus === "invalido" ? { type: "error", text: "Revisá los datos del tipo de documento." }
+    : tipoStatus === "invalido" ? { type: "error", text: "Revisa los datos del tipo de documento." }
     : null;
 
   const projectAlert =
@@ -429,7 +429,7 @@ export default async function AdministracionPage({
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Agregar tipo de documento</h2>
             <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
-              Cada mandante pide documentos distintos. Agregá acá los que te exijan y van a
+              Cada mandante pide documentos distintos. Agrega aquí los que te exijan y van a
               aparecer en el extractor con IA y en la ficha de cada trabajador.
             </p>
             <form action={crearTipoDocumentoAction} className="grid two">

@@ -10,7 +10,7 @@ export default function LoginPage() {
         </div>
         <h1 style={{ marginTop: 0 }}>NomadeControl</h1>
         <p style={{ color: "var(--muted)" }}>
-          Seleccioná tu tipo de acceso e iniciá sesión.
+          Selecciona tu tipo de acceso e iniciá sesión.
         </p>
         <LoginForm />
       </div>

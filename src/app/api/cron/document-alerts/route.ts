@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (recipients.length === 0) {
     return NextResponse.json({
       ok: false,
-      error: "Sin destinatarios: configurá DOCUMENT_ALERT_EMAILS o creá usuarios Administrador/Operativo",
+      error: "Sin destinatarios: configura DOCUMENT_ALERT_EMAILS o crea usuarios Administrador/Operativo",
     }, { status: 400 });
   }
 

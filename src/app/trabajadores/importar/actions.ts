@@ -185,7 +185,7 @@ export async function importarTrabajadoresAction(
           result.errors.push({
             fila,
             nombre: row.fullName ?? row.nationalId ?? "",
-            error: "Ya existe (modo Crear salta duplicados). Usá modo Actualizar o Sincronizar.",
+            error: "Ya existe (modo Crear salta duplicados). Usa modo Actualizar o Sincronizar.",
           });
           continue;
         }
