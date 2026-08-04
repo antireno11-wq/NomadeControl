@@ -7,6 +7,8 @@ import { renovarContratoAction, updateWorkerAction } from "@/app/trabajadores/ac
 import { WorkerForm } from "@/app/trabajadores/worker-form";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
+import { ESTADO_STYLE } from "@/lib/acreditacion";
+import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -68,6 +70,17 @@ export default async function PerfilTrabajadorPage({
 
   const today = new Date();
   const docs = getStaffDocumentEntries(worker, today);
+
+  // Estado documental desde el modelo de acreditación. Se muestran los
+  // tipos core (los de la matriz) más cualquier otro que tenga documento
+  // cargado — así un certificado de antecedentes no queda invisible.
+  const tiposTodos = await getTiposDocumento();
+  const estadoMap = await getEstadoDocumental([worker.id], tiposTodos, today);
+  const estadoWorker = estadoMap.get(worker.id);
+  const docsAcreditacion = tiposTodos
+    .map(tipo => ({ tipo, entry: estadoWorker?.porTipo.get(tipo.id) }))
+    .filter((x): x is { tipo: typeof tiposTodos[number]; entry: NonNullable<typeof x.entry> } =>
+      Boolean(x.entry) && (x.tipo.mostrarEnMatriz || x.entry!.estado !== "sin_fecha"));
   const shiftProjection = getShiftProjection(
     { shiftPattern: worker.shiftPattern, shiftWorkDays: worker.shiftWorkDays, shiftOffDays: worker.shiftOffDays, shiftStartDate: worker.shiftStartDate },
     today
@@ -287,22 +300,45 @@ export default async function PerfilTrabajadorPage({
         {/* ══ TAB: DOCUMENTOS ═══════════════════════════════════════════ */}
         {tab === "documentos" && (
           <div className="card">
-            <h3 style={{ margin: "0 0 20px", color: "var(--text)", fontSize: "1rem" }}>📄 Documentos y vencimientos</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+              <h3 style={{ margin: 0, color: "var(--text)", fontSize: "1rem" }}>📄 Documentos y vencimientos</h3>
+              <Link href="/trabajadores/control-documental/extraer">
+                <button type="button" style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)", border: "none", color: "#fff", padding: "6px 12px", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: "0.82rem" }}>
+                  🤖 Cargar con IA
+                </button>
+              </Link>
+            </div>
+
             <div style={{ display: "grid", gap: 10 }}>
-              {docs.map(doc => {
-                const style = docStatusStyle(doc.status);
+              {docsAcreditacion.map(({ tipo, entry }) => {
+                const style = ESTADO_STYLE[entry.estado];
+                const doc = entry.documento;
                 return (
-                  <div key={doc.key} style={{
+                  <div key={tipo.id} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
                     flexWrap: "wrap", gap: 12,
                     padding: "14px 16px", borderRadius: 12,
                     background: style.bg, border: `1px solid ${style.border}`,
+                    borderStyle: doc?.vencimientoCalculado ? "dashed" : "solid",
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: style.color, fontSize: "0.95rem" }}>{doc.label}</div>
-                      <div style={{ fontSize: "0.82rem", color: style.color, opacity: 0.8, marginTop: 2 }}>
-                        {doc.date ? formatDisplayDate(doc.date) : "Sin fecha cargada"}
+                      <div style={{ fontWeight: 700, color: style.color, fontSize: "0.95rem" }}>{tipo.nombre}</div>
+                      <div style={{ fontSize: "0.82rem", color: style.color, opacity: 0.85, marginTop: 2 }}>
+                        {entry.estado === "sin_vencimiento"
+                          ? "Sin fecha de término"
+                          : doc?.fechaVencimiento
+                            ? formatDisplayDate(doc.fechaVencimiento)
+                            : "Sin cargar"}
+                        {doc?.vencimientoCalculado && " · fecha calculada, no impresa"}
                       </div>
+                      {doc && (
+                        <div style={{ fontSize: "0.72rem", color: style.color, opacity: 0.7, marginTop: 3 }}>
+                          {doc.origen === "extraido" ? `Extraído con IA (confianza ${doc.confianzaExtraccion ?? "?"})`
+                            : doc.origen === "migracion" ? "Migrado de la ficha anterior"
+                            : doc.origen === "excel" ? "Cargado por Excel"
+                            : "Cargado manualmente"}
+                        </div>
+                      )}
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <div style={{
@@ -313,16 +349,23 @@ export default async function PerfilTrabajadorPage({
                       }}>
                         {style.label}
                       </div>
-                      <div style={{ fontSize: "0.78rem", color: style.color, marginTop: 4, opacity: 0.85 }}>
-                        {daysLabel(doc.daysUntil)}
-                      </div>
+                      {entry.dias != null && (
+                        <div style={{ fontSize: "0.78rem", color: style.color, marginTop: 4, opacity: 0.85 }}>
+                          {entry.dias < 0
+                            ? `Venció hace ${Math.abs(entry.dias)} día${Math.abs(entry.dias) === 1 ? "" : "s"}`
+                            : entry.dias === 0 ? "Vence hoy"
+                            : `Vence en ${entry.dias} día${entry.dias === 1 ? "" : "s"}`}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
+
             <div style={{ marginTop: 20, padding: "12px 16px", borderRadius: 10, background: "rgba(0,168,191,0.07)", border: "1px solid rgba(0,168,191,0.2)", fontSize: "0.85rem", color: "var(--muted)" }}>
-              💡 Para actualizar fechas, ve a la pestaña <Link href={`/trabajadores/${worker.id}?tab=editar`} style={{ color: "var(--teal)", fontWeight: 600 }}>✏️ Editar</Link>.
+              💡 Para cargar o corregir fechas a mano, ve a <Link href={`/trabajadores/${worker.id}?tab=editar`} style={{ color: "var(--teal)", fontWeight: 600 }}>✏️ Editar</Link>.
+              Cada cambio queda como una versión nueva del documento.
             </div>
           </div>
         )}

@@ -272,6 +272,11 @@ export async function applyExtractionsAction(
     });
     revalidatePath("/trabajadores/control-documental");
     revalidatePath("/trabajadores");
+    // La ficha de cada trabajador tocado también tiene que refrescarse
+    for (const id of new Set(rows.map(r => r.workerId).filter(Boolean) as string[])) {
+      revalidatePath(`/trabajadores/${id}`);
+    }
+    for (const c of creados) revalidatePath(`/trabajadores/${c.id}`);
   }
 
   return { applied, creados, errors };
