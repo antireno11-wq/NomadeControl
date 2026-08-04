@@ -51,13 +51,19 @@ Reglas:
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
 - Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
 - Los certificados de capacitación y los exámenes casi siempre traen solo la fecha de realización: esa va en issueDate y expiryDate queda null.
-- workerName: tal como aparece en el documento, con apellidos.
+- workerName: NORMALIZADO, no copiado literal. Tres cosas:
+  1. ORDEN NATURAL. Los documentos chilenos suelen escribir "APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES" o usan campos separados. Devuélvelo siempre como se llama la persona: nombres primero, después apellidos.
+     · "SOTO OYARZUN JESUS IGNACIO"  → "Jesús Ignacio Soto Oyarzún"
+     · "GARRIDO ACEVEDO ALVARO"      → "Álvaro Garrido Acevedo"
+     · Si no distingues cuáles son nombres y cuáles apellidos, déjalo como está y bájale la confianza.
+  2. MAYÚSCULAS Y TILDES. Pásalo a formato título con los acentos que corresponden en español: "JESUS" → "Jesús", "OYARZUN" → "Oyarzún", "MUNOZ" → "Muñoz".
+  3. NO INVENTES NI CORRIJAS. Si una letra se lee rara o el texto está borroso, transcríbelo tal como lo ves y pon confidence "low". Es preferible que el humano corrija un nombre mal leído a que tú adivines uno equivocado que parezca correcto.
 - workerRut: formato chileno, ej. "12.345.678-9".
 - paginaInicio: número de página (empezando en 1) donde arranca el documento. Si es un archivo de una sola página o una foto, pon 1.
 - confidence por documento:
   - "high" = identificaste bien el tipo y las fechas que hay están claras (incluye el caso de un documento sin vencimiento)
   - "medium" = alguna ambigüedad: borroso, formato raro, o dudas sobre si una fecha es emisión o vencimiento
-  - "low" = imagen mala, campos no visibles, o dudas sobre el tipo
+  - "low" = imagen mala, campos no visibles, dudas sobre el tipo, o el nombre se lee dudoso
 - reasoning: 1-2 frases sobre en qué te basaste.
 - Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devolvelo UNA sola vez.
 - Si no reconoces ningún documento, devuelve {"documentos": []}.

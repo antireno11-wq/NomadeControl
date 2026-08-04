@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import type { DragEvent } from "react";
 import { extractDocumentsAction, applyExtractionsAction } from "./actions";
-import { agruparPorPersona } from "@/lib/acreditacion";
+import { agruparPorPersona, formatearNombre } from "@/lib/acreditacion";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
 type DocType = { id: string; codigo: string; nombre: string; noVence: boolean; esFoto: boolean };
@@ -167,7 +167,7 @@ export function ExtractClient({
               workerName: res.workerName,
               workerRut: res.workerRut,
               workerId: bestMatch?.workerId ?? (proponerCrear ? CREAR_NUEVO : null),
-              nuevoNombre: res.workerName ?? "",
+              nuevoNombre: res.workerName ? formatearNombre(res.workerName) : "",
               nuevoRut: res.workerRut ?? "",
               confidence: res.confidence,
               reasoning: res.reasoning,
@@ -342,6 +342,28 @@ export function ExtractClient({
               🗑 Limpiar todo
             </button>
           </div>
+
+          {/* Variantes de nombre leídas: delatan un OCR dudoso */}
+          {grupos.some(g => new Set(g.variantes.map(v => v.toLowerCase())).size > 1) && (
+            <div style={{ padding: "10px 14px", borderRadius: 10, background: "#eff6ff", border: "1px solid #bfdbfe", fontSize: "0.82rem", color: "#1e40af" }}>
+              📖 Los documentos escriben el nombre de formas distintas. Se eligió el que más se repite,
+              pero conviene revisarlo:
+              <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
+                {grupos
+                  .filter(g => new Set(g.variantes.map(v => v.toLowerCase())).size > 1)
+                  .map((g, i) => (
+                    <li key={i}>
+                      <strong>{g.nombre}</strong>
+                      <span style={{ opacity: 0.8 }}> — se leyó también como: {
+                        Array.from(new Set(g.variantes))
+                          .filter(v => v.toLowerCase() !== g.nombre.toLowerCase())
+                          .join(" · ")
+                      }</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
 
           {/* Control de agrupación por persona */}
           {aCrear > 0 && (

@@ -283,7 +283,53 @@ export type PersonaDetectada = {
   rut: string | null;
   /** Índices de las filas que pertenecen a esta persona. */
   indices: number[];
+  /** Todas las variantes de nombre leídas, para el voto por mayoría. */
+  variantes: string[];
 };
+
+/**
+ * Pasa un nombre a formato título respetando las partículas.
+ * "JESUS SOTO OYARZUN" → "Jesus Soto Oyarzun"
+ * (los acentos los pone el modelo; esto es solo la red de seguridad)
+ */
+export function formatearNombre(nombre: string): string {
+  const MINUSCULAS = new Set(["de", "del", "la", "las", "los", "y", "da", "das", "dos"]);
+  return nombre
+    .trim()
+    .toLocaleLowerCase("es")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((palabra, i) =>
+      i > 0 && MINUSCULAS.has(palabra)
+        ? palabra
+        : palabra.charAt(0).toLocaleUpperCase("es") + palabra.slice(1),
+    )
+    .join(" ");
+}
+
+/**
+ * Elige el nombre más confiable entre varias lecturas de la misma persona.
+ *
+ * Un OCR puede equivocarse en un documento suelto ("Oyarzún" → "Ovarizun").
+ * Si el resto de los documentos coincide, la mayoría corrige el error.
+ * A igualdad de votos gana el más largo, que suele ser el completo.
+ */
+export function nombreMasProbable(variantes: string[]): string {
+  const limpias = variantes.map(v => v.trim()).filter(Boolean);
+  if (limpias.length === 0) return "";
+  if (limpias.length === 1) return limpias[0];
+
+  const votos = new Map<string, { nombre: string; n: number }>();
+  for (const v of limpias) {
+    const clave = v.toLocaleLowerCase("es").normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const actual = votos.get(clave);
+    if (actual) actual.n++;
+    else votos.set(clave, { nombre: v, n: 1 });
+  }
+
+  return Array.from(votos.values())
+    .sort((a, b) => b.n - a.n || b.nombre.length - a.nombre.length)[0].nombre;
+}
 
 /**
  * Agrupa filas extraídas por persona.
@@ -330,22 +376,25 @@ export function agruparPorPersona(
     const existente = buscarGrupo(fila.nombre, fila.rut);
     if (existente) {
       existente.indices.push(fila.i);
-      // Completar datos faltantes del grupo
       if (!existente.rut && fila.rut) existente.rut = fila.rut;
-      // Preferir el nombre más largo: suele ser el completo
-      if (fila.nombre && fila.nombre.length > existente.nombre.length) {
-        existente.nombre = fila.nombre;
-      }
+      if (fila.nombre) existente.variantes.push(fila.nombre);
     } else {
       grupos.push({
         clave: normalizarRut(fila.rut) || claveNombre(fila.nombre ?? ""),
         nombre: fila.nombre ?? "",
         rut: fila.rut,
         indices: [fila.i],
+        variantes: fila.nombre ? [fila.nombre] : [],
       });
     }
   }
 
-  for (const g of grupos) g.indices.sort((a, b) => a - b);
+  // El nombre del grupo lo decide la mayoría, no el primero que apareció:
+  // así una lectura errónea aislada no se impone sobre las correctas.
+  for (const g of grupos) {
+    g.indices.sort((a, b) => a - b);
+    if (g.variantes.length > 0) g.nombre = formatearNombre(nombreMasProbable(g.variantes));
+  }
+
   return grupos;
 }
