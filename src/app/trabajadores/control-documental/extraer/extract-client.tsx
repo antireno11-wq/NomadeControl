@@ -17,7 +17,9 @@ type EditableRow = {
   expiryDate: string | null;
   workerName: string | null;
   workerRut: string | null;
-  workerId: string | null;  // el que el usuario seleccionó
+  workerId: string | null;  // el que el usuario seleccionó, o CREAR_NUEVO
+  nuevoNombre: string;      // editable cuando workerId === CREAR_NUEVO
+  nuevoRut: string;
   confidence: "high" | "medium" | "low";
   reasoning: string;
   error?: string;
@@ -40,6 +42,9 @@ function fileToBase64(file: File): Promise<string> {
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+/** Valor especial del select: crear un trabajador con los datos detectados. */
+const CREAR_NUEVO = "__crear__";
+
 const CONFIDENCE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   high:   { bg: "#dcfce7", color: "#166534", label: "✓ Alta" },
   medium: { bg: "#fef3c7", color: "#854d0e", label: "~ Media" },
@@ -59,7 +64,7 @@ export function ExtractClient({
   const [dragging, setDragging] = useState(false);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [applyResult, setApplyResult] = useState<{ applied: number; errors: number } | null>(null);
+  const [applyResult, setApplyResult] = useState<{ applied: number; creados: number; errors: number } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   async function handleFiles(fileList: FileList | File[]) {
@@ -94,6 +99,8 @@ export function ExtractClient({
         workerName: null,
         workerRut: null,
         workerId: null,
+        nuevoNombre: "",
+        nuevoRut: "",
         confidence: "low",
         reasoning: "",
       }))
@@ -119,6 +126,8 @@ export function ExtractClient({
           const result = results.find(res => res.clientFileId === r.clientFileId);
           if (!result) return r;
           const bestMatch = result.matches[0] ?? null;
+          // Sin match pero con nombre legible → proponemos crearlo.
+          const proponerCrear = !bestMatch && Boolean(result.workerName?.trim());
           return {
             ...r,
             detectedTipoId: result.detectedTipoId,
@@ -126,7 +135,9 @@ export function ExtractClient({
             expiryDate: result.expiryDate,
             workerName: result.workerName,
             workerRut: result.workerRut,
-            workerId: bestMatch?.workerId ?? null,
+            workerId: bestMatch?.workerId ?? (proponerCrear ? CREAR_NUEVO : null),
+            nuevoNombre: result.workerName ?? "",
+            nuevoRut: result.workerRut ?? "",
             confidence: result.confidence,
             reasoning: result.reasoning,
             error: result.error,
@@ -166,17 +177,25 @@ export function ExtractClient({
   const readyRows = rows.filter(r =>
     !r.applied &&
     !r.error &&
-    r.workerId &&
     r.expiryDate &&
-    r.detectedTipoId
+    r.detectedTipoId &&
+    (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId))
   );
+
+  const aCrear = new Set(
+    readyRows.filter(r => r.workerId === CREAR_NUEVO)
+      .map(r => (r.nuevoRut.trim() || r.nuevoNombre.trim()).toLowerCase())
+  ).size;
 
   function handleApply() {
     if (readyRows.length === 0) return;
     startTransition(async () => {
       const result = await applyExtractionsAction(
         readyRows.map(r => ({
-          workerId: r.workerId!,
+          workerId: r.workerId === CREAR_NUEVO ? null : r.workerId,
+          nuevoTrabajador: r.workerId === CREAR_NUEVO
+            ? { nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null }
+            : null,
           tipoDocumentoId: r.detectedTipoId!,
           confidence: r.confidence,
           expiryDate: r.expiryDate!,
@@ -187,7 +206,7 @@ export function ExtractClient({
       setRows(prev => prev.map(r =>
         appliedIds.has(r.clientFileId) ? { ...r, applied: true } : r
       ));
-      setApplyResult({ applied: result.applied, errors: result.errors.length });
+      setApplyResult({ applied: result.applied, creados: result.creados.length, errors: result.errors.length });
     });
   }
 
@@ -235,7 +254,8 @@ export function ExtractClient({
 
       {applyResult && (
         <div className="alert success">
-          ✅ Se guardaron <strong>{applyResult.applied}</strong> fecha{applyResult.applied !== 1 ? "s" : ""}
+          ✅ Se guardaron <strong>{applyResult.applied}</strong> documento{applyResult.applied !== 1 ? "s" : ""}
+          {applyResult.creados > 0 && <> · se crearon <strong>{applyResult.creados}</strong> trabajador{applyResult.creados !== 1 ? "es" : ""}</>}
           {applyResult.errors > 0 && <> · {applyResult.errors} error(es)</>}
         </div>
       )}
@@ -313,6 +333,7 @@ export function ExtractClient({
                               style={{ padding: "5px 8px", fontSize: "0.82rem", width: "100%", maxWidth: 240 }}
                             >
                               <option value="">— Sin asignar —</option>
+                              <option value={CREAR_NUEVO}>➕ Crear trabajador nuevo</option>
                               {workers.map(w => (
                                 <option key={w.id} value={w.id}>
                                   {w.fullName}{w.nationalId ? ` · ${w.nationalId}` : ""}
@@ -320,7 +341,29 @@ export function ExtractClient({
                               ))}
                             </select>
                           )}
-                          {row.workerName && !isProcessing && (
+
+                          {/* Datos del trabajador a crear — editables antes de guardar */}
+                          {row.workerId === CREAR_NUEVO && !row.applied && (
+                            <div style={{ display: "grid", gap: 4, marginTop: 6, padding: 8, background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8 }}>
+                              <input
+                                value={row.nuevoNombre}
+                                onChange={e => updateRow(row.clientFileId, { nuevoNombre: e.target.value })}
+                                placeholder="Nombre completo"
+                                style={{ padding: "5px 8px", fontSize: "0.8rem", width: "100%", boxSizing: "border-box" }}
+                              />
+                              <input
+                                value={row.nuevoRut}
+                                onChange={e => updateRow(row.clientFileId, { nuevoRut: e.target.value })}
+                                placeholder="RUT (opcional)"
+                                style={{ padding: "5px 8px", fontSize: "0.8rem", width: "100%", boxSizing: "border-box" }}
+                              />
+                              <div style={{ fontSize: "0.68rem", color: "#166534" }}>
+                                Se crea la ficha con estos datos. Si varios documentos traen el mismo RUT, se agrupan en un solo trabajador.
+                              </div>
+                            </div>
+                          )}
+
+                          {row.workerName && !isProcessing && row.workerId !== CREAR_NUEVO && (
                             <div style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: 2 }}>
                               Detectado: {row.workerName}
                               {row.workerRut && ` (${row.workerRut})`}
@@ -398,7 +441,10 @@ export function ExtractClient({
                   cursor: isPending ? "not-allowed" : "pointer",
                 }}
               >
-                {isPending ? "Guardando…" : `💾 Guardar ${readyRows.length} fecha${readyRows.length !== 1 ? "s" : ""}`}
+                {isPending
+                  ? "Guardando…"
+                  : `💾 Guardar ${readyRows.length} documento${readyRows.length !== 1 ? "s" : ""}` +
+                    (aCrear > 0 ? ` · crear ${aCrear} trabajador${aCrear !== 1 ? "es" : ""}` : "")}
               </button>
             </div>
           )}

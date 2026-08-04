@@ -3,6 +3,7 @@ import {
   calcularEstado,
   esEstadoOk,
   seleccionarVigentes,
+  TIPOS_DOCUMENTO_SEED,
   UMBRAL_POR_VENCER_DIAS,
   type EstadoDocumento,
 } from "@/lib/acreditacion";
@@ -48,17 +49,54 @@ export type EstadoTrabajador = {
   ok: number;
 };
 
-/** Catálogo activo, ordenado. */
-export async function getTiposDocumento(soloMatriz = false): Promise<TipoDocumentoRow[]> {
-  const tipos = await db.tipoDocumento.findMany({
-    where: { activo: true, ...(soloMatriz ? { mostrarEnMatriz: true } : {}) },
-    orderBy: { orden: "asc" },
-    select: {
-      id: true, codigo: true, nombre: true, categoria: true,
-      etiquetaCorta: true, vigenciaDias: true, mostrarEnMatriz: true,
-      legacyField: true, orden: true,
-    },
+const SELECT_TIPO = {
+  id: true, codigo: true, nombre: true, categoria: true,
+  etiquetaCorta: true, vigenciaDias: true, mostrarEnMatriz: true,
+  legacyField: true, orden: true,
+} as const;
+
+/**
+ * Siembra el catálogo si está vacío. Se ejecuta sola la primera vez que
+ * alguien entra al módulo — no hay que apretar ningún botón.
+ *
+ * `skipDuplicates` + `codigo` único la hacen segura ante requests
+ * concurrentes: si dos usuarios entran a la vez, la segunda no duplica.
+ */
+async function asegurarCatalogo(): Promise<void> {
+  const existentes = await db.tipoDocumento.count();
+  if (existentes > 0) return;
+
+  await db.tipoDocumento.createMany({
+    data: TIPOS_DOCUMENTO_SEED.map(t => ({
+      codigo: t.codigo,
+      nombre: t.nombre,
+      categoria: t.categoria,
+      vigenciaDias: t.vigenciaDias,
+      requiereArchivo: t.requiereArchivo,
+      mostrarEnMatriz: t.mostrarEnMatriz,
+      etiquetaCorta: t.etiquetaCorta,
+      legacyField: t.legacyField,
+      orden: t.orden,
+    })),
+    skipDuplicates: true,
   });
+}
+
+/** Catálogo activo, ordenado. Se auto-siembra si todavía no existe. */
+export async function getTiposDocumento(soloMatriz = false): Promise<TipoDocumentoRow[]> {
+  const where = { activo: true, ...(soloMatriz ? { mostrarEnMatriz: true } : {}) };
+
+  let tipos = await db.tipoDocumento.findMany({
+    where, orderBy: { orden: "asc" }, select: SELECT_TIPO,
+  });
+
+  if (tipos.length === 0) {
+    await asegurarCatalogo();
+    tipos = await db.tipoDocumento.findMany({
+      where, orderBy: { orden: "asc" }, select: SELECT_TIPO,
+    });
+  }
+
   return tipos;
 }
 

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -30,11 +31,7 @@ export async function extractDocumentsAction(
       where: { isActive: true },
       select: { id: true, fullName: true, nationalId: true },
     }),
-    db.tipoDocumento.findMany({
-      where: { activo: true },
-      select: { id: true, codigo: true, nombre: true },
-      orderBy: { orden: "asc" },
-    }),
+    getTiposDocumento(),
   ]);
 
   const results: ExtractedRow[] = [];
@@ -84,15 +81,28 @@ export async function extractDocumentsAction(
  * en `Documento` por cada una (append-only) y espeja la fecha a la columna
  * plana de la ficha cuando el tipo tiene equivalente legacy.
  */
+export type FilaAplicar = {
+  /** Id de un trabajador existente, o null si hay que crearlo. */
+  workerId: string | null;
+  /** Datos para crear el trabajador cuando workerId es null. */
+  nuevoTrabajador?: { nombre: string; rut?: string | null } | null;
+  tipoDocumentoId: string;
+  expiryDate: string;          // YYYY-MM-DD
+  issueDate?: string | null;   // YYYY-MM-DD
+  confidence?: "high" | "medium" | "low";
+};
+
+function rutNormalizado(rut?: string | null): string {
+  return (rut ?? "").replace(/[.\-\s]/g, "").toUpperCase();
+}
+
 export async function applyExtractionsAction(
-  rows: Array<{
-    workerId: string;
-    tipoDocumentoId: string;
-    expiryDate: string;          // YYYY-MM-DD
-    issueDate?: string | null;   // YYYY-MM-DD
-    confidence?: "high" | "medium" | "low";
-  }>,
-): Promise<{ applied: number; errors: Array<{ workerId: string; error: string }> }> {
+  rows: FilaAplicar[],
+): Promise<{
+  applied: number;
+  creados: Array<{ id: string; nombre: string }>;
+  errors: Array<{ workerId: string; error: string }>;
+}> {
   const user = await requireRole(STAFF_MANAGER_ROLES);
 
   const tipos = await db.tipoDocumento.findMany({
@@ -102,17 +112,80 @@ export async function applyExtractionsAction(
   const tipoPorId = new Map(tipos.map(t => [t.id, t]));
 
   const errors: Array<{ workerId: string; error: string }> = [];
+  const creados: Array<{ id: string; nombre: string }> = [];
   let applied = 0;
 
+  // ── Crear los trabajadores nuevos primero ────────────────────────────
+  // Varios documentos pueden ser de la misma persona: deduplicamos por RUT
+  // normalizado (o por nombre si no vino RUT) para no crearla dos veces.
+  const nuevosPorClave = new Map<string, string>(); // clave → staffMemberId
+
   for (const row of rows) {
+    if (row.workerId || !row.nuevoTrabajador?.nombre?.trim()) continue;
+
+    const nombre = row.nuevoTrabajador.nombre.trim();
+    const rut = row.nuevoTrabajador.rut?.trim() || null;
+    const clave = rut ? `rut:${rutNormalizado(rut)}` : `nombre:${nombre.toLowerCase()}`;
+
+    if (nuevosPorClave.has(clave)) continue;
+
+    try {
+      // ¿Existe ya alguien con ese RUT? Reusamos en vez de duplicar.
+      let existenteId: string | null = null;
+      if (rut) {
+        const candidatos = await db.staffMember.findMany({
+          where: { nationalId: { not: null } },
+          select: { id: true, nationalId: true },
+        });
+        existenteId = candidatos.find(c => rutNormalizado(c.nationalId) === rutNormalizado(rut))?.id ?? null;
+      }
+
+      if (existenteId) {
+        nuevosPorClave.set(clave, existenteId);
+        continue;
+      }
+
+      const creado = await db.staffMember.create({
+        data: {
+          fullName: nombre,
+          nationalId: rut,
+          createdById: user.id,
+          shiftStartDate: new Date(),
+          isActive: true,
+          notes: "Creado automáticamente al cargar un documento con IA",
+        },
+        select: { id: true, fullName: true },
+      });
+      nuevosPorClave.set(clave, creado.id);
+      creados.push({ id: creado.id, nombre: creado.fullName });
+    } catch (e) {
+      errors.push({ workerId: nombre, error: `No se pudo crear el trabajador: ${(e as Error).message}` });
+    }
+  }
+
+  // ── Aplicar cada documento ───────────────────────────────────────────
+  for (const row of rows) {
+    // Resolver a qué trabajador va
+    let workerId = row.workerId;
+    if (!workerId && row.nuevoTrabajador?.nombre?.trim()) {
+      const nombre = row.nuevoTrabajador.nombre.trim();
+      const rut = row.nuevoTrabajador.rut?.trim() || null;
+      const clave = rut ? `rut:${rutNormalizado(rut)}` : `nombre:${nombre.toLowerCase()}`;
+      workerId = nuevosPorClave.get(clave) ?? null;
+    }
+    if (!workerId) {
+      errors.push({ workerId: "—", error: "Fila sin trabajador asignado" });
+      continue;
+    }
+
     try {
       const tipo = tipoPorId.get(row.tipoDocumentoId);
       if (!tipo) {
-        errors.push({ workerId: row.workerId, error: "Tipo de documento inválido" });
+        errors.push({ workerId, error: "Tipo de documento inválido" });
         continue;
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate)) {
-        errors.push({ workerId: row.workerId, error: `Fecha inválida: ${row.expiryDate}` });
+        errors.push({ workerId, error: `Fecha inválida: ${row.expiryDate}` });
         continue;
       }
 
@@ -127,7 +200,7 @@ export async function applyExtractionsAction(
 
       await db.documentoAcreditacion.create({
         data: {
-          staffMemberId: row.workerId,
+          staffMemberId: workerId,
           tipoDocumentoId: row.tipoDocumentoId,
           fechaEmision,
           fechaVencimiento,
@@ -145,28 +218,29 @@ export async function applyExtractionsAction(
       // Espejo a la columna plana para que la ficha muestre lo mismo
       if (tipo.legacyField) {
         await db.staffMember.update({
-          where: { id: row.workerId },
+          where: { id: workerId },
           data: { [tipo.legacyField]: fechaVencimiento },
         });
       }
 
       applied++;
     } catch (e) {
-      errors.push({ workerId: row.workerId, error: (e as Error).message });
+      errors.push({ workerId, error: (e as Error).message });
     }
   }
 
-  if (applied > 0) {
+  if (applied > 0 || creados.length > 0) {
     await logAuditEvent({
       actorUserId: user.id, actorName: user.name, actorEmail: user.email,
       action: "DOC_EXTRACTION_APPLIED",
       entityType: "documento",
       entityId: "bulk",
-      summary: `Confirmó ${applied} documento(s) extraídos con IA`,
+      summary: `Confirmó ${applied} documento(s) extraídos con IA` +
+        (creados.length > 0 ? ` · creó ${creados.length} trabajador(es)` : ""),
     });
     revalidatePath("/trabajadores/control-documental");
     revalidatePath("/trabajadores");
   }
 
-  return { applied, errors };
+  return { applied, creados, errors };
 }

@@ -57,39 +57,6 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
     getTiposDocumento(true),
   ]);
 
-  // El catálogo aún no fue sembrado — la migración no corrió.
-  if (tipos.length === 0) {
-    return (
-      <AppShell title="Control documental" user={user} activeNav="trabajadores" showAdminSections={canSeeAdmin}>
-        <div className="page-stack">
-          <SectionTabs items={buildTrabajadoresTabs("control-documental")} />
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>Falta inicializar el módulo de acreditación</h2>
-            <p className="section-caption">
-              El catálogo de tipos de documento todavía no existe. Un administrador
-              tiene que correr la migración una sola vez para sembrar el catálogo y
-              convertir las fechas actuales de las fichas en documentos.
-            </p>
-            {canSeeAdmin ? (
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                <a href="/api/admin/migrar-acreditacion?dryRun=1" target="_blank" rel="noreferrer">
-                  <button type="button" className="secondary">1. Simular migración</button>
-                </a>
-                <form action="/api/admin/migrar-acreditacion" method="post">
-                  <button type="submit">2. Ejecutar migración</button>
-                </form>
-              </div>
-            ) : (
-              <div className="alert error" style={{ marginTop: 12 }}>
-                Pedile a un administrador que ejecute la migración.
-              </div>
-            )}
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
   const filtroTipo = (() => {
     const v = typeof searchParams?.tipo === "string" ? searchParams.tipo : "";
     return tipos.some(t => t.id === v) ? v : "";

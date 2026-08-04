@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
 import { buildTrabajadoresTabs } from "@/lib/section-nav";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
 import { ExtractClient } from "./extract-client";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
@@ -17,11 +18,7 @@ export default async function ExtraerDocumentosPage() {
       select: { id: true, fullName: true, nationalId: true },
       orderBy: { fullName: "asc" },
     }),
-    db.tipoDocumento.findMany({
-      where: { activo: true },
-      select: { id: true, codigo: true, nombre: true },
-      orderBy: { orden: "asc" },
-    }),
+    getTiposDocumento(),
   ]);
 
   const hasKey = Boolean(process.env.OPENAI_API_KEY);
