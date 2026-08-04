@@ -853,3 +853,115 @@ export async function deleteRecordAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/administracion/registros");
 }
+
+// ─── Catálogo de tipos de documento ──────────────────────────────────
+
+const tipoDocumentoSchema = z.object({
+  nombre: z.string().trim().min(2),
+  categoria: z.enum(["identidad", "previsional", "salud_ocupacional", "formacion", "laboral"]),
+  etiquetaCorta: z.string().trim().optional(),
+  vigenciaDias: z.string().optional(),
+  noVence: z.string().optional(),
+  mostrarEnMatriz: z.string().optional(),
+  orden: z.string().optional(),
+});
+
+/** Genera un código estable a partir del nombre: "Curso de altura" → "curso_de_altura". */
+function codigoDesdeNombre(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 50);
+}
+
+export async function crearTipoDocumentoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+
+  const parsed = tipoDocumentoSchema.safeParse({
+    nombre: formData.get("nombre"),
+    categoria: formData.get("categoria"),
+    etiquetaCorta: String(formData.get("etiquetaCorta") ?? ""),
+    vigenciaDias: String(formData.get("vigenciaDias") ?? ""),
+    noVence: String(formData.get("noVence") ?? ""),
+    mostrarEnMatriz: String(formData.get("mostrarEnMatriz") ?? ""),
+    orden: String(formData.get("orden") ?? ""),
+  });
+
+  if (!parsed.success) {
+    redirect("/administracion?seccion=documentos&tipoStatus=invalido");
+  }
+
+  const d = parsed.data;
+  let codigo = codigoDesdeNombre(d.nombre);
+  if (!codigo) redirect("/administracion?seccion=documentos&tipoStatus=invalido");
+
+  // Si el código ya existe, le agregamos un sufijo en vez de fallar
+  const existente = await db.tipoDocumento.findUnique({ where: { codigo } });
+  if (existente) codigo = `${codigo}_${Date.now().toString(36).slice(-4)}`;
+
+  const vigencia = d.vigenciaDias?.trim() ? Number(d.vigenciaDias) : null;
+
+  await db.tipoDocumento.create({
+    data: {
+      codigo,
+      nombre: d.nombre,
+      categoria: d.categoria,
+      etiquetaCorta: d.etiquetaCorta?.trim() || d.nombre.slice(0, 14),
+      vigenciaDias: vigencia && vigencia > 0 ? vigencia : null,
+      noVence: d.noVence === "on",
+      mostrarEnMatriz: d.mostrarEnMatriz === "on",
+      requiereArchivo: true,
+      orden: d.orden?.trim() ? Number(d.orden) : 500,
+      activo: true,
+    },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "TIPO_DOCUMENTO_CREATE",
+    entityType: "tipoDocumento",
+    summary: `Creó el tipo de documento «${d.nombre}»`,
+  }).catch(() => {});
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores/control-documental");
+  redirect("/administracion?seccion=documentos&tipoStatus=creado");
+}
+
+export async function actualizarTipoDocumentoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+  const id = String(formData.get("tipoId") ?? "");
+  if (!id) redirect("/administracion?seccion=documentos&tipoStatus=invalido");
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  const etiquetaCorta = String(formData.get("etiquetaCorta") ?? "").trim();
+  const vigenciaRaw = String(formData.get("vigenciaDias") ?? "").trim();
+  const vigencia = vigenciaRaw ? Number(vigenciaRaw) : null;
+
+  await db.tipoDocumento.update({
+    where: { id },
+    data: {
+      ...(nombre.length >= 2 ? { nombre } : {}),
+      etiquetaCorta: etiquetaCorta || null,
+      vigenciaDias: vigencia && vigencia > 0 ? vigencia : null,
+      noVence: formData.get("noVence") === "on",
+      mostrarEnMatriz: formData.get("mostrarEnMatriz") === "on",
+      activo: formData.get("activo") === "on",
+    },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "TIPO_DOCUMENTO_UPDATE",
+    entityType: "tipoDocumento",
+    entityId: id,
+    summary: `Editó el tipo de documento «${nombre}»`,
+  }).catch(() => {});
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores/control-documental");
+  redirect("/administracion?seccion=documentos&tipoStatus=guardado");
+}

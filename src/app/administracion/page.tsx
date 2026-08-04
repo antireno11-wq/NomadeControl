@@ -7,7 +7,9 @@ import {
 } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction } from "./actions";
+import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction, crearTipoDocumentoAction, actualizarTipoDocumentoAction } from "./actions";
+
+import { CATEGORIA_LABEL, type CategoriaDocumento } from "@/lib/acreditacion";
 
 const MODULE_DEFAULT_CHECK: Record<string, (role: string) => boolean> = {
   operaciones:  canAccessDashboard,
@@ -32,7 +34,7 @@ const MODULE_CHIP_COLOR: Record<string, { bg: string; color: string }> = {
 export default async function AdministracionPage({
   searchParams
 }: {
-  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; seccion?: string | string[] };
+  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; tipoStatus?: string | string[]; seccion?: string | string[] };
 }) {
   const user = await requireRole(ADMIN_ROLES);
   const canDeleteData = isFullAdminRole(user.role);
@@ -40,7 +42,7 @@ export default async function AdministracionPage({
   const seccionRaw = searchParams?.seccion;
   const seccion = typeof seccionRaw === "string" ? seccionRaw : "usuarios";
 
-  const [users, camps, projects, reports, tareas, incidentes] = await Promise.all([
+  const [users, camps, projects, reports, tareas, incidentes, tiposDocumento] = await Promise.all([
     db.user.findMany({
       where: { NOT: { email: { endsWith: "@nomade.local" } } },
       include: { camp: true },
@@ -50,7 +52,8 @@ export default async function AdministracionPage({
     db.project.findMany({ orderBy: { name: "asc" } }),
     db.dailyReport.count(),
     db.tarea.count({ where: { estado: { in: ["pendiente", "en_progreso"] } } }),
-    db.incidente.count({ where: { estado: { in: ["abierto", "en_investigacion"] } } })
+    db.incidente.count({ where: { estado: { in: ["abierto", "en_investigacion"] } } }),
+    db.tipoDocumento.findMany({ orderBy: { orden: "asc" } })
   ]);
 
   const campStatusRaw = searchParams?.campStatus;
@@ -59,6 +62,13 @@ export default async function AdministracionPage({
   const campStatus = typeof campStatusRaw === "string" ? campStatusRaw : "";
   const userStatus = typeof userStatusRaw === "string" ? userStatusRaw : "";
   const projectStatus = typeof projectStatusRaw === "string" ? projectStatusRaw : "";
+
+  const tipoStatus = typeof searchParams?.tipoStatus === "string" ? searchParams.tipoStatus : "";
+  const tipoAlert =
+    tipoStatus === "creado" ? { type: "success", text: "Tipo de documento creado." }
+    : tipoStatus === "guardado" ? { type: "success", text: "Cambios guardados." }
+    : tipoStatus === "invalido" ? { type: "error", text: "Revisá los datos del tipo de documento." }
+    : null;
 
   const projectAlert =
     projectStatus === "closed" ? { type: "success", text: "Proyecto finalizado correctamente." }
@@ -81,6 +91,7 @@ export default async function AdministracionPage({
     { key: "usuarios", label: "Usuarios" },
     { key: "campamentos", label: "Campamentos" },
     { key: "proyectos", label: "Proyectos" },
+    { key: "documentos", label: "Tipos de documento" },
     { key: "sistema", label: "Sistema" },
   ];
 
@@ -411,6 +422,110 @@ export default async function AdministracionPage({
       )}
 
       {/* ── SISTEMA ──────────────────────────────────────────────────── */}
+      {seccion === "documentos" && (
+        <div className="page-stack">
+          {tipoAlert && <div className={`alert ${tipoAlert.type}`}>{tipoAlert.text}</div>}
+
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Agregar tipo de documento</h2>
+            <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+              Cada mandante pide documentos distintos. Agregá acá los que te exijan y van a
+              aparecer en el extractor con IA y en la ficha de cada trabajador.
+            </p>
+            <form action={crearTipoDocumentoAction} className="grid two">
+              <div>
+                <label htmlFor="td-nombre">Nombre</label>
+                <input id="td-nombre" name="nombre" required placeholder="Ej: Curso de espacios confinados" />
+              </div>
+              <div>
+                <label htmlFor="td-categoria">Categoría</label>
+                <select id="td-categoria" name="categoria" defaultValue="formacion">
+                  {(Object.keys(CATEGORIA_LABEL) as CategoriaDocumento[]).map(c => (
+                    <option key={c} value={c}>{CATEGORIA_LABEL[c]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="td-etiqueta">Etiqueta corta</label>
+                <input id="td-etiqueta" name="etiquetaCorta" placeholder="Para la columna de la matriz" maxLength={16} />
+              </div>
+              <div>
+                <label htmlFor="td-vigencia">Vigencia por defecto (días)</label>
+                <input id="td-vigencia" name="vigenciaDias" type="number" min={1} placeholder="Vacío = se lee del documento" />
+              </div>
+              <div className="vehicle-inline-option">
+                <label>
+                  <input type="checkbox" name="noVence" />
+                  No vence (es una constancia)
+                </label>
+              </div>
+              <div className="vehicle-inline-option">
+                <label>
+                  <input type="checkbox" name="mostrarEnMatriz" />
+                  Mostrar como columna en la matriz
+                </label>
+              </div>
+              <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
+                <button type="submit">Agregar tipo</button>
+              </div>
+            </form>
+          </div>
+
+          <div className="card" style={{ overflowX: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+              <h2 style={{ margin: 0 }}>Tipos configurados</h2>
+              <span className="dashboard-chip small">{tiposDocumento.length} tipos</span>
+            </div>
+            <table className="admin-camps-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th style={{ width: 120 }}>Etiqueta</th>
+                  <th style={{ width: 110 }}>Vigencia</th>
+                  <th style={{ width: 90 }}>No vence</th>
+                  <th style={{ width: 90 }}>En matriz</th>
+                  <th style={{ width: 80 }}>Activo</th>
+                  <th style={{ width: 90 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tiposDocumento.map((t) => (
+                  <tr key={t.id}>
+                    <td colSpan={8} style={{ padding: 0 }}>
+                      <form action={actualizarTipoDocumentoAction} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", flexWrap: "wrap" }}>
+                        <input type="hidden" name="tipoId" value={t.id} />
+                        <input name="nombre" defaultValue={t.nombre} style={{ flex: "2 1 200px", minWidth: 160, padding: "5px 8px", fontSize: "0.85rem" }} />
+                        <span style={{ flex: "0 0 130px", fontSize: "0.8rem", color: "var(--muted)" }}>
+                          {CATEGORIA_LABEL[t.categoria as CategoriaDocumento] ?? t.categoria}
+                        </span>
+                        <input name="etiquetaCorta" defaultValue={t.etiquetaCorta ?? ""} maxLength={16} placeholder="corta" style={{ flex: "0 0 110px", padding: "5px 8px", fontSize: "0.85rem" }} />
+                        <input name="vigenciaDias" type="number" min={1} defaultValue={t.vigenciaDias ?? ""} placeholder="días" style={{ flex: "0 0 90px", padding: "5px 8px", fontSize: "0.85rem" }} />
+                        <label style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem", margin: 0 }}>
+                          <input type="checkbox" name="noVence" defaultChecked={t.noVence} style={{ width: "auto", margin: 0 }} /> no vence
+                        </label>
+                        <label style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem", margin: 0 }}>
+                          <input type="checkbox" name="mostrarEnMatriz" defaultChecked={t.mostrarEnMatriz} style={{ width: "auto", margin: 0 }} /> matriz
+                        </label>
+                        <label style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem", margin: 0 }}>
+                          <input type="checkbox" name="activo" defaultChecked={t.activo} style={{ width: "auto", margin: 0 }} /> activo
+                        </label>
+                        <button type="submit" className="secondary" style={{ flex: "0 0 auto", padding: "5px 12px", fontSize: "0.78rem" }}>Guardar</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ color: "var(--muted)", fontSize: "0.8rem", marginTop: 12, marginBottom: 0 }}>
+              Desmarcar <strong>activo</strong> saca el tipo del extractor y de las fichas sin borrar
+              los documentos ya cargados. <strong>En matriz</strong> lo agrega como columna del panel
+              de control documental — con muchos tipos marcados la tabla se vuelve ilegible.
+            </p>
+          </div>
+        </div>
+      )}
+
       {seccion === "sistema" && (
         <div className="page-stack">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
