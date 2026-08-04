@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import type { DragEvent } from "react";
 import { extractDocumentsAction, applyExtractionsAction } from "./actions";
+import { agruparPorPersona } from "@/lib/acreditacion";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
 type DocType = { id: string; codigo: string; nombre: string };
@@ -12,6 +13,8 @@ type ArchivoInfo = {
   clientFileId: string;
   fileName: string;
   fileUrl: string;   // blob URL para el preview
+  mimeType: string;
+  base64: string;    // se reenvía al confirmar, para guardar el original
   esPdf: boolean;
 };
 
@@ -100,10 +103,13 @@ export function ExtractClient({
       return;
     }
 
+    const base64s = await Promise.all(files.map(fileToBase64));
     const nuevosArchivos: ArchivoInfo[] = files.map((f, i) => ({
       clientFileId: `${Date.now()}-${i}`,
       fileName: f.name,
       fileUrl: URL.createObjectURL(f),
+      mimeType: f.type,
+      base64: base64s[i],
       esPdf: f.type === MIME_PDF,
     }));
     setArchivos(prev => [...prev, ...nuevosArchivos]);
@@ -126,16 +132,14 @@ export function ExtractClient({
 
     startTransition(async () => {
       try {
-        const payload = await Promise.all(
-          files.map(async (f, i) => ({
-            clientFileId: nuevosArchivos[i].clientFileId,
-            fileName: f.name,
-            mimeType: f.type,
-            base64: await fileToBase64(f),
+        const results = await extractDocumentsAction(
+          nuevosArchivos.map(a => ({
+            clientFileId: a.clientFileId,
+            fileName: a.fileName,
+            mimeType: a.mimeType,
+            base64: a.base64,
           }))
         );
-
-        const results = await extractDocumentsAction(payload);
         const idsProcesados = new Set(nuevosArchivos.map(a => a.clientFileId));
 
         setRows(prev => [
@@ -201,10 +205,39 @@ export function ExtractClient({
     (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId))
   );
 
-  const aCrear = new Set(
-    readyRows.filter(r => r.workerId === CREAR_NUEVO)
-      .map(r => (r.nuevoRut.trim() || r.nuevoNombre.trim()).toLowerCase())
-  ).size;
+  const grupos = agruparPorPersona(
+    readyRows
+      .filter(r => r.workerId === CREAR_NUEVO)
+      .map(r => ({ nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null })),
+  );
+  const aCrear = grupos.length;
+
+  /**
+   * Unifica todas las filas nuevas bajo una misma persona.
+   * Escape para cuando los documentos traen el nombre tan distinto que
+   * el agrupamiento automático no los junta.
+   */
+  function unificarPersona() {
+    const candidatas = rows.filter(r => !r.procesando && !r.applied && r.workerId === CREAR_NUEVO);
+    if (candidatas.length === 0) return;
+    // El nombre más largo suele ser el completo; el RUT, el primero que aparezca
+    const nombre = candidatas.reduce((mejor, r) =>
+      r.nuevoNombre.trim().length > mejor.length ? r.nuevoNombre.trim() : mejor, "");
+    const rut = candidatas.find(r => r.nuevoRut.trim())?.nuevoRut.trim() ?? "";
+    setRows(prev => prev.map(r =>
+      (!r.procesando && !r.applied && r.workerId === CREAR_NUEVO)
+        ? { ...r, nuevoNombre: nombre, nuevoRut: rut }
+        : r
+    ));
+  }
+
+  /** Asigna todas las filas nuevas a un trabajador que ya existe. */
+  function asignarTodasA(workerId: string) {
+    if (!workerId) return;
+    setRows(prev => prev.map(r =>
+      (!r.procesando && !r.applied) ? { ...r, workerId } : r
+    ));
+  }
 
   function handleApply() {
     if (readyRows.length === 0) return;
@@ -219,6 +252,10 @@ export function ExtractClient({
           confidence: r.confidence,
           expiryDate: r.expiryDate!,
           issueDate: r.issueDate,
+          archivo: (() => {
+            const a = infoDe(r.clientFileId);
+            return a ? { clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 } : null;
+          })(),
         }))
       );
       const appliedIds = new Set(readyRows.map(r => r.rowId));
@@ -298,6 +335,57 @@ export function ExtractClient({
             </button>
           </div>
 
+          {/* Control de agrupación por persona */}
+          {aCrear > 0 && (
+            <div style={{
+              padding: "12px 14px", borderRadius: 10,
+              background: aCrear > 1 ? "#fef3c7" : "#f0fdf4",
+              border: `1px solid ${aCrear > 1 ? "#fde68a" : "#86efac"}`,
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              gap: 12, flexWrap: "wrap",
+            }}>
+              <div style={{ fontSize: "0.85rem", color: aCrear > 1 ? "#854d0e" : "#166534" }}>
+                {aCrear === 1 ? (
+                  <>✓ Se va a crear <strong>1 trabajador</strong>: {grupos[0]?.nombre}</>
+                ) : (
+                  <>
+                    ⚠️ Se detectaron <strong>{aCrear} personas distintas</strong>:{" "}
+                    {grupos.map(g => g.nombre).join(" · ")}
+                    <div style={{ fontSize: "0.78rem", marginTop: 4, opacity: 0.9 }}>
+                      Si en realidad son la misma, unificalas. Suele pasar cuando los documentos
+                      escriben el nombre en distinto orden.
+                    </div>
+                  </>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {aCrear > 1 && (
+                  <button
+                    type="button"
+                    onClick={unificarPersona}
+                    style={{ background: "#854d0e", color: "#fff", border: "none", padding: "7px 14px", borderRadius: 8, cursor: "pointer", fontSize: "0.82rem", fontWeight: 700 }}
+                  >
+                    👤 Es la misma persona
+                  </button>
+                )}
+                {workers.length > 0 && (
+                  <select
+                    defaultValue=""
+                    onChange={e => { asignarTodasA(e.target.value); e.currentTarget.value = ""; }}
+                    style={{ padding: "6px 10px", fontSize: "0.82rem", maxWidth: 220 }}
+                  >
+                    <option value="">Asignar todo a un existente…</option>
+                    {workers.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.fullName}{w.nationalId ? ` · ${w.nationalId}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
@@ -326,13 +414,17 @@ export function ExtractClient({
                         background: row.applied ? "#f0fdf4" : row.error ? "#fef2f2" : undefined,
                       }}>
                         <td style={{ padding: "8px 12px" }}>
-                          {info?.esPdf ? (
-                            <div style={{ width: 40, height: 40, borderRadius: 6, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem" }}>
-                              📕
-                            </div>
-                          ) : info ? (
-                            <img src={info.fileUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} />
-                          ) : null}
+                          {info && (
+                            <a href={info.fileUrl} target="_blank" rel="noreferrer" title="Ver el archivo original">
+                              {info.esPdf ? (
+                                <div style={{ width: 40, height: 40, borderRadius: 6, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", cursor: "pointer" }}>
+                                  📕
+                                </div>
+                              ) : (
+                                <img src={info.fileUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", cursor: "pointer" }} />
+                              )}
+                            </a>
+                          )}
                         </td>
 
                         <td style={{ padding: "8px 12px" }}>

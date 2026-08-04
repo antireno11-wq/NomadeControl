@@ -379,3 +379,55 @@ export async function terminarContratoAction(formData: FormData) {
   revalidatePath("/trabajadores/ex-trabajadores");
   redirect(`/trabajadores/${p.staffMemberId}?tab=contrato&status=terminado`);
 }
+
+/**
+ * Sube la foto del trabajador (JPG/PNG/WEBP) y la asocia a su ficha.
+ * Reemplaza la anterior si existía.
+ */
+export async function subirFotoTrabajadorAction(formData: FormData) {
+  const user = await requireRole(STAFF_MANAGER_ROLES);
+
+  const workerId = String(formData.get("workerId") ?? "");
+  const file = formData.get("foto");
+
+  if (!workerId || !(file instanceof File) || file.size === 0) {
+    redirect(`/trabajadores/${workerId}?tab=perfil&status=foto-invalida`);
+  }
+
+  const permitidos = ["image/jpeg", "image/png", "image/webp"];
+  if (!permitidos.includes(file.type)) {
+    redirect(`/trabajadores/${workerId}?tab=perfil&status=foto-formato`);
+  }
+  if (file.size > 6 * 1024 * 1024) {
+    redirect(`/trabajadores/${workerId}?tab=perfil&status=foto-pesada`);
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const archivo = await db.archivoAcreditacion.create({
+    data: {
+      contenido: buffer,
+      originalFilename: file.name,
+      mimeType: file.type,
+      fileSize: buffer.length,
+      subidoPorNombre: user.name,
+    },
+    select: { id: true },
+  });
+
+  await db.staffMember.update({
+    where: { id: workerId },
+    data: { fotoArchivoId: archivo.id },
+  });
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "STAFF_PHOTO_UPLOAD",
+    entityType: "staffMember",
+    entityId: workerId,
+    summary: `Subió foto del trabajador`,
+  }).catch(() => {});
+
+  revalidatePath(`/trabajadores/${workerId}`);
+  redirect(`/trabajadores/${workerId}?tab=perfil&status=foto-ok`);
+}

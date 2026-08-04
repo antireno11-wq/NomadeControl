@@ -266,6 +266,9 @@ model StaffMember {
   documentosAdicionales DocumentoAdicional[]
   alertasEnviadas       AlertaDocumento[]
   acreditacionDocs      DocumentoAcreditacion[]
+  /// Foto del trabajador, para mostrar en la ficha
+  fotoArchivoId         String?
+  fotoArchivo           ArchivoAcreditacion? @relation(fields: [fotoArchivoId], references: [id], onDelete: SetNull)
 
   @@index([campId, isActive])
 }
@@ -301,6 +304,27 @@ model TipoDocumento {
   @@index([activo, orden])
 }
 
+/// Archivo binario compartido. Varios documentos extraídos de un mismo PDF
+/// apuntan al mismo archivo en vez de duplicar los bytes.
+/// En Fase C `contenido` se reemplaza por `url` apuntando a R2/S3.
+model ArchivoAcreditacion {
+  id               String   @id @default(cuid())
+  contenido        Bytes?
+  url              String?
+  originalFilename String
+  mimeType         String
+  fileSize         Int?
+  /// sha256, para detectar que se subió dos veces el mismo archivo
+  hash             String?
+  subidoPorNombre  String?
+  createdAt        DateTime @default(now())
+
+  documentos       DocumentoAcreditacion[]
+  fotoDe           StaffMember[]
+
+  @@index([hash])
+}
+
 /// Documento de acreditación. Append-only: cada renovación es una fila nueva.
 /// Nunca se hace UPDATE de fechas ni DELETE — para corregir se marca `anulado`.
 /// (El modelo `Documento` a secas es el de Biblioteca, sin relación con esto.)
@@ -321,7 +345,11 @@ model DocumentoAcreditacion {
   sinVencimiento       Boolean  @default(false)
 
   // ── Archivo ──────────────────────────────────────────────────────────
-  /// Temporal: binario en Postgres. Migra a R2/S3 en Fase C.
+  /// Archivo del que salió este documento. Varios documentos de un mismo
+  /// PDF comparten la misma fila de ArchivoAcreditacion.
+  archivoId            String?
+  archivo              ArchivoAcreditacion? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
+  /// Legacy: binario suelto de la migración. Los nuevos usan `archivo`.
   contenido            Bytes?
   /// Ruta en R2/S3 una vez migrado.
   archivoUrl           String?
@@ -359,6 +387,7 @@ model DocumentoAcreditacion {
   @@index([staffMemberId, tipoDocumentoId, fechaVencimiento])
   @@index([anulado, fechaVencimiento])
   @@index([archivoHash])
+  @@index([archivoId])
 }
 
 // Documento personalizado que HSEC puede agregar sin tocar código

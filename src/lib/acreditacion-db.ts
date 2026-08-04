@@ -22,6 +22,7 @@ export type TipoDocumentoRow = {
 
 export type DocumentoVigente = {
   id: string;
+  archivoId: string | null;
   fechaEmision: Date | null;
   fechaVencimiento: Date | null;
   sinVencimiento: boolean;
@@ -137,7 +138,7 @@ export async function getEstadoDocumental(
       fechaEmision: true, fechaVencimiento: true, sinVencimiento: true,
       vencimientoCalculado: true, anulado: true, origen: true,
       confianzaExtraccion: true, nota: true, createdAt: true,
-      archivoUrl: true,
+      archivoUrl: true, archivoId: true,
       // No traemos `contenido` (Bytes) — pesa y no se usa acá.
     },
   });
@@ -156,13 +157,14 @@ export async function getEstadoDocumental(
       tipoId: tipoDocumentoId,
       documento: {
         id: doc.id,
+        archivoId: doc.archivoId,
         fechaEmision: doc.fechaEmision,
         fechaVencimiento: doc.fechaVencimiento,
         sinVencimiento: doc.sinVencimiento,
         vencimientoCalculado: doc.vencimientoCalculado,
         origen: doc.origen,
         confianzaExtraccion: doc.confianzaExtraccion,
-        tieneArchivo: Boolean(doc.archivoUrl),
+        tieneArchivo: Boolean(doc.archivoId || doc.archivoUrl),
         nota: doc.nota,
         createdAt: doc.createdAt,
       },

@@ -6,6 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
+import { agruparPorPersona, normalizarRut } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -122,11 +123,9 @@ export type FilaAplicar = {
   expiryDate: string;          // YYYY-MM-DD
   issueDate?: string | null;   // YYYY-MM-DD
   confidence?: "high" | "medium" | "low";
+  /** Archivo del que salió, para poder verlo después. */
+  archivo?: { clientFileId: string; fileName: string; mimeType: string; base64: string } | null;
 };
-
-function rutNormalizado(rut?: string | null): string {
-  return (rut ?? "").replace(/[.\-\s]/g, "").toUpperCase();
-}
 
 export async function applyExtractionsAction(
   rows: FilaAplicar[],
@@ -147,64 +146,92 @@ export async function applyExtractionsAction(
   const creados: Array<{ id: string; nombre: string }> = [];
   let applied = 0;
 
-  // ── Crear los trabajadores nuevos primero ────────────────────────────
-  // Varios documentos pueden ser de la misma persona: deduplicamos por RUT
-  // normalizado (o por nombre si no vino RUT) para no crearla dos veces.
-  const nuevosPorClave = new Map<string, string>(); // clave → staffMemberId
-
+  // ── Guardar los archivos una sola vez ────────────────────────────────
+  // Un PDF con 12 documentos adentro produce 12 filas, pero el binario se
+  // guarda una vez y todas apuntan a él.
+  const archivoIdPorClientFileId = new Map<string, string>();
   for (const row of rows) {
-    if (row.workerId || !row.nuevoTrabajador?.nombre?.trim()) continue;
-
-    const nombre = row.nuevoTrabajador.nombre.trim();
-    const rut = row.nuevoTrabajador.rut?.trim() || null;
-    const clave = rut ? `rut:${rutNormalizado(rut)}` : `nombre:${nombre.toLowerCase()}`;
-
-    if (nuevosPorClave.has(clave)) continue;
-
+    const a = row.archivo;
+    if (!a || archivoIdPorClientFileId.has(a.clientFileId)) continue;
     try {
-      // ¿Existe ya alguien con ese RUT? Reusamos en vez de duplicar.
+      const creado = await db.archivoAcreditacion.create({
+        data: {
+          contenido: Buffer.from(a.base64, "base64"),
+          originalFilename: a.fileName,
+          mimeType: a.mimeType,
+          fileSize: Math.round((a.base64.length * 3) / 4),
+          subidoPorNombre: user.name,
+        },
+        select: { id: true },
+      });
+      archivoIdPorClientFileId.set(a.clientFileId, creado.id);
+    } catch {
+      // Si falla el archivo igual guardamos las fechas: perder el binario
+      // es malo, perder el vencimiento es peor.
+    }
+  }
+
+  // ── Resolver a qué persona va cada fila ──────────────────────────────
+  // Los documentos de una misma persona traen el nombre en distinto orden
+  // ("Cortez Estay Rodrigo" vs "Rodrigo Cortez Estay") y a veces sin RUT.
+  // Agrupamos antes de crear para no terminar con varias fichas de la
+  // misma persona.
+  const indicesACrear = rows
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => !r.workerId && r.nuevoTrabajador?.nombre?.trim());
+
+  const grupos = agruparPorPersona(
+    indicesACrear.map(({ r }) => ({
+      nombre: r.nuevoTrabajador!.nombre.trim(),
+      rut: r.nuevoTrabajador!.rut?.trim() || null,
+    })),
+  );
+
+  // índice de fila original → staffMemberId
+  const workerIdPorIndice = new Map<number, string>();
+
+  for (const grupo of grupos) {
+    try {
+      // ¿Ya existe alguien con ese RUT o nombre? Reusar antes que duplicar.
       let existenteId: string | null = null;
-      if (rut) {
+      const rutNorm = normalizarRut(grupo.rut);
+      if (rutNorm) {
         const candidatos = await db.staffMember.findMany({
           where: { nationalId: { not: null } },
           select: { id: true, nationalId: true },
         });
-        existenteId = candidatos.find(c => rutNormalizado(c.nationalId) === rutNormalizado(rut))?.id ?? null;
+        existenteId = candidatos.find(c => normalizarRut(c.nationalId) === rutNorm)?.id ?? null;
       }
 
-      if (existenteId) {
-        nuevosPorClave.set(clave, existenteId);
-        continue;
-      }
+      const staffMemberId = existenteId ?? (await (async () => {
+        const creado = await db.staffMember.create({
+          data: {
+            fullName: grupo.nombre,
+            nationalId: grupo.rut,
+            createdById: user.id,
+            shiftStartDate: new Date(),
+            isActive: true,
+            notes: "Creado automáticamente al cargar documentos con IA",
+          },
+          select: { id: true, fullName: true },
+        });
+        creados.push({ id: creado.id, nombre: creado.fullName });
+        return creado.id;
+      })());
 
-      const creado = await db.staffMember.create({
-        data: {
-          fullName: nombre,
-          nationalId: rut,
-          createdById: user.id,
-          shiftStartDate: new Date(),
-          isActive: true,
-          notes: "Creado automáticamente al cargar un documento con IA",
-        },
-        select: { id: true, fullName: true },
-      });
-      nuevosPorClave.set(clave, creado.id);
-      creados.push({ id: creado.id, nombre: creado.fullName });
+      for (const idxEnGrupo of grupo.indices) {
+        const filaOriginal = indicesACrear[idxEnGrupo];
+        if (filaOriginal) workerIdPorIndice.set(filaOriginal.i, staffMemberId);
+      }
     } catch (e) {
-      errors.push({ workerId: nombre, error: `No se pudo crear el trabajador: ${(e as Error).message}` });
+      errors.push({ workerId: grupo.nombre, error: `No se pudo crear el trabajador: ${(e as Error).message}` });
     }
   }
 
   // ── Aplicar cada documento ───────────────────────────────────────────
-  for (const row of rows) {
-    // Resolver a qué trabajador va
-    let workerId = row.workerId;
-    if (!workerId && row.nuevoTrabajador?.nombre?.trim()) {
-      const nombre = row.nuevoTrabajador.nombre.trim();
-      const rut = row.nuevoTrabajador.rut?.trim() || null;
-      const clave = rut ? `rut:${rutNormalizado(rut)}` : `nombre:${nombre.toLowerCase()}`;
-      workerId = nuevosPorClave.get(clave) ?? null;
-    }
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const workerId = row.workerId ?? workerIdPorIndice.get(i) ?? null;
     if (!workerId) {
       errors.push({ workerId: "—", error: "Fila sin trabajador asignado" });
       continue;
@@ -244,6 +271,7 @@ export async function applyExtractionsAction(
           confirmadoPorNombre: user.name,
           confirmadoAt: new Date(),
           nota: "Extraído con IA y confirmado manualmente",
+          archivoId: row.archivo ? archivoIdPorClientFileId.get(row.archivo.clientFileId) ?? null : null,
         },
       });
 

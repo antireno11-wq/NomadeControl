@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { canAccessEvaluaciones, isAdminRole, isSupervisorRole, TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { renovarContratoAction, updateWorkerAction } from "@/app/trabajadores/actions";
+import { renovarContratoAction, updateWorkerAction, subirFotoTrabajadorAction } from "@/app/trabajadores/actions";
 import { WorkerForm } from "@/app/trabajadores/worker-form";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
@@ -94,6 +94,10 @@ export default async function PerfilTrabajadorPage({
     status === "updated" ? { type: "success", text: "Trabajador actualizado correctamente." }
     : status === "invalid" ? { type: "error", text: "Revisa los datos del trabajador." }
     : status === "forbidden" ? { type: "error", text: "No puedes editar trabajadores de otro campamento." }
+    : status === "foto-ok" ? { type: "success", text: "Foto actualizada." }
+    : status === "foto-formato" ? { type: "error", text: "La foto tiene que ser JPG, PNG o WEBP." }
+    : status === "foto-pesada" ? { type: "error", text: "La foto supera los 6 MB." }
+    : status === "foto-invalida" ? { type: "error", text: "No se recibió ninguna imagen." }
     : null;
 
   const expiredDocs  = docs.filter(d => d.status === "expired");
@@ -130,14 +134,22 @@ export default async function PerfilTrabajadorPage({
             {/* Left: identity */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{
-                  width: 52, height: 52, borderRadius: "50%",
-                  background: "var(--teal)", color: "white",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "1.3rem", fontWeight: 800, flexShrink: 0,
-                }}>
-                  {worker.fullName.split(" ").map(w => w[0]).slice(0, 2).join("")}
-                </div>
+                {worker.fotoArchivoId ? (
+                  <img
+                    src={`/api/archivo/${worker.fotoArchivoId}`}
+                    alt={worker.fullName}
+                    style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid var(--teal)" }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 52, height: 52, borderRadius: "50%",
+                    background: "var(--teal)", color: "white",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "1.3rem", fontWeight: 800, flexShrink: 0,
+                  }}>
+                    {worker.fullName.split(" ").map(w => w[0]).slice(0, 2).join("")}
+                  </div>
+                )}
                 <div>
                   <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--text)" }}>{worker.fullName}</h2>
                   <div style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: 2 }}>
@@ -266,6 +278,45 @@ export default async function PerfilTrabajadorPage({
               </div>
             </div>
 
+            {/* Foto del trabajador */}
+            <div className="card">
+              <h3 style={{ margin: "0 0 12px", color: "var(--text)", fontSize: "1rem" }}>📷 Foto del trabajador</h3>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                {worker.fotoArchivoId ? (
+                  <a href={`/api/archivo/${worker.fotoArchivoId}`} target="_blank" rel="noreferrer">
+                    <img
+                      src={`/api/archivo/${worker.fotoArchivoId}`}
+                      alt={worker.fullName}
+                      style={{ width: 110, height: 110, borderRadius: 12, objectFit: "cover", border: "1px solid var(--border)" }}
+                    />
+                  </a>
+                ) : (
+                  <div style={{
+                    width: 110, height: 110, borderRadius: 12,
+                    background: "#f1f5f9", border: "1px dashed var(--border)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "var(--muted)", fontSize: "0.8rem", textAlign: "center", padding: 8,
+                  }}>
+                    Sin foto
+                  </div>
+                )}
+                <form action={subirFotoTrabajadorAction} style={{ display: "grid", gap: 8 }}>
+                  <input type="hidden" name="workerId" value={worker.id} />
+                  <input
+                    type="file"
+                    name="foto"
+                    accept="image/jpeg,image/png,image/webp"
+                    required
+                    style={{ fontSize: "0.85rem" }}
+                  />
+                  <button type="submit" className="secondary" style={{ width: "auto", justifySelf: "start" }}>
+                    {worker.fotoArchivoId ? "Reemplazar foto" : "Subir foto"}
+                  </button>
+                  <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>JPG, PNG o WEBP · hasta 6 MB</div>
+                </form>
+              </div>
+            </div>
+
             {/* Quick doc overview */}
             <div className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
@@ -332,11 +383,23 @@ export default async function PerfilTrabajadorPage({
                         {doc?.vencimientoCalculado && " · fecha calculada, no impresa"}
                       </div>
                       {doc && (
-                        <div style={{ fontSize: "0.72rem", color: style.color, opacity: 0.7, marginTop: 3 }}>
-                          {doc.origen === "extraido" ? `Extraído con IA (confianza ${doc.confianzaExtraccion ?? "?"})`
-                            : doc.origen === "migracion" ? "Migrado de la ficha anterior"
-                            : doc.origen === "excel" ? "Cargado por Excel"
-                            : "Cargado manualmente"}
+                        <div style={{ fontSize: "0.72rem", color: style.color, opacity: 0.75, marginTop: 3, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                          <span>
+                            {doc.origen === "extraido" ? `Extraído con IA (confianza ${doc.confianzaExtraccion ?? "?"})`
+                              : doc.origen === "migracion" ? "Migrado de la ficha anterior"
+                              : doc.origen === "excel" ? "Cargado por Excel"
+                              : "Cargado manualmente"}
+                          </span>
+                          {doc.archivoId && (
+                            <a
+                              href={`/api/archivo/${doc.archivoId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: style.color, fontWeight: 700, textDecoration: "underline" }}
+                            >
+                              📎 Ver documento
+                            </a>
+                          )}
                         </div>
                       )}
                     </div>

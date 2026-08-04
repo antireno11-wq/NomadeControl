@@ -207,3 +207,126 @@ function ganaDocumento(candidato: DocumentoComparable, actual: DocumentoComparab
   if (rc !== ra) return rc > ra;
   return candidato.createdAt.getTime() > actual.createdAt.getTime();
 }
+
+// ─── Identidad de personas ─────────────────────────────────────────────
+
+/** RUT sin puntos, guiones ni espacios, en mayúsculas. */
+export function normalizarRut(rut?: string | null): string {
+  return (rut ?? "").replace(/[.\-\s]/g, "").toUpperCase();
+}
+
+/**
+ * Clave de nombre invariante al orden de las palabras.
+ *
+ * Los documentos chilenos alternan entre "Apellidos Nombres" y
+ * "Nombres Apellidos". Ordenando los tokens alfabéticamente, ambas
+ * formas producen la misma clave:
+ *
+ *   "Rodrigo Esteban Cortez Estay" → "cortez esteban estay rodrigo"
+ *   "Cortez Estay Rodrigo Esteban" → "cortez esteban estay rodrigo"
+ */
+export function claveNombre(nombre: string): string {
+  return tokensNombre(nombre).sort().join(" ");
+}
+
+export function tokensNombre(nombre: string): string[] {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(t => t.length > 1);
+}
+
+/**
+ * ¿Los dos nombres son de la misma persona?
+ *
+ * Además del orden, tolera que un documento traiga el nombre incompleto
+ * ("Rodrigo Cortez" vs "Rodrigo Esteban Cortez Estay"): si todos los
+ * tokens del más corto están en el más largo y comparten al menos dos,
+ * los damos por la misma persona.
+ */
+export function mismoNombre(a: string, b: string): boolean {
+  const ta = tokensNombre(a);
+  const tb = tokensNombre(b);
+  if (ta.length === 0 || tb.length === 0) return false;
+
+  const [corto, largo] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  const comunes = corto.filter(t => largo.includes(t));
+  return comunes.length >= 2 && comunes.length === corto.length;
+}
+
+export type PersonaDetectada = {
+  /** Clave canónica del grupo. */
+  clave: string;
+  nombre: string;
+  rut: string | null;
+  /** Índices de las filas que pertenecen a esta persona. */
+  indices: number[];
+};
+
+/**
+ * Agrupa filas extraídas por persona.
+ *
+ * Un PDF de acreditación trae el nombre escrito de formas distintas en
+ * cada documento y a veces sin RUT. Sin esto, una sola persona termina
+ * creando varias fichas.
+ *
+ * Estrategia:
+ *  1. Agrupar por RUT cuando está presente (es la llave fuerte)
+ *  2. Las filas sin RUT se pegan al grupo cuyo nombre coincide
+ *  3. Lo que queda se agrupa entre sí por nombre
+ */
+export function agruparPorPersona(
+  filas: Array<{ nombre: string | null; rut: string | null }>,
+): PersonaDetectada[] {
+  const grupos: PersonaDetectada[] = [];
+
+  const buscarGrupo = (nombre: string | null, rut: string | null) => {
+    const rutNorm = normalizarRut(rut);
+    if (rutNorm) {
+      const porRut = grupos.find(g => normalizarRut(g.rut) === rutNorm);
+      if (porRut) return porRut;
+    }
+    if (nombre) {
+      const porNombre = grupos.find(g => {
+        // No mezclar grupos con RUTs distintos y conocidos
+        if (rutNorm && g.rut && normalizarRut(g.rut) !== rutNorm) return false;
+        return mismoNombre(g.nombre, nombre);
+      });
+      if (porNombre) return porNombre;
+    }
+    return null;
+  };
+
+  // Primero las filas con RUT: fijan los grupos canónicos
+  const orden = filas
+    .map((f, i) => ({ ...f, i }))
+    .sort((a, b) => (normalizarRut(b.rut) ? 1 : 0) - (normalizarRut(a.rut) ? 1 : 0));
+
+  for (const fila of orden) {
+    if (!fila.nombre && !fila.rut) continue;
+
+    const existente = buscarGrupo(fila.nombre, fila.rut);
+    if (existente) {
+      existente.indices.push(fila.i);
+      // Completar datos faltantes del grupo
+      if (!existente.rut && fila.rut) existente.rut = fila.rut;
+      // Preferir el nombre más largo: suele ser el completo
+      if (fila.nombre && fila.nombre.length > existente.nombre.length) {
+        existente.nombre = fila.nombre;
+      }
+    } else {
+      grupos.push({
+        clave: normalizarRut(fila.rut) || claveNombre(fila.nombre ?? ""),
+        nombre: fila.nombre ?? "",
+        rut: fila.rut,
+        indices: [fila.i],
+      });
+    }
+  }
+
+  for (const g of grupos) g.indices.sort((a, b) => a - b);
+  return grupos;
+}
