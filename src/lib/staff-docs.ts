@@ -10,15 +10,23 @@ export const STAFF_DOCUMENT_FIELDS = [
   { key: "accreditationDueDate",    label: "Acreditación",                  short: "Acredit." }
 ] as const;
 
+/**
+ * Cargo textual del contrato. Es distinto del grupo de dotación (`Cargo`),
+ * que es el que decide qué documentos se exigen: "MONTAJISTA - GASFITER" y
+ * "MONTAJISTA" son cargos distintos que se acreditan igual.
+ */
 export const STAFF_ROLE_OPTIONS = [
   "SUPERVISOR",
+  "SUPERVISOR DE MONTAJE",
   "HSEC",
   "MAESTRO DE COCINA",
   "AYUDANTE DE COCINA",
   "AUXILIAR DE COCINA",
   "CAMPAMENTERO",
   "CHOFER",
-  "MANTENCION"
+  "MANTENCION",
+  "MONTAJISTA",
+  "MONTAJISTA - GASFITER"
 ] as const;
 
 export type StaffDocumentFieldKey = (typeof STAFF_DOCUMENT_FIELDS)[number]["key"];
