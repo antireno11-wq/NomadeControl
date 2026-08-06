@@ -244,6 +244,10 @@ export type FilaAplicar = {
   confidence?: "high" | "medium" | "low";
   /** true si la fecha se infirió de emisión + vigencia, en vez de leerse. */
   vencimientoCalculado?: boolean;
+  /** El usuario decidió guardarlo sin vencimiento porque el documento no lo
+   *  trae y el tipo no define vigencia. Se registra la nota para que en la
+   *  ficha se vea que la fecha quedó pendiente, no que no existe. */
+  sinVencimiento?: boolean;
   /** Archivo del que salió, para poder verlo después. */
   archivo?: { clientFileId: string; fileName: string; mimeType: string; base64: string } | null;
   /** Caras u hojas adicionales del MISMO documento: el reverso de la cédula,
@@ -427,8 +431,11 @@ export async function applyExtractionsAction(
 
       const tieneFecha = Boolean(fechaVencimiento);
 
-      // Los tipos de constancia se guardan sin vencimiento; los demás lo exigen
-      if (!tieneFecha && !tipo.noVence) {
+      // Los tipos de constancia se guardan sin vencimiento. Los demás lo
+      // exigen, salvo que el usuario decida explícitamente lo contrario:
+      // rechazar el documento lo deja como "no cargado" en la matriz y
+      // encima pierde el archivo, que es peor que registrarlo incompleto.
+      if (!tieneFecha && !tipo.noVence && !row.sinVencimiento) {
         errors.push({ workerId, error: "Falta la fecha de vencimiento" });
         continue;
       }
@@ -448,7 +455,9 @@ export async function applyExtractionsAction(
           confirmadoPorId: user.id,
           confirmadoPorNombre: user.name,
           confirmadoAt: new Date(),
-          nota: "Extraído con IA y confirmado manualmente",
+          nota: !tieneFecha && !tipo.noVence
+            ? "Extraído con IA. Guardado sin fecha de vencimiento: el documento no la trae y el tipo no tiene vigencia definida."
+            : "Extraído con IA y confirmado manualmente",
           archivoId,
         },
       });

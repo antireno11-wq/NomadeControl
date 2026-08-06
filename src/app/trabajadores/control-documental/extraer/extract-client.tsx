@@ -44,6 +44,10 @@ type EditableRow = {
   expiryCalculada?: boolean;
   /** El titular se heredó del resto del lote. */
   titularHeredado?: boolean;
+  /** Se guarda sin fecha de vencimiento, por decisión explícita del usuario.
+   *  Perder el documento porque no se le pudo leer una fecha es peor que
+   *  registrarlo sin ella y que alguien la complete después. */
+  sinVencimiento?: boolean;
 };
 
 /** Qué hacer con un grupo de filas que apuntan al mismo documento. */
@@ -309,15 +313,32 @@ export function ExtractClient({
     return [...vistas.values()];
   })();
 
+  /** Por qué una fila no entra en el guardado. */
+  const motivoBloqueo = (r: EditableRow): string | null => {
+    if (r.procesando || r.applied || r.error) return null;
+    if (!r.detectedTipoId) return "Falta elegir el tipo de documento";
+    if (necesitaFecha(r.detectedTipoId) && !r.expiryDate && !r.sinVencimiento) {
+      return "Falta la fecha de vencimiento — el documento no la trae impresa y el tipo no tiene vigencia definida";
+    }
+    if (r.workerId === CREAR_NUEVO && !r.nuevoNombre.trim()) return "Falta el nombre del trabajador nuevo";
+    if (r.workerId !== CREAR_NUEVO && !r.workerId) return "Falta asignarlo a un trabajador";
+    return null;
+  };
+
   const readyRows = rows.filter(r =>
     !r.procesando && !r.applied && !r.error &&
     r.detectedTipoId &&
-    (necesitaFecha(r.detectedTipoId) ? Boolean(r.expiryDate) : true) &&
+    (necesitaFecha(r.detectedTipoId) ? Boolean(r.expiryDate) || Boolean(r.sinVencimiento) : true) &&
     (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId)) &&
     // Las hojas de un grupo combinado no se guardan aparte: viajan como
     // archivos adicionales de su fila principal.
     !esHoja(r)
   );
+
+  const bloqueadas = rows
+    .filter(r => !esHoja(r))
+    .map(row => ({ row, motivo: motivoBloqueo(row) }))
+    .filter((x): x is { row: EditableRow; motivo: string } => x.motivo !== null);
 
   const grupos = agruparPorPersona(
     readyRows
@@ -364,7 +385,8 @@ export function ExtractClient({
             : null,
           tipoDocumentoId: r.detectedTipoId!,
           confidence: r.confidence,
-          expiryDate: necesitaFecha(r.detectedTipoId) ? r.expiryDate : null,
+          expiryDate: necesitaFecha(r.detectedTipoId) && !r.sinVencimiento ? r.expiryDate : null,
+          sinVencimiento: Boolean(r.sinVencimiento),
           issueDate: r.issueDate,
           vencimientoCalculado: Boolean(r.expiryCalculada),
           archivo: (() => {
@@ -844,6 +866,35 @@ export function ExtractClient({
               </table>
             </div>
           </div>
+
+          {/* Sin esto, una fila que no cumple los requisitos simplemente no entra
+              en el contador y desaparece sin decir por qué: el usuario cree que
+              subió el documento y en la ficha aparece como no cargado. */}
+          {bloqueadas.length > 0 && (
+            <div style={{ border: "1px solid #f59e0b", background: "#fffbeb", borderRadius: 12, padding: "14px 18px" }}>
+              <strong style={{ color: "#92400e" }}>
+                {bloqueadas.length} documento{bloqueadas.length === 1 ? "" : "s"} no se {bloqueadas.length === 1 ? "va" : "van"} a guardar
+              </strong>
+              <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                {bloqueadas.map(({ row, motivo }) => (
+                  <div key={row.rowId} style={{ fontSize: "0.82rem", color: "#92400e", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
+                    <strong>{row.detectedDocTypeLabel}</strong>
+                    <span style={{ color: "var(--muted)" }}>{infoDe(row.clientFileId)?.fileName}</span>
+                    <span>— {motivo}</span>
+                    {motivo.startsWith("Falta la fecha") && (
+                      <button
+                        type="button"
+                        onClick={() => updateRow(row.rowId, { sinVencimiento: true })}
+                        style={{ background: "#92400e", color: "white", border: "none", borderRadius: 6, padding: "2px 10px", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Guardar sin vencimiento
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {readyRows.length > 0 && (
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
