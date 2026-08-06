@@ -1,4 +1,5 @@
 import { openaiChatCompletion } from "./openai";
+import { extraerTextoPdf, tieneTextoUtil } from "./pdf-text";
 
 /** Tipo del catálogo, tal como lo espera el extractor. */
 export type TipoParaExtraccion = {
@@ -45,12 +46,15 @@ Reglas:
 - Elige el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
 - CRÍTICO — NO CONFUNDAS EMISIÓN CON VENCIMIENTO. Es el error más grave posible: pone como "vencido" un documento que está vigente.
   · Van en issueDate (fecha de emisión/realización): "realizado con fecha", "de fecha", "efectuado el", "emitido el", "Santiago, a <fecha>", "fecha de examen", "fecha de la muestra", "fecha de aprobación", "fecha del curso", la fecha junto a una firma.
-  · Van en expiryDate SOLO si el texto lo dice explícitamente: "vence el", "válido hasta", "vigente hasta", "fecha de vencimiento", "expira el", "caduca el", "válido por ... hasta".
+  · Van en expiryDate SOLO si el texto lo dice explícitamente: "vence el", "válido hasta", "vigente hasta", "fecha de vencimiento", "FECHA EXPIRACIÓN", "expira el", "caduca el", "válido por ... hasta".
   · Si el documento tiene UNA SOLA fecha y no dice explícitamente que sea de vencimiento, va en issueDate y expiryDate queda null. NO asumas que la única fecha es el vencimiento.
   · Ejemplo: "El examen de detección de consumo de drogas realizado con fecha 15/07/2026..." → issueDate "2026-07-15", expiryDate null. Esa fecha es cuándo se hizo el examen, NO cuándo caduca.
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
 - Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
-- Los certificados de capacitación y los exámenes casi siempre traen solo la fecha de realización: esa va en issueDate y expiryDate queda null.
+- Los certificados de capacitación y los exámenes suelen traer solo la fecha de realización: esa va en issueDate y expiryDate queda null.
+  Pero algunos SÍ traen las dos, y hay que separarlas bien. Ejemplo real de un diploma de Mutual:
+  "REALIZADO: 16 DE JULIO DE 2026 - DURACIÓN: 6 HORAS ... FECHA EXPIRACIÓN: 16/07/2029"
+  → issueDate "2026-07-16", expiryDate "2029-07-16".
 - workerName: NORMALIZADO, no copiado literal. Tres cosas:
   1. ORDEN NATURAL. Los documentos chilenos suelen escribir "APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES" o usan campos separados. Devuélvelo siempre como se llama la persona: nombres primero, después apellidos.
      · "SOTO OYARZUN JESUS IGNACIO"  → "Jesús Ignacio Soto Oyarzún"
@@ -108,10 +112,35 @@ export async function extractDocumentInfo(input: {
   const esPdf = input.mimeType === MIME_PDF;
   const dataUrl = `data:${input.mimeType};base64,${input.fileBase64}`;
 
+  // La capa de texto del PDF se extrae acá y se manda explícita. Depender
+  // solo del procesamiento del adjunto resultó poco fiable: certificados
+  // con todo su contenido volvían como "no se reconoció ningún documento".
+  // Los escaneos puros no tienen texto y siguen resolviéndose por visión.
+  let textoPdf = "";
+  if (esPdf) {
+    try {
+      const extraido = extraerTextoPdf(Buffer.from(input.fileBase64, "base64"));
+      if (tieneTextoUtil(extraido)) textoPdf = extraido;
+    } catch {
+      /* si falla la extracción, queda el adjunto */
+    }
+  }
+
   const contenido = esPdf
     ? [
         { type: "file" as const, file: { filename: input.fileName, file_data: dataUrl } },
-        { type: "text" as const, text: `Analiza este PDF (${input.fileName}). Puede tener varios documentos adentro: identifícalos todos y devuelve el JSON.` },
+        {
+          type: "text" as const,
+          text: textoPdf
+            ? `Analiza este PDF (${input.fileName}). Puede tener varios documentos adentro: identifícalos todos.\n\n` +
+              `Este es el texto extraído del PDF. Es fiel al original — úsalo como fuente principal, ` +
+              `y las imágenes de las páginas solo para lo que el texto no cubra (sellos, firmas, tablas).\n` +
+              `Puede venir fragmentado por cómo el PDF guarda el texto; reconstruye las frases.\n\n` +
+              `--- TEXTO DEL PDF ---\n${textoPdf}\n--- FIN DEL TEXTO ---\n\nDevuelve el JSON.`
+            : `Analiza este PDF (${input.fileName}). No tiene capa de texto (es un escaneo), así que ` +
+              `léelo de las imágenes de las páginas. Puede tener varios documentos adentro: ` +
+              `identifícalos todos y devuelve el JSON.`,
+        },
       ]
     : [
         { type: "text" as const, text: `Analiza este documento (${input.fileName}) y devuelve el JSON.` },
