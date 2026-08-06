@@ -196,7 +196,11 @@ export async function getRequisitosDeTrabajador(
   if (!t.proyectoId || !t.cargoId) return null;
 
   const filas = await db.requisitoDocumento.findMany({
-    where: { proyectoId: t.proyectoId, cargoId: t.cargoId },
+    // Un tipo desactivado en Administración deja de exigirse. La fila del
+    // requisito se conserva —reactivar el tipo lo vuelve a pedir— pero no
+    // cuenta: antes se sumaba como obligatorio faltante y, como el catálogo
+    // ya no lo devolvía, aparecía en la ficha con el nombre «Documento».
+    where: { proyectoId: t.proyectoId, cargoId: t.cargoId, tipo: { activo: true } },
     select: { tipoId: true, nivel: true, condicion: true },
   });
 
@@ -223,6 +227,7 @@ export async function getRequisitosPorTrabajador(
 
   const filas = pares.size === 0 ? [] : await db.requisitoDocumento.findMany({
     where: {
+      tipo: { activo: true },
       OR: [...pares].map(p => {
         const [proyectoId, cargoId] = p.split("|");
         return { proyectoId, cargoId };
@@ -314,7 +319,7 @@ export function resumirExigencia(
     const est = estado?.porTipo.get(req.tipoId)?.estado ?? "sin_fecha";
     const doc: DocFaltante = {
       tipoId: req.tipoId,
-      nombre: nombrePorTipo.get(req.tipoId) ?? "Documento",
+      nombre: nombrePorTipo.get(req.tipoId) ?? "Tipo de documento no disponible",
       estado: est,
     };
 
@@ -342,7 +347,7 @@ export function resumirExigencia(
     if (estado?.porTipo.get(req.tipoId)?.estado === "por_vencer") {
       porVencer.push({
         tipoId: req.tipoId,
-        nombre: nombrePorTipo.get(req.tipoId) ?? "Documento",
+        nombre: nombrePorTipo.get(req.tipoId) ?? "Tipo de documento no disponible",
         estado: "por_vencer",
       });
     }
