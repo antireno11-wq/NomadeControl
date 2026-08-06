@@ -101,11 +101,15 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "capacitacion_ruv",         nombre: "Capacitación RUV",               categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "RUV",          legacyField: null, orden: 215 },
   { codigo: "capacitacion_mmc",         nombre: "Capacitación manejo manual de cargas", categoria: "formacion",   vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "MMC",          legacyField: null, orden: 216 },
   { codigo: "capacitacion_sustancias",  nombre: "Capacitación sustancias peligrosas", categoria: "formacion",     vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Sust. pelig.", legacyField: null, orden: 217 },
+  { codigo: "capacitacion_tmert",       nombre: "Capacitación TMERT (trastornos musculoesqueléticos)", categoria: "formacion", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "TMERT",  legacyField: null, orden: 216.5 },
+  { codigo: "capacitacion_radiacion_uv", nombre: "Capacitación en radiación UV",   categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Radiación UV", legacyField: null, orden: 216.7 },
+  { codigo: "prevencion_riesgos",       nombre: "Curso de orientación en prevención de riesgos", categoria: "formacion", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Prev. riesgos", legacyField: null, orden: 216.8 },
   { codigo: "entrenamientos_especificos", nombre: "Cursos de entrenamientos específicos", categoria: "formacion",  vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entren. esp.", legacyField: null, orden: 218 },
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },
   { codigo: "ficha_ingreso",            nombre: "Ficha de ingreso",               categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "F. ingreso",   legacyField: null, noVence: true, orden: 230 },
+  { codigo: "hoja_vida_conductor",      nombre: "Hoja de vida del conductor",     categoria: "identidad",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "H. vida cond.", legacyField: null, noVence: true, orden: 128 },
   { codigo: "cv",                       nombre: "Currículum actualizado",         categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "CV",           legacyField: null, noVence: true, orden: 232 },
   { codigo: "finiquito",                nombre: "Finiquito del último trabajo",   categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Finiquito",    legacyField: null, noVence: true, orden: 240 },
   // El mandante pide aparte el finiquito de un empleo anterior en su propia
@@ -550,6 +554,57 @@ export function agruparPorPersona(
  * Cuando el PDF viene en blanco o ilegible, el nombre es la única
  * información que queda.
  */
+/**
+ * ¿Estos dos archivos son, muy probablemente, el mismo documento?
+ *
+ * Sin esta comprobación, agrupar por (persona, tipo) juntaba documentos
+ * genuinamente distintos que habían caído en el mismo tipo: el curso de
+ * primeros auxilios con el de manejo defensivo, la hoja de vida del
+ * conductor con la licencia. Que dos papeles compartan tipo no los vuelve
+ * el mismo papel — solo lo son cuando además se llaman casi igual, que es
+ * lo que pasa con "CEDULA 1RA CARA" y "CEDULA 2DA CARA", o con un archivo
+ * subido dos veces como "acta (1).pdf".
+ */
+export function mismoDocumentoProbable(a: string, b: string, nombrePersona?: string | null): boolean {
+  const tokens = (f: string) => {
+    let limpio = f
+      .replace(/\.[a-z0-9]+$/i, "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      // Marcas de cara, hoja o copia: son justamente lo que distingue las
+      // partes de un mismo documento, así que se descartan.
+      .replace(/\b(\d+\s*(ra|da|ta|va|ma)?\s*(cara|hoja|pagina|pag|parte))\b/g, " ")
+      .replace(/\b(cara|hoja|pagina|pag|parte)\s*\d+\b/g, " ")
+      .replace(/\b(anverso|reverso|frontal|trasera|delantera|copia|scan|escaneo)\b/g, " ")
+      .replace(/\(\s*\d+\s*\)/g, " ")
+      .replace(/[^a-z0-9\s]/g, " ");
+
+    // El nombre de la persona aparece en casi todos los archivos de su
+    // carpeta y no aporta nada para distinguirlos.
+    for (const t of tokensNombre(nombrePersona ?? "")) {
+      limpio = limpio.replace(new RegExp(`\\b${t}\\b`, "g"), " ");
+    }
+
+    return new Set(
+      limpio.split(/\s+/)
+        // Los prefijos de numeración ("01", "13c", "2.1") ordenan la carpeta,
+        // no describen el documento.
+        .filter(t => t.length > 2 && !/^\d+[a-z]?$/.test(t)),
+    );
+  };
+
+  const ta = tokens(a);
+  const tb = tokens(b);
+  if (ta.size === 0 || tb.size === 0) return ta.size === tb.size; // dos nombres puramente numéricos
+
+  const comunes = [...ta].filter(t => tb.has(t)).length;
+  const union = new Set([...ta, ...tb]).size;
+  // Jaccard alto, o uno contenido entero en el otro (ej. "cedula" vs
+  // "cedula identidad").
+  return comunes / union >= 0.6 || comunes === Math.min(ta.size, tb.size);
+}
+
 export function adivinarTipoDesdeNombre(
   fileName: string,
   tipos: Array<{ id: string; codigo: string; nombre: string }>,
@@ -567,6 +622,10 @@ export function adivinarTipoDesdeNombre(
     [/suspel|sustancias?\s*peligrosas?/,        "capacitacion_sustancias"],
     [/manejo\s*manual|\bmmc\b/,                "capacitacion_mmc"],
     [/\bruv\b/,                                 "capacitacion_ruv"],
+    [/\btmert\b|musculoesquelet/,              "capacitacion_tmert"],
+    [/radiacion\s*(ultravioleta|uv)|\buv\b/,   "capacitacion_radiacion_uv"],
+    [/orientacion.*riesgo|prevencion\s*de\s*riesgos/, "prevencion_riesgos"],
+    [/hoja\s*de\s*vida\s*d?e?l?\s*conductor/,  "hoja_vida_conductor"],
     [/primeros\s*auxilios.*basico|basico.*primeros\s*auxilios/, "primeros_auxilios_basico"],
     [/primeros\s*auxilios/,                     "curso_primeros_auxilios"],
     [/extintor/,                                "curso_extintores"],

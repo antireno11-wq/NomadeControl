@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable } from "@/lib/acreditacion";
+import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -224,18 +224,38 @@ function normalizarPropuesta(
     personasFinales.forEach((p, i) => p.indices.forEach(idx => indicePersona.set(idx, p.clave || `p${i}`)));
   }
 
-  const conteo = new Map<string, number>();
+  const cubos = new Map<string, number[]>();
   results.forEach((r, i) => {
     if (!r.detectedTipoId) return;
     const clave = `${indicePersona.get(i) ?? "sin-persona"}|${r.detectedTipoId}`;
-    conteo.set(clave, (conteo.get(clave) ?? 0) + 1);
+    const lista = cubos.get(clave);
+    if (lista) lista.push(i); else cubos.set(clave, [i]);
   });
 
-  results.forEach((r, i) => {
-    if (!r.detectedTipoId) return;
-    const clave = `${indicePersona.get(i) ?? "sin-persona"}|${r.detectedTipoId}`;
-    r.grupoId = (conteo.get(clave) ?? 0) > 1 ? clave : null;
-  });
+  for (const [clave, indices] of cubos) {
+    if (indices.length < 2) continue;
+
+    // Compartir tipo NO alcanza para ser el mismo documento. El catálogo
+    // nunca cubre todo lo que existe, así que el modelo mete un curso de
+    // TMERT en "primeros auxilios" y una hoja de vida del conductor en
+    // "licencia de conducir". Dentro de cada tipo se subagrupa por parecido
+    // del nombre del archivo, que es lo que sí distingue las dos caras de
+    // una cédula de dos cursos distintos.
+    const subgrupos: number[][] = [];
+    for (const i of indices) {
+      const nombre = results[i].workerName;
+      const destino = subgrupos.find(sub =>
+        sub.some(j => mismoDocumentoProbable(results[j].fileName, results[i].fileName, nombre)),
+      );
+      if (destino) destino.push(i);
+      else subgrupos.push([i]);
+    }
+
+    subgrupos.forEach((sub, k) => {
+      if (sub.length < 2) return;
+      for (const i of sub) results[i].grupoId = `${clave}#${k}`;
+    });
+  }
 
   return results;
 }
