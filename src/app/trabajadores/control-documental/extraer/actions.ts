@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre } from "@/lib/acreditacion";
+import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -18,6 +18,13 @@ export type ExtractedRow = ExtractedDoc & {
   fileName: string;
   matches: Array<{ workerId: string; workerName: string; score: number; reason: string }>;
   error?: string;
+  /** Filas que apuntan al mismo (persona, tipo): las dos caras de la cédula,
+   *  las hojas sueltas de una ficha de ingreso, o una carga repetida. */
+  grupoId?: string | null;
+  /** El vencimiento se dedujo de la vigencia del tipo, no venía impreso. */
+  expiryCalculada?: boolean;
+  /** El titular se heredó del resto del lote porque la hoja no lo traía. */
+  titularHeredado?: boolean;
 };
 
 /**
@@ -130,6 +137,78 @@ export async function extractDocumentsAction(
     }
   }
 
+  return normalizarPropuesta(results, tipos);
+}
+
+/**
+ * Arregla, sobre la propuesta completa, tres cosas que no se pueden resolver
+ * mirando un archivo a la vez.
+ */
+function normalizarPropuesta(
+  results: ExtractedRow[],
+  tipos: Array<{ id: string; codigo: string; nombre: string; vigenciaDias: number | null; noVence: boolean; esFoto: boolean }>,
+): ExtractedRow[] {
+  const tipoPorId = new Map(tipos.map(t => [t.id, t]));
+
+  // 1. Titular heredado.
+  //    Una foto carnet no tiene nombre, y la hoja 2 de la ficha de ingreso
+  //    solo trae el contacto de emergencia. Si todo el lote converge en UNA
+  //    sola persona, esas hojas son de ella. Con dos o más personas en el
+  //    lote no se hereda nada: asignar mal es peor que dejar sin asignar.
+  const personas = agruparPorPersona(
+    results.map(r => ({ nombre: r.workerName, rut: r.workerRut })),
+  );
+  if (personas.length === 1) {
+    const p = personas[0];
+    const nombre = p.variantes.length > 0 ? nombreMasProbable(p.variantes) : p.nombre;
+    for (const r of results) {
+      if (r.workerName) continue;
+      r.workerName = nombre || null;
+      r.workerRut = r.workerRut ?? p.rut;
+      r.titularHeredado = Boolean(nombre);
+      if (nombre) {
+        r.reasoning = `${r.reasoning} · Titular tomado del resto de los archivos del lote.`.trim();
+      }
+    }
+  }
+
+  // 2. Vencimiento deducido de la vigencia del tipo.
+  //    El certificado de antecedentes no trae vencimiento impreso: vale 60
+  //    días desde la emisión. Se muestra ya calculado en la propuesta, no
+  //    recién al guardar, para que se pueda corregir antes.
+  for (const r of results) {
+    if (r.expiryDate || !r.issueDate || !r.detectedTipoId) continue;
+    const tipo = tipoPorId.get(r.detectedTipoId);
+    if (!tipo || tipo.noVence || tipo.esFoto || !tipo.vigenciaDias) continue;
+
+    const emision = new Date(`${r.issueDate}T00:00:00`);
+    if (Number.isNaN(emision.getTime())) continue;
+    emision.setDate(emision.getDate() + tipo.vigenciaDias);
+    r.expiryDate = emision.toISOString().slice(0, 10);
+    r.expiryCalculada = true;
+    r.reasoning = `${r.reasoning} · Vencimiento calculado: ${tipo.vigenciaDias} días desde la emisión.`.trim();
+  }
+
+  // 3. Agrupación por (persona, tipo).
+  //    La cédula subida como dos fotos son dos filas del mismo documento, no
+  //    dos documentos. Se marcan con un grupo y la UI deja decidir qué hacer:
+  //    combinarlas en uno o dejarlas separadas.
+  const indicePersona = new Map<number, string>();
+  personas.forEach((p, i) => p.indices.forEach(idx => indicePersona.set(idx, p.clave || `p${i}`)));
+
+  const conteo = new Map<string, number>();
+  results.forEach((r, i) => {
+    if (!r.detectedTipoId) return;
+    const clave = `${indicePersona.get(i) ?? "sin-persona"}|${r.detectedTipoId}`;
+    conteo.set(clave, (conteo.get(clave) ?? 0) + 1);
+  });
+
+  results.forEach((r, i) => {
+    if (!r.detectedTipoId) return;
+    const clave = `${indicePersona.get(i) ?? "sin-persona"}|${r.detectedTipoId}`;
+    r.grupoId = (conteo.get(clave) ?? 0) > 1 ? clave : null;
+  });
+
   return results;
 }
 
@@ -152,6 +231,10 @@ export type FilaAplicar = {
   vencimientoCalculado?: boolean;
   /** Archivo del que salió, para poder verlo después. */
   archivo?: { clientFileId: string; fileName: string; mimeType: string; base64: string } | null;
+  /** Caras u hojas adicionales del MISMO documento: el reverso de la cédula,
+   *  las páginas sueltas de una ficha de ingreso. Se guardan todas y quedan
+   *  colgando de un solo documento en vez de crear uno por hoja. */
+  archivosExtra?: Array<{ clientFileId: string; fileName: string; mimeType: string; base64: string }>;
 };
 
 export async function applyExtractionsAction(
@@ -177,8 +260,8 @@ export async function applyExtractionsAction(
   // Un PDF con 12 documentos adentro produce 12 filas, pero el binario se
   // guarda una vez y todas apuntan a él.
   const archivoIdPorClientFileId = new Map<string, string>();
-  for (const row of rows) {
-    const a = row.archivo;
+  const todosLosArchivos = rows.flatMap(r => [r.archivo, ...(r.archivosExtra ?? [])]);
+  for (const a of todosLosArchivos) {
     if (!a || archivoIdPorClientFileId.has(a.clientFileId)) continue;
     try {
       const creado = await db.archivoAcreditacion.create({
@@ -315,7 +398,8 @@ export async function applyExtractionsAction(
         continue;
       }
 
-      await db.documentoAcreditacion.create({
+      const documentoCreado = await db.documentoAcreditacion.create({
+        select: { id: true },
         data: {
           staffMemberId: workerId,
           tipoDocumentoId: row.tipoDocumentoId,
@@ -333,6 +417,21 @@ export async function applyExtractionsAction(
           archivoId,
         },
       });
+
+      // Caras u hojas adicionales del mismo documento.
+      const extras = (row.archivosExtra ?? [])
+        .map(a => archivoIdPorClientFileId.get(a.clientFileId))
+        .filter((id): id is string => Boolean(id) && id !== archivoId);
+      if (extras.length > 0) {
+        await db.archivoDeDocumento.createMany({
+          data: extras.map((id, orden) => ({
+            documentoId: documentoCreado.id,
+            archivoId: id,
+            orden: orden + 1,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
       // Espejo a la columna plana para que la ficha muestre lo mismo
       if (tipo.legacyField && fechaVencimiento) {

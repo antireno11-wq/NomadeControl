@@ -70,7 +70,19 @@ Reglas:
   - "medium" = alguna ambigüedad: borroso, formato raro, o dudas sobre si una fecha es emisión o vencimiento
   - "low" = imagen mala, campos no visibles, dudas sobre el tipo, o el nombre se lee dudoso
 - reasoning: 1-2 frases sobre en qué te basaste.
-- Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devuélvelo UNA sola vez.
+- UN DOCUMENTO PUEDE OCUPAR VARIAS HOJAS O VARIAS CARAS. Devuélvelo UNA sola vez, nunca uno por hoja.
+  · Cédula de identidad: la cara delantera (foto, nombres, RUN) y la trasera (huella, número de documento, código de barras) son EL MISMO documento. Una sola entrada.
+  · Licencia de conducir: igual, anverso y reverso son un solo documento.
+  · Ficha de ingreso, contratos, finiquitos, exámenes: todas sus hojas son un solo documento. Que la hoja 2 tenga otro encabezado no la convierte en otro documento.
+  · Si el archivo trae el mismo documento repetido (dos copias de la cédula), devuélvelo UNA sola vez.
+  · Solo devuelve entradas separadas cuando son documentos DISTINTOS de verdad: un contrato Y una cédula Y un examen.
+- CRÍTICO — DE QUIÉN ES EL DOCUMENTO. workerName es SIEMPRE el titular del documento, nunca otra persona nombrada adentro. Este es el segundo error más grave: le carga los documentos a la persona equivocada.
+  · Ficha de ingreso: el titular está en "Nombres" + "Apellidos" arriba de todo. La sección "EN CASO DE EMERGENCIA AVISAR A" nombra a un familiar — ESE NO ES EL TRABAJADOR. Si la hoja que estás leyendo SOLO tiene el contacto de emergencia y no el titular, devuelve workerName null; no uses el nombre del contacto.
+  · Finiquito: el titular es el "Ex Trabajador(a)". NO el empleador, ni su representante legal, ni el notario, ni quien firma como apoderado.
+  · Contrato: el titular es el trabajador, no el representante de la empresa.
+  · Certificados y diplomas: el titular es a quien se le extiende, no el relator ni quien firma.
+  · Ante la duda entre dos nombres, devuelve el que aparezca junto al RUT del titular, y baja la confianza.
+  · Si en la hoja no aparece ningún nombre de titular, devuelve null. Es preferible que quede sin asignar a que quede asignado a la persona equivocada.
 - EL NOMBRE DEL ARCHIVO ES UNA PISTA VÁLIDA. Las carpetas de acreditación se nombran por su contenido: "Curso Manipulación SUSPEL.pdf", "04 Examen Altura Geografica - Juan Perez.pdf", "3.- IRL MANTENCION.pdf". Úsalo para clasificar el tipo y, si trae el nombre de la persona, para workerName.
 - NUNCA devuelvas una lista vacía si recibiste un archivo. Algunos documentos vienen como plantillas sin rellenar (diplomas con los campos en blanco) o son escaneos ilegibles: en esos casos igual devuelve UNA entrada con lo que puedas deducir del nombre del archivo, el resto en null y confidence "low", explicando en reasoning qué pasó ("el diploma está en blanco", "el escaneo es ilegible"). Perder el archivo en silencio es peor que devolverlo incompleto para que un humano lo complete.
 - Solo devuelve {"documentos": []} si literalmente no recibiste ningún archivo.

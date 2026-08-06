@@ -466,6 +466,17 @@ export default async function PerfilTrabajadorPage({
                               📎 Ver documento
                             </a>
                           )}
+                          {doc.archivosExtra?.map((archivoId, i) => (
+                            <a
+                              key={archivoId}
+                              href={`/api/archivo/${archivoId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: style.color, fontWeight: 700, textDecoration: "underline" }}
+                            >
+                              📎 Hoja {i + 2}
+                            </a>
+                          ))}
                         </div>
                       )}
                     </div>

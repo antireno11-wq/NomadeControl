@@ -414,8 +414,9 @@ model ArchivoAcreditacion {
   subidoPorNombre  String?
   createdAt        DateTime @default(now())
 
-  documentos DocumentoAcreditacion[]
-  fotoDe     StaffMember[]
+  documentos         DocumentoAcreditacion[]
+  fotoDe             StaffMember[]
+  ArchivoDeDocumento ArchivoDeDocumento[]
 
   @@index([hash])
 }
@@ -444,6 +445,10 @@ model DocumentoAcreditacion {
   /// PDF comparten la misma fila de ArchivoAcreditacion.
   archivoId        String?
   archivo          ArchivoAcreditacion? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
+  /// Archivos adicionales del MISMO documento: la segunda cara de la cédula,
+  /// las páginas de una ficha de ingreso escaneadas de a una. Se agrupan en
+  /// un solo documento en vez de crear uno por hoja.
+  archivosExtra    ArchivoDeDocumento[]
   /// Legacy: binario suelto de la migración. Los nuevos usan `archivo`.
   contenido        Bytes?
   /// Ruta en R2/S3 una vez migrado.
@@ -979,4 +984,23 @@ model DocumentoHSEC {
 
   @@index([campId, fechaVencimiento])
   @@index([tipo])
+}
+
+/// Hoja o cara adicional de un documento ya existente.
+///
+/// Existe porque una cédula llega como dos fotos y una ficha de ingreso como
+/// tres hojas sueltas: son un documento, no tres. El archivo principal sigue
+/// en `DocumentoAcreditacion.archivoId`; acá van los demás.
+model ArchivoDeDocumento {
+  id          String                @id @default(cuid())
+  documentoId String
+  documento   DocumentoAcreditacion @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  archivoId   String
+  archivo     ArchivoAcreditacion   @relation(fields: [archivoId], references: [id], onDelete: Cascade)
+  /// Orden de presentación: 1 = segunda cara / segunda hoja.
+  orden       Int                   @default(1)
+  etiqueta    String?
+  createdAt   DateTime              @default(now())
+
+  @@unique([documentoId, archivoId])
 }

@@ -61,7 +61,7 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "acreditacion",           nombre: "Acreditación",                     categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: true,  etiquetaCorta: "Acredit.",    legacyField: "accreditationDueDate",    orden: 90 },
 
   // ── Identidad ────────────────────────────────────────────────────────
-  { codigo: "certificado_antecedentes", nombre: "Certificado de antecedentes",    categoria: "identidad",         vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Antecedentes", legacyField: null, orden: 110 },
+  { codigo: "certificado_antecedentes", nombre: "Certificado de antecedentes",    categoria: "identidad",         vigenciaDias: 60,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Antecedentes", legacyField: null, orden: 110 },
   { codigo: "certificado_residencia",   nombre: "Certificado de residencia",      categoria: "identidad",         vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Residencia",   legacyField: null, orden: 120 },
   { codigo: "registro_discapacidad",    nombre: "Certificado Registro Nacional de la Discapacidad", categoria: "identidad", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "R. discapacidad", legacyField: null, noVence: true, orden: 125 },
 
@@ -186,6 +186,17 @@ export const CODIGO_MATRIZ_A_TIPO: Record<string, string> = {
  * Renombres intencionales del catálogo. Se aplican solo si el tipo todavía
  * tiene el nombre viejo, para no pisar ediciones hechas desde Administración.
  */
+/**
+ * Vigencias que se corrigen en instalaciones existentes. Igual que los
+ * renombres: solo se aplican si el tipo conserva el valor viejo, para no
+ * pisar un ajuste hecho a mano desde Administración.
+ */
+export const AJUSTES_VIGENCIA: { codigo: string; desde: number | null; vigenciaDias: number }[] = [
+  // El certificado de antecedentes no trae vencimiento impreso; el mandante
+  // lo acepta 60 días desde la emisión.
+  { codigo: "certificado_antecedentes", desde: 30, vigenciaDias: 60 },
+];
+
 export const RENOMBRES_CATALOGO: { codigo: string; desde: string; nombre: string; etiquetaCorta: string }[] = [
   // Dejó de ser el cajón de sastre de inducciones: ahora cada una es su tipo.
   { codigo: "odi", desde: "ODI / IRL / Inducción", nombre: "ODI — Derecho a saber", etiquetaCorta: "ODI" },

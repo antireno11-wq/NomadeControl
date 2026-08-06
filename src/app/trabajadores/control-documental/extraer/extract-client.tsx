@@ -37,7 +37,17 @@ type EditableRow = {
   reasoning: string;
   error?: string;
   applied?: boolean;
+  /** Filas del mismo (persona, tipo): las dos caras de la cédula, las hojas
+   *  sueltas de una ficha, o una carga repetida. */
+  grupoId?: string | null;
+  /** El vencimiento se dedujo de la vigencia del tipo, no venía impreso. */
+  expiryCalculada?: boolean;
+  /** El titular se heredó del resto del lote. */
+  titularHeredado?: boolean;
 };
+
+/** Qué hacer con un grupo de filas que apuntan al mismo documento. */
+type AccionGrupo = "combinar" | "separar";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -80,6 +90,8 @@ const MAX_FILE_MB = 18;
 
 /** Valor especial del select: crear un trabajador con los datos detectados. */
 const CREAR_NUEVO = "__crear__";
+/** Prefijo de las opciones "persona que se crea con esta misma carga". */
+const NUEVO_PREFIX = "__nuevo__:";
 
 const CONFIDENCE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   high:   { bg: "#dcfce7", color: "#166534", label: "✓ Alta" },
@@ -103,6 +115,8 @@ export function ExtractClient({
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [applyResult, setApplyResult] = useState<{ applied: number; creados: number; errors: number } | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Por defecto se combinan: dos caras de una cédula son un documento, no dos.
+  const [accionGrupo, setAccionGrupo] = useState<Record<string, AccionGrupo>>({});
 
   const infoDe = (clientFileId: string) => archivos.find(a => a.clientFileId === clientFileId);
   const tipoDe = (tipoId: string | null) => (tipoId ? docTypes.find(t => t.id === tipoId) ?? null : null);
@@ -203,6 +217,9 @@ export function ExtractClient({
               confidence: res.confidence,
               reasoning: res.reasoning,
               error: res.error,
+              grupoId: res.grupoId ?? null,
+              expiryCalculada: res.expiryCalculada,
+              titularHeredado: res.titularHeredado,
             };
           }),
         ]);
@@ -217,6 +234,26 @@ export function ExtractClient({
     e.preventDefault();
     setDragging(false);
     if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+  }
+
+  /**
+   * Traduce lo elegido en el select. Las opciones `__nuevo__:Nombre` son
+   * personas que todavía no existen en la base pero que este lote va a
+   * crear: se resuelven a CREAR_NUEVO con ese nombre, así todos sus
+   * documentos terminan en una sola ficha.
+   */
+  function elegirTrabajador(rowId: string, valor: string) {
+    if (valor.startsWith(NUEVO_PREFIX)) {
+      const nombre = valor.slice(NUEVO_PREFIX.length);
+      const persona = personasNuevas.find(p => p.nombre === nombre);
+      updateRow(rowId, {
+        workerId: CREAR_NUEVO,
+        nuevoNombre: nombre,
+        nuevoRut: persona?.rut ?? "",
+      });
+      return;
+    }
+    updateRow(rowId, { workerId: valor || null });
   }
 
   function updateRow(rowId: string, changes: Partial<EditableRow>) {
@@ -236,11 +273,50 @@ export function ExtractClient({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  // ── Grupos: filas que apuntan al mismo documento ──────────────────
+  const activas = rows.filter(r => !r.procesando && !r.applied);
+  const accionDe = (grupoId: string): AccionGrupo => accionGrupo[grupoId] ?? "combinar";
+  /** La primera fila del grupo es la que se guarda; el resto son sus hojas. */
+  const esPrincipal = (r: EditableRow) =>
+    !r.grupoId || activas.find(x => x.grupoId === r.grupoId)?.rowId === r.rowId;
+  const esHoja = (r: EditableRow) =>
+    Boolean(r.grupoId) && accionDe(r.grupoId!) === "combinar" && !esPrincipal(r);
+
+  const gruposDuplicados = [...new Set(activas.map(r => r.grupoId).filter((g): g is string => Boolean(g)))]
+    .map(grupoId => ({
+      grupoId,
+      filas: activas.filter(r => r.grupoId === grupoId),
+      accion: accionDe(grupoId),
+    }));
+
+  /**
+   * Personas que este lote va a crear. Se ofrecen en el select de cada fila
+   * para poder mandarle un documento a alguien que todavía no existe en la
+   * base — antes había que crearlo primero y volver a subir.
+   */
+  const personasNuevas = (() => {
+    const vistas = new Map<string, { nombre: string; rut: string }>();
+    for (const r of activas) {
+      if (r.workerId !== CREAR_NUEVO) continue;
+      const nombre = r.nuevoNombre.trim();
+      if (!nombre) continue;
+      const clave = nombre.toLowerCase();
+      const previo = vistas.get(clave);
+      if (!previo || (!previo.rut && r.nuevoRut.trim())) {
+        vistas.set(clave, { nombre, rut: r.nuevoRut.trim() });
+      }
+    }
+    return [...vistas.values()];
+  })();
+
   const readyRows = rows.filter(r =>
     !r.procesando && !r.applied && !r.error &&
     r.detectedTipoId &&
     (necesitaFecha(r.detectedTipoId) ? Boolean(r.expiryDate) : true) &&
-    (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId))
+    (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId)) &&
+    // Las hojas de un grupo combinado no se guardan aparte: viajan como
+    // archivos adicionales de su fila principal.
+    !esHoja(r)
   );
 
   const grupos = agruparPorPersona(
@@ -290,11 +366,18 @@ export function ExtractClient({
           confidence: r.confidence,
           expiryDate: necesitaFecha(r.detectedTipoId) ? r.expiryDate : null,
           issueDate: r.issueDate,
-          vencimientoCalculado: false,
+          vencimientoCalculado: Boolean(r.expiryCalculada),
           archivo: (() => {
             const a = infoDe(r.clientFileId);
             return a ? { clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 } : null;
           })(),
+          archivosExtra: r.grupoId && accionDe(r.grupoId) === "combinar"
+            ? activas
+                .filter(x => x.grupoId === r.grupoId && x.rowId !== r.rowId)
+                .map(x => infoDe(x.clientFileId))
+                .filter((a): a is ArchivoInfo => Boolean(a))
+                .map(a => ({ clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 }))
+            : [],
         }))
       );
       const appliedIds = new Set(readyRows.map(r => r.rowId));
@@ -447,6 +530,53 @@ export function ExtractClient({
             </div>
           )}
 
+          {gruposDuplicados.length > 0 && (
+            <div style={{ border: "1px solid #93c5fd", background: "#eff6ff", borderRadius: 12, padding: "14px 18px", display: "grid", gap: 12 }}>
+              <div>
+                <strong style={{ color: "#1e40af" }}>
+                  {gruposDuplicados.length} documento{gruposDuplicados.length === 1 ? "" : "s"} aparece{gruposDuplicados.length === 1 ? "" : "n"} más de una vez
+                </strong>
+                <div style={{ color: "#1e40af", fontSize: "0.82rem", marginTop: 2 }}>
+                  Suele pasar cuando la cédula se sube por sus dos caras o la ficha de ingreso hoja
+                  por hoja. Por defecto se combinan en un solo documento y se guardan todas las
+                  imágenes; si de verdad son documentos distintos, sepáralos.
+                </div>
+              </div>
+              {gruposDuplicados.map(g => {
+                const principal = g.filas[0];
+                return (
+                  <div key={g.grupoId} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", borderTop: "1px solid #bfdbfe", paddingTop: 10 }}>
+                    <strong style={{ fontSize: "0.85rem", color: "#1e3a8a" }}>
+                      {principal.detectedDocTypeLabel}
+                    </strong>
+                    <span style={{ color: "#1e40af", fontSize: "0.78rem" }}>
+                      {principal.nuevoNombre.trim() || principal.workerName || "sin titular"} ·{" "}
+                      {g.filas.map(f => infoDe(f.clientFileId)?.fileName ?? "archivo").join(" + ")}
+                    </span>
+                    <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                      {([["combinar", "Combinar en uno"], ["separar", "Mantener separados"]] as const).map(([valor, etiqueta]) => (
+                        <button
+                          key={valor}
+                          type="button"
+                          onClick={() => setAccionGrupo(prev => ({ ...prev, [g.grupoId]: valor }))}
+                          style={{
+                            padding: "4px 12px", borderRadius: 6, fontSize: "0.75rem", fontWeight: 700,
+                            cursor: "pointer",
+                            border: g.accion === valor ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                            background: g.accion === valor ? "#2563eb" : "white",
+                            color: g.accion === valor ? "white" : "#475569",
+                          }}
+                        >
+                          {etiqueta}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
@@ -481,7 +611,11 @@ export function ExtractClient({
                     return (
                       <tr key={row.rowId} style={{
                         borderBottom: "1px solid #f1f5f9",
-                        background: row.applied ? "#f0fdf4" : row.error ? "#fef2f2" : undefined,
+                        background: row.applied ? "#f0fdf4" : row.error ? "#fef2f2" : esHoja(row) ? "#f8fafc" : undefined,
+                        // Las hojas de un documento combinado se ven atenuadas:
+                        // están, se guardan, pero no son una fila propia.
+                        opacity: esHoja(row) ? 0.6 : 1,
+                        borderLeft: row.grupoId ? "3px solid #60a5fa" : undefined,
                       }}>
                         <td style={{ padding: "8px 12px" }}>
                           {info && (
@@ -534,18 +668,35 @@ export function ExtractClient({
                           ) : (
                             <>
                               <select
-                                value={row.workerId ?? ""}
-                                onChange={e => updateRow(row.rowId, { workerId: e.target.value || null })}
+                                value={
+                                  row.workerId === CREAR_NUEVO && row.nuevoNombre.trim()
+                                    ? `${NUEVO_PREFIX}${row.nuevoNombre.trim()}`
+                                    : row.workerId ?? ""
+                                }
+                                onChange={e => elegirTrabajador(row.rowId, e.target.value)}
                                 disabled={row.applied}
                                 style={{ padding: "5px 8px", fontSize: "0.82rem", width: "100%", maxWidth: 250 }}
                               >
                                 <option value="">— Sin asignar —</option>
                                 <option value={CREAR_NUEVO}>➕ Crear trabajador nuevo</option>
-                                {workers.map(w => (
-                                  <option key={w.id} value={w.id}>
-                                    {w.fullName}{w.nationalId ? ` · ${w.nationalId}` : ""}
-                                  </option>
-                                ))}
+                                {/* Los trabajadores que este mismo lote va a crear:
+                                    sin esto había que guardarlos y volver a subir. */}
+                                {personasNuevas.length > 0 && (
+                                  <optgroup label="Se crean con esta carga">
+                                    {personasNuevas.map(p => (
+                                      <option key={`nuevo-${p.nombre}`} value={`${NUEVO_PREFIX}${p.nombre}`}>
+                                        {p.nombre}{p.rut ? ` · ${p.rut}` : ""} (nuevo)
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                <optgroup label="Trabajadores existentes">
+                                  {workers.map(w => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.fullName}{w.nationalId ? ` · ${w.nationalId}` : ""}
+                                    </option>
+                                  ))}
+                                </optgroup>
                               </select>
 
                               {row.workerId === CREAR_NUEVO && !row.applied && (
@@ -571,6 +722,16 @@ export function ExtractClient({
                               {row.workerName && row.workerId !== CREAR_NUEVO && (
                                 <div style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: 2 }}>
                                   Detectado: {row.workerName}{row.workerRut && ` (${row.workerRut})`}
+                                </div>
+                              )}
+                              {row.titularHeredado && (
+                                <div style={{ color: "#9a6300", fontSize: "0.7rem", marginTop: 2 }}>
+                                  El archivo no traía titular: se tomó del resto del lote. Verifícalo.
+                                </div>
+                              )}
+                              {esHoja(row) && (
+                                <div style={{ color: "#1e40af", fontSize: "0.7rem", marginTop: 2, fontWeight: 600 }}>
+                                  Se guarda como hoja adicional del mismo documento.
                                 </div>
                               )}
                             </>
@@ -640,6 +801,14 @@ export function ExtractClient({
                               {yaVencido && (
                                 <div style={{ fontSize: "0.68rem", color: "#dc2626", marginTop: 3, maxWidth: 150, lineHeight: 1.3 }}>
                                   ⚠️ Fecha pasada. ¿Es de emisión y no de vencimiento?
+                                </div>
+                              )}
+                              {row.expiryCalculada && !yaVencido && (
+                                // El documento no traía vencimiento impreso: sale de la
+                                // vigencia del tipo. Hay que poder distinguirlo de una
+                                // fecha leída si el mandante lo cuestiona.
+                                <div style={{ fontSize: "0.68rem", color: "#0369a1", marginTop: 3, maxWidth: 150, lineHeight: 1.3 }}>
+                                  Calculado desde la emisión, no venía impreso.
                                 </div>
                               )}
                             </>

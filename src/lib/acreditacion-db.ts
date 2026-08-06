@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import {
   calcularEstado,
   esEstadoOk,
+  AJUSTES_VIGENCIA,
   RENOMBRES_CATALOGO,
   seleccionarVigentes,
   TIPOS_DOCUMENTO_SEED,
@@ -26,6 +27,8 @@ export type TipoDocumentoRow = {
 export type DocumentoVigente = {
   id: string;
   archivoId: string | null;
+  /** Ids de las hojas o caras adicionales del mismo documento. */
+  archivosExtra: string[];
   fechaEmision: Date | null;
   fechaVencimiento: Date | null;
   sinVencimiento: boolean;
@@ -69,7 +72,7 @@ const SELECT_TIPO = {
  * `skipDuplicates` + `codigo` único la hacen segura ante concurrencia.
  */
 async function asegurarCatalogo(): Promise<void> {
-  const actuales = await db.tipoDocumento.findMany({ select: { codigo: true, nombre: true } });
+  const actuales = await db.tipoDocumento.findMany({ select: { codigo: true, nombre: true, vigenciaDias: true } });
   const codigos = new Set(actuales.map(t => t.codigo));
 
   // Renombres: solo si el tipo conserva el nombre viejo. Si alguien lo editó
@@ -80,6 +83,16 @@ async function asegurarCatalogo(): Promise<void> {
     await db.tipoDocumento.update({
       where: { codigo: r.codigo },
       data: { nombre: r.nombre, etiquetaCorta: r.etiquetaCorta },
+    });
+  }
+
+  const vigenciaActual = new Map(actuales.map(t => [t.codigo, t.vigenciaDias]));
+  for (const a of AJUSTES_VIGENCIA) {
+    if (!codigos.has(a.codigo)) continue;
+    if (vigenciaActual.get(a.codigo) !== a.desde) continue;
+    await db.tipoDocumento.update({
+      where: { codigo: a.codigo },
+      data: { vigenciaDias: a.vigenciaDias },
     });
   }
 
@@ -152,6 +165,9 @@ export async function getEstadoDocumental(
       vencimientoCalculado: true, anulado: true, origen: true,
       confianzaExtraccion: true, nota: true, createdAt: true,
       archivoUrl: true, archivoId: true,
+      // Caras u hojas adicionales: el reverso de la cédula, la hoja 2 de la
+      // ficha. Guardarlas y no mostrarlas sería perderlas igual.
+      archivosExtra: { select: { archivoId: true, orden: true }, orderBy: { orden: "asc" } },
       // No traemos `contenido` (Bytes) — pesa y no se usa aquí.
     },
   });
@@ -171,6 +187,7 @@ export async function getEstadoDocumental(
       documento: {
         id: doc.id,
         archivoId: doc.archivoId,
+        archivosExtra: doc.archivosExtra.map(a => a.archivoId),
         fechaEmision: doc.fechaEmision,
         fechaVencimiento: doc.fechaVencimiento,
         sinVencimiento: doc.sinVencimiento,
