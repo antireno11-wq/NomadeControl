@@ -190,11 +190,26 @@ function normalizarPropuesta(
   }
 
   // 3. Agrupación por (persona, tipo).
-  //    La cédula subida como dos fotos son dos filas del mismo documento, no
-  //    dos documentos. Se marcan con un grupo y la UI deja decidir qué hacer:
-  //    combinarlas en uno o dejarlas separadas.
+  //    La cédula subida como dos fotos —o como un JPG y un PDF— son dos filas
+  //    del mismo documento, no dos documentos. Se marcan con un grupo y la UI
+  //    deja decidir: combinarlas en uno o dejarlas separadas.
+  //
+  //    La agrupación se recalcula DESPUÉS de heredar el titular. Al hacerlo
+  //    antes, las hojas que llegaban sin nombre —el reverso de la cédula, la
+  //    hoja 3 de la ficha de ingreso— quedaban en "sin-persona" y no se
+  //    juntaban nunca con las hojas que sí lo traían.
   const indicePersona = new Map<number, string>();
-  personas.forEach((p, i) => p.indices.forEach(idx => indicePersona.set(idx, p.clave || `p${i}`)));
+  if (personas.length === 1) {
+    // Un solo titular en todo el lote: todo es de esa persona, incluso lo que
+    // sigue sin nombre después de la herencia.
+    const clave = personas[0].clave || "p0";
+    results.forEach((_, i) => indicePersona.set(i, clave));
+  } else {
+    const personasFinales = agruparPorPersona(
+      results.map(r => ({ nombre: r.workerName, rut: r.workerRut })),
+    );
+    personasFinales.forEach((p, i) => p.indices.forEach(idx => indicePersona.set(idx, p.clave || `p${i}`)));
+  }
 
   const conteo = new Map<string, number>();
   results.forEach((r, i) => {

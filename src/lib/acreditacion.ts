@@ -91,7 +91,7 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "curso_4x4",                nombre: "Curso 4x4 teórico-práctico",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "4x4",          legacyField: null, orden: 189 },
   { codigo: "conduccion_defensiva",     nombre: "Conducción a la defensiva",      categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Cond. def.",   legacyField: null, orden: 190 },
   { codigo: "certificacion_competencias", nombre: "Certificación de competencias", categoria: "formacion",        vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Competencias", legacyField: null, orden: 200 },
-  { codigo: "titulo_estudios",          nombre: "Título o certificado de estudios", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Título",       legacyField: null, orden: 210 },
+  { codigo: "titulo_estudios",          nombre: "Título o certificado de estudios", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Título",       legacyField: null, noVence: true, orden: 210 },
   // El Excel confirmó que 12 (16 hrs) y 12.1 (básico) NO son el mismo curso:
   // 10 trabajadores tienen uno aprobado y el otro pendiente.
   { codigo: "primeros_auxilios_basico", nombre: "Primeros auxilios (básico)",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux. bás.", legacyField: null, orden: 211 },
@@ -105,12 +105,12 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },
-  { codigo: "ficha_ingreso",            nombre: "Ficha de ingreso",               categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "F. ingreso",   legacyField: null, orden: 230 },
+  { codigo: "ficha_ingreso",            nombre: "Ficha de ingreso",               categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "F. ingreso",   legacyField: null, noVence: true, orden: 230 },
   { codigo: "cv",                       nombre: "Currículum actualizado",         categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "CV",           legacyField: null, noVence: true, orden: 232 },
-  { codigo: "finiquito",                nombre: "Finiquito del último trabajo",   categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Finiquito",    legacyField: null, orden: 240 },
+  { codigo: "finiquito",                nombre: "Finiquito del último trabajo",   categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Finiquito",    legacyField: null, noVence: true, orden: 240 },
   // El mandante pide aparte el finiquito de un empleo anterior en su propia
   // faena. Es distinto del último finiquito y el Excel los mantenía separados.
-  { codigo: "finiquito_mandante",       nombre: "Finiquito de trabajo anterior en el mandante", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Finiq. mandante", legacyField: null, orden: 241 },
+  { codigo: "finiquito_mandante",       nombre: "Finiquito de trabajo anterior en el mandante", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Finiq. mandante", legacyField: null, noVence: true, orden: 241 },
 
   // ── Constancias: no caducan, solo tienen que existir ──────────────────
   { codigo: "entrega_epp",              nombre: "Acta de entrega de EPP",         categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entrega EPP",  legacyField: null, noVence: true, orden: 250 },
@@ -191,6 +191,20 @@ export const CODIGO_MATRIZ_A_TIPO: Record<string, string> = {
  * renombres: solo se aplican si el tipo conserva el valor viejo, para no
  * pisar un ajuste hecho a mano desde Administración.
  */
+/**
+ * Tipos que pasan a "no vence" en instalaciones existentes.
+ *
+ * Son documentos que simplemente no traen fecha: la ficha de ingreso no tiene
+ * fecha de elaboración, un certificado de estudios y un finiquito no caducan.
+ * Exigirles un vencimiento impedía guardarlos.
+ */
+export const AJUSTES_NO_VENCE: string[] = [
+  "ficha_ingreso",
+  "titulo_estudios",
+  "finiquito",
+  "finiquito_mandante",
+];
+
 export const AJUSTES_VIGENCIA: { codigo: string; desde: number | null; vigenciaDias: number }[] = [
   // El certificado de antecedentes no trae vencimiento impreso; el mandante
   // lo acepta 60 días desde la emisión.

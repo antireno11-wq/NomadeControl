@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import {
   calcularEstado,
   esEstadoOk,
+  AJUSTES_NO_VENCE,
   AJUSTES_VIGENCIA,
   RENOMBRES_CATALOGO,
   seleccionarVigentes,
@@ -72,7 +73,7 @@ const SELECT_TIPO = {
  * `skipDuplicates` + `codigo` único la hacen segura ante concurrencia.
  */
 async function asegurarCatalogo(): Promise<void> {
-  const actuales = await db.tipoDocumento.findMany({ select: { codigo: true, nombre: true, vigenciaDias: true } });
+  const actuales = await db.tipoDocumento.findMany({ select: { codigo: true, nombre: true, vigenciaDias: true, noVence: true } });
   const codigos = new Set(actuales.map(t => t.codigo));
 
   // Renombres: solo si el tipo conserva el nombre viejo. Si alguien lo editó
@@ -93,6 +94,15 @@ async function asegurarCatalogo(): Promise<void> {
     await db.tipoDocumento.update({
       where: { codigo: a.codigo },
       data: { vigenciaDias: a.vigenciaDias },
+    });
+  }
+
+  const yaNoVence = new Set(actuales.filter(t => t.noVence).map(t => t.codigo));
+  const aMarcar = AJUSTES_NO_VENCE.filter(c => codigos.has(c) && !yaNoVence.has(c));
+  if (aMarcar.length > 0) {
+    await db.tipoDocumento.updateMany({
+      where: { codigo: { in: aMarcar } },
+      data: { noVence: true },
     });
   }
 

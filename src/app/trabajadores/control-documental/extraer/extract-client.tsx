@@ -6,7 +6,7 @@ import { extractDocumentsAction, applyExtractionsAction } from "./actions";
 import { agruparPorPersona, formatearNombre } from "@/lib/acreditacion";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
-type DocType = { id: string; codigo: string; nombre: string; noVence: boolean; esFoto: boolean };
+type DocType = { id: string; codigo: string; nombre: string; noVence: boolean; esFoto: boolean; vigenciaDias: number | null };
 
 /** Info del archivo subido, compartida por todas las filas que produjo. */
 type ArchivoInfo = {
@@ -603,6 +603,7 @@ export function ExtractClient({
                     const yaVencido = Boolean(
                       row.expiryDate && new Date(row.expiryDate + "T12:00:00") < new Date()
                     );
+                    const diasVigencia = tipo?.vigenciaDias ?? null;
                     const listo = !row.procesando && !row.applied && !row.error
                       && row.detectedTipoId
                       && (pideFecha ? row.expiryDate : true)
@@ -798,17 +799,25 @@ export function ExtractClient({
                                     : row.expiryDate ? "1px solid var(--border)" : "1.5px solid #f59e0b",
                                 }}
                               />
-                              {yaVencido && (
+                              {/* Dos avisos distintos, y confundirlos desorienta: si la
+                                  fecha la leímos del papel y ya pasó, lo probable es que
+                                  sea la de emisión mal clasificada. Si la calculamos
+                                  nosotros, no hay nada que revisar en el documento — el
+                                  certificado simplemente está viejo y hay que pedirlo
+                                  de nuevo. */}
+                              {yaVencido && !row.expiryCalculada && (
                                 <div style={{ fontSize: "0.68rem", color: "#dc2626", marginTop: 3, maxWidth: 150, lineHeight: 1.3 }}>
                                   ⚠️ Fecha pasada. ¿Es de emisión y no de vencimiento?
                                 </div>
                               )}
-                              {row.expiryCalculada && !yaVencido && (
-                                // El documento no traía vencimiento impreso: sale de la
-                                // vigencia del tipo. Hay que poder distinguirlo de una
-                                // fecha leída si el mandante lo cuestiona.
-                                <div style={{ fontSize: "0.68rem", color: "#0369a1", marginTop: 3, maxWidth: 150, lineHeight: 1.3 }}>
-                                  Calculado desde la emisión, no venía impreso.
+                              {row.expiryCalculada && (
+                                <div style={{
+                                  fontSize: "0.68rem", marginTop: 3, maxWidth: 150, lineHeight: 1.3,
+                                  color: yaVencido ? "#dc2626" : "#0369a1",
+                                }}>
+                                  {yaVencido
+                                    ? `Vencido. Esta fecha no está en el documento: son ${diasVigencia ?? "los"} días de vigencia desde la emisión, así que hay que pedir uno nuevo.`
+                                    : `Calculado: ${diasVigencia ?? "los"} días desde la emisión. No venía impreso.`}
                                 </div>
                               )}
                             </>
