@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole, ADMIN_ROLES, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
+import { sincronizarDesdeFicha } from "@/lib/acreditacion-db";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -153,6 +154,7 @@ export async function importarTrabajadoresAction(
   const campMap = new Map(camps.map(c => [c.name.toLowerCase().trim(), c.id]));
 
   const result: ImportResult = { mode, created: 0, updated: 0, skipped: 0, errors: [] };
+  const idsASincronizar: string[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -199,6 +201,7 @@ export async function importarTrabajadoresAction(
           where: { id: existing.id },
           data: patch,
         });
+        idsASincronizar.push(existing.id);
         result.updated++;
       } else {
         if (mode === "update") {
@@ -214,7 +217,8 @@ export async function importarTrabajadoresAction(
         const shift = SHIFT_MAP[shiftPattern] ?? SHIFT_MAP["14x14"];
         const shiftStartDate = parseDate(row.shiftStartDate) ?? new Date();
 
-        await db.staffMember.create({
+        const creado = await db.staffMember.create({
+          select: { id: true },
           data: {
             fullName:                row.fullName.trim(),
             nationalId:              row.nationalId?.trim()       || null,
@@ -242,6 +246,7 @@ export async function importarTrabajadoresAction(
             createdById:             user.id,
           },
         });
+        idsASincronizar.push(creado.id);
         result.created++;
       }
     } catch (e) {
@@ -253,6 +258,13 @@ export async function importarTrabajadoresAction(
           : (e as Error).message,
       });
     }
+  }
+
+  // Las fechas del Excel viven en las columnas planas de la ficha. Sin este
+  // paso nunca se convierten en documentos, y la matriz da por faltante todo
+  // lo que se importó — que era justo lo que el Excel venía a cargar.
+  for (const id of idsASincronizar) {
+    await sincronizarDesdeFicha(id, { id: user.id, nombre: user.name }).catch(() => {});
   }
 
   if (result.created > 0 || result.updated > 0) {

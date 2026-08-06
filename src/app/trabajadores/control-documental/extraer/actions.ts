@@ -375,17 +375,37 @@ export async function applyExtractionsAction(
 
       const archivoId = row.archivo ? archivoIdPorClientFileId.get(row.archivo.clientFileId) ?? null : null;
 
-      // Foto del trabajador: no es un documento con vencimiento
+      // Foto del trabajador. Va a la ficha para mostrarla en el perfil, pero
+      // además se registra como documento: el mandante la exige y si no queda
+      // en el catálogo la matriz la da por faltante para siempre, aunque esté
+      // cargada y visible en la ficha.
       if (tipo.esFoto) {
-        if (archivoId) {
-          await db.staffMember.update({
-            where: { id: workerId },
-            data: { fotoArchivoId: archivoId },
-          });
-          applied++;
-        } else {
+        if (!archivoId) {
           errors.push({ workerId, error: "La foto no se pudo guardar (archivo faltante)" });
+          continue;
         }
+        await db.staffMember.update({
+          where: { id: workerId },
+          data: { fotoArchivoId: archivoId },
+        });
+        await db.documentoAcreditacion.create({
+          data: {
+            staffMemberId: workerId,
+            tipoDocumentoId: row.tipoDocumentoId,
+            fechaEmision: row.issueDate && /^\d{4}-\d{2}-\d{2}$/.test(row.issueDate) ? toUtcNoon(row.issueDate) : null,
+            fechaVencimiento: null,
+            sinVencimiento: true,
+            origen: "extraido",
+            confianzaExtraccion:
+              row.confidence === "high" ? "alta" : row.confidence === "medium" ? "media" : "baja",
+            confirmadoPorId: user.id,
+            confirmadoPorNombre: user.name,
+            confirmadoAt: new Date(),
+            nota: "Foto del trabajador",
+            archivoId,
+          },
+        });
+        applied++;
         continue;
       }
 

@@ -33,11 +33,13 @@ export function buildOperacionesTabs(role: string, activeKey:
 export function buildTrabajadoresTabs(activeKey:
   | "trabajadores"
   | "control-documental"
+  | "dashboard"
   | "capacitaciones"
   | "epp"
   | "ex"
 ): SectionTab[] {
   return [
+    { href: "/trabajadores/control-documental/dashboard", label: "📊 Dashboard", active: activeKey === "dashboard" },
     { href: "/trabajadores/control-documental", label: "📄 Control documental", active: activeKey === "control-documental" },
     { href: "/trabajadores", label: "Lista de trabajadores", active: activeKey === "trabajadores" },
   ];

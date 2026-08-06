@@ -84,12 +84,10 @@ export const REGLAS_SEED: ReglaSeed[] = [
   { tipo: "examen_ocupacional",        cargos: null, nivel: "obligatorio" },
   { tipo: "examen_alcohol_drogas",     cargos: null, nivel: "obligatorio" },
   { tipo: "induccion_mandante",        cargos: null, nivel: "obligatorio" },
-  { tipo: "riesgos_operacionales",     cargos: null, nivel: "obligatorio" },
   { tipo: "induccion_interna",         cargos: null, nivel: "obligatorio" },
   { tipo: "curso_epp",                 cargos: null, nivel: "obligatorio" },
   { tipo: "entrega_epp",               cargos: null, nivel: "obligatorio" },
   { tipo: "recepcion_riohs",           cargos: null, nivel: "obligatorio" },
-  { tipo: "odi",                       cargos: null, nivel: "obligatorio" },
   { tipo: "titulo_estudios",           cargos: null, nivel: "obligatorio" },
   { tipo: "irl_empresa",               cargos: null, nivel: "obligatorio" },
   { tipo: "irl_cliente",               cargos: null, nivel: "obligatorio" },
@@ -120,6 +118,17 @@ export const REGLAS_SEED: ReglaSeed[] = [
   { tipo: "finiquito",                 cargos: null, nivel: "deseable" },
   { tipo: "ley_trabajo_pesado",        cargos: null, nivel: "deseable" },
   { tipo: "registro_discapacidad",     cargos: null, nivel: "deseable" },
+];
+
+/**
+ * Están en el catálogo del mandante pero SIN columna en su matriz: la propia
+ * planilla los anota como «agregar si el cliente los exige». Sembrarlos como
+ * obligatorios inflaba lo que le falta a cada trabajador con documentos que
+ * hoy nadie le está pidiendo.
+ */
+export const TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE = [
+  "odi",
+  "riesgos_operacionales",
 ];
 
 /**
