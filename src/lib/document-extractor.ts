@@ -1,5 +1,6 @@
 import { openaiChatCompletion } from "./openai";
 import { extraerTextoPdf, tieneTextoUtil } from "./pdf-text";
+import { esDocLegacy, esDocx, extraerTextoDocx } from "./docx-text";
 
 /** Tipo del catálogo, tal como lo espera el extractor. */
 export type TipoParaExtraccion = {
@@ -112,6 +113,35 @@ export async function extractDocumentInfo(input: {
   const esPdf = input.mimeType === MIME_PDF;
   const dataUrl = `data:${input.mimeType};base64,${input.fileBase64}`;
 
+  // ── Word ────────────────────────────────────────────────────────────
+  // El .docx no viaja como adjunto ni como imagen: se abre acá y se manda
+  // el texto. Un IRL o una declaración jurada llegan casi siempre en Word.
+  if (esDocx(input.mimeType, input.fileName)) {
+    const texto = extraerTextoDocx(Buffer.from(input.fileBase64, "base64"));
+    if (!texto.trim()) {
+      throw new Error(
+        `No se pudo leer el contenido de «${input.fileName}». Si es un .doc antiguo, ` +
+        `guárdalo como .docx o expórtalo a PDF y vuelve a subirlo.`,
+      );
+    }
+    return await pedirExtraccion(input, [
+      {
+        type: "text" as const,
+        text:
+          `Analiza este documento de Word (${input.fileName}). Este es su texto completo, ` +
+          `fiel al original. Puede contener varios documentos: identifícalos todos.\n\n` +
+          `--- TEXTO DEL DOCUMENTO ---\n${texto}\n--- FIN DEL TEXTO ---\n\nDevuelve el JSON.`,
+      },
+    ], 4000);
+  }
+
+  if (esDocLegacy(input.mimeType, input.fileName)) {
+    throw new Error(
+      `«${input.fileName}» está en el formato .doc antiguo, que no se puede leer. ` +
+      `Ábrelo en Word y guárdalo como .docx o como PDF.`,
+    );
+  }
+
   // La capa de texto del PDF se extrae acá y se manda explícita. Depender
   // solo del procesamiento del adjunto resultó poco fiable: certificados
   // con todo su contenido volvían como "no se reconoció ningún documento".
@@ -147,16 +177,25 @@ export async function extractDocumentInfo(input: {
         { type: "image_url" as const, image_url: { url: dataUrl, detail: "high" as const } },
       ];
 
+  // Un PDF consolidado puede traer 15+ documentos; una foto suelta, uno.
+  return await pedirExtraccion(input, contenido, esPdf ? 4000 : 900);
+}
+
+/** Manda el contenido ya armado a OpenAI y normaliza la respuesta. */
+async function pedirExtraccion(
+  input: { tipos: TipoParaExtraccion[]; model?: string },
+  contenido: unknown[],
+  maxTokens: number,
+): Promise<ExtractedDoc[]> {
   const response = await openaiChatCompletion({
     model: input.model ?? "gpt-4o-mini",
     responseFormat: "json_object",
     messages: [
       { role: "system", content: buildSystemPrompt(input.tipos) },
-      { role: "user", content: contenido },
+      { role: "user", content: contenido as never },
     ],
     temperature: 0,
-    // Un PDF consolidado puede traer 15+ documentos
-    maxTokens: esPdf ? 4000 : 900,
+    maxTokens,
   });
 
   const raw = response.choices[0]?.message.content ?? "";

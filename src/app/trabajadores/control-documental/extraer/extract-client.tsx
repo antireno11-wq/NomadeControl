@@ -53,7 +53,29 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 const MIME_PDF = "application/pdf";
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", MIME_PDF];
+const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", MIME_PDF, MIME_DOCX];
+const ACCEPTED_EXT = /\.(pdf|docx|jpe?g|png|webp|gif)$/i;
+
+/**
+ * Algunos archivos llegan con `type` vacío — es lo que hace el navegador
+ * cuando el sistema no reconoce la extensión, y pasa seguido con los .docx
+ * bajados de Drive. Rechazarlos por eso sería perder el documento por un
+ * detalle del sistema operativo, así que caemos a la extensión.
+ */
+function mimeDeArchivo(f: File): string {
+  if (f.type) return f.type;
+  if (/\.pdf$/i.test(f.name)) return MIME_PDF;
+  if (/\.docx$/i.test(f.name)) return MIME_DOCX;
+  if (/\.jpe?g$/i.test(f.name)) return "image/jpeg";
+  if (/\.png$/i.test(f.name)) return "image/png";
+  if (/\.webp$/i.test(f.name)) return "image/webp";
+  return "";
+}
+
+function formatoAceptado(f: File): boolean {
+  return ACCEPTED_TYPES.includes(mimeDeArchivo(f)) || ACCEPTED_EXT.test(f.name);
+}
 const MAX_FILE_MB = 18;
 
 /** Valor especial del select: crear un trabajador con los datos detectados. */
@@ -97,9 +119,18 @@ export function ExtractClient({
     const files = Array.from(fileList);
     if (files.length === 0) return;
 
-    const invalidos = files.filter(f => !ACCEPTED_TYPES.includes(f.type));
+    const legacyDoc = files.filter(f => /\.doc$/i.test(f.name));
+    if (legacyDoc.length > 0) {
+      setGlobalError(
+        `${legacyDoc.map(f => f.name).join(", ")} está en el formato .doc antiguo, que no se puede ` +
+        `leer. Ábrelo en Word y guárdalo como .docx o como PDF.`,
+      );
+      return;
+    }
+
+    const invalidos = files.filter(f => !formatoAceptado(f));
     if (invalidos.length > 0) {
-      setGlobalError(`Formato no soportado: ${invalidos.map(f => f.name).join(", ")}. Aceptados: PDF, JPG, PNG, WEBP.`);
+      setGlobalError(`Formato no soportado: ${invalidos.map(f => f.name).join(", ")}. Aceptados: PDF, Word (.docx), JPG, PNG, WEBP.`);
       return;
     }
 
@@ -114,9 +145,9 @@ export function ExtractClient({
       clientFileId: `${Date.now()}-${i}`,
       fileName: f.name,
       fileUrl: URL.createObjectURL(f),
-      mimeType: f.type,
+      mimeType: mimeDeArchivo(f),
       base64: base64s[i],
-      esPdf: f.type === MIME_PDF,
+      esPdf: mimeDeArchivo(f) === MIME_PDF,
     }));
     setArchivos(prev => [...prev, ...nuevosArchivos]);
 
@@ -281,7 +312,7 @@ export function ExtractClient({
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,image/*"
+        accept=".pdf,.docx,image/*"
         style={{ display: "none" }}
         onChange={e => e.target.files && handleFiles(e.target.files)}
       />
@@ -309,7 +340,7 @@ export function ExtractClient({
             : dragging ? "Suelta aquí" : "Arrastra PDFs o fotos, o haz clic para elegir"}
         </div>
         <div style={{ fontSize: "0.82rem", color: "var(--muted)", marginTop: 6 }}>
-          PDF, JPG, PNG, WEBP — varios a la vez · hasta {MAX_FILE_MB} MB cada uno
+          PDF, Word, JPG, PNG, WEBP — varios a la vez · hasta {MAX_FILE_MB} MB cada uno
         </div>
         <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 4 }}>
           Un PDF con la carpeta completa se separa en sus documentos automáticamente
@@ -458,6 +489,11 @@ export function ExtractClient({
                               {info.esPdf ? (
                                 <div style={{ width: 40, height: 40, borderRadius: 6, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", cursor: "pointer" }}>
                                   📕
+                                </div>
+                              ) : info.mimeType === MIME_DOCX ? (
+                                // Word no se previsualiza en el navegador: el enlace lo descarga.
+                                <div style={{ width: 40, height: 40, borderRadius: 6, background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.1rem", cursor: "pointer" }}>
+                                  📘
                                 </div>
                               ) : (
                                 <img src={info.fileUrl} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", cursor: "pointer" }} />

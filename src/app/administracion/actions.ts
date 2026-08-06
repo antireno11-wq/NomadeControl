@@ -9,6 +9,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/mailer";
 import { geocodeLocation } from "@/lib/weather";
+import { sembrarMatriz } from "@/lib/requisitos-db";
 
 const createUserSchema = z.object({
   name: z.string().trim().min(2),
@@ -964,4 +965,152 @@ export async function actualizarTipoDocumentoAction(formData: FormData) {
   revalidatePath("/administracion");
   revalidatePath("/trabajadores/control-documental");
   redirect("/administracion?seccion=documentos&tipoStatus=guardado");
+}
+
+// ─── Matriz de requisitos por cargo ──────────────────────────────────
+
+/**
+ * Crea un mandante (si no existe) con su proyecto y siembra la matriz por
+ * defecto. Reemplaza la columna "Aplica a" de la planilla, que había que
+ * traducir a mano a un N/A por celda.
+ */
+export async function crearProyectoAcreditacionAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+
+  const mandante = String(formData.get("mandante") ?? "").trim();
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  const faena = String(formData.get("faena") ?? "").trim();
+  const altitudRaw = String(formData.get("altitudMsnm") ?? "").trim();
+  const altitud = altitudRaw ? Number(altitudRaw) : null;
+
+  if (mandante.length < 2 || nombre.length < 2) {
+    redirect("/administracion?seccion=requisitos&reqStatus=invalido");
+  }
+
+  const m = await db.mandante.upsert({
+    where:  { nombre: mandante },
+    update: {},
+    create: { nombre: mandante },
+  });
+
+  const existente = await db.proyecto.findUnique({
+    where: { mandanteId_nombre: { mandanteId: m.id, nombre } },
+    select: { id: true },
+  });
+  if (existente) {
+    redirect(`/administracion?seccion=requisitos&proyecto=${existente.id}&reqStatus=duplicado`);
+  }
+
+  const proyecto = await db.proyecto.create({
+    data: {
+      mandanteId: m.id,
+      nombre,
+      faena: faena || null,
+      altitudMsnm: altitud != null && Number.isFinite(altitud) && altitud > 0 ? Math.round(altitud) : null,
+    },
+    select: { id: true },
+  });
+
+  const sembrados = await sembrarMatriz(proyecto.id);
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "PROYECTO_ACREDITACION_CREATE",
+    entityType: "proyecto",
+    entityId: proyecto.id,
+    summary: `Creó el proyecto «${nombre}» de ${mandante} con ${sembrados} requisitos`,
+  }).catch(() => {});
+
+  revalidatePath("/administracion");
+  redirect(`/administracion?seccion=requisitos&proyecto=${proyecto.id}&reqStatus=creado`);
+}
+
+export async function crearCargoAction(formData: FormData) {
+  await requireRole(ADMIN_ROLES);
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  const proyectoId = String(formData.get("proyectoId") ?? "");
+  if (nombre.length < 2) {
+    redirect(`/administracion?seccion=requisitos&proyecto=${proyectoId}&reqStatus=invalido`);
+  }
+
+  const existente = await db.cargo.findUnique({ where: { nombre }, select: { id: true } });
+  if (!existente) {
+    const ultimo = await db.cargo.findFirst({ orderBy: { orden: "desc" }, select: { orden: true } });
+    await db.cargo.create({ data: { nombre, orden: (ultimo?.orden ?? 0) + 10 } });
+  }
+
+  revalidatePath("/administracion");
+  redirect(`/administracion?seccion=requisitos&proyecto=${proyectoId}&reqStatus=cargo`);
+}
+
+/**
+ * Define, cambia o quita un requisito de una celda de la grilla.
+ *
+ * `nivel: null` borra la fila: la ausencia de fila ES el "no aplica", así que
+ * no se guardan ~400 negativos como hacía la planilla.
+ */
+export async function setRequisitoAction(input: {
+  proyectoId: string;
+  cargoId: string;
+  tipoId: string;
+  nivel: "obligatorio" | "deseable" | null;
+  condicion?: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireRole(ADMIN_ROLES);
+  } catch {
+    return { ok: false, error: "Sin permisos" };
+  }
+
+  const { proyectoId, cargoId, tipoId, nivel } = input;
+  if (!proyectoId || !cargoId || !tipoId) return { ok: false, error: "Datos incompletos" };
+
+  const clave = { proyectoId_cargoId_tipoId: { proyectoId, cargoId, tipoId } };
+
+  if (nivel === null) {
+    await db.requisitoDocumento.deleteMany({ where: { proyectoId, cargoId, tipoId } });
+  } else {
+    await db.requisitoDocumento.upsert({
+      where:  clave,
+      update: { nivel, ...(input.condicion !== undefined ? { condicion: input.condicion } : {}) },
+      create: { proyectoId, cargoId, tipoId, nivel, condicion: input.condicion ?? null },
+    });
+  }
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores/control-documental");
+  return { ok: true };
+}
+
+/** Aplica un nivel a todos los cargos de una fila de la grilla, de una vez. */
+export async function setRequisitoFilaAction(input: {
+  proyectoId: string;
+  tipoId: string;
+  nivel: "obligatorio" | "deseable" | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireRole(ADMIN_ROLES);
+  } catch {
+    return { ok: false, error: "Sin permisos" };
+  }
+
+  const { proyectoId, tipoId, nivel } = input;
+  if (!proyectoId || !tipoId) return { ok: false, error: "Datos incompletos" };
+
+  if (nivel === null) {
+    await db.requisitoDocumento.deleteMany({ where: { proyectoId, tipoId } });
+  } else {
+    const cargos = await db.cargo.findMany({ where: { activo: true }, select: { id: true } });
+    await db.$transaction([
+      db.requisitoDocumento.updateMany({ where: { proyectoId, tipoId }, data: { nivel } }),
+      db.requisitoDocumento.createMany({
+        data: cargos.map(c => ({ proyectoId, cargoId: c.id, tipoId, nivel })),
+        skipDuplicates: true,
+      }),
+    ]);
+  }
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores/control-documental");
+  return { ok: true };
 }

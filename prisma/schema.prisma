@@ -9,43 +9,43 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  name         String
-  email        String       @unique
-  passwordHash String
-  role         String
-  isActive     Boolean      @default(true)
-  phone        String?
-  profilePhotoUrl String?
-  positionTitle String?
-  emergencyContactName String?
+  id                    String             @id @default(cuid())
+  name                  String
+  email                 String             @unique
+  passwordHash          String
+  role                  String
+  isActive              Boolean            @default(true)
+  phone                 String?
+  profilePhotoUrl       String?
+  positionTitle         String?
+  emergencyContactName  String?
   emergencyContactPhone String?
-  nationalId    String?
-  address       String?
-  city          String?
-  healthProvider String?
-  shiftPattern  String?
-  shiftWorkDays Int?
-  shiftOffDays  Int?
-  shiftStartDate DateTime?
-  campId            String?
-  camp              Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
-  modulePermissions Json         @default("[]")
-  sessions     Session[]
-  reports      DailyReport[]
-  dailyTaskControls DailyTaskControl[]
-  stockMovements   StockMovement[]
-  staffMembers     StaffMember[]
-  vehicleChecklists VehicleChecklist[]
-  alertDeliveries AlertDelivery[]
-  auditLogs    AuditLog[]
-  incidentesReportados Incidente[]    @relation("IncidenteReportado")
-  incidentesAsignados  Incidente[]    @relation("IncidenteResponsable")
-  matricesRiesgo       MatrizRiesgo[] @relation("MatrizResponsable")
-  eppEntregados        EntregaEPP[]   @relation("EPPEntregador")
-  cursosCreados        Curso[]        @relation("CursoCreador")
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  nationalId            String?
+  address               String?
+  city                  String?
+  healthProvider        String?
+  shiftPattern          String?
+  shiftWorkDays         Int?
+  shiftOffDays          Int?
+  shiftStartDate        DateTime?
+  campId                String?
+  camp                  Camp?              @relation(fields: [campId], references: [id], onDelete: SetNull)
+  modulePermissions     Json               @default("[]")
+  sessions              Session[]
+  reports               DailyReport[]
+  dailyTaskControls     DailyTaskControl[]
+  stockMovements        StockMovement[]
+  staffMembers          StaffMember[]
+  vehicleChecklists     VehicleChecklist[]
+  alertDeliveries       AlertDelivery[]
+  auditLogs             AuditLog[]
+  incidentesReportados  Incidente[]        @relation("IncidenteReportado")
+  incidentesAsignados   Incidente[]        @relation("IncidenteResponsable")
+  matricesRiesgo        MatrizRiesgo[]     @relation("MatrizResponsable")
+  eppEntregados         EntregaEPP[]       @relation("EPPEntregador")
+  cursosCreados         Curso[]            @relation("CursoCreador")
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 }
 
 model Session {
@@ -58,14 +58,14 @@ model Session {
 }
 
 model AlertDelivery {
-  id         String   @id @default(cuid())
-  kind       String
-  targetDate DateTime
+  id          String   @id @default(cuid())
+  kind        String
+  targetDate  DateTime
   recipientId String?
-  recipient  User?    @relation(fields: [recipientId], references: [id], onDelete: SetNull)
-  status     String   @default("SENT")
-  payload    String?
-  createdAt  DateTime @default(now())
+  recipient   User?    @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  status      String   @default("SENT")
+  payload     String?
+  createdAt   DateTime @default(now())
 
   @@unique([kind, targetDate])
   @@index([targetDate, kind])
@@ -90,187 +90,274 @@ model AuditLog {
 }
 
 model Camp {
-  id        String        @id @default(cuid())
-  name      String
-  location  String?
-  latitude  Float?
-  longitude Float?
-  capacityPeople Int      @default(0)
-  potableWaterTankCapacityM3 Float? 
-  blackWaterTankCapacityM3 Float?
-  greyWaterTankCapacityM3 Float?
-  isActive  Boolean       @default(true)
-  closedAt  DateTime?
-  currentShiftSupervisorId String?
+  id                         String             @id @default(cuid())
+  name                       String
+  location                   String?
+  latitude                   Float?
+  longitude                  Float?
+  capacityPeople             Int                @default(0)
+  potableWaterTankCapacityM3 Float?
+  blackWaterTankCapacityM3   Float?
+  greyWaterTankCapacityM3    Float?
+  isActive                   Boolean            @default(true)
+  closedAt                   DateTime?
+  currentShiftSupervisorId   String?
   currentShiftSupervisorName String?
-  currentShiftPattern String?
-  currentShiftWorkDays Int?
-  currentShiftOffDays Int?
-  currentShiftStartDate DateTime?
-  users     User[]
-  reports   DailyReport[]
-  dailyTaskControls DailyTaskControl[]
-  stockMovements    StockMovement[]
-  inventoryItems    InventoryItem[]
-  staffMembers      StaffMember[]
-  vehicles          Vehicle[]
-  incidentes        Incidente[]
-  matricesRiesgo    MatrizRiesgo[]
-  entregasEPP       EntregaEPP[]
-  documentosHSEC    DocumentoHSEC[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  currentShiftPattern        String?
+  currentShiftWorkDays       Int?
+  currentShiftOffDays        Int?
+  currentShiftStartDate      DateTime?
+  users                      User[]
+  reports                    DailyReport[]
+  dailyTaskControls          DailyTaskControl[]
+  stockMovements             StockMovement[]
+  inventoryItems             InventoryItem[]
+  staffMembers               StaffMember[]
+  vehicles                   Vehicle[]
+  incidentes                 Incidente[]
+  matricesRiesgo             MatrizRiesgo[]
+  entregasEPP                EntregaEPP[]
+  documentosHSEC             DocumentoHSEC[]
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
 }
 
 model Project {
-  id          String    @id @default(cuid())
-  name        String
-  code        String?   @unique
-  location    String?
-  isActive    Boolean   @default(true)
-  vehicles    Vehicle[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  name      String
+  code      String?   @unique
+  location  String?
+  isActive  Boolean   @default(true)
+  vehicles  Vehicle[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([isActive, name])
 }
 
 model DailyReport {
-  id             String   @id @default(cuid())
-  date           DateTime
-  campId         String
-  camp           Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
-  createdById    String
-  createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  peopleCount    Int
-  breakfastCount Int
-  lunchCount     Int
-  dinnerCount    Int
-  snackSimpleCount      Int
-  snackReplacementCount Int
-  waterBottleCount      Int     @default(0)
-  lodgingCount          Int
-  meterReading          Float   @default(0)
-  waterLiters           Int
-  fuelLiters     Int
-  fuelRemainingLiters   Int     @default(0)
-  generator1Hours       Float   @default(0)
-  generator2Hours       Float   @default(0)
-  internetStatus        String  @default("FUNCIONANDO")
-  blackWaterRemoved     Boolean @default(false)
-  blackWaterRemovedM3   Float   @default(0)
-  potableWaterTankLevelPercent Int @default(0)
-  blackWaterTankLevelPercent Int @default(0)
-  potableWaterDelivered Boolean @default(false)
-  potableWaterDeliveredM3 Float @default(0)
-  wasteFillPercent      Int     @default(0)
-  chlorineLevel         Float   @default(0)
-  phLevel               Float   @default(7)
-  extras         String?
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                           String   @id @default(cuid())
+  date                         DateTime
+  campId                       String
+  camp                         Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById                  String
+  createdBy                    User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  peopleCount                  Int
+  breakfastCount               Int
+  lunchCount                   Int
+  dinnerCount                  Int
+  snackSimpleCount             Int
+  snackReplacementCount        Int
+  waterBottleCount             Int      @default(0)
+  lodgingCount                 Int
+  meterReading                 Float    @default(0)
+  waterLiters                  Int
+  fuelLiters                   Int
+  fuelRemainingLiters          Int      @default(0)
+  generator1Hours              Float    @default(0)
+  generator2Hours              Float    @default(0)
+  internetStatus               String   @default("FUNCIONANDO")
+  blackWaterRemoved            Boolean  @default(false)
+  blackWaterRemovedM3          Float    @default(0)
+  potableWaterTankLevelPercent Int      @default(0)
+  blackWaterTankLevelPercent   Int      @default(0)
+  potableWaterDelivered        Boolean  @default(false)
+  potableWaterDeliveredM3      Float    @default(0)
+  wasteFillPercent             Int      @default(0)
+  chlorineLevel                Float    @default(0)
+  phLevel                      Float    @default(7)
+  extras                       String?
+  notes                        String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
   @@unique([campId, date])
 }
 
 model DailyTaskControl {
-  id                  String   @id @default(cuid())
-  date                DateTime
-  campId              String
-  camp                Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
-  createdById         String
-  createdBy           User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  id                   String   @id @default(cuid())
+  date                 DateTime
+  campId               String
+  camp                 Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById          String
+  createdBy            User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
   administrativeChecks Json
   operationalChecks    Json
-  notes               String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@unique([campId, date])
 }
 
 model StockMovement {
-  id          String   @id @default(cuid())
-  date        DateTime
-  campId      String
-  camp        Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  id              String         @id @default(cuid())
+  date            DateTime
+  campId          String
+  camp            Camp           @relation(fields: [campId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User           @relation(fields: [createdById], references: [id], onDelete: Restrict)
   inventoryItemId String?
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
-  itemName    String
-  movementType String
-  quantity    Float
-  unit        String   @default("unidad")
-  notes       String?
-  createdAt   DateTime @default(now())
+  itemName        String
+  movementType    String
+  quantity        Float
+  unit            String         @default("unidad")
+  notes           String?
+  createdAt       DateTime       @default(now())
 
   @@index([campId, date])
   @@index([inventoryItemId])
 }
 
 model InventoryItem {
-  id             String   @id @default(cuid())
+  id             String          @id @default(cuid())
   campId         String?
-  camp           Camp?    @relation(fields: [campId], references: [id], onDelete: Cascade)
+  camp           Camp?           @relation(fields: [campId], references: [id], onDelete: Cascade)
   name           String
   normalizedName String
-  category       String   @default("OTROS")
+  category       String          @default("OTROS")
   unit           String
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   stockMovements StockMovement[]
 
-  @@index([campId, isActive, category])
   @@unique([campId, normalizedName, unit])
+  @@index([campId, isActive, category])
 }
 
-
 model StaffMember {
-  id             String   @id @default(cuid())
-  campId         String?
-  camp           Camp?    @relation(fields: [campId], references: [id], onDelete: SetNull)
-  createdById    String
-  createdBy      User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  fullName       String
-  role           String?
-  employerCompany String?
-  nationalId     String?
-  phone          String?
-  personalEmail  String?
-  contractEndDate DateTime?
-  contractIsIndefinite Boolean @default(false)
-  altitudeExamDueDate DateTime?
+  id                      String                  @id @default(cuid())
+  campId                  String?
+  camp                    Camp?                   @relation(fields: [campId], references: [id], onDelete: SetNull)
+  createdById             String
+  createdBy               User                    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  fullName                String
+  role                    String?
+  employerCompany         String?
+  nationalId              String?
+  phone                   String?
+  personalEmail           String?
+  contractEndDate         DateTime?
+  contractIsIndefinite    Boolean                 @default(false)
+  altitudeExamDueDate     DateTime?
   occupationalExamDueDate DateTime?
-  inductionDueDate DateTime?
-  accreditationDueDate DateTime?
-  driversLicenseDueDate DateTime?
-  cedulaExpiryDate DateTime?
+  inductionDueDate        DateTime?
+  accreditationDueDate    DateTime?
+  driversLicenseDueDate   DateTime?
+  cedulaExpiryDate        DateTime?
   foodHandlingExamDueDate DateTime?
-  vaccineDueDate DateTime?
-  shiftPattern   String   @default("14x14")
-  shiftWorkDays  Int      @default(14)
-  shiftOffDays   Int      @default(14)
-  shiftStartDate DateTime
-  isActive       Boolean  @default(true)
-  notes          String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  shiftDays      StaffShiftDay[]
-  entregasEPP    EntregaEPP[]
-  inducciones    InduccionUsuario[]
-  documentos     DocumentoTrabajador[]
-  cierre         CierreContrato?
-  documentosAdicionales DocumentoAdicional[]
-  alertasEnviadas       AlertaDocumento[]
-  acreditacionDocs      DocumentoAcreditacion[]
+  vaccineDueDate          DateTime?
+  shiftPattern            String                  @default("14x14")
+  shiftWorkDays           Int                     @default(14)
+  shiftOffDays            Int                     @default(14)
+  shiftStartDate          DateTime
+  isActive                Boolean                 @default(true)
+  notes                   String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  shiftDays               StaffShiftDay[]
+  entregasEPP             EntregaEPP[]
+  inducciones             InduccionUsuario[]
+  documentos              DocumentoTrabajador[]
+  cierre                  CierreContrato?
+  documentosAdicionales   DocumentoAdicional[]
+  alertasEnviadas         AlertaDocumento[]
+  acreditacionDocs        DocumentoAcreditacion[]
   /// Foto del trabajador, para mostrar en la ficha
-  fotoArchivoId         String?
-  fotoArchivo           ArchivoAcreditacion? @relation(fields: [fotoArchivoId], references: [id], onDelete: SetNull)
+  fotoArchivoId           String?
+  fotoArchivo             ArchivoAcreditacion?    @relation(fields: [fotoArchivoId], references: [id], onDelete: SetNull)
+
+  /// Grupo de cargo, que es lo que decide qué documentos se le exigen.
+  /// Distinto de `role`, que es el cargo textual del contrato
+  /// ("MONTAJISTA - GASFITER" es role; "Montajista" es el cargo).
+  cargoId               String?
+  cargo                 Cargo?    @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+  /// Proyecto al que está asignado. Define la matriz de requisitos vigente.
+  proyectoId            String?
+  proyecto              Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  /// Cuadrilla dentro del sistema de turno: "A" o "B".
+  cuadrilla             String?
+  /// continua | no_continua | por_definir
+  continuidad           String?
+  /// Trabajó antes en una faena del mandante. Activa el finiquito previo.
+  trabajoPrevioMandante Boolean   @default(false)
 
   @@index([campId, isActive])
+  @@index([proyectoId, cargoId])
+}
+
+/// Cliente para el que se presta el servicio (Anglo American, Codelco…).
+model Mandante {
+  id        String     @id @default(cuid())
+  nombre    String     @unique
+  activo    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  proyectos Proyecto[]
+}
+
+/// Contrato concreto con un mandante, en una faena concreta.
+/// La matriz de requisitos cuelga de acá: el mismo cargo puede necesitar
+/// documentos distintos en dos proyectos del mismo cliente.
+model Proyecto {
+  id          String   @id @default(cuid())
+  mandanteId  String
+  mandante    Mandante @relation(fields: [mandanteId], references: [id], onDelete: Cascade)
+  nombre      String
+  /// Faena o división donde se ejecuta ("Los Bronces").
+  faena       String?
+  /// Altura de la faena en metros. Sobre 3.000 se exige el examen de altura
+  /// geográfica; se guarda como dato para justificar el requisito.
+  altitudMsnm Int?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requisitos   RequisitoDocumento[]
+  trabajadores StaffMember[]
+
+  @@unique([mandanteId, nombre])
+}
+
+/// Grupo de cargo de la dotación. Es la unidad sobre la que se definen
+/// los requisitos documentales.
+model Cargo {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  orden     Int      @default(100)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requisitos   RequisitoDocumento[]
+  trabajadores StaffMember[]
+}
+
+/// Qué documento exige un proyecto a un cargo.
+///
+/// La ausencia de fila significa "no aplica": no hace falta guardar los
+/// no-aplica, que en la planilla original eran ~100 celdas escritas a mano.
+model RequisitoDocumento {
+  id         String        @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  cargoId    String
+  cargo      Cargo         @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  tipoId     String
+  tipo       TipoDocumento @relation(fields: [tipoId], references: [id], onDelete: Cascade)
+  /// obligatorio | deseable
+  nivel      String        @default("obligatorio")
+  /// Condición del trabajador que activa el requisito. NULL = siempre.
+  /// contrato_indefinido | trabajo_previo_mandante
+  condicion  String?
+  nota       String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([proyectoId, cargoId, tipoId])
+  @@index([proyectoId, cargoId])
 }
 
 /// Catálogo de tipos de documento. Editable desde Administración.
@@ -306,7 +393,8 @@ model TipoDocumento {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  documentos      DocumentoAcreditacion[]
+  documentos DocumentoAcreditacion[]
+  requisitos RequisitoDocumento[]
 
   @@index([activo, orden])
 }
@@ -326,8 +414,8 @@ model ArchivoAcreditacion {
   subidoPorNombre  String?
   createdAt        DateTime @default(now())
 
-  documentos       DocumentoAcreditacion[]
-  fotoDe           StaffMember[]
+  documentos DocumentoAcreditacion[]
+  fotoDe     StaffMember[]
 
   @@index([hash])
 }
@@ -336,60 +424,60 @@ model ArchivoAcreditacion {
 /// Nunca se hace UPDATE de fechas ni DELETE — para corregir se marca `anulado`.
 /// (El modelo `Documento` a secas es el de Biblioteca, sin relación con esto.)
 model DocumentoAcreditacion {
-  id                   String   @id @default(cuid())
-  staffMemberId        String
-  staffMember          StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
-  tipoDocumentoId      String
-  tipoDocumento        TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
+  id              String        @id @default(cuid())
+  staffMemberId   String
+  staffMember     StaffMember   @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  tipoDocumentoId String
+  tipoDocumento   TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
 
   fechaEmision         DateTime?
   fechaVencimiento     DateTime?
   /// true = la fecha se infirió (emisión + vigenciaDias). false = venía impresa.
   /// Se muestra distinto en la UI: ante un reclamo del mandante hay que poder
   /// distinguir una fecha leída de una calculada.
-  vencimientoCalculado Boolean  @default(false)
+  vencimientoCalculado Boolean   @default(false)
   /// Contrato indefinido u otro documento que no vence.
-  sinVencimiento       Boolean  @default(false)
+  sinVencimiento       Boolean   @default(false)
 
   // ── Archivo ──────────────────────────────────────────────────────────
   /// Archivo del que salió este documento. Varios documentos de un mismo
   /// PDF comparten la misma fila de ArchivoAcreditacion.
-  archivoId            String?
-  archivo              ArchivoAcreditacion? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
+  archivoId        String?
+  archivo          ArchivoAcreditacion? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
   /// Legacy: binario suelto de la migración. Los nuevos usan `archivo`.
-  contenido            Bytes?
+  contenido        Bytes?
   /// Ruta en R2/S3 una vez migrado.
-  archivoUrl           String?
+  archivoUrl       String?
   /// sha256 del archivo, para detectar cargas duplicadas.
-  archivoHash          String?
-  originalFilename     String?
-  fileSize             Int?
-  mimeType             String?
+  archivoHash      String?
+  originalFilename String?
+  fileSize         Int?
+  mimeType         String?
   /// Página de inicio dentro de un PDF consolidado.
-  paginaInicio         Int?
+  paginaInicio     Int?
 
   // ── Trazabilidad ─────────────────────────────────────────────────────
   /// manual | extraido | migracion | excel
-  origen               String   @default("manual")
+  origen              String    @default("manual")
   /// alta | media | baja — solo cuando origen = extraido
-  confianzaExtraccion  String?
-  confirmadoPorId      String?
-  confirmadoPorNombre  String?
-  confirmadoAt         DateTime?
+  confianzaExtraccion String?
+  confirmadoPorId     String?
+  confirmadoPorNombre String?
+  confirmadoAt        DateTime?
 
-  anulado              Boolean  @default(false)
-  anuladoPorNombre     String?
-  anuladoAt            DateTime?
-  motivoAnulacion      String?
+  anulado          Boolean   @default(false)
+  anuladoPorNombre String?
+  anuladoAt        DateTime?
+  motivoAnulacion  String?
 
-  nota                 String?
+  nota         String?
   /// Clave de origen cuando la fila vino del backfill, para que la
   /// migración sea idempotente. Ej: "staff:<id>:contractEndDate",
   /// "dt:<documentoTrabajadorId>". NULL en documentos creados normalmente.
-  migradoDesde         String?  @unique
+  migradoDesde String? @unique
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([staffMemberId, tipoDocumentoId, fechaVencimiento])
   @@index([anulado, fechaVencimiento])
@@ -400,16 +488,16 @@ model DocumentoAcreditacion {
 // Documento personalizado que HSEC puede agregar sin tocar código
 // (ej. "Curso PMSC", "ART renovada", "Anexo confidencialidad")
 model DocumentoAdicional {
-  id             String   @id @default(cuid())
-  staffMemberId  String
-  staffMember    StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
-  nombre         String
+  id               String      @id @default(cuid())
+  staffMemberId    String
+  staffMember      StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  nombre           String
   fechaVencimiento DateTime?
-  fechaEmision   DateTime?
-  notas          String?
-  createdById    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  fechaEmision     DateTime?
+  notas            String?
+  createdById      String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([staffMemberId])
   @@index([fechaVencimiento])
@@ -419,19 +507,18 @@ model DocumentoAdicional {
 // para la misma fecha de vencimiento. Cuando el documento se renueva (nueva
 // fechaVencimiento), los umbrales se resetean.
 model AlertaDocumento {
-  id             String   @id @default(cuid())
-  staffMemberId  String
-  staffMember    StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
-  docType        String   // "driversLicenseDueDate", "adicional:<uuid>", etc.
-  dueDate        DateTime
-  threshold      Int      // 30, 15, 7, 0 (día del vencimiento), -1 (vencido hace 1 día), etc.
-  sentAt         DateTime @default(now())
-  recipients     String   // csv de emails
+  id            String      @id @default(cuid())
+  staffMemberId String
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  docType       String // "driversLicenseDueDate", "adicional:<uuid>", etc.
+  dueDate       DateTime
+  threshold     Int // 30, 15, 7, 0 (día del vencimiento), -1 (vencido hace 1 día), etc.
+  sentAt        DateTime    @default(now())
+  recipients    String // csv de emails
 
   @@unique([staffMemberId, docType, dueDate, threshold])
   @@index([sentAt])
 }
-
 
 model StaffShiftDay {
   id            String      @id @default(cuid())
@@ -448,42 +535,42 @@ model StaffShiftDay {
 }
 
 model Vehicle {
-  id                String            @id @default(cuid())
-  plate             String            @unique
-  company           String?
-  internalCode      String?
-  brand             String
-  model             String
-  year              Int?
-  type              String
-  status            String            @default("OPERATIVO")
-  accreditationStatus String         @default("PENDIENTE")
-  odometerKm        Int               @default(0)
-  assignedCampId    String?
-  assignedCamp      Camp?             @relation(fields: [assignedCampId], references: [id], onDelete: SetNull)
-  assignedProjectId String?
-  assignedProject   Project?          @relation(fields: [assignedProjectId], references: [id], onDelete: SetNull)
-  ownerArea         String?
-  color             String?
-  vin               String?
-  engineNumber      String?
-  circulationPermitDue DateTime?
-  soapDue           DateTime?
-  technicalReviewDue DateTime?
-  insuranceDue      DateTime?
-  extinguisherDue   DateTime?
-  gpsInstalled      Boolean           @default(false)
-  gpsCertificatePresent Boolean       @default(false)
-  unitPhotoSet      Boolean           @default(false)
-  winterKitPhotoSet Boolean           @default(false)
-  uvProtectionCertificate Boolean     @default(false)
-  reviewedByName    String?
-  reviewedAt        DateTime?
-  notes             String?
-  documents         VehicleDocument[]
-  checklists        VehicleChecklist[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                      String             @id @default(cuid())
+  plate                   String             @unique
+  company                 String?
+  internalCode            String?
+  brand                   String
+  model                   String
+  year                    Int?
+  type                    String
+  status                  String             @default("OPERATIVO")
+  accreditationStatus     String             @default("PENDIENTE")
+  odometerKm              Int                @default(0)
+  assignedCampId          String?
+  assignedCamp            Camp?              @relation(fields: [assignedCampId], references: [id], onDelete: SetNull)
+  assignedProjectId       String?
+  assignedProject         Project?           @relation(fields: [assignedProjectId], references: [id], onDelete: SetNull)
+  ownerArea               String?
+  color                   String?
+  vin                     String?
+  engineNumber            String?
+  circulationPermitDue    DateTime?
+  soapDue                 DateTime?
+  technicalReviewDue      DateTime?
+  insuranceDue            DateTime?
+  extinguisherDue         DateTime?
+  gpsInstalled            Boolean            @default(false)
+  gpsCertificatePresent   Boolean            @default(false)
+  unitPhotoSet            Boolean            @default(false)
+  winterKitPhotoSet       Boolean            @default(false)
+  uvProtectionCertificate Boolean            @default(false)
+  reviewedByName          String?
+  reviewedAt              DateTime?
+  notes                   String?
+  documents               VehicleDocument[]
+  checklists              VehicleChecklist[]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   @@index([assignedCampId, status])
   @@index([assignedProjectId, status])
@@ -510,31 +597,31 @@ model VehicleDocument {
 }
 
 model VehicleChecklist {
-  id                  String    @id @default(cuid())
-  vehicleId           String
-  vehicle             Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  driverId            String
-  driver              User      @relation(fields: [driverId], references: [id], onDelete: Restrict)
-  date                DateTime
-  odometerKm          Int
-  fuelPercent         Int
-  frontLightsOk       Boolean   @default(true)
-  rearLightsOk        Boolean   @default(true)
-  tiresOk             Boolean   @default(true)
-  brakesOk            Boolean   @default(true)
-  mirrorsOk           Boolean   @default(true)
-  hornOk              Boolean   @default(true)
-  fluidsOk            Boolean   @default(true)
-  jackOk              Boolean   @default(true)
-  spareTireOk         Boolean   @default(true)
-  extinguisherOk      Boolean   @default(true)
-  documentsOk         Boolean   @default(true)
-  bodyworkOk          Boolean   @default(true)
-  cleanlinessOk       Boolean   @default(true)
-  observations        String?
-  incidentReported    Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id               String   @id @default(cuid())
+  vehicleId        String
+  vehicle          Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driverId         String
+  driver           User     @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  date             DateTime
+  odometerKm       Int
+  fuelPercent      Int
+  frontLightsOk    Boolean  @default(true)
+  rearLightsOk     Boolean  @default(true)
+  tiresOk          Boolean  @default(true)
+  brakesOk         Boolean  @default(true)
+  mirrorsOk        Boolean  @default(true)
+  hornOk           Boolean  @default(true)
+  fluidsOk         Boolean  @default(true)
+  jackOk           Boolean  @default(true)
+  spareTireOk      Boolean  @default(true)
+  extinguisherOk   Boolean  @default(true)
+  documentsOk      Boolean  @default(true)
+  bodyworkOk       Boolean  @default(true)
+  cleanlinessOk    Boolean  @default(true)
+  observations     String?
+  incidentReported Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([vehicleId, date])
   @@index([driverId, date])
@@ -572,22 +659,22 @@ model AreaConfig {
 }
 
 model Tarea {
-  id          String    @id @default(cuid())
-  tipo        String    @default("urgente")
-  proyecto    String?
-  area        String?
-  descripcion String
-  responsable String?
-  comentario  String?
-  prioridad   String    @default("media")
-  estado           String    @default("pendiente")
-  fechaInicio      DateTime?
-  fechaCierre      DateTime?
-  fechaCompletada  DateTime?
-  esPrivada        Boolean   @default(false)
-  creadoPor        String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  tipo            String    @default("urgente")
+  proyecto        String?
+  area            String?
+  descripcion     String
+  responsable     String?
+  comentario      String?
+  prioridad       String    @default("media")
+  estado          String    @default("pendiente")
+  fechaInicio     DateTime?
+  fechaCierre     DateTime?
+  fechaCompletada DateTime?
+  esPrivada       Boolean   @default(false)
+  creadoPor       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   comentarios TareaComentario[]
 
@@ -609,15 +696,15 @@ model TareaComentario {
 }
 
 model Evaluacion {
-  id               String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identificación
-  evaluadoNombre   String
-  evaluadoCargo    String?
-  periodo          String
-  proyecto         String?
-  evaluadorNombre  String
-  evaluadorId      String?
+  evaluadoNombre  String
+  evaluadoCargo   String?
+  periodo         String
+  proyecto        String?
+  evaluadorNombre String
+  evaluadorId     String?
 
   // II. Competencias Transversales (1-5)
   planificacion      Int?
@@ -627,11 +714,11 @@ model Evaluacion {
   convivenciaLaboral Int?
 
   // III. Seguridad y Medio Ambiente (1-5)
-  comunicacionSeg    Int?
-  indumentaria       Int?
-  elaboracionDocs    Int?
-  reportabilidad     Int?
-  gestionAmbiente    Int?
+  comunicacionSeg Int?
+  indumentaria    Int?
+  elaboracionDocs Int?
+  reportabilidad  Int?
+  gestionAmbiente Int?
 
   // Comentarios por competencia
   comentPlanificacion   String?
@@ -675,7 +762,7 @@ model Incidente {
   fechaOcurrencia     DateTime
   lugar               String
   area                String?
-  criticidad          String    // baja | media | alta | critica
+  criticidad          String // baja | media | alta | critica
   estado              String    @default("abierto") // abierto | en_investigacion | cerrado
   incumplimientoLegal Boolean   @default(false)
   reportadoPorId      String
@@ -700,9 +787,9 @@ model MatrizRiesgo {
   tarea          String
   area           String
   peligro        String
-  probabilidad   Int       // 1-5
-  impacto        Int       // 1-5
-  nivelRiesgo    String    // bajo | medio | alto | critico
+  probabilidad   Int // 1-5
+  impacto        Int // 1-5
+  nivelRiesgo    String // bajo | medio | alto | critico
   medidasControl String?
   responsableId  String
   responsable    User      @relation("MatrizResponsable", fields: [responsableId], references: [id])
@@ -730,22 +817,22 @@ model TipoEPP {
 }
 
 model EntregaEPP {
-  id               String    @id @default(cuid())
+  id               String       @id @default(cuid())
   staffMemberId    String?
   staffMember      StaffMember? @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
   nombreTrabajador String
   tipoEppId        String
-  tipoEpp          TipoEPP   @relation(fields: [tipoEppId], references: [id])
-  cantidad         Int       @default(1)
+  tipoEpp          TipoEPP      @relation(fields: [tipoEppId], references: [id])
+  cantidad         Int          @default(1)
   fechaEntrega     DateTime
   fechaVencimiento DateTime
   firmaUrl         String?
   entregadoPorId   String
-  entregadoPor     User      @relation("EPPEntregador", fields: [entregadoPorId], references: [id])
+  entregadoPor     User         @relation("EPPEntregador", fields: [entregadoPorId], references: [id])
   campId           String?
-  camp             Camp?     @relation(fields: [campId], references: [id], onDelete: SetNull)
+  camp             Camp?        @relation(fields: [campId], references: [id], onDelete: SetNull)
   observaciones    String?
-  createdAt        DateTime  @default(now())
+  createdAt        DateTime     @default(now())
 
   @@index([campId, fechaVencimiento])
   @@index([staffMemberId])
@@ -812,27 +899,27 @@ model CierreContrato {
   staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
 
   /// finiquito | no_renovacion | renuncia | mutuo_acuerdo | otro
-  tipo              String
-  fechaCierre       DateTime
-  motivoCierre      String?
+  tipo         String
+  fechaCierre  DateTime
+  motivoCierre String?
 
   // ── Evaluación de salida ──────────────────────────────────────────────────
   /// excelente | bueno | regular | malo
-  desempenoGeneral      String
+  desempenoGeneral        String
   /// buena | regular | mala
-  puntualidad           String
+  puntualidad             String
   /// bueno | regular | malo
-  trabajoEnEquipo       String
+  trabajoEnEquipo         String
   /// buena | regular | mala
-  calidadTrabajo        String
+  calidadTrabajo          String
   /// buena | regular | mala
-  actitudSeguridad      String
+  actitudSeguridad        String
   /// true = sí lo llamaríamos de vuelta
-  recontratarRecomendado Boolean
+  recontratarRecomendado  Boolean
   /// inmediata | normal | baja | no_aplica
-  prioridadRecontratacion String   @default("normal")
-  observaciones          String?
-  evaluadoPorNombre      String
+  prioridadRecontratacion String  @default("normal")
+  observaciones           String?
+  evaluadoPorNombre       String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -845,9 +932,9 @@ model CierreContrato {
 
 /// Documentos individuales de cada trabajador (contratos, licencias, exámenes, etc.)
 model DocumentoTrabajador {
-  id               String       @id @default(cuid())
+  id               String      @id @default(cuid())
   staffMemberId    String
-  staffMember      StaffMember  @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  staffMember      StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
   /// licencia_conducir | carnet_identidad | contrato | anexo_contrato | examen_preocupacional
   /// examen_periodico | odi_firmada | induccion | capacitacion | credencial | altura_fisica
   /// altura_trabajos | espacios_confinados | antecedentes | liquidacion | finiquito | otro
@@ -861,8 +948,8 @@ model DocumentoTrabajador {
   fechaVencimiento DateTime?
   notas            String?
   creadoPorNombre  String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([staffMemberId, fechaVencimiento])
   @@index([tipo])

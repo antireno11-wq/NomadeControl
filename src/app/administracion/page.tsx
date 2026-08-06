@@ -7,9 +7,11 @@ import {
 } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
-import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction, crearTipoDocumentoAction, actualizarTipoDocumentoAction } from "./actions";
+import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction, crearTipoDocumentoAction, actualizarTipoDocumentoAction, crearProyectoAcreditacionAction, crearCargoAction } from "./actions";
 
 import { CATEGORIA_LABEL, type CategoriaDocumento } from "@/lib/acreditacion";
+import { getCargos, getProyectos, getRequisitos } from "@/lib/requisitos-db";
+import { RequisitosMatriz } from "./requisitos-matriz";
 
 const MODULE_DEFAULT_CHECK: Record<string, (role: string) => boolean> = {
   operaciones:  canAccessDashboard,
@@ -34,7 +36,7 @@ const MODULE_CHIP_COLOR: Record<string, { bg: string; color: string }> = {
 export default async function AdministracionPage({
   searchParams
 }: {
-  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; tipoStatus?: string | string[]; seccion?: string | string[] };
+  searchParams?: { campStatus?: string | string[]; userStatus?: string | string[]; projectStatus?: string | string[]; tipoStatus?: string | string[]; seccion?: string | string[]; proyecto?: string | string[]; reqStatus?: string | string[] };
 }) {
   const user = await requireRole(ADMIN_ROLES);
   const canDeleteData = isFullAdminRole(user.role);
@@ -70,6 +72,24 @@ export default async function AdministracionPage({
     : tipoStatus === "invalido" ? { type: "error", text: "Revisa los datos del tipo de documento." }
     : null;
 
+  // ── Matriz de requisitos por cargo ──────────────────────────────────
+  const reqStatus = typeof searchParams?.reqStatus === "string" ? searchParams.reqStatus : "";
+  const reqAlert =
+    reqStatus === "creado" ? { type: "success", text: "Proyecto creado y matriz de requisitos sembrada." }
+    : reqStatus === "cargo" ? { type: "success", text: "Cargo agregado." }
+    : reqStatus === "duplicado" ? { type: "error", text: "Ese proyecto ya existía para el mandante." }
+    : reqStatus === "invalido" ? { type: "error", text: "Revisa los datos del proyecto." }
+    : null;
+
+  const proyectosAcreditacion = seccion === "requisitos" ? await getProyectos() : [];
+  const proyectoIdParam = typeof searchParams?.proyecto === "string" ? searchParams.proyecto : "";
+  const proyectoSel =
+    proyectosAcreditacion.find(p => p.id === proyectoIdParam) ?? proyectosAcreditacion[0] ?? null;
+
+  const [cargosAcreditacion, requisitosSel] = proyectoSel
+    ? await Promise.all([getCargos(), getRequisitos(proyectoSel.id)])
+    : [[], []];
+
   const projectAlert =
     projectStatus === "closed" ? { type: "success", text: "Proyecto finalizado correctamente." }
     : projectStatus === "not-found" ? { type: "error", text: "Proyecto no encontrado." }
@@ -92,6 +112,7 @@ export default async function AdministracionPage({
     { key: "campamentos", label: "Campamentos" },
     { key: "proyectos", label: "Proyectos" },
     { key: "documentos", label: "Tipos de documento" },
+    { key: "requisitos", label: "Requisitos por cargo" },
     { key: "sistema", label: "Sistema" },
   ];
 
@@ -522,6 +543,125 @@ export default async function AdministracionPage({
               los documentos ya cargados. <strong>En matriz</strong> lo agrega como columna del panel
               de control documental — con muchos tipos marcados la tabla se vuelve ilegible.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── REQUISITOS POR CARGO ─────────────────────────────────────── */}
+      {seccion === "requisitos" && (
+        <div className="page-stack">
+          {reqAlert && <div className={`alert ${reqAlert.type}`}>{reqAlert.text}</div>}
+
+          {proyectosAcreditacion.length === 0 ? (
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>Crea el primer proyecto</h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+                Los requisitos documentales cuelgan del proyecto, no de la empresa: el mismo cargo
+                puede necesitar documentos distintos en dos faenas del mismo mandante. Al crearlo se
+                siembra la matriz base y después la ajustas en la grilla.
+              </p>
+            </div>
+          ) : (
+            <div className="card">
+              <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+                <div style={{ minWidth: 260 }}>
+                  <label htmlFor="sel-proyecto">Proyecto</label>
+                  <form method="GET" action="/administracion">
+                    <input type="hidden" name="seccion" value="requisitos" />
+                    <select id="sel-proyecto" name="proyecto" defaultValue={proyectoSel?.id}>
+                      {proyectosAcreditacion.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.mandanteNombre} — {p.nombre}{p.faena ? ` (${p.faena})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="submit" className="secondary" style={{ marginTop: "0.5rem" }}>Ver matriz</button>
+                  </form>
+                </div>
+                {proyectoSel && (
+                  <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+                    {proyectoSel.altitudMsnm != null
+                      ? `Faena a ${proyectoSel.altitudMsnm.toLocaleString("es-CL")} m`
+                      : "Altura de la faena sin registrar — el examen de altura geográfica se exige por defecto."}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {proyectoSel && (
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>
+                Requisitos de {proyectoSel.mandanteNombre} — {proyectoSel.nombre}
+              </h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+                Marca qué documento le exige este proyecto a cada cargo. Un clic cambia entre
+                obligatorio, deseable y no aplica.
+              </p>
+              <RequisitosMatriz
+                proyectoId={proyectoSel.id}
+                tipos={tiposDocumento
+                  .filter(t => t.activo)
+                  .map(t => ({ id: t.id, codigo: t.codigo, nombre: t.nombre, categoria: t.categoria }))}
+                cargos={cargosAcreditacion.map(c => ({ id: c.id, nombre: c.nombre }))}
+                iniciales={requisitosSel.map(r => ({
+                  cargoId: r.cargoId, tipoId: r.tipoId, nivel: r.nivel, condicion: r.condicion,
+                }))}
+              />
+            </div>
+          )}
+
+          <div className="grid two">
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>Nuevo proyecto</h2>
+              <form action={crearProyectoAcreditacionAction} className="page-stack" style={{ gap: "0.75rem" }}>
+                <div>
+                  <label htmlFor="pa-mandante">Mandante</label>
+                  <input id="pa-mandante" name="mandante" required placeholder="Ej: Anglo American" list="mandantes-existentes" />
+                  <datalist id="mandantes-existentes">
+                    {[...new Set(proyectosAcreditacion.map(p => p.mandanteNombre))].map(n => (
+                      <option key={n} value={n} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label htmlFor="pa-nombre">Proyecto</label>
+                  <input id="pa-nombre" name="nombre" required placeholder="Ej: Agua Verde" />
+                </div>
+                <div>
+                  <label htmlFor="pa-faena">Faena o división</label>
+                  <input id="pa-faena" name="faena" placeholder="Ej: Los Bronces" />
+                </div>
+                <div>
+                  <label htmlFor="pa-altitud">Altura de la faena (m s. n. m.)</label>
+                  <input id="pa-altitud" name="altitudMsnm" type="number" min={0} max={6000} placeholder="Ej: 3500" />
+                  <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+                    Sobre 3.000 m se exige el examen de altura geográfica. Si lo dejas en blanco se
+                    exige igual, para no omitirlo por omisión.
+                  </span>
+                </div>
+                <button type="submit">Crear y sembrar matriz</button>
+              </form>
+            </div>
+
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>Cargos</h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+                El cargo es el grupo de dotación, no el título del contrato: «Montajista» agrupa a
+                los rigger, gásfiter y eléctricos, que se acreditan igual.
+              </p>
+              <ul style={{ margin: "0 0 1rem", paddingLeft: "1.1rem", color: "var(--muted)", fontSize: "0.85rem" }}>
+                {cargosAcreditacion.map(c => <li key={c.id}>{c.nombre}</li>)}
+              </ul>
+              <form action={crearCargoAction} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+                <input type="hidden" name="proyectoId" value={proyectoSel?.id ?? ""} />
+                <div style={{ flex: 1 }}>
+                  <label htmlFor="cargo-nombre">Agregar cargo</label>
+                  <input id="cargo-nombre" name="nombre" required placeholder="Ej: Bodeguero" />
+                </div>
+                <button type="submit" className="secondary">Agregar</button>
+              </form>
+            </div>
           </div>
         </div>
       )}
