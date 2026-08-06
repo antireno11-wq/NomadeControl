@@ -63,7 +63,7 @@ export default async function DashboardAcreditacionPage({
     where: { isActive: true, ...(proyectoSel ? { proyectoId: proyectoSel.id } : {}) },
     select: {
       id: true, fullName: true, nationalId: true, cargoId: true, proyectoId: true,
-      contractIsIndefinite: true, trabajoPrevioMandante: true,
+      contractIsIndefinite: true, trabajoPrevioMandante: true, contractEndDate: true,
     },
     orderBy: { fullName: "asc" },
   });
@@ -76,6 +76,7 @@ export default async function DashboardAcreditacionPage({
       cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
+      contractEndDate: w.contractEndDate,
     }))),
   ]);
 

@@ -65,6 +65,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
       cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
+      contractEndDate: w.contractEndDate,
     }))),
   ]);
   const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));

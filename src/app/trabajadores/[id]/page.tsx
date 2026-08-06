@@ -89,6 +89,7 @@ export default async function PerfilTrabajadorPage({
       cargoId: worker.cargoId,
       contractIsIndefinite: worker.contractIsIndefinite,
       trabajoPrevioMandante: worker.trabajoPrevioMandante,
+      contractEndDate: worker.contractEndDate,
     }),
   ]);
   const exigencia = resumirExigencia(

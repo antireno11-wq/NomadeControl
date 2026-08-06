@@ -128,6 +128,30 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
 
 // ─── Evaluación por trabajador ─────────────────────────────────────────
 
+/** Datos de la ficha que activan o desactivan requisitos condicionales. */
+export type TrabajadorParaRequisitos = {
+  id?: string;
+  proyectoId: string | null;
+  cargoId: string | null;
+  contractIsIndefinite: boolean;
+  trabajoPrevioMandante: boolean;
+  contractEndDate: Date | null;
+};
+
+/**
+ * Un contrato a plazo fijo cuya fecha de término ya pasó. El indefinido no
+ * vence nunca, y si no hay fecha cargada no se puede afirmar que venció:
+ * en los dos casos el anexo de renovación no corresponde todavía.
+ */
+export function condicionesDe(t: TrabajadorParaRequisitos, hoy = new Date()): CondicionesTrabajador {
+  return {
+    contratoIndefinido:    t.contractIsIndefinite,
+    trabajoPrevioMandante: t.trabajoPrevioMandante,
+    contratoVencido:
+      !t.contractIsIndefinite && t.contractEndDate != null && t.contractEndDate < hoy,
+  };
+}
+
 export type RequisitoDeTrabajador = {
   tipoId: string;
   nivel: NivelRequisito;
@@ -139,12 +163,9 @@ export type RequisitoDeTrabajador = {
  * y sus propias condiciones. Sin proyecto o sin cargo devuelve `null`, que la
  * UI muestra como "sin matriz asignada" en vez de fingir un 100%.
  */
-export async function getRequisitosDeTrabajador(t: {
-  proyectoId: string | null;
-  cargoId: string | null;
-  contractIsIndefinite: boolean;
-  trabajoPrevioMandante: boolean;
-}): Promise<RequisitoDeTrabajador[] | null> {
+export async function getRequisitosDeTrabajador(
+  t: TrabajadorParaRequisitos,
+): Promise<RequisitoDeTrabajador[] | null> {
   if (!t.proyectoId || !t.cargoId) return null;
 
   const filas = await db.requisitoDocumento.findMany({
@@ -152,10 +173,7 @@ export async function getRequisitosDeTrabajador(t: {
     select: { tipoId: true, nivel: true, condicion: true },
   });
 
-  const cond: CondicionesTrabajador = {
-    contratoIndefinido:    t.contractIsIndefinite,
-    trabajoPrevioMandante: t.trabajoPrevioMandante,
-  };
+  const cond = condicionesDe(t);
 
   return filas
     .filter(f => requisitoAplica(f, cond))
@@ -168,13 +186,7 @@ export async function getRequisitosDeTrabajador(t: {
 
 /** Igual que el anterior pero para muchos trabajadores, sin N+1. */
 export async function getRequisitosPorTrabajador(
-  trabajadores: Array<{
-    id: string;
-    proyectoId: string | null;
-    cargoId: string | null;
-    contractIsIndefinite: boolean;
-    trabajoPrevioMandante: boolean;
-  }>,
+  trabajadores: Array<TrabajadorParaRequisitos & { id: string }>,
 ): Promise<Map<string, RequisitoDeTrabajador[] | null>> {
   const pares = new Set(
     trabajadores
@@ -203,10 +215,7 @@ export async function getRequisitosPorTrabajador(
   const salida = new Map<string, RequisitoDeTrabajador[] | null>();
   for (const t of trabajadores) {
     if (!t.proyectoId || !t.cargoId) { salida.set(t.id, null); continue; }
-    const cond: CondicionesTrabajador = {
-      contratoIndefinido:    t.contractIsIndefinite,
-      trabajoPrevioMandante: t.trabajoPrevioMandante,
-    };
+    const cond = condicionesDe(t);
     salida.set(
       t.id,
       (porPar.get(`${t.proyectoId}|${t.cargoId}`) ?? [])

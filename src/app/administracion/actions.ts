@@ -1114,3 +1114,39 @@ export async function setRequisitoFilaAction(input: {
   revalidatePath("/trabajadores/control-documental");
   return { ok: true };
 }
+
+/**
+ * Cambia la condición de un documento en toda la matriz de un proyecto.
+ *
+ * La condición es del documento, no de la celda: el anexo de contrato se
+ * exige o no según el estado del contrato de esa persona, y eso no depende
+ * del cargo. Por eso se aplica a la fila completa.
+ */
+export async function setCondicionFilaAction(input: {
+  proyectoId: string;
+  tipoId: string;
+  condicion: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireRole(ADMIN_ROLES);
+  } catch {
+    return { ok: false, error: "Sin permisos" };
+  }
+
+  const { proyectoId, tipoId, condicion } = input;
+  if (!proyectoId || !tipoId) return { ok: false, error: "Datos incompletos" };
+
+  const validas = ["contrato_indefinido", "trabajo_previo_mandante", "contrato_vencido"];
+  if (condicion !== null && !validas.includes(condicion)) {
+    return { ok: false, error: "Condición desconocida" };
+  }
+
+  await db.requisitoDocumento.updateMany({
+    where: { proyectoId, tipoId },
+    data: { condicion },
+  });
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores/control-documental");
+  return { ok: true };
+}

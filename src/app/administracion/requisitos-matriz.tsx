@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { setRequisitoAction, setRequisitoFilaAction } from "./actions";
+import { setRequisitoAction, setRequisitoFilaAction, setCondicionFilaAction } from "./actions";
 import { CATEGORIA_LABEL, type CategoriaDocumento } from "@/lib/acreditacion";
-import { CONDICION_LABEL, TIPOS_SIN_REGLA_DEFINIDA, type CondicionRequisito } from "@/lib/requisitos";
+import { CONDICION_LABEL, CONDICIONES, TIPOS_SIN_REGLA_DEFINIDA, type CondicionRequisito } from "@/lib/requisitos";
 
 type Nivel = "obligatorio" | "deseable";
 
@@ -59,13 +59,27 @@ export function RequisitosMatriz({
   const [pendiente, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
-  // La condición no se edita en la grilla: es una propiedad del documento, no
-  // de la celda. Se muestra como nota en la fila.
-  const condicionPorTipo = React.useMemo(() => {
+  // La condición es del documento, no de la celda: el anexo de contrato se
+  // exige según el estado del contrato de esa persona, y eso no depende del
+  // cargo. Por eso se edita una vez por fila.
+  const [condicionPorTipo, setCondicionPorTipo] = React.useState<Map<string, string>>(() => {
     const m = new Map<string, string>();
     for (const c of iniciales) if (c.condicion) m.set(c.tipoId, c.condicion);
     return m;
-  }, [iniciales]);
+  });
+
+  function cambiarCondicion(tipoId: string, condicion: string) {
+    setCondicionPorTipo(prev => {
+      const m = new Map(prev);
+      if (condicion) m.set(tipoId, condicion); else m.delete(tipoId);
+      return m;
+    });
+    setError(null);
+    startTransition(async () => {
+      const r = await setCondicionFilaAction({ proyectoId, tipoId, condicion: condicion || null });
+      if (!r.ok) setError(r.error);
+    });
+  }
 
   function cambiarCelda(cargoId: string, tipoId: string) {
     const k = clave(cargoId, tipoId);
@@ -202,11 +216,25 @@ export function RequisitosMatriz({
                         padding: "0.4rem 0.6rem", minWidth: 280, maxWidth: 280,
                       }}>
                         <div style={{ fontWeight: 500 }}>{t.nombre}</div>
-                        {cond && (
-                          <div style={{ fontSize: "0.7rem", color: "var(--muted)" }}>
-                            {CONDICION_LABEL[cond as CondicionRequisito] ?? cond}
-                          </div>
-                        )}
+                        {/* La condición es del documento, no de la celda: se aplica a
+                            todos los cargos de la fila. */}
+                        <select
+                          value={cond ?? ""}
+                          onChange={e => cambiarCondicion(t.id, e.target.value)}
+                          title="Condición del trabajador que activa este requisito"
+                          style={{
+                            marginTop: 3, padding: "1px 4px", fontSize: "0.68rem",
+                            maxWidth: "100%", color: cond ? "#0369a1" : "var(--muted)",
+                            border: cond ? "1px solid #7dd3fc" : "1px solid transparent",
+                            background: cond ? "#f0f9ff" : "transparent",
+                            borderRadius: 4,
+                          }}
+                        >
+                          <option value="">Se exige siempre</option>
+                          {CONDICIONES.map(c => (
+                            <option key={c} value={c}>{CONDICION_LABEL[c]}</option>
+                          ))}
+                        </select>
                       </td>
                       <td style={{ borderBottom: "1px solid var(--border, #e2e8f0)", padding: "0.25rem", textAlign: "center", whiteSpace: "nowrap" }}>
                         <button

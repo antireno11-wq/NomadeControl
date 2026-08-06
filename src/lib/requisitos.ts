@@ -24,12 +24,22 @@ export const NIVEL_LABEL: Record<NivelRequisito, string> = {
  * Son las únicas dos reglas de la planilla que no dependen del cargo sino
  * de la persona.
  */
-export type CondicionRequisito = "contrato_indefinido" | "trabajo_previo_mandante";
+export type CondicionRequisito =
+  | "contrato_indefinido"
+  | "trabajo_previo_mandante"
+  | "contrato_vencido";
 
 export const CONDICION_LABEL: Record<CondicionRequisito, string> = {
   contrato_indefinido:     "Solo con contrato indefinido",
   trabajo_previo_mandante: "Solo si trabajó antes en el mandante",
+  contrato_vencido:        "Solo si el contrato ya venció",
 };
+
+export const CONDICIONES: CondicionRequisito[] = [
+  "contrato_indefinido",
+  "trabajo_previo_mandante",
+  "contrato_vencido",
+];
 
 // ─── Cargos ────────────────────────────────────────────────────────────
 
@@ -79,7 +89,9 @@ export const REGLAS_SEED: ReglaSeed[] = [
   // Todos
   { tipo: "cedula_identidad",          cargos: null, nivel: "obligatorio" },
   { tipo: "contrato_trabajo",          cargos: null, nivel: "obligatorio" },
-  { tipo: "anexo_contrato",            cargos: null, nivel: "obligatorio" },
+  // El anexo es la renovación: no existe mientras el contrato original siga
+  // vigente, así que pedirlo antes es pedir un papel que nadie puede emitir.
+  { tipo: "anexo_contrato",            cargos: null, nivel: "obligatorio", condicion: "contrato_vencido" },
   { tipo: "foto",                      cargos: null, nivel: "obligatorio" },
   { tipo: "examen_ocupacional",        cargos: null, nivel: "obligatorio" },
   { tipo: "examen_alcohol_drogas",     cargos: null, nivel: "obligatorio" },
@@ -155,6 +167,7 @@ export type RequisitoAplicable = {
 export type CondicionesTrabajador = {
   contratoIndefinido: boolean;
   trabajoPrevioMandante: boolean;
+  contratoVencido: boolean;
 };
 
 /** ¿Este requisito le corre a este trabajador en concreto? */
@@ -165,6 +178,7 @@ export function requisitoAplica(
   switch (req.condicion) {
     case "contrato_indefinido":     return cond.contratoIndefinido;
     case "trabajo_previo_mandante": return cond.trabajoPrevioMandante;
+    case "contrato_vencido":        return cond.contratoVencido;
     default:                        return true;
   }
 }

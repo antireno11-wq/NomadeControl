@@ -85,6 +85,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
       cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
+      contractEndDate: w.contractEndDate,
     }))),
   ]);
   const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));
