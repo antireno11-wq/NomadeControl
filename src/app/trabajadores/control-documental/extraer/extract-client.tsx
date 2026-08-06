@@ -221,13 +221,14 @@ export function ExtractClient({
               paginaInicio: res.paginaInicio,
               workerName: res.workerName,
               workerRut: res.workerRut,
-              // En un documento colectivo NO se propone crear la ficha: una
-              // declaración firmada por la cuadrilla entera crearía diez
-              // trabajadores de golpe. Se enlaza a quien ya existe y el resto
-              // queda sin asignar, para que sea una decisión explícita.
+              // Los firmantes de un documento colectivo también se proponen
+              // para crear: muchas veces esa declaración es la primera vez que
+              // la persona aparece. El resguardo no es bloquearlo sino que se
+              // vea — el panel previo al guardado marca a quién se crearía y
+              // desde qué archivo.
               workerId: fixedWorker?.id
                 ?? bestMatch?.workerId
-                ?? (proponerCrear && !res.firmantes ? CREAR_NUEVO : null),
+                ?? (proponerCrear ? CREAR_NUEVO : null),
               nuevoNombre: res.workerName ? formatearNombre(res.workerName) : "",
               nuevoRut: res.workerRut ?? "",
               confidence: res.confidence,
@@ -548,6 +549,14 @@ export function ExtractClient({
                               ← {archivos.slice(0, 3).join(", ")}
                               {archivos.length > 3 && ` y ${archivos.length - 3} más`}
                             </span>
+                            {/* Alguien que solo firma un documento colectivo puede
+                                ser de otra cuadrilla: la firma prueba que estuvo,
+                                no que se le esté armando la carpeta. */}
+                            {g.indices.every(i => filasNuevas[i]?.firmantes) && (
+                              <span style={{ background: "#dbeafe", color: "#1e40af", borderRadius: 4, padding: "1px 6px", fontSize: "0.68rem", fontWeight: 700 }}>
+                                solo firma un documento colectivo
+                              </span>
+                            )}
                           </div>
                         );
                       })}
