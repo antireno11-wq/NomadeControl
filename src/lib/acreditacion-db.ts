@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import {
   calcularEstado,
   esEstadoOk,
+  RENOMBRES_CATALOGO,
   seleccionarVigentes,
   TIPOS_DOCUMENTO_SEED,
   UMBRAL_POR_VENCER_DIAS,
@@ -68,12 +69,20 @@ const SELECT_TIPO = {
  * `skipDuplicates` + `codigo` único la hacen segura ante concurrencia.
  */
 async function asegurarCatalogo(): Promise<void> {
-  const existentes = await db.tipoDocumento.count();
-  if (existentes >= TIPOS_DOCUMENTO_SEED.length) return;
+  const actuales = await db.tipoDocumento.findMany({ select: { codigo: true, nombre: true } });
+  const codigos = new Set(actuales.map(t => t.codigo));
 
-  const codigos = new Set(
-    (await db.tipoDocumento.findMany({ select: { codigo: true } })).map(t => t.codigo),
-  );
+  // Renombres: solo si el tipo conserva el nombre viejo. Si alguien lo editó
+  // desde Administración, su edición manda.
+  const porNombre = new Map(actuales.map(t => [t.codigo, t.nombre]));
+  for (const r of RENOMBRES_CATALOGO) {
+    if (porNombre.get(r.codigo) !== r.desde) continue;
+    await db.tipoDocumento.update({
+      where: { codigo: r.codigo },
+      data: { nombre: r.nombre, etiquetaCorta: r.etiquetaCorta },
+    });
+  }
+
   const faltantes = TIPOS_DOCUMENTO_SEED.filter(t => !codigos.has(t.codigo));
   if (faltantes.length === 0) return;
 

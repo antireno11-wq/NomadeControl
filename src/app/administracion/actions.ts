@@ -858,7 +858,7 @@ export async function deleteRecordAction(formData: FormData) {
 
 const tipoDocumentoSchema = z.object({
   nombre: z.string().trim().min(2),
-  categoria: z.enum(["identidad", "previsional", "salud_ocupacional", "formacion", "laboral"]),
+  categoria: z.enum(["identidad", "previsional", "salud_ocupacional", "formacion", "laboral", "seguros"]),
   etiquetaCorta: z.string().trim().optional(),
   vigenciaDias: z.string().optional(),
   noVence: z.string().optional(),

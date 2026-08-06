@@ -11,7 +11,8 @@ export type CategoriaDocumento =
   | "previsional"
   | "salud_ocupacional"
   | "formacion"
-  | "laboral";
+  | "laboral"
+  | "seguros";
 
 export const CATEGORIA_LABEL: Record<CategoriaDocumento, string> = {
   identidad:         "Identidad",
@@ -19,6 +20,7 @@ export const CATEGORIA_LABEL: Record<CategoriaDocumento, string> = {
   salud_ocupacional: "Salud ocupacional",
   formacion:         "Formación",
   laboral:           "Laboral",
+  seguros:           "Seguros",
 };
 
 export type TipoDocumentoSeed = {
@@ -61,12 +63,14 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   // ── Identidad ────────────────────────────────────────────────────────
   { codigo: "certificado_antecedentes", nombre: "Certificado de antecedentes",    categoria: "identidad",         vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Antecedentes", legacyField: null, orden: 110 },
   { codigo: "certificado_residencia",   nombre: "Certificado de residencia",      categoria: "identidad",         vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Residencia",   legacyField: null, orden: 120 },
+  { codigo: "registro_discapacidad",    nombre: "Certificado Registro Nacional de la Discapacidad", categoria: "identidad", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "R. discapacidad", legacyField: null, noVence: true, orden: 125 },
 
   // ── Previsional ──────────────────────────────────────────────────────
   { codigo: "afiliacion_afp",           nombre: "Certificado de afiliación AFP",  categoria: "previsional",       vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "AFP",          legacyField: null, orden: 130 },
   { codigo: "certificado_cotizaciones", nombre: "Certificado de cotizaciones",    categoria: "previsional",       vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Cotizaciones", legacyField: null, orden: 140 },
   { codigo: "afiliacion_salud",         nombre: "Afiliación salud (Fonasa/Isapre)", categoria: "previsional",     vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Salud",        legacyField: null, orden: 150 },
   { codigo: "afiliacion_mutualidad",    nombre: "Afiliación mutualidad",          categoria: "previsional",       vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Mutualidad",   legacyField: null, orden: 160 },
+  { codigo: "ley_trabajo_pesado",       nombre: "Certificado Ley de Trabajo Pesado", categoria: "previsional",    vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Trab. pesado", legacyField: null, noVence: true, orden: 165 },
 
   // ── Salud ocupacional ────────────────────────────────────────────────
   { codigo: "altura_fisica",            nombre: "Examen de altura física",        categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Altura fís.",  legacyField: null, orden: 170 },
@@ -74,28 +78,120 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "examen_alcohol_drogas",    nombre: "Examen de alcohol y drogas",     categoria: "salud_ocupacional", vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Alcohol/drogas", legacyField: null, orden: 185 },
 
   // ── Formación ────────────────────────────────────────────────────────
+  // Inducciones: el Excel las tenía todas mezcladas bajo "ODI / IRL / Inducción".
+  // Son cuatro documentos distintos, con emisor y vigencia propios: la ODI la
+  // firma el trabajador, la inducción interna la dicta NOMADE, la del mandante
+  // la dicta el cliente y el IRL existe en versión empresa y versión cliente.
+  { codigo: "induccion_interna",        nombre: "Inducción interna de contrato",  categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Ind. interna", legacyField: null, orden: 191 },
+  { codigo: "induccion_mandante",       nombre: "Inducción persona nueva (mandante)", categoria: "formacion",     vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Ind. mandante", legacyField: null, orden: 192 },
+  { codigo: "riesgos_operacionales",    nombre: "Curso A1 — Riesgos operacionales", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Riesgos op.",  legacyField: null, orden: 193 },
+  { codigo: "irl_empresa",              nombre: "IRL empresa",                    categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "IRL empresa",  legacyField: null, noVence: true, orden: 194 },
+  { codigo: "irl_cliente",              nombre: "IRL cliente / mandante",         categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "IRL cliente",  legacyField: null, noVence: true, orden: 195 },
+
+  { codigo: "curso_4x4",                nombre: "Curso 4x4 teórico-práctico",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "4x4",          legacyField: null, orden: 189 },
   { codigo: "conduccion_defensiva",     nombre: "Conducción a la defensiva",      categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Cond. def.",   legacyField: null, orden: 190 },
   { codigo: "certificacion_competencias", nombre: "Certificación de competencias", categoria: "formacion",        vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Competencias", legacyField: null, orden: 200 },
   { codigo: "titulo_estudios",          nombre: "Título o certificado de estudios", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Título",       legacyField: null, orden: 210 },
-  { codigo: "curso_primeros_auxilios",  nombre: "Curso de primeros auxilios",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux.",   legacyField: null, orden: 212 },
+  // El Excel confirmó que 12 (16 hrs) y 12.1 (básico) NO son el mismo curso:
+  // 10 trabajadores tienen uno aprobado y el otro pendiente.
+  { codigo: "primeros_auxilios_basico", nombre: "Primeros auxilios (básico)",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux. bás.", legacyField: null, orden: 211 },
+  { codigo: "curso_primeros_auxilios",  nombre: "Curso de primeros auxilios (16 hrs)", categoria: "formacion",    vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux.",   legacyField: null, orden: 212 },
   { codigo: "curso_extintores",         nombre: "Curso de uso de extintores",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Extintores",   legacyField: null, orden: 213 },
   { codigo: "curso_epp",                nombre: "Curso de uso y mantención de EPP", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Curso EPP",    legacyField: null, orden: 214 },
   { codigo: "capacitacion_ruv",         nombre: "Capacitación RUV",               categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "RUV",          legacyField: null, orden: 215 },
   { codigo: "capacitacion_mmc",         nombre: "Capacitación manejo manual de cargas", categoria: "formacion",   vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "MMC",          legacyField: null, orden: 216 },
   { codigo: "capacitacion_sustancias",  nombre: "Capacitación sustancias peligrosas", categoria: "formacion",     vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Sust. pelig.", legacyField: null, orden: 217 },
+  { codigo: "entrenamientos_especificos", nombre: "Cursos de entrenamientos específicos", categoria: "formacion",  vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entren. esp.", legacyField: null, orden: 218 },
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },
   { codigo: "ficha_ingreso",            nombre: "Ficha de ingreso",               categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "F. ingreso",   legacyField: null, orden: 230 },
-  { codigo: "finiquito",                nombre: "Finiquito",                      categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Finiquito",    legacyField: null, orden: 240 },
+  { codigo: "cv",                       nombre: "Currículum actualizado",         categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "CV",           legacyField: null, noVence: true, orden: 232 },
+  { codigo: "finiquito",                nombre: "Finiquito del último trabajo",   categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Finiquito",    legacyField: null, orden: 240 },
+  // El mandante pide aparte el finiquito de un empleo anterior en su propia
+  // faena. Es distinto del último finiquito y el Excel los mantenía separados.
+  { codigo: "finiquito_mandante",       nombre: "Finiquito de trabajo anterior en el mandante", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Finiq. mandante", legacyField: null, orden: 241 },
 
   // ── Constancias: no caducan, solo tienen que existir ──────────────────
   { codigo: "entrega_epp",              nombre: "Acta de entrega de EPP",         categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entrega EPP",  legacyField: null, noVence: true, orden: 250 },
   { codigo: "recepcion_riohs",          nombre: "Recepción del RIOHS",            categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "RIOHS",        legacyField: null, noVence: true, orden: 251 },
   { codigo: "declaracion_jurada",       nombre: "Declaración jurada",             categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Decl. jurada", legacyField: null, noVence: true, orden: 252 },
 
+  // ── Seguros ──────────────────────────────────────────────────────────
+  // Solo los exige el mandante para contratos permanentes.
+  { codigo: "poliza_muerte_accidental", nombre: "Póliza de muerte accidental e invalidez (≥ 2.500 UF)", categoria: "seguros", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Pól. accid.",  legacyField: null, orden: 260 },
+  { codigo: "poliza_salud_dental",      nombre: "Póliza de salud y dental",       categoria: "seguros",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Pól. salud",   legacyField: null, orden: 261 },
+  { codigo: "poliza_muerte_natural",    nombre: "Póliza de muerte natural (≥ 500 UF)", categoria: "seguros",      vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Pól. natural", legacyField: null, orden: 262 },
+
   // ── Foto ─────────────────────────────────────────────────────────────
   { codigo: "foto",                     nombre: "Foto del trabajador",            categoria: "identidad",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Foto",         legacyField: null, noVence: true, esFoto: true, orden: 5 },
+];
+
+/**
+ * Correlativo de la matriz de acreditación del mandante → código interno.
+ *
+ * El código del mandante se usa como nombre de subcarpeta por trabajador, así
+ * que hay que poder ir y volver. Varios correlativos apuntan al mismo tipo
+ * porque la planilla llegó a pedir el mismo documento dos veces:
+ *   01 / 36 → cédula        04 / 37 → foto        23 / 39 → estudios
+ */
+export const CODIGO_MATRIZ_A_TIPO: Record<string, string> = {
+  "01": "cedula_identidad",
+  "02": "contrato_trabajo",
+  "03": "anexo_contrato",
+  "04": "foto",
+  "05": "examen_ocupacional",
+  "06": "altura_geografica",
+  "07": "examen_alcohol_drogas",
+  "08": "psicosensotecnico",
+  "09": "induccion_mandante",
+  "10": "riesgos_operacionales",
+  "11": "induccion_interna",
+  "12": "curso_primeros_auxilios",
+  "12.1": "primeros_auxilios_basico",
+  "13": "curso_extintores",
+  "14": "curso_epp",
+  "15": "entrenamientos_especificos",
+  "16": "manipulacion_alimentos",
+  "17": "certificacion_competencias",
+  "18": "licencia_conducir",
+  "19": "entrega_epp",
+  "20": "recepcion_riohs",
+  "21": "odi",
+  "22": "declaracion_jurada",
+  "23": "titulo_estudios",
+  "24": "irl_empresa",
+  "25": "irl_cliente",
+  "26": "poliza_muerte_accidental",
+  "27": "poliza_salud_dental",
+  "28": "poliza_muerte_natural",
+  "29": "finiquito_mandante",
+  "30": "ley_trabajo_pesado",
+  "31": "registro_discapacidad",
+  "32": "certificado_antecedentes",
+  "33": "certificado_residencia",
+  "34": "afiliacion_afp",
+  "35": "afiliacion_salud",
+  "36": "cedula_identidad",
+  "37": "foto",
+  "38": "cv",
+  "39": "titulo_estudios",
+  "40": "certificado_cotizaciones",
+  "41": "finiquito",
+  "C1": "curso_4x4",
+  "C2": "conduccion_defensiva",
+};
+
+/**
+ * Renombres intencionales del catálogo. Se aplican solo si el tipo todavía
+ * tiene el nombre viejo, para no pisar ediciones hechas desde Administración.
+ */
+export const RENOMBRES_CATALOGO: { codigo: string; desde: string; nombre: string; etiquetaCorta: string }[] = [
+  // Dejó de ser el cajón de sastre de inducciones: ahora cada una es su tipo.
+  { codigo: "odi", desde: "ODI / IRL / Inducción", nombre: "ODI — Derecho a saber", etiquetaCorta: "ODI" },
+  { codigo: "certificacion_competencias", desde: "Certificación de competencias", nombre: "Certificado de especialidad", etiquetaCorta: "Especialidad" },
+  { codigo: "declaracion_jurada", desde: "Declaración jurada", nombre: "Declaración jurada por competencias", etiquetaCorta: "Decl. jurada" },
+  { codigo: "titulo_estudios", desde: "Título o certificado de estudios", nombre: "Certificado de estudios / nivel educacional", etiquetaCorta: "Estudios" },
 ];
 
 /** Mapa legacyField → codigo, para el backfill y la sincronización. */
@@ -425,9 +521,21 @@ export function adivinarTipoDesdeNombre(
     [/suspel|sustancias?\s*peligrosas?/,        "capacitacion_sustancias"],
     [/manejo\s*manual|\bmmc\b/,                "capacitacion_mmc"],
     [/\bruv\b/,                                 "capacitacion_ruv"],
+    [/primeros\s*auxilios.*basico|basico.*primeros\s*auxilios/, "primeros_auxilios_basico"],
     [/primeros\s*auxilios/,                     "curso_primeros_auxilios"],
     [/extintor/,                                "curso_extintores"],
-    [/uso\s*y\s*mantencion\s*de\s*epp|curso.*\bepp\b/, "curso_epp"],
+    [/\b4\s*x\s*4\b|cuatro\s*por\s*cuatro/,     "curso_4x4"],
+    [/riesgos?\s*operacional/,                  "riesgos_operacionales"],
+    [/entrenamiento.*especifico/,               "entrenamientos_especificos"],
+
+    // Inducciones e IRL: van antes de /contrato/, porque el nombre real de
+    // varios de estos archivos es "Inducción Interna Contrato".
+    [/irl.*(cliente|mandante|anglo)/,           "irl_cliente"],
+    [/\birl\b/,                                 "irl_empresa"],
+    [/\bodi\b|derecho\s*a\s*saber/,             "odi"],
+    [/induccion.*(cliente|mandante|anglo|persona\s*nueva)/, "induccion_mandante"],
+    [/induccion/,                               "induccion_interna"],
+    [/uso.*\bepp\b|curso.*\bepp\b/,             "curso_epp"],
     [/entrega.*\bepp\b|acta.*\bepp\b/,         "entrega_epp"],
     [/riohs|reglamento\s*interno/,               "recepcion_riohs"],
     [/declaracion\s*jurada/,                    "declaracion_jurada"],
@@ -442,6 +550,7 @@ export function adivinarTipoDesdeNombre(
     [/cedula|carnet.*identidad/,                "cedula_identidad"],
     [/anexo.*contrato/,                         "anexo_contrato"],
     [/contrato/,                                "contrato_trabajo"],
+    [/finiquito.*(anglo|mandante|cliente)/,     "finiquito_mandante"],
     [/finiquito/,                               "finiquito"],
     [/antecedente/,                             "certificado_antecedentes"],
     [/residencia/,                              "certificado_residencia"],
@@ -449,11 +558,17 @@ export function adivinarTipoDesdeNombre(
     [/cotizacion/,                              "certificado_cotizaciones"],
     [/fonasa|isapre|afiliacion.*salud/,         "afiliacion_salud"],
     [/mutualidad/,                              "afiliacion_mutualidad"],
-    [/conduccion.*defensiva/,                   "conduccion_defensiva"],
-    [/\birl\b|\bodi\b|induccion/,               "odi"],
+    [/conduccion.*defensiva|manejo.*defensiv/,  "conduccion_defensiva"],
     [/acreditacion|credencial/,                 "acreditacion"],
     [/ficha.*ingreso/,                          "ficha_ingreso"],
-    [/titulo|certificado.*estudio/,             "titulo_estudios"],
+    [/titulo|certificado.*estudio|nivel\s*educacional/, "titulo_estudios"],
+    [/especialidad|certificado.*electric/,      "certificacion_competencias"],
+    [/poliza.*(accidental|invalidez)/,          "poliza_muerte_accidental"],
+    [/poliza.*(dental|salud)/,                  "poliza_salud_dental"],
+    [/poliza.*natural/,                         "poliza_muerte_natural"],
+    [/trabajo\s*pesado/,                        "ley_trabajo_pesado"],
+    [/discapacidad/,                            "registro_discapacidad"],
+    [/curriculum|hoja\s*de\s*vida|\bcv\b/,      "cv"],
     [/\bfoto\b/,                                "foto"],
   ];
 
