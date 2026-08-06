@@ -288,7 +288,11 @@ export function resumirExigencia(
     }
 
     obligatorios++;
-    if (esEstadoOk(est)) {
+    // "por vencer" está cargado y vigente HOY: cuenta como cumplido y se
+    // avisa aparte. Tratarlo como faltante lo hacía aparecer al mismo tiempo
+    // en «sin cargar» y en «por vencer», que es una contradicción visible en
+    // la ficha: el documento estaba ahí abajo, con su fecha.
+    if (esEstadoOk(est) || est === "por_vencer") {
       cumplidos++;
       continue;
     }

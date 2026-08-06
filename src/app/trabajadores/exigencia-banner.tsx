@@ -76,8 +76,10 @@ export function ExigenciaBanner({
           <div style={{ fontWeight: 800, color: "#991b1b", fontSize: "1.15rem" }}>
             No puede ser habilitado: {bloqueantes} documento{bloqueantes === 1 ? "" : "s"} obligatorio{bloqueantes === 1 ? "" : "s"}{" "}
             {exigencia.vencidos.length > 0 && exigencia.faltantes.length > 0
-              ? "vencido o sin cargar"
-              : exigencia.vencidos.length > 0 ? "vencido" : "sin cargar"}
+              ? (bloqueantes === 1 ? "vencido o sin cargar" : "vencidos o sin cargar")
+              : exigencia.vencidos.length > 0
+                ? (bloqueantes === 1 ? "vencido" : "vencidos")
+                : "sin cargar"}
           </div>
           <div style={{ color: "#991b1b", fontSize: "0.85rem", marginTop: 2 }}>
             {exigencia.cumplidos} de {exigencia.obligatorios} al día ({exigencia.porcentaje}%)
