@@ -81,6 +81,8 @@ Reglas:
   · Finiquito: el titular es el "Ex Trabajador(a)". NO el empleador, ni su representante legal, ni el notario, ni quien firma como apoderado.
   · Contrato: el titular es el trabajador, no el representante de la empresa.
   · Certificados y diplomas: el titular es a quien se le extiende, no el relator ni quien firma.
+  · Exámenes de mutualidad (ACHS, Mutual, IST): el texto suele empezar con el RUT y el nombre del PROFESIONAL que lo firma —"EU JOUSTRA ZUÑIGA KAREN", "Dr.", "matrona", "técnico paramédico"— y recién después aparece el trabajador. Ese primer nombre NO es el titular. El titular es la persona a la que se le practicó el examen.
+  · Si el documento nombra a un profesional, un ministro de fe o un representante, y no distingues cuál es el trabajador, devuelve null. Un documento sin asignar se arregla en un clic; uno asignado a la persona equivocada crea una ficha falsa que nadie va a notar.
   · Ante la duda entre dos nombres, devuelve el que aparezca junto al RUT del titular, y baja la confianza.
   · Si en la hoja no aparece ningún nombre de titular, devuelve null. Es preferible que quede sin asignar a que quede asignado a la persona equivocada.
 - EL NOMBRE DEL ARCHIVO ES UNA PISTA VÁLIDA. Las carpetas de acreditación se nombran por su contenido: "Curso Manipulación SUSPEL.pdf", "04 Examen Altura Geografica - Juan Perez.pdf", "3.- IRL MANTENCION.pdf". Úsalo para clasificar el tipo y, si trae el nombre de la persona, para workerName.

@@ -26,6 +26,29 @@ function inflar(raw: Buffer): Buffer | null {
   return null;
 }
 
+/**
+ * Muchos PDFs guardan el texto en UTF-16BE: cada carácter ocupa dos bytes y,
+ * para el alfabeto latino, el primero es 0x00. Leído como latin1 eso deja un
+ * NUL delante de cada letra — "WALTER" llega como "\0W\0A\0L\0T\0E\0R".
+ *
+ * Importa porque ese texto se le manda al modelo diciéndole que es fiel al
+ * original: si va intercalado con NULs, la instrucción es falsa y el modelo
+ * queda peor que sin texto.
+ */
+function decodificarUtf16BE(s: string): string {
+  if (s.length < 4) return s;
+  let nulsPares = 0;
+  const pares = Math.floor(s.length / 2);
+  for (let i = 0; i < pares; i++) if (s.charCodeAt(i * 2) === 0) nulsPares++;
+  if (nulsPares / pares < 0.7) return s;
+
+  let out = "";
+  for (let i = 0; i + 1 < s.length; i += 2) {
+    out += String.fromCharCode((s.charCodeAt(i) << 8) | s.charCodeAt(i + 1));
+  }
+  return out;
+}
+
 /** Resuelve los escapes de una cadena literal PDF: \( \) \\ \n y octales \053 */
 function decodificarLiteral(s: string): string {
   return s
@@ -34,6 +57,19 @@ function decodificarLiteral(s: string): string {
     .replace(/\\r/g, "\r")
     .replace(/\\t/g, "\t")
     .replace(/\\([()\\])/g, "$1");
+}
+
+/** Cadena hexadecimal <004100420043>, la otra forma de escribir texto en PDF. */
+function decodificarHex(s: string): string {
+  const limpio = s.replace(/[^0-9a-fA-F]/g, "");
+  // Con marca UTF-16BE explícita o pares de 4 dígitos, se lee de a 2 bytes.
+  const dos = limpio.length % 4 === 0 && /^(00[0-9a-fA-F]{2}){2,}$/.test(limpio);
+  const paso = dos ? 4 : 2;
+  let out = "";
+  for (let i = 0; i + paso <= limpio.length; i += paso) {
+    out += String.fromCharCode(parseInt(limpio.slice(i, i + paso), 16));
+  }
+  return out;
 }
 
 /**
@@ -57,13 +93,15 @@ export function extraerTextoPdf(buffer: Buffer, maxChars = 20_000): string {
 
     const texto = contenido.toString("latin1");
 
-    // Operadores de texto: (cadena) Tj  y  [(a) -250 (b)] TJ
-    const reTexto = /\[((?:[^\[\]\\]|\\.)*)\]\s*TJ|\((?:[^()\\]|\\.)*\)\s*Tj/g;
+    // Operadores de texto: (cadena) Tj, <hex> Tj y [(a) -250 (b)] TJ
+    const reTexto = /\[((?:[^\[\]\\]|\\.)*)\]\s*TJ|\((?:[^()\\]|\\.)*\)\s*Tj|<[0-9a-fA-F\s]+>\s*Tj/g;
     let t: RegExpExecArray | null;
     while ((t = reTexto.exec(texto)) !== null) {
-      const literales = t[0].match(/\((?:[^()\\]|\\.)*\)/g) ?? [];
-      const linea = literales
-        .map(l => decodificarLiteral(l.slice(1, -1)))
+      const partes = t[0].match(/\((?:[^()\\]|\\.)*\)|<[0-9a-fA-F\s]+>/g) ?? [];
+      const linea = partes
+        .map(pt => pt.startsWith("<")
+          ? decodificarHex(pt.slice(1, -1))
+          : decodificarUtf16BE(decodificarLiteral(pt.slice(1, -1))))
         .join("")
         .trim();
       if (linea) fragmentos.push(linea);
