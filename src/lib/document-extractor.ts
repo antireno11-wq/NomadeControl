@@ -21,6 +21,13 @@ export type ExtractedDoc = {
   issueDate: string | null;          // YYYY-MM-DD o null
   workerName: string | null;
   workerRut: string | null;
+  /**
+   * Documento colectivo: un solo papel firmado por varias personas —una
+   * declaración jurada, un acta de entrega de EPP grupal, la lista de
+   * asistencia de un curso. Vale para todos los que firman, así que el mismo
+   * archivo se registra en la ficha de cada uno.
+   */
+  titulares: Array<{ nombre: string | null; rut: string | null }> | null;
   /** Página donde empieza, en PDFs con varios documentos. */
   paginaInicio: number | null;
   confidence: "high" | "medium" | "low";
@@ -85,6 +92,11 @@ Reglas:
   · Si el documento nombra a un profesional, un ministro de fe o un representante, y no distingues cuál es el trabajador, devuelve null. Un documento sin asignar se arregla en un clic; uno asignado a la persona equivocada crea una ficha falsa que nadie va a notar.
   · Ante la duda entre dos nombres, devuelve el que aparezca junto al RUT del titular, y baja la confianza.
   · Si en la hoja no aparece ningún nombre de titular, devuelve null. Es preferible que quede sin asignar a que quede asignado a la persona equivocada.
+- DOCUMENTOS COLECTIVOS. Algunos documentos son UNO SOLO firmado por VARIAS personas: declaraciones juradas por competencias, actas de entrega de EPP grupales, listas de asistencia o registros de inducción con una fila por trabajador, nóminas firmadas.
+  · Reconócelos porque traen una TABLA o LISTA de nombres con sus RUT y firmas, no un solo titular.
+  · En esos casos devuelve UNA sola entrada de documento, con "titulares" como lista de TODOS los que firman, y workerName/workerRut en null.
+  · NO devuelvas un documento por firmante: es un solo papel. La app lo va a registrar en la ficha de cada persona apuntando al mismo archivo.
+  · Si el documento tiene un titular claro y además menciona a otros (el jefe que entrega, el relator, un testigo), NO es colectivo: usa workerName con el titular y deja "titulares" en null.
 - EL NOMBRE DEL ARCHIVO ES UNA PISTA VÁLIDA. Las carpetas de acreditación se nombran por su contenido: "Curso Manipulación SUSPEL.pdf", "04 Examen Altura Geografica - Juan Perez.pdf", "3.- IRL MANTENCION.pdf". Úsalo para clasificar el tipo y, si trae el nombre de la persona, para workerName.
 - NUNCA devuelvas una lista vacía si recibiste un archivo. Algunos documentos vienen como plantillas sin rellenar (diplomas con los campos en blanco) o son escaneos ilegibles: en esos casos igual devuelve UNA entrada con lo que puedas deducir del nombre del archivo, el resto en null y confidence "low", explicando en reasoning qué pasó ("el diploma está en blanco", "el escaneo es ilegible"). Perder el archivo en silencio es peor que devolverlo incompleto para que un humano lo complete.
 - Solo devuelve {"documentos": []} si literalmente no recibiste ningún archivo.
@@ -98,6 +110,8 @@ Formato JSON exacto:
       "issueDate": "<YYYY-MM-DD o null>",
       "workerName": "<nombre o null>",
       "workerRut": "<rut o null>",
+      "titulares": null,
+      "//titulares": "solo en documentos colectivos: [{\"nombre\": \"...\", \"rut\": \"...\"}, ...]",
       "paginaInicio": <número>,
       "confidence": "high|medium|low",
       "reasoning": "<breve>"
@@ -235,6 +249,11 @@ async function pedirExtraccion(
       issueDate: normalizeDate(d.issueDate),
       workerName: cleanString(d.workerName),
       workerRut: normalizeRut(d.workerRut),
+      titulares: Array.isArray(d.titulares) && d.titulares.length > 1
+        ? (d.titulares as Array<Record<string, unknown>>)
+            .map(t => ({ nombre: cleanString(t.nombre), rut: normalizeRut(t.rut) }))
+            .filter(t => t.nombre || t.rut)
+        : null,
       paginaInicio: pagina && pagina > 0 ? pagina : null,
       confidence: (d.confidence as "high" | "medium" | "low") ?? "low",
       reasoning: cleanString(d.reasoning) ?? "",

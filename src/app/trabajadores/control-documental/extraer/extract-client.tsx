@@ -44,6 +44,8 @@ type EditableRow = {
   expiryCalculada?: boolean;
   /** El titular se heredó del resto del lote. */
   titularHeredado?: boolean;
+  /** Cantidad de firmantes si el documento es colectivo. */
+  firmantes?: number | null;
   /** Se guarda sin fecha de vencimiento, por decisión explícita del usuario.
    *  Perder el documento porque no se le pudo leer una fecha es peor que
    *  registrarlo sin ella y que alguien la complete después. */
@@ -219,13 +221,20 @@ export function ExtractClient({
               paginaInicio: res.paginaInicio,
               workerName: res.workerName,
               workerRut: res.workerRut,
-              workerId: fixedWorker?.id ?? bestMatch?.workerId ?? (proponerCrear ? CREAR_NUEVO : null),
+              // En un documento colectivo NO se propone crear la ficha: una
+              // declaración firmada por la cuadrilla entera crearía diez
+              // trabajadores de golpe. Se enlaza a quien ya existe y el resto
+              // queda sin asignar, para que sea una decisión explícita.
+              workerId: fixedWorker?.id
+                ?? bestMatch?.workerId
+                ?? (proponerCrear && !res.firmantes ? CREAR_NUEVO : null),
               nuevoNombre: res.workerName ? formatearNombre(res.workerName) : "",
               nuevoRut: res.workerRut ?? "",
               confidence: res.confidence,
               reasoning: res.reasoning,
               error: res.error,
               grupoId: res.grupoId ?? null,
+              firmantes: res.firmantes ?? null,
               expiryCalculada: res.expiryCalculada,
               titularHeredado: res.titularHeredado,
             };
@@ -774,6 +783,12 @@ export function ExtractClient({
                               {row.workerName && row.workerId !== CREAR_NUEVO && (
                                 <div style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: 2 }}>
                                   Detectado: {row.workerName}{row.workerRut && ` (${row.workerRut})`}
+                                </div>
+                              )}
+                              {row.firmantes && (
+                                <div style={{ color: "#0369a1", fontSize: "0.7rem", marginTop: 2, fontWeight: 600 }}>
+                                  Documento colectivo: lo firman {row.firmantes} personas. El mismo
+                                  archivo queda en la ficha de cada una.
                                 </div>
                               )}
                               {row.titularHeredado && (

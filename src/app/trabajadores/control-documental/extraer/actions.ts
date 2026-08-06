@@ -25,6 +25,8 @@ export type ExtractedRow = ExtractedDoc & {
   expiryCalculada?: boolean;
   /** El titular se heredó del resto del lote porque la hoja no lo traía. */
   titularHeredado?: boolean;
+  /** Cantidad de firmantes cuando el documento es colectivo. */
+  firmantes?: number | null;
 };
 
 /**
@@ -76,7 +78,7 @@ export async function extractDocumentsAction(
           detectedTipoId: propuesto?.id ?? null,
           detectedDocTypeLabel: propuesto?.nombre ?? "Sin reconocer",
           expiryDate: null, issueDate: null,
-          workerName: null, workerRut: null,
+          workerName: null, workerRut: null, titulares: null,
           paginaInicio: null,
           confidence: "low",
           reasoning: porNombre
@@ -89,7 +91,17 @@ export async function extractDocumentsAction(
         continue;
       }
 
-      encontrados.forEach((doc, i) => {
+      // Un documento colectivo —una declaración jurada firmada por toda la
+      // cuadrilla— es UN papel que vale para varias personas. Se expande en
+      // una fila por firmante; todas comparten el archivo, así que el binario
+      // se guarda una sola vez y queda enlazado en cada ficha.
+      const expandidos: ExtractedDoc[] = encontrados.flatMap(doc =>
+        doc.titulares && doc.titulares.length > 1
+          ? doc.titulares.map(t => ({ ...doc, workerName: t.nombre, workerRut: t.rut }))
+          : [doc],
+      );
+
+      expandidos.forEach((doc, i) => {
         // Si el modelo no supo clasificarlo pero el nombre del archivo sí lo
         // delata, aprovechamos esa pista.
         if (!doc.detectedTipoId) {
@@ -116,6 +128,7 @@ export async function extractDocumentsAction(
           fileName: file.fileName,
           ...doc,
           matches,
+          firmantes: doc.titulares && doc.titulares.length > 1 ? doc.titulares.length : null,
         });
       });
     } catch (e) {
@@ -127,7 +140,7 @@ export async function extractDocumentsAction(
         detectedTipoId: null,
         detectedDocTypeLabel: "Error",
         expiryDate: null, issueDate: null,
-        workerName: null, workerRut: null,
+        workerName: null, workerRut: null, titulares: null,
         paginaInicio: null,
         confidence: "low",
         reasoning: "",
