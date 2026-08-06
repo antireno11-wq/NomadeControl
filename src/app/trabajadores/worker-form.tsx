@@ -17,6 +17,10 @@ type WorkerFormDefaults = {
   shiftStartDate: string;
   contractEndDate: string;
   contractIsIndefinite: boolean;
+  /** Grupo de dotación: decide qué documentos se le exigen. */
+  cargoId: string;
+  proyectoId: string;
+  trabajoPrevioMandante: boolean;
   altitudeExamDueDate: string;
   occupationalExamDueDate: string;
   inductionDueDate: string;
@@ -32,6 +36,8 @@ type WorkerFormDefaults = {
 export function WorkerForm({
   action,
   camps,
+  cargos,
+  proyectos,
   defaults,
   submitLabel,
   successRedirectTo,
@@ -42,6 +48,8 @@ export function WorkerForm({
 }: {
   action: (formData: FormData) => Promise<void>;
   camps: CampOption[];
+  cargos: { id: string; nombre: string }[];
+  proyectos: { id: string; nombre: string; mandanteNombre: string; faena: string | null }[];
   defaults: WorkerFormDefaults;
   submitLabel: string;
   successRedirectTo: string;
@@ -83,7 +91,7 @@ export function WorkerForm({
         <input id="worker-name" name="fullName" defaultValue={defaults.fullName} required />
       </div>
       <div>
-        <label htmlFor="worker-role">Cargo</label>
+        <label htmlFor="worker-role">Cargo del contrato</label>
         <select id="worker-role" name="role" defaultValue={defaults.role}>
           <option value="">Selecciona un cargo</option>
           {STAFF_ROLE_OPTIONS.map((role) => (
@@ -92,6 +100,41 @@ export function WorkerForm({
             </option>
           ))}
         </select>
+      </div>
+
+      {/* El proyecto y el grupo de dotación son los que deciden qué
+          documentos se le exigen. Sin ellos no hay matriz que aplicar. */}
+      <div>
+        <label htmlFor="worker-proyecto">Proyecto de acreditación</label>
+        <select id="worker-proyecto" name="proyectoId" defaultValue={defaults.proyectoId}>
+          <option value="">Sin proyecto asignado</option>
+          {proyectos.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.mandanteNombre} — {p.nombre}{p.faena ? ` (${p.faena})` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="worker-cargo">Grupo de dotación</label>
+        <select id="worker-cargo" name="cargoId" defaultValue={defaults.cargoId}>
+          <option value="">Sin grupo asignado</option>
+          {cargos.map(c => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
+        <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+          Define qué documentos se le exigen. Si queda sin asignar, no se le puede calcular el avance.
+        </span>
+      </div>
+      <div>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <input type="checkbox" name="trabajoPrevioMandante" defaultChecked={defaults.trabajoPrevioMandante} />
+          Trabajó antes en una faena del mandante
+        </label>
+        <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+          Activa el finiquito de ese trabajo anterior como documento exigido.
+        </span>
       </div>
       <div>
         <label htmlFor="worker-company">Empresa</label>

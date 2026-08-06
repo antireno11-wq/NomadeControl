@@ -7,6 +7,9 @@ import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { getNearestDocument, getStaffDocumentEntries } from "@/lib/staff-docs";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
+import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
+import { getRequisitosPorTrabajador, resumirExigencia, tieneBloqueos } from "@/lib/requisitos-db";
+import { ExigenciaChip } from "@/app/trabajadores/exigencia-banner";
 
 type SearchParams = {
   campId?: string | string[];
@@ -50,7 +53,28 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
   ]);
 
   const today = new Date();
+
+  // Obligatorios faltantes según la matriz del cargo. Es lo primero que se
+  // mira de una dotación, así que se calcula acá y no solo en la ficha.
+  const tiposTodos = await getTiposDocumento();
+  const [estadoCompleto, requisitosPorTrabajador] = await Promise.all([
+    getEstadoDocumental(staffMembers.map(w => w.id), tiposTodos, today),
+    getRequisitosPorTrabajador(staffMembers.map(w => ({
+      id: w.id,
+      proyectoId: w.proyectoId,
+      cargoId: w.cargoId,
+      contractIsIndefinite: w.contractIsIndefinite,
+      trabajoPrevioMandante: w.trabajoPrevioMandante,
+    }))),
+  ]);
+  const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));
+
   const staffRows = staffMembers.map((worker) => {
+    const exigencia = resumirExigencia(
+      requisitosPorTrabajador.get(worker.id) ?? null,
+      estadoCompleto.get(worker.id),
+      nombrePorTipo,
+    );
     const docs = getStaffDocumentEntries(worker, today);
     const nearest = getNearestDocument(worker, today);
     const shiftProjection = getShiftProjection(
@@ -67,6 +91,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
     const missing = docs.filter((entry) => entry.status === "missing");
 
     return {
+      exigencia,
       worker,
       docs,
       nearest,
@@ -291,13 +316,14 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                     const nearestTone = row.nearest?.daysUntil == null ? null : row.nearest.daysUntil < 0 ? "danger" : row.nearest.daysUntil <= 30 ? "warn" : "ok";
 
                     return (
-                      <tr key={row.worker.id}>
+                      <tr key={row.worker.id} style={tieneBloqueos(row.exigencia) ? { background: "#fff5f5" } : undefined}>
                         {/* Trabajador (nombre + RUT) */}
                         <td>
                           <div style={{ fontWeight: 600, color: "var(--text)" }}>{row.worker.fullName}</div>
                           {row.worker.nationalId && (
                             <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 2 }}>{row.worker.nationalId}</div>
                           )}
+                          <div style={{ marginTop: 4 }}><ExigenciaChip exigencia={row.exigencia} /></div>
                         </td>
 
                         {/* Campamento / cargo */}

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { createWorkerAction } from "@/app/trabajadores/actions";
 import { WorkerForm } from "@/app/trabajadores/worker-form";
 import { toInputDateValue } from "@/lib/report-utils";
+import { getCargos, getProyectos } from "@/lib/requisitos-db";
 
 export default async function NuevoTrabajadorPage({
   searchParams
@@ -14,10 +15,11 @@ export default async function NuevoTrabajadorPage({
   const user = await requireRole(TRABAJADORES_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
 
-  const camps = await db.camp.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" }
-  });
+  const [camps, cargos, proyectos] = await Promise.all([
+    db.camp.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    getCargos(),
+    getProyectos(),
+  ]);
 
   const statusRaw = searchParams?.status;
   const status = typeof statusRaw === "string" ? statusRaw : "";
@@ -49,6 +51,8 @@ export default async function NuevoTrabajadorPage({
             Carga la ficha base del trabajador y sus fechas de vencimiento para que el supervisor pueda controlar la documentación del proyecto.
           </div>
           <WorkerForm
+            cargos={cargos}
+            proyectos={proyectos}
             action={createWorkerAction}
             camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))}
             successRedirectTo="/trabajadores?status=created"
@@ -66,6 +70,9 @@ export default async function NuevoTrabajadorPage({
               shiftStartDate: toInputDateValue(new Date()),
               contractEndDate: "",
               contractIsIndefinite: false,
+              cargoId: "",
+              proyectoId: "",
+              trabajoPrevioMandante: false,
               altitudeExamDueDate: "",
               occupationalExamDueDate: "",
               inductionDueDate: "",

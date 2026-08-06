@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { getTiposDocumento } from "@/lib/acreditacion-db";
+import { getTiposDocumento, type EstadoTrabajador } from "@/lib/acreditacion-db";
+import { esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
 import {
   CARGOS_SEED,
   REGLAS_SEED,
@@ -218,4 +219,104 @@ export async function getRequisitosPorTrabajador(
     );
   }
   return salida;
+}
+
+// ─── Cumplimiento: qué le falta de verdad a cada trabajador ────────────
+
+
+export type DocFaltante = {
+  tipoId: string;
+  nombre: string;
+  estado: EstadoDocumento;
+};
+
+export type ResumenExigencia = {
+  /** Sin proyecto o sin cargo no hay matriz: no se puede afirmar que cumple. */
+  sinMatriz: boolean;
+  obligatorios: number;
+  cumplidos: number;
+  /** Obligatorios nunca cargados. */
+  faltantes: DocFaltante[];
+  /** Obligatorios cargados pero vencidos. */
+  vencidos: DocFaltante[];
+  /** Obligatorios por vencer dentro del umbral. */
+  porVencer: DocFaltante[];
+  /** Deseables faltantes: informan, no bloquean. */
+  deseablesFaltantes: DocFaltante[];
+  /** Cumplidos sobre obligatorios. `null` si no hay matriz. */
+  porcentaje: number | null;
+};
+
+/**
+ * Cruza la matriz de requisitos con el estado documental real.
+ *
+ * El porcentaje se calcula solo sobre los obligatorios que le corresponden a
+ * ese cargo — no sobre el catálogo completo, que es lo que hundía el avance
+ * en la planilla. Sin matriz devuelve `porcentaje: null` en vez de 100%:
+ * un trabajador sin cargo asignado no está acreditado, está sin evaluar.
+ */
+export function resumirExigencia(
+  requisitos: RequisitoDeTrabajador[] | null,
+  estado: EstadoTrabajador | undefined,
+  nombrePorTipo: Map<string, string>,
+): ResumenExigencia {
+  const vacio: ResumenExigencia = {
+    sinMatriz: true, obligatorios: 0, cumplidos: 0,
+    faltantes: [], vencidos: [], porVencer: [], deseablesFaltantes: [],
+    porcentaje: null,
+  };
+  if (!requisitos) return vacio;
+
+  const faltantes: DocFaltante[] = [];
+  const vencidos: DocFaltante[] = [];
+  const porVencer: DocFaltante[] = [];
+  const deseablesFaltantes: DocFaltante[] = [];
+  let obligatorios = 0;
+  let cumplidos = 0;
+
+  for (const req of requisitos) {
+    const est = estado?.porTipo.get(req.tipoId)?.estado ?? "sin_fecha";
+    const doc: DocFaltante = {
+      tipoId: req.tipoId,
+      nombre: nombrePorTipo.get(req.tipoId) ?? "Documento",
+      estado: est,
+    };
+
+    if (req.nivel === "deseable") {
+      if (!esEstadoOk(est)) deseablesFaltantes.push(doc);
+      continue;
+    }
+
+    obligatorios++;
+    if (esEstadoOk(est)) {
+      cumplidos++;
+      continue;
+    }
+    if (est === "vencido") vencidos.push(doc);
+    else faltantes.push(doc);
+  }
+
+  // Los por vencer sí están cumplidos, pero hay que verlos venir.
+  for (const req of requisitos) {
+    if (req.nivel !== "obligatorio") continue;
+    if (estado?.porTipo.get(req.tipoId)?.estado === "por_vencer") {
+      porVencer.push({
+        tipoId: req.tipoId,
+        nombre: nombrePorTipo.get(req.tipoId) ?? "Documento",
+        estado: "por_vencer",
+      });
+    }
+  }
+
+  return {
+    sinMatriz: false,
+    obligatorios, cumplidos,
+    faltantes, vencidos, porVencer, deseablesFaltantes,
+    porcentaje: obligatorios === 0 ? 100 : Math.round((cumplidos / obligatorios) * 100),
+  };
+}
+
+/** ¿Este trabajador tiene algún obligatorio faltante o vencido? */
+export function tieneBloqueos(r: ResumenExigencia): boolean {
+  return r.faltantes.length > 0 || r.vencidos.length > 0;
 }

@@ -7,6 +7,8 @@ import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { ESTADO_STYLE, esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
 import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
+import { getRequisitosPorTrabajador, resumirExigencia, tieneBloqueos, type ResumenExigencia } from "@/lib/requisitos-db";
+import { ExigenciaChip } from "@/app/trabajadores/exigencia-banner";
 
 type SearchParams = {
   campId?: string | string[];
@@ -23,15 +25,21 @@ function normalizeRut(s: string) {
   return s.replace(/[.\-\s]/g, "").toLowerCase();
 }
 
-const ESTADOS_FILTRABLES: Array<{ value: EstadoDocumento; label: string }> = [
+/** "bloqueado" no es un estado de documento sino del trabajador: le falta
+ *  o tiene vencido algún obligatorio de su cargo. Va primero porque es la
+ *  pregunta que se hace todos los días quien arma la dotación. */
+type FiltroEstado = EstadoDocumento | "bloqueado";
+
+const ESTADOS_FILTRABLES: Array<{ value: FiltroEstado; label: string }> = [
+  { value: "bloqueado",  label: "⛔ Con obligatorios faltantes" },
   { value: "vencido",    label: "🔴 Vencidos" },
   { value: "por_vencer", label: "🟡 Por vencer (30d)" },
   { value: "sin_fecha",  label: "⚪ Sin cargar" },
 ];
 
-function estadoParam(s: string | string[] | undefined): EstadoDocumento | "" {
+function estadoParam(s: string | string[] | undefined): FiltroEstado | "" {
   const v = typeof s === "string" ? s : "";
-  return ESTADOS_FILTRABLES.some(e => e.value === v) ? (v as EstadoDocumento) : "";
+  return ESTADOS_FILTRABLES.some(e => e.value === v) ? (v as FiltroEstado) : "";
 }
 
 export default async function ControlDocumentalPage({ searchParams }: { searchParams?: SearchParams }) {
@@ -65,9 +73,30 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
   const today = new Date();
   const estadoPorTrabajador = await getEstadoDocumental(staff.map(w => w.id), tipos, today);
 
+  // Cumplimiento contra la matriz del cargo. Necesita el catálogo completo,
+  // no solo las columnas visibles: un obligatorio fuera de la matriz también
+  // bloquea, y era justamente el que se perdía de vista en la planilla.
+  const tiposTodos = await getTiposDocumento();
+  const [estadoCompleto, requisitosPorTrabajador] = await Promise.all([
+    getEstadoDocumental(staff.map(w => w.id), tiposTodos, today),
+    getRequisitosPorTrabajador(staff.map(w => ({
+      id: w.id,
+      proyectoId: w.proyectoId,
+      cargoId: w.cargoId,
+      contractIsIndefinite: w.contractIsIndefinite,
+      trabajoPrevioMandante: w.trabajoPrevioMandante,
+    }))),
+  ]);
+  const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));
+
   const rows = staff.map(worker => {
     const estado = estadoPorTrabajador.get(worker.id)!;
-    return { worker, estado };
+    const exigencia = resumirExigencia(
+      requisitosPorTrabajador.get(worker.id) ?? null,
+      estadoCompleto.get(worker.id),
+      nombrePorTipo,
+    );
+    return { worker, estado, exigencia };
   });
 
   // ── Búsqueda por nombre o RUT ──
@@ -86,10 +115,13 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
     if (filtroTipo) {
       const entry = r.estado.porTipo.get(filtroTipo);
       if (!entry) return false;
+      // "bloqueado" es del trabajador, no de la columna: se evalúa aparte.
+      if (filtroEstado === "bloqueado") return tieneBloqueos(r.exigencia);
       if (filtroEstado && entry.estado !== filtroEstado) return false;
       return true;
     }
 
+    if (filtroEstado === "bloqueado"  && !tieneBloqueos(r.exigencia)) return false;
     if (filtroEstado === "vencido"    && r.estado.vencidos === 0) return false;
     if (filtroEstado === "por_vencer" && r.estado.porVencer === 0) return false;
     if (filtroEstado === "sin_fecha"  && r.estado.sinFecha === 0) return false;
@@ -104,6 +136,12 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
   const totalMiss  = rows.reduce((s, r) => s + r.estado.sinFecha, 0);
   const compliance = totalDocs === 0 ? 100 : Math.round((totalOk / totalDocs) * 100);
   const workersAtRisk = rows.filter(r => r.estado.vencidos > 0 || r.estado.porVencer > 0).length;
+
+  // Lo que de verdad importa: quién no puede entrar a faena.
+  const bloqueados = rows.filter(r => tieneBloqueos(r.exigencia));
+  const sinMatriz = rows.filter(r => r.exigencia.sinMatriz);
+  const totalObligatoriosFaltantes = bloqueados.reduce(
+    (s, r) => s + r.exigencia.vencidos.length + r.exigencia.faltantes.length, 0);
 
   // ── Próximos vencimientos (60 días) ──
   const tipoNombre = new Map(tipos.map(t => [t.id, t.nombre]));
@@ -150,8 +188,78 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
       <div className="page-stack">
         <SectionTabs items={buildTrabajadoresTabs("control-documental")} />
 
+        {/* Lo que no puede pasar desapercibido: quién no puede entrar a faena.
+            Va antes que los KPI y que cualquier filtro. */}
+        {bloqueados.length > 0 && (
+          <div style={{
+            border: "2px solid #dc2626", background: "#fef2f2", borderRadius: 12,
+            padding: "18px 22px", boxShadow: "0 2px 12px rgba(220,38,38,0.12)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: "1.6rem", lineHeight: 1 }}>⛔</span>
+              <strong style={{ color: "#991b1b", fontSize: "1.1rem", flex: 1, minWidth: 220 }}>
+                {bloqueados.length} trabajador{bloqueados.length === 1 ? "" : "es"} no puede{bloqueados.length === 1 ? "" : "n"} ser habilitado{bloqueados.length === 1 ? "" : "s"}
+                {" "}— {totalObligatoriosFaltantes} documento{totalObligatoriosFaltantes === 1 ? "" : "s"} obligatorio{totalObligatoriosFaltantes === 1 ? "" : "s"} vencido{totalObligatoriosFaltantes === 1 ? "" : "s"} o sin cargar
+              </strong>
+              <Link href={`/trabajadores/control-documental?estado=bloqueado${selectedCampId ? `&camp=${selectedCampId}` : ""}`}>
+                <button type="button" style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>
+                  Ver solo estos
+                </button>
+              </Link>
+            </div>
+            <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
+              {bloqueados.slice(0, 8).map(({ worker, exigencia }) => {
+                const faltan = [...exigencia.vencidos, ...exigencia.faltantes];
+                return (
+                  <Link
+                    key={worker.id}
+                    href={`/trabajadores/${worker.id}?tab=documentos`}
+                    style={{ textDecoration: "none", color: "inherit", display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}
+                  >
+                    <span style={{ background: "#dc2626", color: "white", borderRadius: 5, padding: "1px 7px", fontSize: "0.72rem", fontWeight: 800 }}>
+                      {faltan.length}
+                    </span>
+                    <strong style={{ color: "#991b1b", fontSize: "0.875rem" }}>{worker.fullName}</strong>
+                    <span style={{ color: "#b91c1c", fontSize: "0.78rem" }}>
+                      {faltan.slice(0, 5).map(d => d.nombre + (d.estado === "vencido" ? " (vencido)" : "")).join(" · ")}
+                      {faltan.length > 5 && ` · +${faltan.length - 5} más`}
+                    </span>
+                  </Link>
+                );
+              })}
+              {bloqueados.length > 8 && (
+                <span style={{ color: "#991b1b", fontSize: "0.8rem", fontWeight: 600 }}>
+                  y {bloqueados.length - 8} trabajador{bloqueados.length - 8 === 1 ? "" : "es"} más
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {sinMatriz.length > 0 && (
+          <div style={{ border: "2px dashed #f59e0b", background: "#fffbeb", borderRadius: 12, padding: "14px 20px" }}>
+            <strong style={{ color: "#92400e" }}>
+              {sinMatriz.length} trabajador{sinMatriz.length === 1 ? "" : "es"} sin proyecto o grupo de dotación asignado
+            </strong>
+            <div style={{ color: "#92400e", fontSize: "0.85rem", marginTop: 4 }}>
+              No se les puede calcular qué documentos les faltan. No están acreditados, están sin evaluar:{" "}
+              {sinMatriz.slice(0, 10).map(r => r.worker.fullName).join(", ")}
+              {sinMatriz.length > 10 && ` y ${sinMatriz.length - 10} más`}.
+            </div>
+          </div>
+        )}
+
         {/* ── KPIs ── */}
         <div className="dashboard-kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+          <div className={`dashboard-kpi ${bloqueados.length > 0 ? "accent" : ""}`}>
+            <div className="dashboard-kpi-label">No habilitables</div>
+            <div className="dashboard-kpi-value" style={bloqueados.length > 0 ? { color: "#dc2626" } : undefined}>
+              {bloqueados.length}
+            </div>
+            <div className="dashboard-kpi-meta">
+              {totalObligatoriosFaltantes} obligatorio{totalObligatoriosFaltantes === 1 ? "" : "s"} pendiente{totalObligatoriosFaltantes === 1 ? "" : "s"}
+            </div>
+          </div>
           <div className="dashboard-kpi teal">
             <div className="dashboard-kpi-label">% Cumplimiento</div>
             <div className="dashboard-kpi-value">{compliance}%</div>
@@ -287,6 +395,7 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
               <thead>
                 <tr>
                   <th style={{ textAlign: "left" }}>Trabajador</th>
+                  <th style={{ textAlign: "center", whiteSpace: "nowrap", fontSize: "0.72rem", padding: "8px 4px" }}>Obligatorios</th>
                   {tipos.map((t) => (
                     <th key={t.id} title={t.nombre} style={{ whiteSpace: "nowrap", textAlign: "center", fontSize: "0.72rem", padding: "8px 4px" }}>
                       {t.etiquetaCorta ?? t.nombre}
@@ -297,13 +406,13 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={tipos.length + 1} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
+                    <td colSpan={tipos.length + 2} style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>
                       No hay trabajadores con estos filtros.
                     </td>
                   </tr>
                 ) : (
-                  filteredRows.map(({ worker, estado }) => (
-                    <tr key={worker.id}>
+                  filteredRows.map(({ worker, estado, exigencia }) => (
+                    <tr key={worker.id} style={tieneBloqueos(exigencia) ? { background: "#fff5f5" } : undefined}>
                       <td style={{ padding: "8px 12px" }}>
                         <Link href={`/trabajadores/${worker.id}?tab=documentos`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
                           <div style={{ fontWeight: 600, color: "var(--teal)", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -314,6 +423,9 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                             {worker.camp?.name && <span>· {worker.camp.name}</span>}
                           </div>
                         </Link>
+                      </td>
+                      <td style={{ textAlign: "center", padding: "4px 8px" }}>
+                        <ExigenciaChip exigencia={exigencia} />
                       </td>
                       {tipos.map((t) => {
                         const e = estado.porTipo.get(t.id)!;

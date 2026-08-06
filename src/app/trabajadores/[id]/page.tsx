@@ -5,10 +5,12 @@ import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { renovarContratoAction, updateWorkerAction, subirFotoTrabajadorAction } from "@/app/trabajadores/actions";
 import { WorkerForm } from "@/app/trabajadores/worker-form";
+import { ExigenciaBanner } from "@/app/trabajadores/exigencia-banner";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
 import { ESTADO_STYLE } from "@/lib/acreditacion";
 import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
+import { getCargos, getProyectos, getRequisitosDeTrabajador, resumirExigencia } from "@/lib/requisitos-db";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -77,6 +79,23 @@ export default async function PerfilTrabajadorPage({
   const tiposTodos = await getTiposDocumento();
   const estadoMap = await getEstadoDocumental([worker.id], tiposTodos, today);
   const estadoWorker = estadoMap.get(worker.id);
+
+  // Qué le exige su matriz de acreditación y qué le falta de verdad.
+  const [cargos, proyectos, requisitosWorker] = await Promise.all([
+    getCargos(),
+    getProyectos(),
+    getRequisitosDeTrabajador({
+      proyectoId: worker.proyectoId,
+      cargoId: worker.cargoId,
+      contractIsIndefinite: worker.contractIsIndefinite,
+      trabajoPrevioMandante: worker.trabajoPrevioMandante,
+    }),
+  ]);
+  const exigencia = resumirExigencia(
+    requisitosWorker,
+    estadoWorker,
+    new Map(tiposTodos.map(t => [t.id, t.nombre])),
+  );
   const docsAcreditacion = tiposTodos
     .map(tipo => ({ tipo, entry: estadoWorker?.porTipo.get(tipo.id) }))
     .filter((x): x is { tipo: typeof tiposTodos[number]; entry: NonNullable<typeof x.entry> } =>
@@ -126,6 +145,9 @@ export default async function PerfilTrabajadorPage({
     >
       <div className="page-stack">
         {alert && <div className={`alert ${alert.type}`}>{alert.text}</div>}
+
+        {/* Lo primero de la ficha: qué le falta para poder trabajar. */}
+        <ExigenciaBanner exigencia={exigencia} editarHref={`/trabajadores/${worker.id}?tab=editar`} />
 
         {/* ── Header card ─────────────────────────────────────────────── */}
         <div className="card" style={{ padding: "20px 24px" }}>
@@ -671,6 +693,8 @@ export default async function PerfilTrabajadorPage({
           <div className="card" style={{ maxWidth: 860 }}>
             <h3 style={{ margin: "0 0 16px", color: "var(--text)", fontSize: "1rem" }}>✏️ Editar ficha del trabajador</h3>
             <WorkerForm
+              cargos={cargos}
+              proyectos={proyectos}
               action={updateWorkerAction}
               workerId={worker.id}
               camps={camps.map(c => ({ id: c.id, name: c.name }))}
@@ -691,6 +715,9 @@ export default async function PerfilTrabajadorPage({
                 shiftStartDate: toInputDateValue(worker.shiftStartDate),
                 contractEndDate: worker.contractEndDate ? toInputDateValue(worker.contractEndDate) : "",
                 contractIsIndefinite: worker.contractIsIndefinite ?? false,
+                cargoId: worker.cargoId ?? "",
+                proyectoId: worker.proyectoId ?? "",
+                trabajoPrevioMandante: worker.trabajoPrevioMandante ?? false,
                 altitudeExamDueDate: worker.altitudeExamDueDate ? toInputDateValue(worker.altitudeExamDueDate) : "",
                 occupationalExamDueDate: worker.occupationalExamDueDate ? toInputDateValue(worker.occupationalExamDueDate) : "",
                 inductionDueDate: worker.inductionDueDate ? toInputDateValue(worker.inductionDueDate) : "",
