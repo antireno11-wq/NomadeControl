@@ -138,6 +138,18 @@ export const REGLAS_SEED: ReglaSeed[] = [
  * obligatorios inflaba lo que le falta a cada trabajador con documentos que
  * hoy nadie le está pidiendo.
  */
+/**
+ * Condiciones que se corrigen en matrices ya sembradas.
+ *
+ * Solo se aplican donde la condición está vacía: nunca pisan una elección
+ * hecha desde la grilla. Existen porque una regla nueva en REGLAS_SEED solo
+ * alcanza a los proyectos que se creen después, y obligar a arreglar a mano
+ * un proyecto ya cargado es trasladarle al usuario un cambio de la app.
+ */
+export const AJUSTES_CONDICION: { tipo: string; condicion: CondicionRequisito }[] = [
+  { tipo: "anexo_contrato", condicion: "contrato_vencido" },
+];
+
 export const TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE = [
   "odi",
   "riesgos_operacionales",

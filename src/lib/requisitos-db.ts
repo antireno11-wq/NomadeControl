@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getTiposDocumento, type EstadoTrabajador } from "@/lib/acreditacion-db";
 import { esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
 import {
+  AJUSTES_CONDICION,
   CARGOS_SEED,
   REGLAS_SEED,
   requisitoAplica,
@@ -45,8 +46,34 @@ export async function getCargos(): Promise<CargoRow[]> {
   });
 }
 
+/**
+ * Aplica una vez por proceso las condiciones que faltan en matrices viejas.
+ * Es un UPDATE ... WHERE condicion IS NULL: idempotente y sin efecto sobre
+ * las filas que alguien ya definió desde la grilla.
+ */
+let condicionesReconciliadas = false;
+async function reconciliarCondiciones(): Promise<void> {
+  if (condicionesReconciliadas) return;
+  condicionesReconciliadas = true;
+
+  const tipos = await db.tipoDocumento.findMany({
+    where: { codigo: { in: AJUSTES_CONDICION.map(a => a.tipo) } },
+    select: { id: true, codigo: true },
+  });
+  for (const ajuste of AJUSTES_CONDICION) {
+    const tipo = tipos.find(t => t.codigo === ajuste.tipo);
+    if (!tipo) continue;
+    await db.requisitoDocumento.updateMany({
+      where: { tipoId: tipo.id, condicion: null },
+      data: { condicion: ajuste.condicion },
+    });
+  }
+}
+
 /** Proyectos activos con su mandante. */
 export async function getProyectos(): Promise<ProyectoRow[]> {
+  await reconciliarCondiciones().catch(() => { condicionesReconciliadas = false; });
+
   const filas = await db.proyecto.findMany({
     where: { activo: true },
     orderBy: [{ mandante: { nombre: "asc" } }, { nombre: "asc" }],

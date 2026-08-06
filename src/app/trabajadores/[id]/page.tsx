@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { renovarContratoAction, updateWorkerAction, subirFotoTrabajadorAction } from "@/app/trabajadores/actions";
 import { WorkerForm } from "@/app/trabajadores/worker-form";
 import { ExigenciaBanner } from "@/app/trabajadores/exigencia-banner";
+import { ExtractClient } from "@/app/trabajadores/control-documental/extraer/extract-client";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
 import { ESTADO_STYLE } from "@/lib/acreditacion";
@@ -338,6 +339,27 @@ export default async function PerfilTrabajadorPage({
                   <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>JPG, PNG o WEBP · hasta 6 MB</div>
                 </form>
               </div>
+            </div>
+
+            {/* Subir documentos sin salir de la ficha. Es el mismo extractor
+                de Control documental, fijado a esta persona: no hay a quién
+                asignarle nada, ya se sabe de quién es. */}
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+                <h3 style={{ margin: 0, color: "var(--text)", fontSize: "1rem" }}>🤖 Subir documentos</h3>
+                <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+                  Se leen con IA y quedan a nombre de {worker.fullName.split(" ")[0]}. Revisa antes de guardar.
+                </span>
+              </div>
+              <ExtractClient
+                fixedWorker={{ id: worker.id, fullName: worker.fullName }}
+                workers={[{ id: worker.id, fullName: worker.fullName, nationalId: worker.nationalId }]}
+                docTypes={tiposTodos.map(t => ({
+                  id: t.id, codigo: t.codigo, nombre: t.nombre,
+                  noVence: t.noVence, esFoto: t.esFoto, vigenciaDias: t.vigenciaDias,
+                }))}
+                apiKeyMissing={!process.env.OPENAI_API_KEY}
+              />
             </div>
 
             {/* Estado de documentos con el detalle a la vista */}

@@ -107,10 +107,14 @@ export function ExtractClient({
   workers,
   docTypes,
   apiKeyMissing,
+  fixedWorker,
 }: {
   workers: Worker[];
   docTypes: DocType[];
   apiKeyMissing: boolean;
+  /** Cargando desde la ficha de una persona: todo lo que se suba es de ella.
+   *  Se saca el selector de trabajador, que ahí no tiene nada que decidir. */
+  fixedWorker?: { id: string; fullName: string };
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -179,7 +183,7 @@ export function ExtractClient({
         detectedTipoId: null,
         detectedDocTypeLabel: a.esPdf ? "Leyendo PDF…" : "Procesando…",
         expiryDate: null, issueDate: null, paginaInicio: null,
-        workerName: null, workerRut: null, workerId: null,
+        workerName: null, workerRut: null, workerId: fixedWorker?.id ?? null,
         nuevoNombre: "", nuevoRut: "",
         confidence: "low", reasoning: "",
       })),
@@ -215,7 +219,7 @@ export function ExtractClient({
               paginaInicio: res.paginaInicio,
               workerName: res.workerName,
               workerRut: res.workerRut,
-              workerId: bestMatch?.workerId ?? (proponerCrear ? CREAR_NUEVO : null),
+              workerId: fixedWorker?.id ?? bestMatch?.workerId ?? (proponerCrear ? CREAR_NUEVO : null),
               nuevoNombre: res.workerName ? formatearNombre(res.workerName) : "",
               nuevoRut: res.workerRut ?? "",
               confidence: res.confidence,
@@ -686,7 +690,9 @@ export function ExtractClient({
                         </td>
 
                         <td style={{ padding: "8px 12px" }}>
-                          {row.procesando ? (
+                          {fixedWorker ? (
+                            <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>{fixedWorker.fullName}</span>
+                          ) : row.procesando ? (
                             <span style={{ color: "var(--muted)" }}>—</span>
                           ) : (
                             <>
