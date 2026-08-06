@@ -213,7 +213,7 @@ export const AJUSTES_VIGENCIA: { codigo: string; desde: number | null; vigenciaD
 
 export const RENOMBRES_CATALOGO: { codigo: string; desde: string; nombre: string; etiquetaCorta: string }[] = [
   // Dejó de ser el cajón de sastre de inducciones: ahora cada una es su tipo.
-  { codigo: "odi", desde: "ODI / IRL / Inducción", nombre: "ODI — Derecho a saber", etiquetaCorta: "ODI" },
+  { codigo: "odi", desde: "ODI / IRL / Inducción", nombre: "ODI — Derecho a saber (el IRL la reemplaza)", etiquetaCorta: "ODI" },
   { codigo: "certificacion_competencias", desde: "Certificación de competencias", nombre: "Certificado de especialidad", etiquetaCorta: "Especialidad" },
   { codigo: "declaracion_jurada", desde: "Declaración jurada", nombre: "Declaración jurada por competencias", etiquetaCorta: "Decl. jurada" },
   { codigo: "titulo_estudios", desde: "Título o certificado de estudios", nombre: "Certificado de estudios / nivel educacional", etiquetaCorta: "Estudios" },
@@ -550,8 +550,10 @@ export function adivinarTipoDesdeNombre(
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-  // Palabras clave → código del catálogo, de lo más específico a lo general
-  const PISTAS: Array<[RegExp, string]> = [
+  // Palabras clave → código del catálogo, de lo más específico a lo general.
+  // Cuando hay varios códigos, se usa el primero que exista y esté activo:
+  // sirve para los documentos que una empresa reemplazó por otro.
+  const PISTAS: Array<[RegExp, string | string[]]> = [
     [/suspel|sustancias?\s*peligrosas?/,        "capacitacion_sustancias"],
     [/manejo\s*manual|\bmmc\b/,                "capacitacion_mmc"],
     [/\bruv\b/,                                 "capacitacion_ruv"],
@@ -566,7 +568,10 @@ export function adivinarTipoDesdeNombre(
     // varios de estos archivos es "Inducción Interna Contrato".
     [/irl.*(cliente|mandante|anglo)/,           "irl_cliente"],
     [/\birl\b/,                                 "irl_empresa"],
-    [/\bodi\b|derecho\s*a\s*saber/,             "odi"],
+    // La ODI (derecho a saber del DS 40) quedó reemplazada por el IRL en
+    // varias empresas. Si el tipo ODI está desactivado, el archivo cae en el
+    // IRL en vez de quedar sin clasificar.
+    [/\bodi\b|derecho\s*a\s*saber/,             ["odi", "irl_empresa"]],
     [/induccion.*(cliente|mandante|anglo|persona\s*nueva)/, "induccion_mandante"],
     [/induccion/,                               "induccion_interna"],
     [/uso.*\bepp\b|curso.*\bepp\b/,             "curso_epp"],
@@ -606,8 +611,9 @@ export function adivinarTipoDesdeNombre(
     [/\bfoto\b/,                                "foto"],
   ];
 
-  for (const [patron, codigo] of PISTAS) {
-    if (patron.test(limpio)) {
+  for (const [patron, codigos] of PISTAS) {
+    if (!patron.test(limpio)) continue;
+    for (const codigo of Array.isArray(codigos) ? codigos : [codigos]) {
       const tipo = tipos.find(t => t.codigo === codigo);
       if (tipo) return tipo;
     }
