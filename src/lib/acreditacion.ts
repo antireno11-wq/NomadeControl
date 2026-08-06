@@ -281,9 +281,18 @@ export function calcularEstado(
   doc: { fechaVencimiento: Date | null; sinVencimiento: boolean } | null,
   hoy = new Date(),
   umbralDias = UMBRAL_POR_VENCER_DIAS,
+  /**
+   * El tipo está marcado como que no vence en el catálogo. Manda por sobre
+   * la fecha guardada en el documento: si alguien corrige en Administración
+   * que un certificado no caduca, los que ya estaban cargados con una fecha
+   * calculada tienen que dejar de aparecer vencidos. La alternativa —que el
+   * cambio solo valga para los documentos futuros— obliga a volver a subir
+   * todo para que el catálogo diga la verdad.
+   */
+  tipoNoVence = false,
 ): { estado: EstadoDocumento; dias: number | null } {
   if (!doc) return { estado: "sin_fecha", dias: null };
-  if (doc.sinVencimiento) return { estado: "sin_vencimiento", dias: null };
+  if (doc.sinVencimiento || tipoNoVence) return { estado: "sin_vencimiento", dias: null };
 
   const dias = diasRestantes(doc.fechaVencimiento, hoy);
   if (dias == null) return { estado: "sin_fecha", dias: null };

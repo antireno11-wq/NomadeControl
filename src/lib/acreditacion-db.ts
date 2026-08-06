@@ -182,6 +182,7 @@ export async function getEstadoDocumental(
     },
   });
 
+  const noVencePorTipo = new Map(tipos.map(t => [t.id, t.noVence]));
   const vigentes = seleccionarVigentes(documentos);
 
   for (const [clave, doc] of vigentes) {
@@ -191,7 +192,7 @@ export async function getEstadoDocumental(
     const entry = resultado.get(staffMemberId);
     if (!entry) continue;
 
-    const { estado, dias } = calcularEstado(doc, hoy, umbralDias);
+    const { estado, dias } = calcularEstado(doc, hoy, umbralDias, noVencePorTipo.get(tipoDocumentoId) ?? false);
     entry.porTipo.set(tipoDocumentoId, {
       tipoId: tipoDocumentoId,
       documento: {

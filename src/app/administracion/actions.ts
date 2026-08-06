@@ -942,13 +942,17 @@ export async function actualizarTipoDocumentoAction(formData: FormData) {
   const vigenciaRaw = String(formData.get("vigenciaDias") ?? "").trim();
   const vigencia = vigenciaRaw ? Number(vigenciaRaw) : null;
 
+  // Un tipo que no vence no puede conservar una vigencia por defecto: si la
+  // deja, los documentos nuevos siguen naciendo con un vencimiento calculado.
+  const noVence = formData.get("noVence") === "on";
+
   await db.tipoDocumento.update({
     where: { id },
     data: {
       ...(nombre.length >= 2 ? { nombre } : {}),
       etiquetaCorta: etiquetaCorta || null,
-      vigenciaDias: vigencia && vigencia > 0 ? vigencia : null,
-      noVence: formData.get("noVence") === "on",
+      vigenciaDias: noVence ? null : (vigencia && vigencia > 0 ? vigencia : null),
+      noVence,
       mostrarEnMatriz: formData.get("mostrarEnMatriz") === "on",
       activo: formData.get("activo") === "on",
     },
