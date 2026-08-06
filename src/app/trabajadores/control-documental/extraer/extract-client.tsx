@@ -344,10 +344,9 @@ export function ExtractClient({
     .map(row => ({ row, motivo: motivoBloqueo(row) }))
     .filter((x): x is { row: EditableRow; motivo: string } => x.motivo !== null);
 
+  const filasNuevas = readyRows.filter(r => r.workerId === CREAR_NUEVO);
   const grupos = agruparPorPersona(
-    readyRows
-      .filter(r => r.workerId === CREAR_NUEVO)
-      .map(r => ({ nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null })),
+    filasNuevas.map(r => ({ nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null })),
   );
   const aCrear = grupos.length;
 
@@ -519,11 +518,35 @@ export function ExtractClient({
                   <>✓ Se va a crear <strong>1 trabajador</strong>: {grupos[0]?.nombre}</>
                 ) : (
                   <>
-                    ⚠️ Se detectaron <strong>{aCrear} personas distintas</strong>:{" "}
-                    {grupos.map(g => g.nombre).join(" · ")}
-                    <div style={{ fontSize: "0.78rem", marginTop: 4, opacity: 0.9 }}>
-                      Si en realidad son la misma, unifícalas. Suele pasar cuando los documentos
-                      escriben el nombre en distinto orden.
+                    ⚠️ Se van a crear <strong>{aCrear} trabajadores distintos</strong>
+                    {/* El nombre solo no alcanza para decidir: hay que ver de qué
+                        archivo salió cada persona. Una carpeta suele traer
+                        plantillas en blanco o certificados de otro trabajador, y
+                        esos crean fichas que nadie pidió. */}
+                    <div style={{ display: "grid", gap: 5, marginTop: 8 }}>
+                      {grupos.map(g => {
+                        const archivos = [...new Set(
+                          g.indices
+                            .map(i => filasNuevas[i])
+                            .filter(Boolean)
+                            .map(r => infoDe(r.clientFileId)?.fileName ?? "archivo"),
+                        )];
+                        return (
+                          <div key={g.clave} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
+                            <strong style={{ fontSize: "0.85rem" }}>{g.nombre || "(sin nombre)"}</strong>
+                            {g.rut && <span style={{ fontSize: "0.75rem" }}>{g.rut}</span>}
+                            <span style={{ fontSize: "0.75rem", opacity: 0.85 }}>
+                              ← {archivos.slice(0, 3).join(", ")}
+                              {archivos.length > 3 && ` y ${archivos.length - 3} más`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize: "0.78rem", marginTop: 6, opacity: 0.9 }}>
+                      Revisa de qué archivo salió cada una. Si son la misma persona escrita
+                      distinto, unifícalas; si un archivo es de otro trabajador o una plantilla
+                      en blanco, descarta esa fila con la ✕.
                     </div>
                   </>
                 )}

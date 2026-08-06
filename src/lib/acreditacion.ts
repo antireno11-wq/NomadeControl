@@ -403,7 +403,17 @@ export function mismoNombre(a: string, b: string): boolean {
 
   const [corto, largo] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
   const comunes = corto.filter(t => largo.includes(t));
-  return comunes.length >= 2 && comunes.length === corto.length;
+
+  if (comunes.length < 2) return false;
+  // Caso limpio: el nombre corto está entero dentro del largo.
+  if (comunes.length === corto.length) return true;
+
+  // Con tres o más partes coincidentes se tolera una que no calce: es lo que
+  // pasa cuando el OCR se come una letra o un documento escribe "Morale" en
+  // vez de "Morales". Exigir coincidencia total partía a una persona en
+  // varias fichas. Con solo dos partes en común NO se fusiona: "Juan Pérez
+  // González" y "Juan Pérez Soto" son dos personas distintas.
+  return comunes.length >= 3 && corto.length - comunes.length <= 1;
 }
 
 export type PersonaDetectada = {
