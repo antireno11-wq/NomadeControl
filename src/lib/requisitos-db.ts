@@ -4,6 +4,7 @@ import { esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
 import {
   AJUSTES_CONDICION,
   CARGOS_SEED,
+  TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE,
   REGLAS_SEED,
   requisitoAplica,
   type CondicionesTrabajador,
@@ -56,10 +57,12 @@ async function reconciliarCondiciones(): Promise<void> {
   if (condicionesReconciliadas) return;
   condicionesReconciliadas = true;
 
+  const codigos = [...AJUSTES_CONDICION.map(a => a.tipo), ...TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE];
   const tipos = await db.tipoDocumento.findMany({
-    where: { codigo: { in: AJUSTES_CONDICION.map(a => a.tipo) } },
+    where: { codigo: { in: codigos } },
     select: { id: true, codigo: true },
   });
+
   for (const ajuste of AJUSTES_CONDICION) {
     const tipo = tipos.find(t => t.codigo === ajuste.tipo);
     if (!tipo) continue;
@@ -67,6 +70,26 @@ async function reconciliarCondiciones(): Promise<void> {
       where: { tipoId: tipo.id, condicion: null },
       data: { condicion: ajuste.condicion },
     });
+  }
+
+  // Los que se sembraron por error: están en el catálogo del mandante pero
+  // sin columna en su matriz. Se borran solo si nadie los tocó desde la
+  // grilla — updatedAt sigue igual a createdAt. Si alguien los definió a
+  // mano, esa decisión manda y no se pisa.
+  const idsRetirar = tipos
+    .filter(t => TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE.includes(t.codigo))
+    .map(t => t.id);
+  if (idsRetirar.length > 0) {
+    const candidatos = await db.requisitoDocumento.findMany({
+      where: { tipoId: { in: idsRetirar } },
+      select: { id: true, createdAt: true, updatedAt: true },
+    });
+    const intactos = candidatos
+      .filter(r => r.updatedAt.getTime() === r.createdAt.getTime())
+      .map(r => r.id);
+    if (intactos.length > 0) {
+      await db.requisitoDocumento.deleteMany({ where: { id: { in: intactos } } });
+    }
   }
 }
 
