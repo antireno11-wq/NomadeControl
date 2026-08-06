@@ -398,3 +398,70 @@ export function agruparPorPersona(
 
   return grupos;
 }
+
+
+// ─── Pistas del nombre de archivo ──────────────────────────────────────
+
+/**
+ * Adivina el tipo de documento desde el nombre del archivo.
+ *
+ * Las carpetas de acreditación se nombran por su contenido
+ * ("Curso Manipulación SUSPEL.pdf", "04 Examen Altura Geografica.pdf").
+ * Cuando el PDF viene en blanco o ilegible, el nombre es la única
+ * información que queda.
+ */
+export function adivinarTipoDesdeNombre(
+  fileName: string,
+  tipos: Array<{ id: string; codigo: string; nombre: string }>,
+): { id: string; codigo: string; nombre: string } | null {
+  const limpio = fileName
+    .replace(/\.[a-z0-9]+$/i, "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  // Palabras clave → código del catálogo, de lo más específico a lo general
+  const PISTAS: Array<[RegExp, string]> = [
+    [/suspel|sustancias?\s*peligrosas?/,        "capacitacion_sustancias"],
+    [/manejo\s*manual|\bmmc\b/,                "capacitacion_mmc"],
+    [/\bruv\b/,                                 "capacitacion_ruv"],
+    [/primeros\s*auxilios/,                     "curso_primeros_auxilios"],
+    [/extintor/,                                "curso_extintores"],
+    [/uso\s*y\s*mantencion\s*de\s*epp|curso.*\bepp\b/, "curso_epp"],
+    [/entrega.*\bepp\b|acta.*\bepp\b/,         "entrega_epp"],
+    [/riohs|reglamento\s*interno/,               "recepcion_riohs"],
+    [/declaracion\s*jurada/,                    "declaracion_jurada"],
+    [/alcohol|drogas/,                          "examen_alcohol_drogas"],
+    [/altura\s*geografica/,                     "altura_geografica"],
+    [/altura\s*fisica/,                         "altura_fisica"],
+    [/psicosensotecnico|psicosensor/,           "psicosensotecnico"],
+    [/ocupacional|preocupacional/,              "examen_ocupacional"],
+    [/manipulacion.*alimento/,                  "manipulacion_alimentos"],
+    [/vacuna/,                                  "vacunas"],
+    [/licencia.*conducir|conducir/,             "licencia_conducir"],
+    [/cedula|carnet.*identidad/,                "cedula_identidad"],
+    [/anexo.*contrato/,                         "anexo_contrato"],
+    [/contrato/,                                "contrato_trabajo"],
+    [/finiquito/,                               "finiquito"],
+    [/antecedente/,                             "certificado_antecedentes"],
+    [/residencia/,                              "certificado_residencia"],
+    [/\bafp\b|afiliacion.*afp/,                 "afiliacion_afp"],
+    [/cotizacion/,                              "certificado_cotizaciones"],
+    [/fonasa|isapre|afiliacion.*salud/,         "afiliacion_salud"],
+    [/mutualidad/,                              "afiliacion_mutualidad"],
+    [/conduccion.*defensiva/,                   "conduccion_defensiva"],
+    [/\birl\b|\bodi\b|induccion/,               "odi"],
+    [/acreditacion|credencial/,                 "acreditacion"],
+    [/ficha.*ingreso/,                          "ficha_ingreso"],
+    [/titulo|certificado.*estudio/,             "titulo_estudios"],
+    [/\bfoto\b/,                                "foto"],
+  ];
+
+  for (const [patron, codigo] of PISTAS) {
+    if (patron.test(limpio)) {
+      const tipo = tipos.find(t => t.codigo === codigo);
+      if (tipo) return tipo;
+    }
+  }
+  return null;
+}

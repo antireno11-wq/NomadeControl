@@ -65,8 +65,10 @@ Reglas:
   - "medium" = alguna ambigüedad: borroso, formato raro, o dudas sobre si una fecha es emisión o vencimiento
   - "low" = imagen mala, campos no visibles, dudas sobre el tipo, o el nombre se lee dudoso
 - reasoning: 1-2 frases sobre en qué te basaste.
-- Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devolvelo UNA sola vez.
-- Si no reconoces ningún documento, devuelve {"documentos": []}.
+- Si el archivo trae el mismo documento repetido (ej. dos copias de la cédula), devuélvelo UNA sola vez.
+- EL NOMBRE DEL ARCHIVO ES UNA PISTA VÁLIDA. Las carpetas de acreditación se nombran por su contenido: "Curso Manipulación SUSPEL.pdf", "04 Examen Altura Geografica - Juan Perez.pdf", "3.- IRL MANTENCION.pdf". Úsalo para clasificar el tipo y, si trae el nombre de la persona, para workerName.
+- NUNCA devuelvas una lista vacía si recibiste un archivo. Algunos documentos vienen como plantillas sin rellenar (diplomas con los campos en blanco) o son escaneos ilegibles: en esos casos igual devuelve UNA entrada con lo que puedas deducir del nombre del archivo, el resto en null y confidence "low", explicando en reasoning qué pasó ("el diploma está en blanco", "el escaneo es ilegible"). Perder el archivo en silencio es peor que devolverlo incompleto para que un humano lo complete.
+- Solo devuelve {"documentos": []} si literalmente no recibiste ningún archivo.
 
 Formato JSON exacto:
 {

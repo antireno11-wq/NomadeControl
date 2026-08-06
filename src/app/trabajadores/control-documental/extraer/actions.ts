@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut } from "@/lib/acreditacion";
+import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -53,31 +53,48 @@ export async function extractDocumentsAction(
       });
 
       if (encontrados.length === 0) {
-        // Una imagen sin texto de documento es, casi siempre, la foto del
-        // trabajador. La proponemos en vez de dejar la fila inservible.
+        // El archivo no se pudo leer: diploma en blanco, escaneo ilegible o
+        // una foto sin texto. Nunca lo descartamos en silencio — se propone
+        // lo que se pueda deducir del nombre y el humano completa el resto.
         const esImagen = file.mimeType.startsWith("image/");
-        const tipoFoto = esImagen ? tipos.find(t => t.esFoto) ?? null : null;
+        const porNombre = adivinarTipoDesdeNombre(file.fileName, tipos);
+        const tipoFoto = esImagen && !porNombre ? tipos.find(t => t.esFoto) ?? null : null;
+        const propuesto = porNombre ?? tipoFoto;
 
         results.push({
           clientFileId: file.clientFileId,
           rowId: `${file.clientFileId}#0`,
           fileName: file.fileName,
-          detectedCodigo: tipoFoto?.codigo ?? "unknown",
-          detectedTipoId: tipoFoto?.id ?? null,
-          detectedDocTypeLabel: tipoFoto?.nombre ?? "Sin documentos reconocidos",
+          detectedCodigo: propuesto?.codigo ?? "unknown",
+          detectedTipoId: propuesto?.id ?? null,
+          detectedDocTypeLabel: propuesto?.nombre ?? "Sin reconocer",
           expiryDate: null, issueDate: null,
           workerName: null, workerRut: null,
           paginaInicio: null,
           confidence: "low",
-          reasoning: tipoFoto
-            ? "Imagen sin texto de documento: se propone como foto del trabajador."
-            : "La IA no reconoció ningún documento en el archivo.",
+          reasoning: porNombre
+            ? `No se pudo leer el contenido (¿plantilla en blanco o escaneo ilegible?). Tipo deducido del nombre del archivo.`
+            : tipoFoto
+              ? "Imagen sin texto de documento: se propone como foto del trabajador."
+              : "No se pudo leer el archivo ni deducir el tipo del nombre. Elige el tipo a mano.",
           matches: [],
         });
         continue;
       }
 
       encontrados.forEach((doc, i) => {
+        // Si el modelo no supo clasificarlo pero el nombre del archivo sí lo
+        // delata, aprovechamos esa pista.
+        if (!doc.detectedTipoId) {
+          const porNombre = adivinarTipoDesdeNombre(file.fileName, tipos);
+          if (porNombre) {
+            doc.detectedCodigo = porNombre.codigo;
+            doc.detectedTipoId = porNombre.id;
+            doc.detectedDocTypeLabel = porNombre.nombre;
+            doc.reasoning = `${doc.reasoning} · Tipo deducido del nombre del archivo.`.trim();
+          }
+        }
+
         const matches = matchWorker(
           { name: doc.workerName, rut: doc.workerRut },
           workers,
