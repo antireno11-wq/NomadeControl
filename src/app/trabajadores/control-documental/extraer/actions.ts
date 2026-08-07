@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
-import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
+import { extractDocumentInfo, extraerFirmantes, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
 import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido } from "@/lib/acreditacion";
 
@@ -99,6 +99,23 @@ export async function extractDocumentsAction(
       // cuadrilla— es UN papel que vale para varias personas. Se expande en
       // una fila por firmante; todas comparten el archivo, así que el binario
       // se guarda una sola vez y queda enlazado en cada ficha.
+      // Si la primera pasada dijo que es colectivo, se relee la tabla con una
+      // pasada dedicada. Se queda con la lista más larga: enumerar de menos es
+      // el error que hemos visto, nunca de más.
+      for (const doc of encontrados) {
+        if (!doc.titulares || doc.titulares.length <= 1) continue;
+        try {
+          const completos = await extraerFirmantes({
+            fileBase64: file.base64,
+            mimeType: file.mimeType,
+            fileName: file.fileName,
+          });
+          if (completos.length > doc.titulares.length) doc.titulares = completos;
+        } catch {
+          /* si falla, quedan los de la primera pasada */
+        }
+      }
+
       const expandidos: ExtractedDoc[] = encontrados.flatMap(doc =>
         doc.titulares && doc.titulares.length > 1
           ? doc.titulares.map(t => ({ ...doc, workerName: t.nombre, workerRut: t.rut }))

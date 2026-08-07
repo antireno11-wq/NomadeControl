@@ -407,3 +407,76 @@ export function matchWorker(
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 }
+
+/**
+ * Segunda pasada, dedicada exclusivamente a leer la tabla de firmantes.
+ *
+ * En la pasada principal el modelo tiene que clasificar el tipo, separar
+ * emisión de vencimiento, identificar al titular y además enumerar una tabla.
+ * Enumerar exhaustivamente es lo que peor hace cuando compite con otras
+ * tareas: devolvía dos firmantes de una tabla de varios, y encima se saltaba
+ * al dueño de la carpeta. Acá la única tarea es contar filas.
+ *
+ * Se llama solo cuando la primera pasada dijo que el documento es colectivo,
+ * así que el costo extra es marginal.
+ */
+export async function extraerFirmantes(input: {
+  fileBase64: string;
+  mimeType: string;
+  fileName: string;
+  model?: string;
+}): Promise<Array<{ nombre: string | null; rut: string | null }>> {
+  const esPdf = input.mimeType === MIME_PDF;
+  const dataUrl = `data:${input.mimeType};base64,${input.fileBase64}`;
+
+  let texto = "";
+  if (esPdf) {
+    try {
+      const extraido = extraerTextoPdf(Buffer.from(input.fileBase64, "base64"));
+      if (tieneTextoUtil(extraido)) texto = extraido;
+    } catch { /* queda el adjunto */ }
+  }
+
+  const instruccion =
+    `Este documento lo firman varias personas. Tu ÚNICA tarea es transcribir la lista completa.\n\n` +
+    `1. Recorre la tabla o listado fila por fila, de arriba abajo, hasta la última.\n` +
+    `2. Sigue en las páginas siguientes si la lista continúa.\n` +
+    `3. Cuenta cuántas filas con nombre hay y ponlo en "total".\n` +
+    `4. Devuelve una entrada por fila en "firmantes", en el mismo orden.\n` +
+    `5. "total" y la cantidad de entradas TIENEN que coincidir. Si no coinciden, vuelve a recorrer.\n` +
+    `6. No omitas ninguna fila, aunque el nombre esté borroso o la firma ilegible: en ese caso pon lo que puedas leer y el rut en null.\n` +
+    `7. Nombres en orden natural (nombres y después apellidos) y en formato título.\n\n` +
+    `Responde solo: {"total": <n>, "firmantes": [{"nombre": "...", "rut": "12.345.678-9"}]}` +
+    (texto ? `\n\n--- TEXTO DEL DOCUMENTO ---\n${texto}\n--- FIN ---` : "");
+
+  const contenido = esPdf
+    ? [
+        { type: "file" as const, file: { filename: input.fileName, file_data: dataUrl } },
+        { type: "text" as const, text: instruccion },
+      ]
+    : [
+        { type: "text" as const, text: instruccion },
+        { type: "image_url" as const, image_url: { url: dataUrl, detail: "high" as const } },
+      ];
+
+  const response = await openaiChatCompletion({
+    model: input.model ?? "gpt-4o-mini",
+    responseFormat: "json_object",
+    messages: [
+      { role: "system", content: "Transcribes listas de firmantes de documentos laborales chilenos. No resumes ni omites filas." },
+      { role: "user", content: contenido as never },
+    ],
+    temperature: 0,
+    maxTokens: 3000,
+  });
+
+  try {
+    const parsed = JSON.parse(response.choices[0]?.message.content ?? "{}");
+    const lista = Array.isArray(parsed.firmantes) ? parsed.firmantes : [];
+    return (lista as Array<Record<string, unknown>>)
+      .map(f => ({ nombre: cleanString(f.nombre), rut: normalizeRut(f.rut) }))
+      .filter(f => f.nombre || f.rut);
+  } catch {
+    return [];
+  }
+}
