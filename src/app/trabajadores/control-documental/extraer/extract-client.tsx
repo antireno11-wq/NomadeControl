@@ -241,6 +241,8 @@ export function ExtractClient({
               grupoId: res.grupoId ?? null,
               firmantes: res.firmantes ?? null,
               ajenoAlLote: res.ajenoAlLote,
+              // El documento dice que no vence: no hay fecha que pedir.
+              sinVencimiento: res.sinVencimiento,
               expiryCalculada: res.expiryCalculada,
               titularHeredado: res.titularHeredado,
             };
@@ -872,7 +874,7 @@ export function ExtractClient({
                             <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
                               Se guarda como foto
                             </span>
-                          ) : !pideFecha ? (
+                          ) : !pideFecha || row.sinVencimiento ? (
                             <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
                               ∞ No vence
                             </span>

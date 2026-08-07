@@ -80,7 +80,7 @@ export async function extractDocumentsAction(
           detectedTipoId: propuesto?.id ?? null,
           detectedDocTypeLabel: propuesto?.nombre ?? "Sin reconocer",
           expiryDate: null, issueDate: null,
-          workerName: null, workerRut: null, titulares: null,
+          workerName: null, workerRut: null, titulares: null, sinVencimiento: false,
           paginaInicio: null,
           confidence: "low",
           reasoning: porNombre
@@ -143,7 +143,7 @@ export async function extractDocumentsAction(
         detectedTipoId: null,
         detectedDocTypeLabel: "Error",
         expiryDate: null, issueDate: null,
-        workerName: null, workerRut: null, titulares: null,
+        workerName: null, workerRut: null, titulares: null, sinVencimiento: false,
         paginaInicio: null,
         confidence: "low",
         reasoning: "",

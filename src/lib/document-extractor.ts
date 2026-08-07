@@ -28,6 +28,12 @@ export type ExtractedDoc = {
    * archivo se registra en la ficha de cada uno.
    */
   titulares: Array<{ nombre: string | null; rut: string | null }> | null;
+  /**
+   * El documento dice EXPLÍCITAMENTE que no caduca —un contrato o anexo de
+   * duración indefinida—. Es distinto de no haberle encontrado la fecha: uno
+   * se guarda tranquilo, el otro hay que revisarlo.
+   */
+  sinVencimiento: boolean;
   /** Página donde empieza, en PDFs con varios documentos. */
   paginaInicio: number | null;
   confidence: "high" | "medium" | "low";
@@ -67,6 +73,8 @@ Reglas:
   Lee el título de CADA informe antes de asignarlo; no supongas el orden ni te guíes por el nombre del archivo, que suele mencionar solo uno de los dos.
 - LOS NÚMEROS NO SON FECHAS. Los documentos están llenos de números largos que NO hay que interpretar como fechas: el número de la licencia, el RUT, "Nro. Carpeta", el folio, el código de barras del reverso, los códigos de verificación de los diplomas. Si un número no viene rotulado como fecha ni tiene separadores de fecha, ignóralo. Una fecha inventada a partir de un folio es peor que no tener fecha, porque nadie la va a cuestionar.
 - UN VENCIMIENTO NUNCA ES ANTERIOR A LA EMISIÓN. Si de dos fechas una es claramente posterior, esa es la de vencimiento y la anterior es la de emisión.
+- CONTRATO O ANEXO INDEFINIDO. Si el documento dice "indefinido", "de duración indefinida", "plazo indefinido" o convierte el contrato a indefinido, NO tiene fecha de vencimiento: pon expiryDate en null y sinVencimiento en true. Es distinto de no haberle encontrado la fecha — acá el documento sí dice que no caduca, y no hay nada que revisar.
+- sinVencimiento es true SOLO cuando el documento lo dice. Si simplemente no encontraste el vencimiento, déjalo en false y expiryDate en null.
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
 - Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
 - Los certificados de capacitación y los exámenes suelen traer solo la fecha de realización: esa va en issueDate y expiryDate queda null.
@@ -120,6 +128,7 @@ Formato JSON exacto:
       "issueDate": "<YYYY-MM-DD o null>",
       "workerName": "<nombre o null>",
       "workerRut": "<rut o null>",
+      "sinVencimiento": false,
       "titulares": null,
       "//titulares": "solo en documentos colectivos: [{\"nombre\": \"...\", \"rut\": \"...\"}, ...]",
       "paginaInicio": <número>,
@@ -270,6 +279,7 @@ async function pedirExtraccion(
         workerName: cleanString(d.workerName),
         workerRut: normalizeRut(d.workerRut),
         titulares: null,
+        sinVencimiento: d.sinVencimiento === true,
         paginaInicio: pagina && pagina > 0 ? pagina : null,
         confidence: "medium" as const,
         reasoning: `${cleanString(d.reasoning) ?? ""}${notaFechas}`.trim(),
@@ -284,6 +294,7 @@ async function pedirExtraccion(
       issueDate: normalizeDate(d.issueDate),
       workerName: cleanString(d.workerName),
       workerRut: normalizeRut(d.workerRut),
+      sinVencimiento: d.sinVencimiento === true,
       titulares: Array.isArray(d.titulares) && d.titulares.length > 1
         ? (d.titulares as Array<Record<string, unknown>>)
             .map(t => ({ nombre: cleanString(t.nombre), rut: normalizeRut(t.rut) }))
