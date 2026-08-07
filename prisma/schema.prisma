@@ -347,21 +347,27 @@ model Cargo {
 /// La ausencia de fila significa "no aplica": no hace falta guardar los
 /// no-aplica, que en la planilla original eran ~100 celdas escritas a mano.
 model RequisitoDocumento {
-  id         String        @id @default(cuid())
-  proyectoId String
-  proyecto   Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  cargoId    String
-  cargo      Cargo         @relation(fields: [cargoId], references: [id], onDelete: Cascade)
-  tipoId     String
-  tipo       TipoDocumento @relation(fields: [tipoId], references: [id], onDelete: Cascade)
+  id            String        @id @default(cuid())
+  proyectoId    String
+  proyecto      Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  cargoId       String
+  cargo         Cargo         @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  tipoId        String
+  tipo          TipoDocumento @relation(fields: [tipoId], references: [id], onDelete: Cascade)
   /// obligatorio | deseable
-  nivel      String        @default("obligatorio")
+  nivel         String        @default("obligatorio")
   /// Condición del trabajador que activa el requisito. NULL = siempre.
-  /// contrato_indefinido | trabajo_previo_mandante
-  condicion  String?
-  nota       String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  /// contrato_indefinido | trabajo_previo_mandante | contrato_vencido
+  condicion     String?
+  /// Requisitos que se cumplen con CUALQUIERA de ellos. El mandante pide
+  /// "Examen Ocupacional y de Altura Geográfica" como un solo certificado, y
+  /// "Acreditación profesional (o Declaración Jurada de Competencias)" como
+  /// una u otra. Sin esto, tener el papel correcto igual dejaba pendiente al
+  /// otro tipo del catálogo.
+  alternativaDe String?
+  nota          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@unique([proyectoId, cargoId, tipoId])
   @@index([proyectoId, cargoId])

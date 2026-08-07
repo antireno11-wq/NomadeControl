@@ -73,6 +73,8 @@ export type ReglaSeed = {
   condicion?: CondicionRequisito;
   /** Solo se siembra si la faena supera esta altura. */
   sobreMsnm?: number;
+  /** Se cumple con cualquiera de los requisitos que compartan esta clave. */
+  alternativaDe?: string;
 };
 
 /**
@@ -109,10 +111,16 @@ export const REGLAS_MANDANTE_ANGLO: ReglaSeed[] = [
   { tipo: "contrato_trabajo",          cargos: null, nivel: "obligatorio" },
   { tipo: "anexo_contrato",            cargos: null, nivel: "obligatorio", condicion: "contrato_vencido" },
   { tipo: "irl_empresa",               cargos: null, nivel: "obligatorio" },
-  { tipo: "examen_ocupacional",        cargos: null, nivel: "obligatorio" },
-  { tipo: "altura_geografica",         cargos: null, nivel: "obligatorio" },
+  // El mandante lo pide como UN certificado: "Examen Ocupacional y de Altura
+  // Geográfica". Es el mismo papel de la mutualidad, así que cualquiera de los
+  // dos tipos lo satisface.
+  { tipo: "examen_ocupacional",        cargos: null, nivel: "obligatorio", alternativaDe: "examen_mutualidad" },
+  { tipo: "altura_geografica",         cargos: null, nivel: "obligatorio", alternativaDe: "examen_mutualidad" },
   { tipo: "recepcion_riohs",           cargos: null, nivel: "obligatorio" },
-  { tipo: "declaracion_jurada",        cargos: null, nivel: "obligatorio" },
+  // "Acreditación profesional y técnica (o Declaración Jurada de
+  // Competencias)": el mandante acepta una u otra.
+  { tipo: "declaracion_jurada",        cargos: null, nivel: "obligatorio", alternativaDe: "competencias" },
+  { tipo: "certificacion_competencias", cargos: null, nivel: "obligatorio", alternativaDe: "competencias" },
   { tipo: "entrega_epp",               cargos: null, nivel: "obligatorio" },
   { tipo: "examen_alcohol_drogas",     cargos: null, nivel: "obligatorio" },
 
@@ -121,10 +129,6 @@ export const REGLAS_MANDANTE_ANGLO: ReglaSeed[] = [
   { tipo: "curso_extintores",          cargos: null, nivel: "obligatorio" },
   { tipo: "curso_epp",                 cargos: null, nivel: "obligatorio" },
   { tipo: "entrenamientos_especificos", cargos: null, nivel: "obligatorio" },
-
-  // "Certificados de calificaciones para personal especialista": solo a
-  // quienes ejercen una especialidad, así que no bloquea a los demás.
-  { tipo: "certificacion_competencias", cargos: null, nivel: "deseable" },
 
   // Documentación de conductores
   { tipo: "licencia_conducir",         cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },

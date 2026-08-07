@@ -209,6 +209,7 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
   const data: Array<{
     proyectoId: string; cargoId: string; tipoId: string;
     nivel: string; condicion: string | null; nota: string | null;
+    alternativaDe: string | null;
   }> = [];
 
   for (const regla of reglas) {
@@ -233,6 +234,7 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
         proyectoId, cargoId, tipoId,
         nivel: regla.nivel,
         condicion: regla.condicion ?? null,
+        alternativaDe: regla.alternativaDe ?? null,
         nota,
       });
     }
@@ -278,6 +280,8 @@ export type RequisitoDeTrabajador = {
   /** De qué matriz viene. Decide si bloquea la habilitación o solo informa. */
   ambito: AmbitoRequisito;
   proyectoNombre: string;
+  /** Se cumple con cualquiera de los requisitos que compartan esta clave. */
+  alternativaDe: string | null;
 };
 
 /**
@@ -321,6 +325,7 @@ export async function getRequisitosPorTrabajador(
     },
     select: {
       proyectoId: true, cargoId: true, tipoId: true, nivel: true, condicion: true,
+      alternativaDe: true,
       proyecto: { select: { ambito: true, nombre: true } },
     },
   });
@@ -360,6 +365,7 @@ export async function getRequisitosPorTrabajador(
           condicion: f.condicion as CondicionRequisito | null,
           ambito: (f.proyecto?.ambito === "interno" ? "interno" : "mandante") as AmbitoRequisito,
           proyectoNombre: f.proyecto?.nombre ?? "",
+          alternativaDe: f.alternativaDe,
         })),
     );
   }
@@ -430,7 +436,43 @@ export function resumirExigencia(
   let obligatorios = 0;
   let cumplidos = 0;
 
+  // Los requisitos alternativos se resuelven en grupo: basta uno. Si alguno
+  // está al día, los demás del grupo no se cuentan ni como faltantes ni en el
+  // denominador — es un solo documento pedido de dos formas.
+  const alternativasCumplidas = new Set(
+    delAmbito
+      .filter(r => r.alternativaDe && esEstadoOk(estado?.porTipo.get(r.tipoId)?.estado ?? "sin_fecha"))
+      .map(r => r.alternativaDe!),
+  );
+  const alternativaYaContada = new Set<string>();
+
   for (const req of delAmbito) {
+    if (req.alternativaDe) {
+      if (alternativasCumplidas.has(req.alternativaDe)) {
+        // Cuenta una sola vez, con el documento que sí está.
+        if (!esEstadoOk(estado?.porTipo.get(req.tipoId)?.estado ?? "sin_fecha")) continue;
+        if (alternativaYaContada.has(req.alternativaDe)) continue;
+        alternativaYaContada.add(req.alternativaDe);
+      } else {
+        // Ninguno está: se reporta como faltante una sola vez, nombrando las
+        // opciones, para no pedir dos veces el mismo papel.
+        if (alternativaYaContada.has(req.alternativaDe)) continue;
+        alternativaYaContada.add(req.alternativaDe);
+        if (req.nivel === "obligatorio") {
+          obligatorios++;
+          faltantes.push({
+            tipoId: req.tipoId,
+            nombre: delAmbito
+              .filter(r => r.alternativaDe === req.alternativaDe)
+              .map(r => nombrePorTipo.get(r.tipoId) ?? "Documento")
+              .join(" o "),
+            estado: "sin_fecha",
+          });
+        }
+        continue;
+      }
+    }
+
     const est = estado?.porTipo.get(req.tipoId)?.estado ?? "sin_fecha";
     const doc: DocFaltante = {
       tipoId: req.tipoId,
