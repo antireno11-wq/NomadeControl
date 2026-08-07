@@ -277,6 +277,10 @@ function normalizarPropuesta(
   const cubos = new Map<string, number[]>();
   results.forEach((r, i) => {
     if (!r.detectedTipoId) return;
+    // Las filas de un documento colectivo son una por firmante, a propósito.
+    // Comparten archivo y tipo, así que el detector de duplicados las veía
+    // como el mismo documento cargado dos veces.
+    if (r.firmantes) return;
     const clave = `${indicePersona.get(i) ?? "sin-persona"}|${r.detectedTipoId}`;
     const lista = cubos.get(clave);
     if (lista) lista.push(i); else cubos.set(clave, [i]);
@@ -365,10 +369,17 @@ function normalizarPropuesta(
         // en cinco fichas nuevas.
         for (const i of colectivas) if (!delDueño.includes(i)) descartar.add(i);
       } else {
-        // No firmó. Se deja a la vista con el aviso, pero sin proponer crear a
-        // los otros: el archivo está guardado donde no corresponde y eso lo
-        // resuelve una persona, no la app.
-        for (const i of colectivas) results[i].ajenoAlLote = true;
+        // No firmó. Se descartan los demás firmantes: estás guardando a una
+        // persona y no tienen por qué aparecerte otras. Queda UNA fila, sin
+        // titular y con el aviso, para no hacer desaparecer el archivo en
+        // silencio: o lo asignas a mano o lo descartas con la ✕.
+        const [primera, ...resto] = colectivas;
+        results[primera].ajenoAlLote = true;
+        results[primera].workerName = null;
+        results[primera].workerRut = null;
+        results[primera].reasoning =
+          `${results[primera].reasoning} · Lo firman ${colectivas.length} personas y ninguna es ${dominante}.`.trim();
+        for (const i of resto) descartar.add(i);
       }
     }
   }
