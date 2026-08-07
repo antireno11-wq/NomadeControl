@@ -93,11 +93,11 @@ export default async function PerfilTrabajadorPage({
       contractEndDate: worker.contractEndDate,
     }),
   ]);
-  const exigencia = resumirExigencia(
-    requisitosWorker,
-    estadoWorker,
-    new Map(tiposTodos.map(t => [t.id, t.nombre])),
-  );
+  const nombresTipos = new Map(tiposTodos.map(t => [t.id, t.nombre]));
+  // Dos cumplimientos separados. El del mandante decide si puede entrar a la
+  // faena; el interno es de la contratación y no bloquea nada allá.
+  const exigencia = resumirExigencia(requisitosWorker, estadoWorker, nombresTipos, "mandante");
+  const exigenciaInterna = resumirExigencia(requisitosWorker, estadoWorker, nombresTipos, "interno");
   const docsAcreditacion = tiposTodos
     .map(tipo => ({ tipo, entry: estadoWorker?.porTipo.get(tipo.id) }))
     .filter((x): x is { tipo: typeof tiposTodos[number]; entry: NonNullable<typeof x.entry> } =>
@@ -150,6 +150,7 @@ export default async function PerfilTrabajadorPage({
 
         {/* Lo primero de la ficha: qué le falta para poder trabajar. */}
         <ExigenciaBanner exigencia={exigencia} editarHref={`/trabajadores/${worker.id}?tab=editar`} />
+        <ExigenciaBanner exigencia={exigenciaInterna} informativo titulo="Contratación NOMADE" />
 
         {/* ── Header card ─────────────────────────────────────────────── */}
         <div className="card" style={{ padding: "20px 24px" }}>

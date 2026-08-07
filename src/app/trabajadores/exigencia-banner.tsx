@@ -11,10 +11,53 @@ import type { ResumenExigencia } from "@/lib/requisitos-db";
 export function ExigenciaBanner({
   exigencia,
   editarHref,
+  titulo,
+  informativo,
 }: {
   exigencia: ResumenExigencia;
   editarHref?: string;
+  /** Encabezado cuando hay más de una matriz y hay que distinguirlas. */
+  titulo?: string;
+  /**
+   * No bloquea la habilitación: es otro cumplimiento. La contratación de
+   * NOMADE y la acreditación del mandante se miden aparte, y que falte un
+   * papel de la primera no puede pintar de rojo a la segunda.
+   */
+  informativo?: boolean;
 }) {
+  if (informativo) {
+    if (exigencia.sinMatriz) return null;
+    const pendientes = exigencia.vencidos.length + exigencia.faltantes.length;
+    return (
+      <div style={{
+        border: "1px solid var(--border)", background: "var(--surface, #f8fafc)",
+        borderRadius: 12, padding: "12px 18px",
+      }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+          <strong style={{ fontSize: "0.9rem" }}>{titulo ?? exigencia.fuente ?? "Otros requisitos"}</strong>
+          <span style={{ color: pendientes > 0 ? "#9a6300" : "#146c3d", fontWeight: 700, fontSize: "0.85rem" }}>
+            {exigencia.cumplidos}/{exigencia.obligatorios} al día ({exigencia.porcentaje}%)
+          </span>
+          <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+            No bloquea la habilitación en faena
+          </span>
+        </div>
+        {pendientes > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+            {[...exigencia.vencidos, ...exigencia.faltantes].map(d => (
+              <span key={d.tipoId} style={{
+                background: "white", color: "#92400e", border: "1px solid #fcd34d",
+                borderRadius: 5, padding: "2px 8px", fontSize: "0.75rem",
+              }}>
+                {d.nombre}{d.estado === "vencido" ? " · vencido" : ""}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (exigencia.sinMatriz) {
     return (
       <div style={{

@@ -571,7 +571,7 @@ export default async function AdministracionPage({
                     <select id="sel-proyecto" name="proyecto" defaultValue={proyectoSel?.id}>
                       {proyectosAcreditacion.map(p => (
                         <option key={p.id} value={p.id}>
-                          {p.mandanteNombre} — {p.nombre}{p.faena ? ` (${p.faena})` : ""}
+                          {p.mandanteNombre} — {p.nombre}{p.faena ? ` (${p.faena})` : ""}{p.ambito === "interno" ? " · interno" : ""}
                         </option>
                       ))}
                     </select>
@@ -615,6 +615,18 @@ export default async function AdministracionPage({
             <div className="card">
               <h2 style={{ marginTop: 0 }}>Nuevo proyecto</h2>
               <form action={crearProyectoAcreditacionAction} className="page-stack" style={{ gap: "0.75rem" }}>
+                <div>
+                  <label htmlFor="pa-ambito">Tipo de matriz</label>
+                  <select id="pa-ambito" name="ambito" defaultValue="mandante">
+                    <option value="mandante">Acreditación del mandante — bloquea el ingreso a faena</option>
+                    <option value="interno">Contratación interna NOMADE — no bloquea faena</option>
+                  </select>
+                  <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+                    Son cumplimientos separados: que falte un papel de la contratación no bota la
+                    acreditación de una faena que no lo pide. La matriz interna aplica a toda la
+                    dotación, sin importar en qué proyecto esté cada persona.
+                  </span>
+                </div>
                 <div>
                   <label htmlFor="pa-mandante">Mandante</label>
                   <input id="pa-mandante" name="mandante" required placeholder="Ej: Anglo American" list="mandantes-existentes" />

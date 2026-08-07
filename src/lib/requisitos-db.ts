@@ -17,6 +17,7 @@ export type CargoRow = { id: string; nombre: string; orden: number };
 export type ProyectoRow = {
   id: string;
   nombre: string;
+  ambito: string;
   faena: string | null;
   altitudMsnm: number | null;
   mandanteId: string;
@@ -101,12 +102,12 @@ export async function getProyectos(): Promise<ProyectoRow[]> {
     where: { activo: true },
     orderBy: [{ mandante: { nombre: "asc" } }, { nombre: "asc" }],
     select: {
-      id: true, nombre: true, faena: true, altitudMsnm: true,
+      id: true, nombre: true, ambito: true, faena: true, altitudMsnm: true,
       mandante: { select: { id: true, nombre: true } },
     },
   });
   return filas.map(p => ({
-    id: p.id, nombre: p.nombre, faena: p.faena, altitudMsnm: p.altitudMsnm,
+    id: p.id, nombre: p.nombre, ambito: p.ambito, faena: p.faena, altitudMsnm: p.altitudMsnm,
     mandanteId: p.mandante.id, mandanteNombre: p.mandante.nombre,
   }));
 }
@@ -202,10 +203,15 @@ export function condicionesDe(t: TrabajadorParaRequisitos, hoy = new Date()): Co
   };
 }
 
+export type AmbitoRequisito = "mandante" | "interno";
+
 export type RequisitoDeTrabajador = {
   tipoId: string;
   nivel: NivelRequisito;
   condicion: CondicionRequisito | null;
+  /** De qué matriz viene. Decide si bloquea la habilitación o solo informa. */
+  ambito: AmbitoRequisito;
+  proyectoNombre: string;
 };
 
 /**
@@ -214,28 +220,12 @@ export type RequisitoDeTrabajador = {
  * UI muestra como "sin matriz asignada" en vez de fingir un 100%.
  */
 export async function getRequisitosDeTrabajador(
-  t: TrabajadorParaRequisitos,
+  t: TrabajadorParaRequisitos & { id?: string },
 ): Promise<RequisitoDeTrabajador[] | null> {
-  if (!t.proyectoId || !t.cargoId) return null;
-
-  const filas = await db.requisitoDocumento.findMany({
-    // Un tipo desactivado en Administración deja de exigirse. La fila del
-    // requisito se conserva —reactivar el tipo lo vuelve a pedir— pero no
-    // cuenta: antes se sumaba como obligatorio faltante y, como el catálogo
-    // ya no lo devolvía, aparecía en la ficha con el nombre «Documento».
-    where: { proyectoId: t.proyectoId, cargoId: t.cargoId, tipo: { activo: true } },
-    select: { tipoId: true, nivel: true, condicion: true },
-  });
-
-  const cond = condicionesDe(t);
-
-  return filas
-    .filter(f => requisitoAplica(f, cond))
-    .map(f => ({
-      tipoId: f.tipoId,
-      nivel: f.nivel as NivelRequisito,
-      condicion: f.condicion as CondicionRequisito | null,
-    }));
+  // Se resuelve con la versión por lote para no duplicar la lógica de los dos
+  // ámbitos, que ya es la parte delicada.
+  const mapa = await getRequisitosPorTrabajador([{ ...t, id: t.id ?? "único" }]);
+  return mapa.get(t.id ?? "único") ?? null;
 }
 
 /** Igual que el anterior pero para muchos trabajadores, sin N+1. */
@@ -248,19 +238,35 @@ export async function getRequisitosPorTrabajador(
       .map(t => `${t.proyectoId}|${t.cargoId}`),
   );
 
-  const filas = pares.size === 0 ? [] : await db.requisitoDocumento.findMany({
+  // Los requisitos internos de NOMADE aplican a toda la dotación, sin importar
+  // en qué proyecto esté la persona: son de la contratación, no de la faena.
+  const cargoIds = [...new Set(trabajadores.map(t => t.cargoId).filter(Boolean) as string[])];
+
+  const filas = pares.size === 0 && cargoIds.length === 0 ? [] : await db.requisitoDocumento.findMany({
     where: {
       tipo: { activo: true },
-      OR: [...pares].map(p => {
-        const [proyectoId, cargoId] = p.split("|");
-        return { proyectoId, cargoId };
-      }),
+      OR: [
+        ...[...pares].map(p => {
+          const [proyectoId, cargoId] = p.split("|");
+          return { proyectoId, cargoId };
+        }),
+        { proyecto: { ambito: "interno", activo: true }, cargoId: { in: cargoIds } },
+      ],
     },
-    select: { proyectoId: true, cargoId: true, tipoId: true, nivel: true, condicion: true },
+    select: {
+      proyectoId: true, cargoId: true, tipoId: true, nivel: true, condicion: true,
+      proyecto: { select: { ambito: true, nombre: true } },
+    },
   });
 
   const porPar = new Map<string, typeof filas>();
+  const internosPorCargo = new Map<string, typeof filas>();
   for (const f of filas) {
+    if (f.proyecto?.ambito === "interno") {
+      const lista = internosPorCargo.get(f.cargoId);
+      if (lista) lista.push(f); else internosPorCargo.set(f.cargoId, [f]);
+      continue;
+    }
     const k = `${f.proyectoId}|${f.cargoId}`;
     const lista = porPar.get(k);
     if (lista) lista.push(f);
@@ -269,16 +275,25 @@ export async function getRequisitosPorTrabajador(
 
   const salida = new Map<string, RequisitoDeTrabajador[] | null>();
   for (const t of trabajadores) {
-    if (!t.proyectoId || !t.cargoId) { salida.set(t.id, null); continue; }
+    if (!t.cargoId) { salida.set(t.id, null); continue; }
     const cond = condicionesDe(t);
+    const delProyecto = t.proyectoId ? porPar.get(`${t.proyectoId}|${t.cargoId}`) ?? [] : [];
+    const internos = internosPorCargo.get(t.cargoId) ?? [];
+
+    // Sin proyecto asignado igual se evalúa lo interno: la contratación no
+    // depende de a qué faena vaya la persona.
+    if (delProyecto.length === 0 && internos.length === 0) { salida.set(t.id, null); continue; }
+
     salida.set(
       t.id,
-      (porPar.get(`${t.proyectoId}|${t.cargoId}`) ?? [])
+      [...delProyecto, ...internos]
         .filter(f => requisitoAplica(f, cond))
         .map(f => ({
           tipoId: f.tipoId,
           nivel: f.nivel as NivelRequisito,
           condicion: f.condicion as CondicionRequisito | null,
+          ambito: (f.proyecto?.ambito === "interno" ? "interno" : "mandante") as AmbitoRequisito,
+          proyectoNombre: f.proyecto?.nombre ?? "",
         })),
     );
   }
@@ -309,6 +324,8 @@ export type ResumenExigencia = {
   deseablesFaltantes: DocFaltante[];
   /** Cumplidos sobre obligatorios. `null` si no hay matriz. */
   porcentaje: number | null;
+  /** Nombre del proyecto o programa que exige estos documentos. */
+  fuente?: string;
 };
 
 /**
@@ -323,6 +340,12 @@ export function resumirExigencia(
   requisitos: RequisitoDeTrabajador[] | null,
   estado: EstadoTrabajador | undefined,
   nombrePorTipo: Map<string, string>,
+  /**
+   * Qué matriz medir. Son cumplimientos separados: que falte un papel de la
+   * contratación de NOMADE no puede botar la acreditación de una faena que
+   * no lo pide. Por defecto se mide la del mandante, que es la que bloquea.
+   */
+  ambito: AmbitoRequisito = "mandante",
 ): ResumenExigencia {
   const vacio: ResumenExigencia = {
     sinMatriz: true, obligatorios: 0, cumplidos: 0,
@@ -331,6 +354,9 @@ export function resumirExigencia(
   };
   if (!requisitos) return vacio;
 
+  const delAmbito = requisitos.filter(r => r.ambito === ambito);
+  if (delAmbito.length === 0) return vacio;
+
   const faltantes: DocFaltante[] = [];
   const vencidos: DocFaltante[] = [];
   const porVencer: DocFaltante[] = [];
@@ -338,7 +364,7 @@ export function resumirExigencia(
   let obligatorios = 0;
   let cumplidos = 0;
 
-  for (const req of requisitos) {
+  for (const req of delAmbito) {
     const est = estado?.porTipo.get(req.tipoId)?.estado ?? "sin_fecha";
     const doc: DocFaltante = {
       tipoId: req.tipoId,
@@ -365,7 +391,7 @@ export function resumirExigencia(
   }
 
   // Los por vencer sí están cumplidos, pero hay que verlos venir.
-  for (const req of requisitos) {
+  for (const req of delAmbito) {
     if (req.nivel !== "obligatorio") continue;
     if (estado?.porTipo.get(req.tipoId)?.estado === "por_vencer") {
       porVencer.push({
@@ -378,6 +404,7 @@ export function resumirExigencia(
 
   return {
     sinMatriz: false,
+    fuente: delAmbito[0]?.proyectoNombre || undefined,
     obligatorios, cumplidos,
     faltantes, vencidos, porVencer, deseablesFaltantes,
     porcentaje: obligatorios === 0 ? 100 : Math.round((cumplidos / obligatorios) * 100),

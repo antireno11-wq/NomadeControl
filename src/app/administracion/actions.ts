@@ -985,6 +985,7 @@ export async function crearProyectoAcreditacionAction(formData: FormData) {
   const nombre = String(formData.get("nombre") ?? "").trim();
   const faena = String(formData.get("faena") ?? "").trim();
   const altitudRaw = String(formData.get("altitudMsnm") ?? "").trim();
+  const ambito = String(formData.get("ambito") ?? "mandante") === "interno" ? "interno" : "mandante";
   const altitud = altitudRaw ? Number(altitudRaw) : null;
 
   if (mandante.length < 2 || nombre.length < 2) {
@@ -1009,6 +1010,7 @@ export async function crearProyectoAcreditacionAction(formData: FormData) {
     data: {
       mandanteId: m.id,
       nombre,
+      ambito,
       faena: faena || null,
       altitudMsnm: altitud != null && Number.isFinite(altitud) && altitud > 0 ? Math.round(altitud) : null,
     },

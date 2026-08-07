@@ -306,6 +306,13 @@ model Proyecto {
   mandanteId  String
   mandante    Mandante @relation(fields: [mandanteId], references: [id], onDelete: Cascade)
   nombre      String
+  /// mandante | interno
+  ///
+  /// "mandante" es lo que el cliente exige para dejar entrar a la persona a
+  /// su faena. "interno" es lo que NOMADE exige para contratar. Son dos
+  /// cumplimientos separados: que falte un papel de contratación no puede
+  /// botar la acreditación de un proyecto que no lo pide.
+  ambito      String   @default("mandante")
   /// Faena o división donde se ejecuta ("Los Bronces").
   faena       String?
   /// Altura de la faena en metros. Sobre 3.000 se exige el examen de altura
