@@ -439,13 +439,24 @@ export async function extraerFirmantes(input: {
 
   const instruccion =
     `Este documento lo firman varias personas. Tu ÚNICA tarea es transcribir la lista completa.\n\n` +
-    `1. Recorre la tabla o listado fila por fila, de arriba abajo, hasta la última.\n` +
-    `2. Sigue en las páginas siguientes si la lista continúa.\n` +
-    `3. Cuenta cuántas filas con nombre hay y ponlo en "total".\n` +
-    `4. Devuelve una entrada por fila en "firmantes", en el mismo orden.\n` +
-    `5. "total" y la cantidad de entradas TIENEN que coincidir. Si no coinciden, vuelve a recorrer.\n` +
-    `6. No omitas ninguna fila, aunque el nombre esté borroso o la firma ilegible: en ese caso pon lo que puedas leer y el rut en null.\n` +
-    `7. Nombres en orden natural (nombres y después apellidos) y en formato título.\n\n` +
+    `CUIDADO — LA MISMA LISTA APARECE VARIAS VECES Y PARTIDA EN VARIAS PÁGINAS:\n` +
+    `· La tabla de individualización se corta al final de una página y CONTINÚA en la siguiente ` +
+    `REPITIENDO EL ENCABEZADO. Una tabla que empieza en la fila 3 no es una lista nueva: es la ` +
+    `continuación de la anterior. Ese es el error más común — quedarse con la última tabla vista ` +
+    `y perder a las personas de la primera página.\n` +
+    `· Al final suele haber además una tabla de FIRMAS con las mismas personas, a veces manuscrita ` +
+    `y en otro orden.\n\n` +
+    `Qué hacer:\n` +
+    `1. Revisa TODAS las páginas, de la primera a la última, y anota cada tabla que encuentres.\n` +
+    `2. Junta todas las filas de todas las tablas en una sola lista, sin repetir personas.\n` +
+    `3. Fíjate en la numeración de las filas: si una tabla parte en 3, faltan la 1 y la 2 en una ` +
+    `página anterior. La lista final tiene que llegar hasta el número más alto que hayas visto.\n` +
+    `4. Usa la tabla de firmas para verificar que no falte nadie.\n` +
+    `5. No omitas ninguna fila, aunque el nombre esté borroso o la firma ilegible: pon lo que puedas ` +
+    `leer y el rut en null.\n` +
+    `6. Nombres en orden natural (nombres y después apellidos) y en formato título.\n` +
+    `7. En "total" pon el número de fila más alto que viste; tiene que coincidir con la cantidad de ` +
+    `entradas devueltas. Si no coinciden, te falta una página: vuelve a revisarlas.\n\n` +
     `Responde solo: {"total": <n>, "firmantes": [{"nombre": "...", "rut": "12.345.678-9"}]}` +
     (texto ? `\n\n--- TEXTO DEL DOCUMENTO ---\n${texto}\n--- FIN ---` : "");
 
