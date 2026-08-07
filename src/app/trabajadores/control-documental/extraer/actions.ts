@@ -29,6 +29,8 @@ export type ExtractedRow = ExtractedDoc & {
   firmantes?: number | null;
   /** Documento colectivo donde NO figura la persona dueña del resto del lote. */
   ajenoAlLote?: boolean;
+  /** RUT distinto del que trae la cédula de identidad de esta misma carga. */
+  rutDeCedula?: string | null;
 };
 
 /**
@@ -297,6 +299,25 @@ function normalizarPropuesta(
   const dominante = noColectivas.length > 0
     ? nombreMasProbable(noColectivas.map(r => r.workerName!))
     : null;
+
+  // 3.5 El RUT de la cédula manda.
+  //     La cédula es el documento que acredita la identidad; si otro papel de
+  //     la misma carga trae un RUT distinto, o está mal leído o el archivo es
+  //     de otra persona. Las dos cosas hay que mirarlas antes de crear una
+  //     ficha nueva, que es lo que venía pasando.
+  const cedula = results.find(r =>
+    r.detectedCodigo === "cedula_identidad" && normalizarRut(r.workerRut),
+  );
+  if (cedula) {
+    const rutCedula = normalizarRut(cedula.workerRut);
+    for (const r of results) {
+      const suyo = normalizarRut(r.workerRut);
+      if (!suyo || suyo === rutCedula) continue;
+      r.rutDeCedula = cedula.workerRut;
+      r.confidence = "low";
+      r.reasoning = `${r.reasoning} · El RUT no calza con el de la cédula de esta carga (${cedula.workerRut}).`.trim();
+    }
+  }
 
   const descartar = new Set<number>();
   if (dominante) {

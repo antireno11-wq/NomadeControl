@@ -48,6 +48,8 @@ type EditableRow = {
   firmantes?: number | null;
   /** Colectivo que no incluye a la persona dueña del resto de la carga. */
   ajenoAlLote?: boolean;
+  /** RUT de la cédula de esta carga, cuando el de esta fila no calza. */
+  rutDeCedula?: string | null;
   /** Se guarda sin fecha de vencimiento, por decisión explícita del usuario.
    *  Perder el documento porque no se le pudo leer una fecha es peor que
    *  registrarlo sin ella y que alguien la complete después. */
@@ -241,6 +243,7 @@ export function ExtractClient({
               grupoId: res.grupoId ?? null,
               firmantes: res.firmantes ?? null,
               ajenoAlLote: res.ajenoAlLote,
+              rutDeCedula: res.rutDeCedula,
               // El documento dice que no vence: no hay fecha que pedir.
               sinVencimiento: res.sinVencimiento,
               expiryCalculada: res.expiryCalculada,
@@ -810,6 +813,12 @@ export function ExtractClient({
                                 <div style={{ color: "#0369a1", fontSize: "0.7rem", marginTop: 2, fontWeight: 600 }}>
                                   Documento colectivo: lo firman {row.firmantes} personas. El mismo
                                   archivo queda en la ficha de cada una.
+                                </div>
+                              )}
+                              {row.rutDeCedula && (
+                                <div style={{ color: "#991b1b", fontSize: "0.7rem", marginTop: 2, fontWeight: 700, background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 5, padding: "3px 6px" }}>
+                                  El RUT no calza con el de la cédula de esta carga ({row.rutDeCedula}).
+                                  O está mal leído, o el archivo es de otra persona.
                                 </div>
                               )}
                               {row.ajenoAlLote && (
