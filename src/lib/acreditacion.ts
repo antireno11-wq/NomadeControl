@@ -316,6 +316,7 @@ type DocumentoComparable = {
   id: string;
   staffMemberId: string;
   tipoDocumentoId: string;
+  fechaEmision: Date | null;
   fechaVencimiento: Date | null;
   sinVencimiento: boolean;
   anulado: boolean;
@@ -323,12 +324,19 @@ type DocumentoComparable = {
 };
 
 /**
- * Equivalente en JS del `DISTINCT ON (trabajador, tipo) ... ORDER BY
- * fecha_vencimiento DESC NULLS LAST` de la spec.
+ * Elige, por cada (trabajador, tipo), cuál documento está vigente.
  *
- * Gana el documento no anulado con vencimiento más lejano. `sinVencimiento`
- * gana siempre (no caduca). Un documento sin fecha pierde contra uno con
- * fecha. A igualdad, gana el cargado más recientemente.
+ * Manda la FECHA DE EMISIÓN: el documento firmado más tarde reemplaza al
+ * anterior. Es lo correcto para el caso que lo motivó —un contrato con dos
+ * anexos, donde el último es el que rige— y también para exámenes y cursos,
+ * donde la renovación más nueva es la que vale. Antes se desempataba por
+ * cuándo se había subido el archivo a la app, así que cargar primero el
+ * anexo nuevo y después el viejo dejaba vigente al viejo.
+ *
+ * Cuando no se puede comparar por emisión —porque a alguno le falta esa
+ * fecha— se cae al vencimiento más lejano. `sinVencimiento` gana ahí, porque
+ * un contrato indefinido no caduca. Y como último desempate, el cargado más
+ * recientemente.
  *
  * Se hace en memoria y no como vista de Postgres para no depender de SQL
  * crudo: con ~500 trabajadores × ~23 tipos el costo es despreciable.
@@ -355,9 +363,18 @@ function rankVencimiento(doc: DocumentoComparable): number {
 }
 
 function ganaDocumento(candidato: DocumentoComparable, actual: DocumentoComparable): boolean {
+  // Solo se compara por emisión cuando los DOS la tienen. Si a uno le falta,
+  // preferirlo o descartarlo por eso sería decidir con un dato que no está.
+  if (candidato.fechaEmision && actual.fechaEmision) {
+    const ec = candidato.fechaEmision.getTime();
+    const ea = actual.fechaEmision.getTime();
+    if (ec !== ea) return ec > ea;
+  }
+
   const rc = rankVencimiento(candidato);
   const ra = rankVencimiento(actual);
   if (rc !== ra) return rc > ra;
+
   return candidato.createdAt.getTime() > actual.createdAt.getTime();
 }
 

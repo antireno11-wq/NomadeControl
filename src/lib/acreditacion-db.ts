@@ -273,7 +273,7 @@ export async function sincronizarDesdeFicha(
     },
     select: {
       id: true, staffMemberId: true, tipoDocumentoId: true,
-      fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
+      fechaEmision: true, fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
     },
   });
   const vigentes = seleccionarVigentes(existentes);
@@ -323,7 +323,8 @@ export async function getHistorialDocumento(staffMemberId: string, tipoDocumento
     where: { staffMemberId, tipoDocumentoId },
     orderBy: [{ fechaVencimiento: "desc" }, { createdAt: "desc" }],
     select: {
-      id: true, fechaEmision: true, fechaVencimiento: true,
+      id: true, fechaEmision: true,
+      fechaVencimiento: true,
       sinVencimiento: true, vencimientoCalculado: true, origen: true,
       confianzaExtraccion: true, confirmadoPorNombre: true, confirmadoAt: true,
       anulado: true, anuladoPorNombre: true, anuladoAt: true, motivoAnulacion: true,

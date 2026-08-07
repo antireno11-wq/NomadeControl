@@ -46,6 +46,8 @@ type EditableRow = {
   titularHeredado?: boolean;
   /** Cantidad de firmantes si el documento es colectivo. */
   firmantes?: number | null;
+  /** Colectivo que no incluye a la persona dueña del resto de la carga. */
+  ajenoAlLote?: boolean;
   /** Se guarda sin fecha de vencimiento, por decisión explícita del usuario.
    *  Perder el documento porque no se le pudo leer una fecha es peor que
    *  registrarlo sin ella y que alguien la complete después. */
@@ -236,6 +238,7 @@ export function ExtractClient({
               error: res.error,
               grupoId: res.grupoId ?? null,
               firmantes: res.firmantes ?? null,
+              ajenoAlLote: res.ajenoAlLote,
               expiryCalculada: res.expiryCalculada,
               titularHeredado: res.titularHeredado,
             };
@@ -803,6 +806,12 @@ export function ExtractClient({
                                 <div style={{ color: "#0369a1", fontSize: "0.7rem", marginTop: 2, fontWeight: 600 }}>
                                   Documento colectivo: lo firman {row.firmantes} personas. El mismo
                                   archivo queda en la ficha de cada una.
+                                </div>
+                              )}
+                              {row.ajenoAlLote && (
+                                <div style={{ color: "#92400e", fontSize: "0.7rem", marginTop: 2, fontWeight: 700, background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 5, padding: "3px 6px" }}>
+                                  Ninguno de los firmantes es la persona del resto de la carpeta.
+                                  Revisa si el archivo está guardado donde no corresponde.
                                 </div>
                               )}
                               {row.titularHeredado && (

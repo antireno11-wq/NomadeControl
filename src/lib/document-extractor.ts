@@ -61,6 +61,10 @@ Reglas:
   · "FECHA ÚLTIMO CONTROL" es cuándo se emitió o renovó → issueDate.
   · "FECHA DE CONTROL" es el PRÓXIMO control, o sea hasta cuándo vale → expiryDate.
   Ejemplo real: "FECHA ÚLTIMO CONTROL 15/05/2020 · FECHA DE CONTROL 23/03/2027" → issueDate "2020-05-15", expiryDate "2027-03-23". Tomar la primera como vencimiento marca vencida una licencia vigente.
+- ALTURA GEOGRÁFICA vs ALTURA FÍSICA. Son dos exámenes distintos que suelen venir en el mismo PDF, uno detrás del otro, y confundirlos deja al trabajador con uno de los dos marcado como faltante:
+  · ALTURA GEOGRÁFICA (gran altitud): aptitud para trabajar sobre los 3.000 m s.n.m. Habla de "altitud", "m.s.n.m.", "gran altitud", "hipobaria", "hipobárica", "intermitente".
+  · ALTURA FÍSICA: aptitud para trabajos en altura sobre el nivel del piso —andamios, techos, plataformas—. Habla de "trabajo en altura", "andamio", "vértigo", "equilibrio", "altura física".
+  Lee el título de CADA informe antes de asignarlo; no supongas el orden ni te guíes por el nombre del archivo, que suele mencionar solo uno de los dos.
 - LOS NÚMEROS NO SON FECHAS. Los documentos están llenos de números largos que NO hay que interpretar como fechas: el número de la licencia, el RUT, "Nro. Carpeta", el folio, el código de barras del reverso, los códigos de verificación de los diplomas. Si un número no viene rotulado como fecha ni tiene separadores de fecha, ignóralo. Una fecha inventada a partir de un folio es peor que no tener fecha, porque nadie la va a cuestionar.
 - UN VENCIMIENTO NUNCA ES ANTERIOR A LA EMISIÓN. Si de dos fechas una es claramente posterior, esa es la de vencimiento y la anterior es la de emisión.
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.

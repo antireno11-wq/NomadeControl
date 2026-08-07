@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable } from "@/lib/acreditacion";
+import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -27,6 +27,8 @@ export type ExtractedRow = ExtractedDoc & {
   titularHeredado?: boolean;
   /** Cantidad de firmantes cuando el documento es colectivo. */
   firmantes?: number | null;
+  /** Documento colectivo donde NO figura la persona dueña del resto del lote. */
+  ajenoAlLote?: boolean;
 };
 
 /**
@@ -129,6 +131,7 @@ export async function extractDocumentsAction(
           ...doc,
           matches,
           firmantes: doc.titulares && doc.titulares.length > 1 ? doc.titulares.length : null,
+          ajenoAlLote: false,
         });
       });
     } catch (e) {
@@ -283,6 +286,30 @@ function normalizarPropuesta(
       if (sub.length < 2) return;
       for (const i of sub) results[i].grupoId = `${clave}#${k}`;
     });
+  }
+
+  // 4. Colectivo que no incluye a la persona de la carpeta.
+  //    Una declaración jurada archivada en la carpeta de Walter pero firmada
+  //    por otros dos es un error de archivo, no de lectura. La app no puede
+  //    saber cuál es la verdad, pero sí avisar de la contradicción antes de
+  //    crear dos fichas que nadie pidió.
+  const noColectivas = results.filter(r => !r.firmantes && r.workerName);
+  const dominante = noColectivas.length > 0
+    ? nombreMasProbable(noColectivas.map(r => r.workerName!))
+    : null;
+
+  if (dominante) {
+    for (const [, indices] of porArchivo) {
+      const colectivas = indices.filter(i => results[i].firmantes);
+      if (colectivas.length === 0) continue;
+      const incluyeAlDueño = colectivas.some(i => {
+        const r = results[i];
+        return (r.workerName && mismoNombre(r.workerName, dominante));
+      });
+      if (!incluyeAlDueño) {
+        for (const i of colectivas) results[i].ajenoAlLote = true;
+      }
+    }
   }
 
   return results;

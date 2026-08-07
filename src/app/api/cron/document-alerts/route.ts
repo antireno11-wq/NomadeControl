@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       where: { staffMemberId: { in: staff.map(s => s.id) }, anulado: false },
       select: {
         id: true, staffMemberId: true, tipoDocumentoId: true,
-        fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
+        fechaEmision: true, fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
       },
     }),
     db.tipoDocumento.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
