@@ -163,6 +163,34 @@ function normalizarPropuesta(
 ): ExtractedRow[] {
   const tipoPorId = new Map(tipos.map(t => [t.id, t]));
 
+  // 0. Titular dentro del mismo archivo.
+  //    Un PDF de varias páginas nombra al trabajador en la primera y no lo
+  //    repite en las demás. Esas páginas llegaban sin titular, caían en el
+  //    grupo "sin persona" y no se juntaban con el resto del mismo archivo:
+  //    el registro IRL aparecía dos veces, una asignada y otra sin asignar.
+  //    Un archivo es de una sola persona, salvo que sea colectivo.
+  const porArchivo = new Map<string, number[]>();
+  results.forEach((r, i) => {
+    const lista = porArchivo.get(r.clientFileId);
+    if (lista) lista.push(i); else porArchivo.set(r.clientFileId, [i]);
+  });
+  for (const indices of porArchivo.values()) {
+    if (indices.some(i => results[i].firmantes)) continue;  // colectivo: cada fila es de otro
+    const referencia = indices.map(i => results[i]).find(r => r.workerName);
+    if (!referencia) continue;
+    for (const i of indices) {
+      const fila = results[i];
+      if (fila.workerName) {
+        fila.workerRut = fila.workerRut ?? referencia.workerRut;
+        continue;
+      }
+      fila.workerName = referencia.workerName;
+      fila.workerRut = fila.workerRut ?? referencia.workerRut;
+      fila.titularHeredado = true;
+      fila.reasoning = `${fila.reasoning} · Titular tomado de las otras páginas del mismo archivo.`.trim();
+    }
+  }
+
   // 1. Titular heredado.
   //    Una foto carnet no tiene nombre, y la hoja 2 de la ficha de ingreso
   //    solo trae el contacto de emergencia. Si todo el lote converge en UNA

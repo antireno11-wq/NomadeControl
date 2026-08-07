@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import type { DragEvent } from "react";
 import { extractDocumentsAction, applyExtractionsAction } from "./actions";
-import { agruparPorPersona, formatearNombre } from "@/lib/acreditacion";
+import { agruparPorPersona, formatearNombre, nombreMasProbable } from "@/lib/acreditacion";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
 type DocType = { id: string; codigo: string; nombre: string; noVence: boolean; esFoto: boolean; vigenciaDias: number | null };
@@ -313,18 +313,18 @@ export function ExtractClient({
    * base — antes había que crearlo primero y volver a subir.
    */
   const personasNuevas = (() => {
-    const vistas = new Map<string, { nombre: string; rut: string }>();
-    for (const r of activas) {
-      if (r.workerId !== CREAR_NUEVO) continue;
-      const nombre = r.nuevoNombre.trim();
-      if (!nombre) continue;
-      const clave = nombre.toLowerCase();
-      const previo = vistas.get(clave);
-      if (!previo || (!previo.rut && r.nuevoRut.trim())) {
-        vistas.set(clave, { nombre, rut: r.nuevoRut.trim() });
-      }
-    }
-    return [...vistas.values()];
+    const candidatas = activas.filter(r => r.workerId === CREAR_NUEVO && r.nuevoNombre.trim());
+    // Se agrupa con el MISMO criterio que usa el guardado. Antes esta lista
+    // deduplicaba por texto exacto, así que mostraba "Walter Garrido",
+    // "Walter Garrido Morales" y "Walter Antonio Garrido Morales" como tres
+    // personas cuando el guardado iba a crear una sola. La lista tiene que
+    // decir la verdad sobre lo que va a pasar.
+    return agruparPorPersona(
+      candidatas.map(r => ({ nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null })),
+    ).map(g => ({
+      nombre: g.variantes.length > 0 ? formatearNombre(nombreMasProbable(g.variantes)) : g.nombre,
+      rut: g.rut ?? "",
+    }));
   })();
 
   /** Por qué una fila no entra en el guardado. */
@@ -332,7 +332,7 @@ export function ExtractClient({
     if (r.procesando || r.applied || r.error) return null;
     if (!r.detectedTipoId) return "Falta elegir el tipo de documento";
     if (necesitaFecha(r.detectedTipoId) && !r.expiryDate && !r.sinVencimiento) {
-      return "Falta la fecha de vencimiento — el documento no la trae impresa y el tipo no tiene vigencia definida";
+      return "Falta la fecha de vencimiento";
     }
     if (r.workerId === CREAR_NUEVO && !r.nuevoNombre.trim()) return "Falta el nombre del trabajador nuevo";
     if (r.workerId !== CREAR_NUEVO && !r.workerId) return "Falta asignarlo a un trabajador";
@@ -353,6 +353,11 @@ export function ExtractClient({
     .filter(r => !esHoja(r))
     .map(row => ({ row, motivo: motivoBloqueo(row) }))
     .filter((x): x is { row: EditableRow; motivo: string } => x.motivo !== null);
+
+  /** Se resuelve con un clic: el documento existe, solo no trae fecha. */
+  const sinFecha = bloqueadas.filter(x => x.motivo.startsWith("Falta la fecha")).map(x => x.row);
+  /** Necesita que alguien complete un dato antes de poder guardarse. */
+  const faltaDato = bloqueadas.filter(x => !x.motivo.startsWith("Falta la fecha"));
 
   const filasNuevas = readyRows.filter(r => r.workerId === CREAR_NUEVO);
   const grupos = agruparPorPersona(
@@ -923,26 +928,59 @@ export function ExtractClient({
           {/* Sin esto, una fila que no cumple los requisitos simplemente no entra
               en el contador y desaparece sin decir por qué: el usuario cree que
               subió el documento y en la ficha aparece como no cargado. */}
-          {bloqueadas.length > 0 && (
+          {/* Dos avisos separados, porque piden cosas distintas: uno se
+              resuelve aceptando, el otro exige completar un dato. Mezclarlos
+              en una sola lista obligaba a leerla entera para saber qué hacer. */}
+          {sinFecha.length > 0 && (
             <div style={{ border: "1px solid #f59e0b", background: "#fffbeb", borderRadius: 12, padding: "14px 18px" }}>
-              <strong style={{ color: "#92400e" }}>
-                {bloqueadas.length} documento{bloqueadas.length === 1 ? "" : "s"} no se {bloqueadas.length === 1 ? "va" : "van"} a guardar
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                <strong style={{ color: "#92400e", flex: 1, minWidth: 260 }}>
+                  {sinFecha.length} documento{sinFecha.length === 1 ? "" : "s"} sin fecha de vencimiento
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setRows(prev => prev.map(r =>
+                    sinFecha.some(x => x.rowId === r.rowId) ? { ...r, sinVencimiento: true } : r))}
+                  style={{ background: "#92400e", color: "white", border: "none", borderRadius: 8, padding: "6px 16px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}
+                >
+                  Aceptar {sinFecha.length === 1 ? "" : "todos"}
+                </button>
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "#92400e", marginBottom: 10 }}>
+                No la traen impresa y su tipo no tiene vigencia definida. Revísalos y acepta para
+                guardarlos igual: queda anotado que la fecha está pendiente.
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {sinFecha.map(row => (
+                  <div key={row.rowId} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: "0.82rem" }}>
+                    <strong style={{ color: "#92400e" }}>{row.detectedDocTypeLabel}</strong>
+                    <span style={{ color: "var(--muted)", flex: 1, minWidth: 120 }}>
+                      {infoDe(row.clientFileId)?.fileName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateRow(row.rowId, { sinVencimiento: true })}
+                      style={{ flexShrink: 0, background: "white", color: "#92400e", border: "1px solid #f59e0b", borderRadius: 6, padding: "3px 12px", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Aceptar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {faltaDato.length > 0 && (
+            <div style={{ border: "1px solid #cbd5e1", background: "var(--surface, #f8fafc)", borderRadius: 12, padding: "14px 18px" }}>
+              <strong style={{ color: "var(--text)" }}>
+                {faltaDato.length} documento{faltaDato.length === 1 ? "" : "s"} sin guardar por datos incompletos
               </strong>
-              <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                {bloqueadas.map(({ row, motivo }) => (
-                  <div key={row.rowId} style={{ fontSize: "0.82rem", color: "#92400e", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline" }}>
+              <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
+                {faltaDato.map(({ row, motivo }) => (
+                  <div key={row.rowId} style={{ fontSize: "0.82rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <strong>{row.detectedDocTypeLabel}</strong>
                     <span style={{ color: "var(--muted)" }}>{infoDe(row.clientFileId)?.fileName}</span>
                     <span>— {motivo}</span>
-                    {motivo.startsWith("Falta la fecha") && (
-                      <button
-                        type="button"
-                        onClick={() => updateRow(row.rowId, { sinVencimiento: true })}
-                        style={{ background: "#92400e", color: "white", border: "none", borderRadius: 6, padding: "2px 10px", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
-                      >
-                        Guardar sin vencimiento
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>

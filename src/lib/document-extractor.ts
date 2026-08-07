@@ -57,6 +57,12 @@ Reglas:
   · Van en expiryDate SOLO si el texto lo dice explícitamente: "vence el", "válido hasta", "vigente hasta", "fecha de vencimiento", "FECHA EXPIRACIÓN", "expira el", "caduca el", "válido por ... hasta".
   · Si el documento tiene UNA SOLA fecha y no dice explícitamente que sea de vencimiento, va en issueDate y expiryDate queda null. NO asumas que la única fecha es el vencimiento.
   · Ejemplo: "El examen de detección de consumo de drogas realizado con fecha 15/07/2026..." → issueDate "2026-07-15", expiryDate null. Esa fecha es cuándo se hizo el examen, NO cuándo caduca.
+- LICENCIA DE CONDUCIR CHILENA. Trae dos fechas con nombres casi iguales y es fácil confundirlas:
+  · "FECHA ÚLTIMO CONTROL" es cuándo se emitió o renovó → issueDate.
+  · "FECHA DE CONTROL" es el PRÓXIMO control, o sea hasta cuándo vale → expiryDate.
+  Ejemplo real: "FECHA ÚLTIMO CONTROL 15/05/2020 · FECHA DE CONTROL 23/03/2027" → issueDate "2020-05-15", expiryDate "2027-03-23". Tomar la primera como vencimiento marca vencida una licencia vigente.
+- LOS NÚMEROS NO SON FECHAS. Los documentos están llenos de números largos que NO hay que interpretar como fechas: el número de la licencia, el RUT, "Nro. Carpeta", el folio, el código de barras del reverso, los códigos de verificación de los diplomas. Si un número no viene rotulado como fecha ni tiene separadores de fecha, ignóralo. Una fecha inventada a partir de un folio es peor que no tener fecha, porque nadie la va a cuestionar.
+- UN VENCIMIENTO NUNCA ES ANTERIOR A LA EMISIÓN. Si de dos fechas una es claramente posterior, esa es la de vencimiento y la anterior es la de emisión.
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
 - Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
 - Los certificados de capacitación y los exámenes suelen traer solo la fecha de realización: esa va en issueDate y expiryDate queda null.
@@ -241,6 +247,31 @@ async function pedirExtraccion(
     const tipo = input.tipos.find(t => t.codigo === codigo) ?? null;
     const pagina = typeof d.paginaInicio === "number" ? d.paginaInicio : null;
 
+    const emision = normalizeDate(d.issueDate);
+    let vencimiento = normalizeDate(d.expiryDate);
+    let notaFechas = "";
+
+    // Un vencimiento anterior a la emisión es imposible: el modelo cambió las
+    // fechas de lugar. Pasó con la licencia de conducir, que rotula "fecha
+    // último control" a la emisión y "fecha de control" al vencimiento. Se
+    // corrige acá porque una regla del prompt puede fallar y esto no.
+    if (emision && vencimiento && vencimiento < emision) {
+      [vencimiento, notaFechas] = [emision, ` · Las fechas venían invertidas (vencimiento ${vencimiento} anterior a la emisión); se intercambiaron.`];
+      return {
+        detectedCodigo: tipo?.codigo ?? "unknown",
+        detectedTipoId: tipo?.id ?? null,
+        detectedDocTypeLabel: tipo?.nombre ?? "Desconocido",
+        expiryDate: vencimiento,
+        issueDate: normalizeDate(d.expiryDate),
+        workerName: cleanString(d.workerName),
+        workerRut: normalizeRut(d.workerRut),
+        titulares: null,
+        paginaInicio: pagina && pagina > 0 ? pagina : null,
+        confidence: "medium" as const,
+        reasoning: `${cleanString(d.reasoning) ?? ""}${notaFechas}`.trim(),
+      };
+    }
+
     return {
       detectedCodigo: tipo?.codigo ?? "unknown",
       detectedTipoId: tipo?.id ?? null,
@@ -261,16 +292,51 @@ async function pedirExtraccion(
   });
 }
 
+/**
+ * Los modelos devuelven a veces un marcador de "no lo sé" en vez de null:
+ * "unknown", "desconocido", "N/A", "no aplica". Si se dejan pasar, ese texto
+ * termina cargado como si fuera el RUT de la persona — y peor, dos lecturas
+ * del mismo trabajador con "unknown" y con su RUT real quedan como personas
+ * distintas, porque la agrupación los ve como dos RUT que no coinciden.
+ */
+const MARCADORES_VACIO = new Set([
+  "null", "undefined", "unknown", "desconocido", "desconocida", "n/a", "na",
+  "no aplica", "no disponible", "sin informacion", "sin información",
+  "sin datos", "no indica", "no especificado", "-", "--", "?",
+]);
+
 function cleanString(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
-  return s && s.toLowerCase() !== "null" ? s : null;
+  if (!s) return null;
+  return MARCADORES_VACIO.has(s.toLowerCase()) ? null : s;
 }
 
+/**
+ * Valida que sea una fecha de verdad y no un número disfrazado.
+ *
+ * El formato por sí solo no alcanza: "2038-11-69" cumple el patrón y no
+ * existe. Salió del código de barras de una licencia de conducir —el modelo
+ * tomó "20381169" por una fecha—, y una fecha inventada a partir de un folio
+ * es peor que no tener fecha, porque nadie la va a cuestionar.
+ */
 function normalizeDate(v: unknown): string | null {
   const s = cleanString(v);
-  if (!s) return null;
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+
+  const [y, m, d] = s.split("-").map(Number);
+  const fecha = new Date(Date.UTC(y, m - 1, d));
+  // Si el día no sobrevive el ida y vuelta, no era una fecha (31 de febrero).
+  if (fecha.getUTCFullYear() !== y || fecha.getUTCMonth() !== m - 1 || fecha.getUTCDate() !== d) {
+    return null;
+  }
+
+  // Ventana plausible para un documento laboral. Fuera de acá casi siempre
+  // es un número de folio, de carpeta o de código de barras mal leído.
+  const anioActual = new Date().getUTCFullYear();
+  if (y < 1950 || y > anioActual + 30) return null;
+
+  return s;
 }
 
 function normalizeRut(v: unknown): string | null {
