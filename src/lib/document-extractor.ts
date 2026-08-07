@@ -113,6 +113,8 @@ Reglas:
 - DOCUMENTOS COLECTIVOS. Algunos documentos son UNO SOLO firmado por VARIAS personas: declaraciones juradas por competencias, actas de entrega de EPP grupales, listas de asistencia o registros de inducción con una fila por trabajador, nóminas firmadas.
   · Reconócelos porque traen una TABLA o LISTA de nombres con sus RUT y firmas, no un solo titular.
   · En esos casos devuelve UNA sola entrada de documento, con "titulares" como lista de TODOS los que firman, y workerName/workerRut en null.
+  · DEVUELVE A TODOS LOS FIRMANTES, no solo a los primeros. Recorre la tabla fila por fila hasta el final, incluidas las páginas siguientes si la lista continúa. Si hay doce filas con nombre, "titulares" tiene doce entradas. Dejar fuera a alguien es peor que no detectar el documento: esa persona queda sin la constancia y nadie se entera, porque el documento sí aparece cargado para los demás.
+  · Cuenta las filas antes de responder y verifica que la cantidad de "titulares" coincida.
   · NO devuelvas un documento por firmante: es un solo papel. La app lo va a registrar en la ficha de cada persona apuntando al mismo archivo.
   · Si el documento tiene un titular claro y además menciona a otros (el jefe que entrega, el relator, un testigo), NO es colectivo: usa workerName con el titular y deja "titulares" en null.
 - EL NOMBRE DEL ARCHIVO ES UNA PISTA VÁLIDA. Las carpetas de acreditación se nombran por su contenido: "Curso Manipulación SUSPEL.pdf", "04 Examen Altura Geografica - Juan Perez.pdf", "3.- IRL MANTENCION.pdf". Úsalo para clasificar el tipo y, si trae el nombre de la persona, para workerName.
