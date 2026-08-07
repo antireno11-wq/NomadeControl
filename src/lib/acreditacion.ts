@@ -619,9 +619,13 @@ export function mismoDocumentoProbable(a: string, b: string, nombrePersona?: str
       .replace(/[\u0300-\u036f]/g, "")
       // Marcas de cara, hoja o copia: son justamente lo que distingue las
       // partes de un mismo documento, así que se descartan.
-      .replace(/\b(\d+\s*(ra|da|ta|va|ma)?\s*(cara|hoja|pagina|pag|parte))\b/g, " ")
-      .replace(/\b(cara|hoja|pagina|pag|parte)\s*\d+\b/g, " ")
-      .replace(/\b(anverso|reverso|frontal|trasera|delantera|copia|scan|escaneo)\b/g, " ")
+      // Marcas de cara, hoja o parte. El ordinal se descarta SOLO cuando va
+      // pegado a una de esas palabras: "cedula primera cara" y "cedula segunda
+      // cara" son el mismo documento, pero "anexo primero" y "anexo segundo"
+      // no tienen por qué serlo.
+      .replace(/\b(\d+(ra|da|ta|va|ma)?|primera?|segunda?o?|tercera?o?|cuarta?o?|quinta?o?|sexta?o?)\s*(cara|caras|hoja|hojas|pagina|paginas|pag|parte|lado)\b/g, " ")
+      .replace(/\b(cara|caras|hoja|hojas|pagina|paginas|pag|parte|lado)\s*(\d+(ra|da|ta|va|ma)?|primera?|segunda?o?|tercera?o?|cuarta?o?|quinta?o?)\b/g, " ")
+      .replace(/\b(anverso|reverso|frontal|trasera|delantera|copia|scan|escaneo|frente|dorso)\b/g, " ")
       .replace(/\(\s*\d+\s*\)/g, " ")
       .replace(/[^a-z0-9\s]/g, " ");
 
