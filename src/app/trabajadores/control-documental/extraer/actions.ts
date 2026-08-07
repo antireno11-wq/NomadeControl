@@ -298,21 +298,32 @@ function normalizarPropuesta(
     ? nombreMasProbable(noColectivas.map(r => r.workerName!))
     : null;
 
+  const descartar = new Set<number>();
   if (dominante) {
     for (const [, indices] of porArchivo) {
       const colectivas = indices.filter(i => results[i].firmantes);
       if (colectivas.length === 0) continue;
-      const incluyeAlDueño = colectivas.some(i => {
+
+      const delDueño = colectivas.filter(i => {
         const r = results[i];
-        return (r.workerName && mismoNombre(r.workerName, dominante));
+        return Boolean(r.workerName && mismoNombre(r.workerName, dominante));
       });
-      if (!incluyeAlDueño) {
+
+      if (delDueño.length > 0) {
+        // La carga es de una persona: de un documento firmado por varias solo
+        // interesa SU firma. Traer a los demás firmantes convertía una carpeta
+        // en cinco fichas nuevas.
+        for (const i of colectivas) if (!delDueño.includes(i)) descartar.add(i);
+      } else {
+        // No firmó. Se deja a la vista con el aviso, pero sin proponer crear a
+        // los otros: el archivo está guardado donde no corresponde y eso lo
+        // resuelve una persona, no la app.
         for (const i of colectivas) results[i].ajenoAlLote = true;
       }
     }
   }
 
-  return results;
+  return results.filter((_, i) => !descartar.has(i));
 }
 
 /**

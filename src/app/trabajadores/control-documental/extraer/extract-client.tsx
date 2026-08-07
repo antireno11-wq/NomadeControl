@@ -230,7 +230,9 @@ export function ExtractClient({
               // desde qué archivo.
               workerId: fixedWorker?.id
                 ?? bestMatch?.workerId
-                ?? (proponerCrear ? CREAR_NUEVO : null),
+                // Un firmante ajeno a la carpeta no se propone para crear:
+                // el archivo está mal archivado y eso lo decide una persona.
+                ?? (proponerCrear && !res.ajenoAlLote ? CREAR_NUEVO : null),
               nuevoNombre: res.workerName ? formatearNombre(res.workerName) : "",
               nuevoRut: res.workerRut ?? "",
               confidence: res.confidence,
