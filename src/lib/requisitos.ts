@@ -85,52 +85,91 @@ export type ReglaSeed = {
  * exigencia contractual: se definen en Administración → Requisitos, que los
  * muestra destacados hasta que alguien decida.
  */
-export const REGLAS_SEED: ReglaSeed[] = [
-  // Todos
+/** Programa de requisitos: una matriz completa lista para sembrar. */
+export type ProgramaSeed = {
+  mandante: string;
+  proyecto: string;
+  ambito: "mandante" | "interno";
+  faena?: string;
+  reglas: ReglaSeed[];
+};
+
+/**
+ * Lo que Anglo American exige para dejar entrar a una persona a su faena.
+ * Sale del documento "D&G Andes Hub_Chile" del mandante.
+ *
+ * NO incluye antecedentes, residencia, AFP, Fonasa, cotizaciones, CV ni
+ * certificado de estudios: eso lo pide NOMADE para contratar, no Anglo para
+ * acreditar, y mezclarlos hacía que a un trabajador se le bloqueara el
+ * ingreso a faena por un papel que el mandante nunca le pidió.
+ */
+export const REGLAS_MANDANTE_ANGLO: ReglaSeed[] = [
+  // Documentación personal
   { tipo: "cedula_identidad",          cargos: null, nivel: "obligatorio" },
   { tipo: "contrato_trabajo",          cargos: null, nivel: "obligatorio" },
-  // El anexo es la renovación: no existe mientras el contrato original siga
-  // vigente, así que pedirlo antes es pedir un papel que nadie puede emitir.
   { tipo: "anexo_contrato",            cargos: null, nivel: "obligatorio", condicion: "contrato_vencido" },
-  { tipo: "foto",                      cargos: null, nivel: "obligatorio" },
-  { tipo: "examen_ocupacional",        cargos: null, nivel: "obligatorio" },
-  { tipo: "examen_alcohol_drogas",     cargos: null, nivel: "obligatorio" },
-  { tipo: "induccion_mandante",        cargos: null, nivel: "obligatorio" },
-  { tipo: "induccion_interna",         cargos: null, nivel: "obligatorio" },
-  { tipo: "curso_epp",                 cargos: null, nivel: "obligatorio" },
-  { tipo: "entrega_epp",               cargos: null, nivel: "obligatorio" },
-  { tipo: "recepcion_riohs",           cargos: null, nivel: "obligatorio" },
-  { tipo: "titulo_estudios",           cargos: null, nivel: "obligatorio" },
   { tipo: "irl_empresa",               cargos: null, nivel: "obligatorio" },
-  { tipo: "irl_cliente",               cargos: null, nivel: "obligatorio" },
+  { tipo: "examen_ocupacional",        cargos: null, nivel: "obligatorio" },
+  { tipo: "altura_geografica",         cargos: null, nivel: "obligatorio" },
+  { tipo: "recepcion_riohs",           cargos: null, nivel: "obligatorio" },
+  { tipo: "declaracion_jurada",        cargos: null, nivel: "obligatorio" },
+  { tipo: "entrega_epp",               cargos: null, nivel: "obligatorio" },
+  { tipo: "examen_alcohol_drogas",     cargos: null, nivel: "obligatorio" },
+
+  // Entrenamientos generales
+  { tipo: "curso_primeros_auxilios",   cargos: null, nivel: "obligatorio" },
+  { tipo: "curso_extintores",          cargos: null, nivel: "obligatorio" },
+  { tipo: "curso_epp",                 cargos: null, nivel: "obligatorio" },
+  { tipo: "entrenamientos_especificos", cargos: null, nivel: "obligatorio" },
+
+  // "Certificados de calificaciones para personal especialista": solo a
+  // quienes ejercen una especialidad, así que no bloquea a los demás.
+  { tipo: "certificacion_competencias", cargos: null, nivel: "deseable" },
+
+  // Documentación de conductores
+  { tipo: "licencia_conducir",         cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+  { tipo: "hoja_vida_conductor",       cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+  { tipo: "psicosensotecnico",         cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+  { tipo: "conduccion_defensiva",      cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+  { tipo: "curso_4x4",                 cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+];
+
+/**
+ * Lo que NOMADE exige para contratar. Sale de la planilla interna, y son
+ * justamente los documentos que Anglo no pide.
+ */
+export const REGLAS_INTERNAS_NOMADE: ReglaSeed[] = [
+  { tipo: "ficha_ingreso",             cargos: null, nivel: "obligatorio" },
+  { tipo: "foto",                      cargos: null, nivel: "obligatorio" },
   { tipo: "certificado_antecedentes",  cargos: null, nivel: "obligatorio" },
   { tipo: "certificado_residencia",    cargos: null, nivel: "obligatorio" },
   { tipo: "afiliacion_afp",            cargos: null, nivel: "obligatorio" },
   { tipo: "afiliacion_salud",          cargos: null, nivel: "obligatorio" },
   { tipo: "certificado_cotizaciones",  cargos: null, nivel: "obligatorio" },
+  { tipo: "titulo_estudios",           cargos: null, nivel: "obligatorio" },
   { tipo: "cv",                        cargos: null, nivel: "obligatorio" },
+  { tipo: "induccion_interna",         cargos: null, nivel: "obligatorio" },
+  { tipo: "manipulacion_alimentos",    cargos: CARGOS_COCINA, nivel: "obligatorio" },
 
-  // Por cargo — las tres reglas que la planilla sí definía
-  { tipo: "manipulacion_alimentos",    cargos: CARGOS_COCINA,      nivel: "obligatorio" },
-  { tipo: "licencia_conducir",         cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
-  { tipo: "curso_4x4",                 cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
-  { tipo: "conduccion_defensiva",      cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
-  { tipo: "psicosensotecnico",         cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
-
-  // Depende de la faena, no del cargo
-  { tipo: "altura_geografica",         cargos: null, nivel: "obligatorio", sobreMsnm: 3000 },
-
-  // Depende de la persona
-  { tipo: "finiquito_mandante",        cargos: null, nivel: "obligatorio", condicion: "trabajo_previo_mandante" },
-  { tipo: "poliza_muerte_accidental",  cargos: null, nivel: "obligatorio", condicion: "contrato_indefinido" },
-  { tipo: "poliza_salud_dental",       cargos: null, nivel: "obligatorio", condicion: "contrato_indefinido" },
-  { tipo: "poliza_muerte_natural",     cargos: null, nivel: "obligatorio", condicion: "contrato_indefinido" },
-
-  // "Si aplica" en la planilla: se pide, pero no bloquea
+  // "Si aplica" en la planilla: se piden, pero no bloquean.
   { tipo: "finiquito",                 cargos: null, nivel: "deseable" },
+  { tipo: "finiquito_mandante",        cargos: null, nivel: "deseable", condicion: "trabajo_previo_mandante" },
+  { tipo: "poliza_muerte_accidental",  cargos: null, nivel: "deseable", condicion: "contrato_indefinido" },
+  { tipo: "poliza_salud_dental",       cargos: null, nivel: "deseable", condicion: "contrato_indefinido" },
+  { tipo: "poliza_muerte_natural",     cargos: null, nivel: "deseable", condicion: "contrato_indefinido" },
   { tipo: "ley_trabajo_pesado",        cargos: null, nivel: "deseable" },
   { tipo: "registro_discapacidad",     cargos: null, nivel: "deseable" },
 ];
+
+/** Se crean solos al arrancar, para no armarlos a mano en la interfaz. */
+export const PROGRAMAS_SEED: ProgramaSeed[] = [
+  { mandante: "Anglo American", proyecto: "Agua Verde", faena: "Los Bronces", ambito: "mandante", reglas: REGLAS_MANDANTE_ANGLO },
+  { mandante: "Servicios Integrales Nómade Chile", proyecto: "Contratación", ambito: "interno", reglas: REGLAS_INTERNAS_NOMADE },
+];
+
+/** Compatibilidad: el sembrado por defecto de un proyecto de mandante. */
+export const REGLAS_SEED: ReglaSeed[] = REGLAS_MANDANTE_ANGLO;
+
 
 /**
  * Están en el catálogo del mandante pero SIN columna en su matriz: la propia

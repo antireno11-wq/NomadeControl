@@ -4,6 +4,9 @@ import { esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
 import {
   AJUSTES_CONDICION,
   CARGOS_SEED,
+  PROGRAMAS_SEED,
+  REGLAS_INTERNAS_NOMADE,
+  REGLAS_MANDANTE_ANGLO,
   TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE,
   REGLAS_SEED,
   requisitoAplica,
@@ -94,9 +97,70 @@ async function reconciliarCondiciones(): Promise<void> {
   }
 }
 
+/**
+ * Crea los programas de requisitos que vienen definidos en el código y saca de
+ * la matriz del mandante los documentos que resultaron ser de contratación.
+ *
+ * Se hace acá y no con un botón porque es configuración, no una acción: la
+ * app tiene que llegar con las dos matrices puestas. Los requisitos que
+ * alguien ya tocó desde la grilla no se mueven —updatedAt sigue igual a
+ * createdAt—, así que una decisión manual siempre gana.
+ */
+let programasSembrados = false;
+async function asegurarProgramas(): Promise<void> {
+  if (programasSembrados) return;
+  programasSembrados = true;
+
+  for (const prog of PROGRAMAS_SEED) {
+    const mandante = await db.mandante.upsert({
+      where: { nombre: prog.mandante }, update: {}, create: { nombre: prog.mandante },
+    });
+    const existente = await db.proyecto.findUnique({
+      where: { mandanteId_nombre: { mandanteId: mandante.id, nombre: prog.proyecto } },
+      select: { id: true },
+    });
+    const proyectoId = existente?.id ?? (await db.proyecto.create({
+      data: {
+        mandanteId: mandante.id, nombre: prog.proyecto,
+        ambito: prog.ambito, faena: prog.faena ?? null,
+      },
+      select: { id: true },
+    })).id;
+
+    await sembrarMatriz(proyectoId);
+  }
+
+  // Los documentos de contratación que había sembrado por error en la matriz
+  // del mandante: se quitan de ahí, donde bloqueaban el ingreso a faena. En la
+  // matriz interna siguen exigiéndose.
+  const soloInternos = REGLAS_INTERNAS_NOMADE
+    .map(r => r.tipo)
+    .filter(t => !REGLAS_MANDANTE_ANGLO.some(m => m.tipo === t));
+
+  const tipos = await db.tipoDocumento.findMany({
+    where: { codigo: { in: soloInternos } }, select: { id: true },
+  });
+  if (tipos.length === 0) return;
+
+  const candidatos = await db.requisitoDocumento.findMany({
+    where: {
+      tipoId: { in: tipos.map(t => t.id) },
+      proyecto: { ambito: "mandante" },
+    },
+    select: { id: true, createdAt: true, updatedAt: true },
+  });
+  const intactos = candidatos
+    .filter(r => r.updatedAt.getTime() === r.createdAt.getTime())
+    .map(r => r.id);
+  if (intactos.length > 0) {
+    await db.requisitoDocumento.deleteMany({ where: { id: { in: intactos } } });
+  }
+}
+
 /** Proyectos activos con su mandante. */
 export async function getProyectos(): Promise<ProyectoRow[]> {
   await reconciliarCondiciones().catch(() => { condicionesReconciliadas = false; });
+  await asegurarProgramas().catch(() => { programasSembrados = false; });
 
   const filas = await db.proyecto.findMany({
     where: { activo: true },
@@ -132,9 +196,11 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
   if (yaTiene > 0) return 0;
 
   const proyecto = await db.proyecto.findUnique({
-    where: { id: proyectoId }, select: { altitudMsnm: true },
+    where: { id: proyectoId }, select: { altitudMsnm: true, ambito: true },
   });
   if (!proyecto) return 0;
+
+  const reglas = proyecto.ambito === "interno" ? REGLAS_INTERNAS_NOMADE : REGLAS_MANDANTE_ANGLO;
 
   const [cargos, tipos] = await Promise.all([getCargos(), getTiposDocumento()]);
   const porNombre = new Map(cargos.map(c => [c.nombre, c.id]));
@@ -145,7 +211,7 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
     nivel: string; condicion: string | null; nota: string | null;
   }> = [];
 
-  for (const regla of REGLAS_SEED) {
+  for (const regla of reglas) {
     const tipoId = porCodigo.get(regla.tipo);
     if (!tipoId) continue;
 
