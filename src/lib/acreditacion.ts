@@ -380,6 +380,34 @@ function ganaDocumento(candidato: DocumentoComparable, actual: DocumentoComparab
 
 // ─── Identidad de personas ─────────────────────────────────────────────
 
+/**
+ * ¿El dígito verificador del RUT es el que corresponde? (módulo 11)
+ *
+ * Sirve para descartar lecturas falladas antes de que se conviertan en datos.
+ * Un mismo anexo se leyó como "17.164.614-1" y como "16.146.641-6" —los
+ * mismos dígitos barajados—, y ninguno de los dos es un RUT posible. Sin esta
+ * comprobación cada lectura fallida inventaba una persona nueva, porque la
+ * agrupación no fusiona RUT distintos.
+ */
+export function rutValido(rut?: string | null): boolean {
+  const limpio = normalizarRut(rut);
+  if (!/^\d{7,8}[0-9K]$/.test(limpio)) return false;
+
+  const cuerpo = limpio.slice(0, -1);
+  const dv = limpio.slice(-1);
+
+  let suma = 0;
+  let multiplo = 2;
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += Number(cuerpo[i]) * multiplo;
+    multiplo = multiplo === 7 ? 2 : multiplo + 1;
+  }
+
+  const resto = 11 - (suma % 11);
+  const esperado = resto === 11 ? "0" : resto === 10 ? "K" : String(resto);
+  return esperado === dv;
+}
+
 /** RUT sin puntos, guiones ni espacios, en mayúsculas. */
 export function normalizarRut(rut?: string | null): string {
   return (rut ?? "").replace(/[.\-\s]/g, "").toUpperCase();

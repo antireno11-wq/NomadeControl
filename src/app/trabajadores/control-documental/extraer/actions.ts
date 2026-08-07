@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre } from "@/lib/acreditacion";
+import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -299,6 +299,18 @@ function normalizarPropuesta(
   const dominante = noColectivas.length > 0
     ? nombreMasProbable(noColectivas.map(r => r.workerName!))
     : null;
+
+  // 3.4 Un RUT con dígito verificador incorrecto no es un RUT.
+  //     Se descarta antes de agrupar: dejarlo pasar hacía que cada lectura
+  //     fallida del mismo documento inventara una persona nueva, porque la
+  //     agrupación nunca fusiona dos RUT distintos. Sin RUT, esas filas se
+  //     agrupan por nombre, que es lo correcto cuando el número no se lee.
+  for (const r of results) {
+    if (!r.workerRut || rutValido(r.workerRut)) continue;
+    r.reasoning = `${r.reasoning} · El RUT leído (${r.workerRut}) no es válido: el dígito verificador no corresponde. Se descartó.`.trim();
+    r.workerRut = null;
+    r.confidence = "low";
+  }
 
   // 3.5 El RUT de la cédula manda.
   //     La cédula es el documento que acredita la identidad; si otro papel de
