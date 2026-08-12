@@ -11,7 +11,7 @@ import {
 import { ENABLED_MODULES } from "@/lib/modules-config";
 import { NavMenu, type NavEntry } from "@/components/nav-menu";
 
-type ShellNavKey = "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
+type ShellNavKey = "compromisos" | "reuniones" | "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
 
 type NotificationItem = {
   text: string;
@@ -76,6 +76,16 @@ export function AppShell({
       navKey: "operaciones",
       active: opcionesActivas.includes(activeNav),
     }] : []),
+
+    // El DdD lo usa todo el equipo, incluida la oficina: es el tablero de
+    // compromisos de la gerencia, no una vista de faena.
+    {
+      type: "link" as const,
+      href: "/compromisos",
+      label: "Compromisos",
+      navKey: "compromisos",
+      active: activeNav === "compromisos" || activeNav === "reuniones",
+    },
 
     ...(ENABLED_MODULES.hsec && canSeeHSEC ? [{
       type: "link" as const,

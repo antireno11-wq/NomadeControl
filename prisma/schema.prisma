@@ -324,6 +324,9 @@ model Proyecto {
 
   requisitos   RequisitoDocumento[]
   trabajadores StaffMember[]
+  Reunion      Reunion[]
+  Compromiso   Compromiso[]
+  Amenaza      Amenaza[]
 
   @@unique([mandanteId, nombre])
 }
@@ -1052,4 +1055,211 @@ model DocumentoEmpresa {
   updatedAt       DateTime @updatedAt
 
   @@index([tipoDocumentoId, anulado])
+}
+
+// ─── DdD — Diálogo de Desempeño ────────────────────────────────────────
+//
+// Reemplaza la planilla Excel que es estándar en la minería chilena. La
+// pieza central es el compromiso: NO pertenece a una reunión ni a una
+// semana, vive hasta que se cierra y va arrastrando su historia de
+// reprogramaciones. Esa es la diferencia entre un acta y un sistema de
+// gestión.
+
+/// daily | comite_semanal | comite_mensual | bilateral | arranque_contrato | cierre_contrato
+model Reunion {
+  id                 String    @id @default(cuid())
+  tipo               String    @default("daily")
+  /// Fecha de la reunión, no de la carga.
+  fecha              DateTime
+  anio               Int
+  /// Semana ISO derivada de `fecha`. Es lo que agrupa el DdD.
+  semanaIso          Int
+  referencia         String?
+  contratoId         String?
+  contrato           Proyecto? @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  participantes      String[]
+  /// Cruda, tal como se pegó. Se conserva siempre: es la fuente.
+  transcripcion      String?
+  resumen            String?
+  /// borrador | publicada
+  estado             String    @default("borrador")
+  /// Propuesta de extracción pendiente de revisión, en JSON. Reprocesar la
+  /// reemplaza, nunca la duplica.
+  propuesta          Json?
+  modeloUsado        String?
+  creadaPorId        String?
+  creadaPorNombre    String?
+  publicadaPorNombre String?
+  publicadaEn        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  compromisosOrigen Compromiso[]               @relation("CompromisoOrigen")
+  compromisosCierre Compromiso[]               @relation("CompromisoCierre")
+  amenazasOrigen    Amenaza[]                  @relation("AmenazaOrigen")
+  amenazasCierre    Amenaza[]                  @relation("AmenazaCierre")
+  rdps              Rdp[]
+  gembas            Gemba[]
+  reprogramaciones  CompromisoReprogramacion[]
+
+  @@index([anio, semanaIso])
+  @@index([estado, fecha])
+}
+
+/// Categorías de `oportunidad`. Lista cerrada, editable por Administración.
+model CategoriaCompromiso {
+  id     String  @id @default(cuid())
+  nombre String  @unique
+  orden  Int     @default(100)
+  activo Boolean @default(true)
+}
+
+model Compromiso {
+  id              String   @id @default(cuid())
+  reunionOrigenId String
+  reunionOrigen   Reunion  @relation("CompromisoOrigen", fields: [reunionOrigenId], references: [id], onDelete: Restrict)
+  reunionCierreId String?
+  reunionCierre   Reunion? @relation("CompromisoCierre", fields: [reunionCierreId], references: [id], onDelete: SetNull)
+
+  /// Nunca se modifica: es la fecha original de captura.
+  fechaCaptura  DateTime
+  oportunidad   String
+  /// Redactada en infinitivo y empezando por el verbo.
+  accion        String
+  responsable   String
+  responsableId String?
+  contratoId    String?
+  contrato      Proyecto? @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+
+  /// Compromiso original. NUNCA se modifica: reprogramar crea una fila en
+  /// CompromisoReprogramacion y actualiza fecha2doCompromiso.
+  fechaCierre        DateTime
+  fecha2doCompromiso DateTime?
+  fechaCierreReal    DateTime?
+
+  /// 0 pendiente, 1 cumplido. Numérico por compatibilidad con el DdD.
+  estado               Int     @default(0)
+  observacion          String?
+  /// Lo marca el extractor cuando el dato no se lee con claridad.
+  requiereVerificacion Boolean @default(false)
+  /// extraccion | manual
+  origen               String  @default("manual")
+  evidencia            String?
+
+  cerradoPorNombre String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  reprogramaciones CompromisoReprogramacion[]
+
+  @@index([estado, fechaCierre])
+  @@index([responsable])
+}
+
+/// Cada movimiento de fecha deja rastro. No se sobrescribe.
+///
+/// A los tres meses esta tabla es la que muestra quién compromete fechas
+/// que no puede cumplir, que es justamente lo que un acta no registra.
+model CompromisoReprogramacion {
+  id              String     @id @default(cuid())
+  compromisoId    String
+  compromiso      Compromiso @relation(fields: [compromisoId], references: [id], onDelete: Cascade)
+  fechaAnterior   DateTime
+  fechaNueva      DateTime
+  motivo          String?
+  reunionId       String?
+  reunion         Reunion?   @relation(fields: [reunionId], references: [id], onDelete: SetNull)
+  creadoPorNombre String?
+  createdAt       DateTime   @default(now())
+
+  @@index([compromisoId, createdAt])
+}
+
+model Amenaza {
+  id              String   @id @default(cuid())
+  reunionOrigenId String
+  reunionOrigen   Reunion  @relation("AmenazaOrigen", fields: [reunionOrigenId], references: [id], onDelete: Restrict)
+  reunionCierreId String?
+  reunionCierre   Reunion? @relation("AmenazaCierre", fields: [reunionCierreId], references: [id], onDelete: SetNull)
+
+  fechaCaptura         DateTime
+  area                 String
+  descripcion          String
+  responsable          String
+  contratoId           String?
+  contrato             Proyecto? @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  fechaCierre          DateTime
+  fechaCierreReal      DateTime?
+  estado               Int       @default(0)
+  observacion          String?
+  requiereVerificacion Boolean   @default(false)
+  evidencia            String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([estado, fechaCierre])
+}
+
+/// Resolución de Problemas.
+///
+/// No se cierra cuando se toma la acción: se cierra cuando se verifica que
+/// el problema no volvió a ocurrir. Por eso `verificacionEficacia` es
+/// condición para poner estado = 1.
+model Rdp {
+  id                   String   @id @default(cuid())
+  reunionOrigenId      String
+  reunionOrigen        Reunion  @relation(fields: [reunionOrigenId], references: [id], onDelete: Restrict)
+  fechaCaptura         DateTime
+  problema             String
+  causaRaiz            String?
+  accionCorrectiva     String?
+  lider                String
+  fechaCierre          DateTime
+  estado               Int      @default(0)
+  verificacionEficacia String?
+  evidencia            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Gemba {
+  id              String   @id @default(cuid())
+  reunionOrigenId String
+  reunionOrigen   Reunion  @relation(fields: [reunionOrigenId], references: [id], onDelete: Restrict)
+  fechaCaptura    DateTime
+  observador      String
+  descripcion     String
+  area            String?
+  lider           String?
+  fechaCierre     DateTime
+  estado          Int      @default(0)
+  evidencia       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// KPI de cumplimiento diario binario: se planifica un día y se cumple o no.
+model KpiDefinicion {
+  id         String        @id @default(cuid())
+  parametro  String
+  nombre     String
+  activo     Boolean       @default(true)
+  contratoId String?
+  orden      Int           @default(100)
+  registros  KpiRegistro[]
+
+  @@unique([parametro, nombre])
+}
+
+model KpiRegistro {
+  id              String        @id @default(cuid())
+  kpiDefinicionId String
+  kpiDefinicion   KpiDefinicion @relation(fields: [kpiDefinicionId], references: [id], onDelete: Cascade)
+  fecha           DateTime
+  plan            Boolean       @default(false)
+  real            Boolean       @default(false)
+  contratoId      String?
+
+  @@unique([kpiDefinicionId, fecha])
+  @@index([fecha])
 }
