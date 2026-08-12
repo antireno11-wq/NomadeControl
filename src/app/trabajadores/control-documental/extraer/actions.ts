@@ -346,6 +346,18 @@ function normalizarPropuesta(
     for (const r of results) {
       const suyo = normalizarRut(r.workerRut);
       if (!suyo || suyo === rutCedula) continue;
+
+      // Si el documento es de la MISMA persona que la cédula, el RUT distinto
+      // es de otro que aparece adentro: en un examen de mutualidad, el del
+      // profesional que lo firma. La cédula es el documento que acredita la
+      // identidad, así que su RUT manda y se corrige acá. Sin esto, la persona
+      // quedaba partida en dos fichas por un número que ni siquiera es suyo.
+      if (r.workerName && cedula.workerName && mismoNombre(r.workerName, cedula.workerName)) {
+        r.reasoning = `${r.reasoning} · El RUT leído (${r.workerRut}) es de otra persona nombrada en el documento; se usó el de la cédula.`.trim();
+        r.workerRut = cedula.workerRut;
+        continue;
+      }
+
       r.rutDeCedula = cedula.workerRut;
       r.confidence = "low";
       r.reasoning = `${r.reasoning} · El RUT no calza con el de la cédula de esta carga (${cedula.workerRut}).`.trim();
