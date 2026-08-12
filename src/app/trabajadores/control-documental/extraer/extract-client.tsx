@@ -207,6 +207,8 @@ export function ExtractClient({
   docTypes,
   apiKeyMissing,
   fixedWorker,
+  proyectos = [],
+  cargos = [],
 }: {
   workers: Worker[];
   docTypes: DocType[];
@@ -214,6 +216,9 @@ export function ExtractClient({
   /** Cargando desde la ficha de una persona: todo lo que se suba es de ella.
    *  Se saca el selector de trabajador, que ahí no tiene nada que decidir. */
   fixedWorker?: { id: string; fullName: string };
+  /** Proyecto y cargo disponibles para los trabajadores que se creen acá. */
+  proyectos?: { id: string; nombre: string; mandanteNombre: string; ambito: string }[];
+  cargos?: { id: string; nombre: string }[];
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -224,6 +229,10 @@ export function ExtractClient({
   const [isPending, startTransition] = useTransition();
   // Por defecto se combinan: dos caras de una cédula son un documento, no dos.
   const [accionGrupo, setAccionGrupo] = useState<Record<string, AccionGrupo>>({});
+  // A qué proyecto y cargo entran los trabajadores que cree esta carga.
+  const proyectosMandante = proyectos.filter(p => p.ambito !== "interno");
+  const [proyectoNuevo, setProyectoNuevo] = useState(proyectosMandante[0]?.id ?? "");
+  const [cargoNuevo, setCargoNuevo] = useState("");
 
   const infoDe = (clientFileId: string) => archivos.find(a => a.clientFileId === clientFileId);
   const tipoDe = (tipoId: string | null) => (tipoId ? docTypes.find(t => t.id === tipoId) ?? null : null);
@@ -521,7 +530,8 @@ export function ExtractClient({
                 .filter((a): a is ArchivoInfo => Boolean(a))
                 .map(a => ({ clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 }))
             : [],
-        }))
+        })),
+        { proyectoId: proyectoNuevo || null, cargoId: cargoNuevo || null },
       );
       const appliedIds = new Set(readyRows.map(r => r.rowId));
       setRows(prev => prev.map(r => appliedIds.has(r.rowId) ? { ...r, applied: true } : r));
@@ -623,6 +633,48 @@ export function ExtractClient({
           )}
 
           {/* Control de agrupación por persona */}
+          {aCrear > 0 && !fixedWorker && (cargos.length > 0 || proyectosMandante.length > 0) && (
+            <div style={{ border: "1px solid #93c5fd", background: "#eff6ff", borderRadius: 12, padding: "14px 18px" }}>
+              <strong style={{ color: "#1e40af", fontSize: "0.9rem" }}>
+                ¿Dónde entran {aCrear === 1 ? "el trabajador nuevo" : `los ${aCrear} trabajadores nuevos`}?
+              </strong>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
+                <div style={{ minWidth: 240 }}>
+                  <label style={{ fontSize: "0.78rem", color: "#1e40af" }}>Proyecto de acreditación</label>
+                  <select
+                    value={proyectoNuevo}
+                    onChange={e => setProyectoNuevo(e.target.value)}
+                    style={{ padding: "6px 10px", fontSize: "0.84rem", width: "100%" }}
+                  >
+                    <option value="">Sin proyecto</option>
+                    {proyectosMandante.map(p => (
+                      <option key={p.id} value={p.id}>{p.mandanteNombre} — {p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ minWidth: 220 }}>
+                  <label style={{ fontSize: "0.78rem", color: "#1e40af" }}>Grupo de dotación</label>
+                  <select
+                    value={cargoNuevo}
+                    onChange={e => setCargoNuevo(e.target.value)}
+                    style={{
+                      padding: "6px 10px", fontSize: "0.84rem", width: "100%",
+                      border: cargoNuevo ? "1px solid var(--border)" : "1.5px solid #f59e0b",
+                    }}
+                  >
+                    <option value="">Elegir cargo…</option>
+                    {cargos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "#1e40af", marginTop: 8 }}>
+                Los requisitos de contratación de NOMADE se aplican siempre, sin importar el
+                proyecto. Sin cargo no se puede calcular qué documentos le corresponden, así que
+                la persona queda «sin matriz» hasta que se lo asignes en su ficha.
+              </div>
+            </div>
+          )}
+
           {aCrear > 0 && (
             <div style={{
               padding: "12px 14px", borderRadius: 10,

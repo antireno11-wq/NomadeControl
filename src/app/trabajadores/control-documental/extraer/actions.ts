@@ -471,6 +471,12 @@ export type FilaAplicar = {
 
 export async function applyExtractionsAction(
   rows: FilaAplicar[],
+  /**
+   * Proyecto y cargo que se le asignan a los trabajadores creados en esta
+   * carga. Sin ellos la persona nace "sin matriz" y no se le puede calcular
+   * nada, que es lo que pasaba con todos los que creaba el extractor.
+   */
+  asignacion?: { proyectoId?: string | null; cargoId?: string | null },
 ): Promise<{
   applied: number;
   creados: Array<{ id: string; nombre: string }>;
@@ -553,6 +559,8 @@ export async function applyExtractionsAction(
             createdById: user.id,
             shiftStartDate: new Date(),
             isActive: true,
+            proyectoId: asignacion?.proyectoId || null,
+            cargoId: asignacion?.cargoId || null,
             notes: "Creado automáticamente al cargar documentos con IA",
           },
           select: { id: true, fullName: true },

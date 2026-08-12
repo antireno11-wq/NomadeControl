@@ -6,19 +6,22 @@ import { SectionTabs } from "@/components/section-tabs";
 import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
 import { ExtractClient } from "./extract-client";
+import { getCargos, getProyectos } from "@/lib/requisitos-db";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
 export default async function ExtraerDocumentosPage() {
   const user = await requireRole(STAFF_MANAGER_ROLES);
 
-  const [workers, tipos] = await Promise.all([
+  const [workers, tipos, proyectos, cargos] = await Promise.all([
     db.staffMember.findMany({
       where: { isActive: true },
       select: { id: true, fullName: true, nationalId: true },
       orderBy: { fullName: "asc" },
     }),
     getTiposDocumento(),
+    getProyectos(),
+    getCargos(),
   ]);
 
   const hasKey = Boolean(process.env.OPENAI_API_KEY);
@@ -68,6 +71,8 @@ export default async function ExtraerDocumentosPage() {
           </div>
         ) : (
           <ExtractClient
+            proyectos={proyectos.map(p => ({ id: p.id, nombre: p.nombre, mandanteNombre: p.mandanteNombre, ambito: p.ambito }))}
+            cargos={cargos.map(c => ({ id: c.id, nombre: c.nombre }))}
             workers={workers.map(w => ({
               id: w.id,
               fullName: w.fullName,
