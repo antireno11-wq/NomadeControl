@@ -37,6 +37,8 @@ export type TipoDocumentoSeed = {
   noVence?: boolean;
   /** Al cargarlo se guarda como foto del trabajador. */
   esFoto?: boolean;
+  /** trabajador | empresa | vehiculo. Por defecto, del trabajador. */
+  dominio?: "trabajador" | "empresa" | "vehiculo";
   orden: number;
 };
 
@@ -126,6 +128,14 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "poliza_muerte_accidental", nombre: "Póliza de muerte accidental e invalidez (≥ 2.500 UF)", categoria: "seguros", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Pól. accid.",  legacyField: null, orden: 260 },
   { codigo: "poliza_salud_dental",      nombre: "Póliza de salud y dental",       categoria: "seguros",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Pól. salud",   legacyField: null, orden: 261 },
   { codigo: "poliza_muerte_natural",    nombre: "Póliza de muerte natural (≥ 500 UF)", categoria: "seguros",      vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Pól. natural", legacyField: null, orden: 262 },
+
+  // ── Empresa ──────────────────────────────────────────────────────────
+  // Documentos de la razón social, no de una persona. El mandante los exige
+  // igual que los del trabajador, pero valen para toda la dotación.
+  { codigo: "afiliacion_organismo_administrador", nombre: "Acreditación de afiliación al organismo administrador", categoria: "previsional", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Org. administrador", legacyField: null, dominio: "empresa", orden: 300 },
+  { codigo: "certificado_accidentabilidad", nombre: "Certificado de accidentabilidad bianual (ley 16.744)", categoria: "previsional", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Accidentabilidad", legacyField: null, dominio: "empresa", orden: 301 },
+  { codigo: "jornada_especial",  nombre: "Aprobación de jornada especial (Inspección del Trabajo)", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Jornada especial", legacyField: null, dominio: "empresa", orden: 302 },
+  { codigo: "inicio_actividades_sernageomin", nombre: "Registro de inicio de actividades en Sernageomin", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Sernageomin", legacyField: null, dominio: "empresa", noVence: true, orden: 303 },
 
   // ── Foto ─────────────────────────────────────────────────────────────
   { codigo: "foto",                     nombre: "Foto del trabajador",            categoria: "identidad",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Foto",         legacyField: null, noVence: true, esFoto: true, orden: 5 },

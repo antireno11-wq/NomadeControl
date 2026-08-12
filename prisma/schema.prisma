@@ -385,8 +385,12 @@ model TipoDocumento {
   /// NULL = no vence, o siempre se lee del documento.
   vigenciaDias    Int?
   requiereArchivo Boolean  @default(false)
-  /// identidad | previsional | salud_ocupacional | formacion | laboral
+  /// identidad | previsional | salud_ocupacional | formacion | laboral | seguros
   categoria       String   @default("laboral")
+  /// A quién pertenece el documento: trabajador | empresa | vehiculo.
+  /// El mandante exige los tres, y mezclarlos haría que a cada persona se le
+  /// pidiera el inicio de actividades de la empresa.
+  dominio         String   @default("trabajador")
   /// Si aparece como columna en la matriz de control documental.
   /// Con ~24 tipos la matriz sería ilegible; solo los core se muestran.
   mostrarEnMatriz Boolean  @default(false)
@@ -406,8 +410,9 @@ model TipoDocumento {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  documentos DocumentoAcreditacion[]
-  requisitos RequisitoDocumento[]
+  documentos       DocumentoAcreditacion[]
+  requisitos       RequisitoDocumento[]
+  DocumentoEmpresa DocumentoEmpresa[]
 
   @@index([activo, orden])
 }
@@ -430,6 +435,7 @@ model ArchivoAcreditacion {
   documentos         DocumentoAcreditacion[]
   fotoDe             StaffMember[]
   ArchivoDeDocumento ArchivoDeDocumento[]
+  DocumentoEmpresa   DocumentoEmpresa[]
 
   @@index([hash])
 }
@@ -1016,4 +1022,34 @@ model ArchivoDeDocumento {
   createdAt   DateTime              @default(now())
 
   @@unique([documentoId, archivoId])
+}
+
+/// Documento de la empresa, no de una persona.
+///
+/// El mandante exige afiliación al organismo administrador, tasa de
+/// accidentabilidad, jornada especial e inicio de actividades en Sernageomin.
+/// Son de la razón social y valen para toda la dotación: pedirlos por
+/// trabajador sería multiplicar el mismo papel por cada ficha.
+model DocumentoEmpresa {
+  id              String        @id @default(cuid())
+  tipoDocumentoId String
+  tipoDocumento   TipoDocumento @relation(fields: [tipoDocumentoId], references: [id], onDelete: Restrict)
+
+  fechaEmision         DateTime?
+  fechaVencimiento     DateTime?
+  sinVencimiento       Boolean   @default(false)
+  vencimientoCalculado Boolean   @default(false)
+
+  archivoId        String?
+  archivo          ArchivoAcreditacion? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
+  originalFilename String?
+
+  /// Append-only, igual que los del trabajador: renovar es una fila nueva.
+  anulado         Boolean  @default(false)
+  nota            String?
+  subidoPorNombre String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tipoDocumentoId, anulado])
 }

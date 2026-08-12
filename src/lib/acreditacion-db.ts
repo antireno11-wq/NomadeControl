@@ -22,6 +22,7 @@ export type TipoDocumentoRow = {
   legacyField: string | null;
   noVence: boolean;
   esFoto: boolean;
+  dominio: string;
   orden: number;
 };
 
@@ -60,7 +61,7 @@ export type EstadoTrabajador = {
 const SELECT_TIPO = {
   id: true, codigo: true, nombre: true, categoria: true,
   etiquetaCorta: true, vigenciaDias: true, mostrarEnMatriz: true,
-  legacyField: true, noVence: true, esFoto: true, orden: true,
+  legacyField: true, noVence: true, esFoto: true, dominio: true, orden: true,
 } as const;
 
 /**
@@ -121,6 +122,7 @@ async function asegurarCatalogo(): Promise<void> {
       legacyField: t.legacyField,
       noVence: t.noVence ?? false,
       esFoto: t.esFoto ?? false,
+      dominio: t.dominio ?? "trabajador",
       orden: t.orden,
     })),
     skipDuplicates: true,
@@ -128,8 +130,11 @@ async function asegurarCatalogo(): Promise<void> {
 }
 
 /** Catálogo activo, ordenado. Se auto-siembra si todavía no existe. */
-export async function getTiposDocumento(soloMatriz = false): Promise<TipoDocumentoRow[]> {
-  const where = { activo: true, ...(soloMatriz ? { mostrarEnMatriz: true } : {}) };
+export async function getTiposDocumento(
+  soloMatriz = false,
+  dominio: "trabajador" | "empresa" | "vehiculo" = "trabajador",
+): Promise<TipoDocumentoRow[]> {
+  const where = { activo: true, dominio, ...(soloMatriz ? { mostrarEnMatriz: true } : {}) };
 
   await asegurarCatalogo();
   return db.tipoDocumento.findMany({

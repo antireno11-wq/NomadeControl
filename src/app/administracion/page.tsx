@@ -657,6 +657,18 @@ export default async function AdministracionPage({
             </div>
 
             <div className="card">
+              <h2 style={{ marginTop: 0 }}>Documentos de la empresa</h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+                Afiliación al organismo administrador, accidentabilidad, jornada especial e inicio
+                de actividades. Son de la razón social y valen para toda la dotación, así que no se
+                cargan por trabajador.
+              </p>
+              <Link href="/administracion/empresa">
+                <button type="button" className="secondary">Ver y cargar</button>
+              </Link>
+            </div>
+
+            <div className="card">
               <h2 style={{ marginTop: 0 }}>Cargos</h2>
               <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
                 El cargo es el grupo de dotación, no el título del contrato: «Montajista» agrupa a
