@@ -59,6 +59,99 @@ type EditableRow = {
 /** Qué hacer con un grupo de filas que apuntan al mismo documento. */
 type AccionGrupo = "combinar" | "separar";
 
+/**
+ * Selector de tipo de documento con filtro mientras se escribe.
+ *
+ * El catálogo pasó de 9 tipos a más de 50 y una lista desplegable de ese
+ * largo obliga a recorrerla entera para encontrar "Curso de extintores".
+ * Se escribe una parte del nombre y quedan las coincidencias.
+ */
+function SelectorTipo({
+  tipos,
+  valor,
+  onElegir,
+  disabled,
+}: {
+  tipos: DocType[];
+  valor: string | null;
+  onElegir: (tipoId: string | null) => void;
+  disabled?: boolean;
+}) {
+  const elegido = valor ? tipos.find(t => t.id === valor) ?? null : null;
+  const [texto, setTexto] = useState("");
+  const [abierto, setAbierto] = useState(false);
+
+  const normalizar = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // Se buscan todas las palabras escritas, en cualquier orden: "curso epp"
+  // encuentra "Curso de uso y mantención de EPP".
+  const palabras = normalizar(texto).split(/\s+/).filter(Boolean);
+  const coincidencias = palabras.length === 0
+    ? tipos
+    : tipos.filter(t => {
+        const n = normalizar(t.nombre);
+        return palabras.every(p => n.includes(p));
+      });
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        onClick={() => { if (!disabled) { setTexto(""); setAbierto(true); } }}
+        disabled={disabled}
+        style={{
+          padding: "5px 8px", fontSize: "0.82rem", width: "100%", maxWidth: 190,
+          textAlign: "left", background: "white", cursor: disabled ? "default" : "pointer",
+          border: elegido ? "1px solid var(--border)" : "1.5px solid #f59e0b",
+          borderRadius: 6, color: elegido ? "var(--text)" : "#92400e",
+        }}
+      >
+        {elegido?.nombre ?? "— Elegir —"}
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative", maxWidth: 190 }}>
+      <input
+        autoFocus
+        value={texto}
+        onChange={e => setTexto(e.target.value)}
+        onBlur={() => setTimeout(() => setAbierto(false), 150)}
+        placeholder="Escribe para buscar…"
+        style={{ padding: "5px 8px", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }}
+      />
+      <div style={{
+        position: "absolute", zIndex: 20, top: "100%", left: 0, right: 0,
+        maxHeight: 220, overflowY: "auto", background: "white",
+        border: "1px solid var(--border)", borderRadius: 8, marginTop: 2,
+        boxShadow: "0 6px 18px rgba(15,23,42,0.12)",
+      }}>
+        {coincidencias.length === 0 ? (
+          <div style={{ padding: "8px 10px", fontSize: "0.78rem", color: "var(--muted)" }}>
+            Ningún tipo coincide con «{texto}»
+          </div>
+        ) : coincidencias.slice(0, 40).map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onMouseDown={() => { onElegir(t.id); setAbierto(false); }}
+            style={{
+              display: "block", width: "100%", textAlign: "left",
+              padding: "6px 10px", fontSize: "0.8rem", border: "none",
+              background: t.id === valor ? "#eff6ff" : "transparent",
+              fontWeight: t.id === valor ? 700 : 400, cursor: "pointer",
+            }}
+          >
+            {t.nombre}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -845,17 +938,12 @@ export function ExtractClient({
                           {row.procesando ? (
                             <span style={{ color: "var(--muted)" }}>{row.detectedDocTypeLabel}</span>
                           ) : (
-                            <select
-                              value={row.detectedTipoId ?? ""}
-                              onChange={e => updateRow(row.rowId, { detectedTipoId: e.target.value || null })}
+                            <SelectorTipo
+                              tipos={docTypes}
+                              valor={row.detectedTipoId}
                               disabled={row.applied}
-                              style={{ padding: "5px 8px", fontSize: "0.82rem", width: "100%", maxWidth: 190 }}
-                            >
-                              <option value="">— Elegir —</option>
-                              {docTypes.map(t => (
-                                <option key={t.id} value={t.id}>{t.nombre}</option>
-                              ))}
-                            </select>
+                              onElegir={tipoId => updateRow(row.rowId, { detectedTipoId: tipoId })}
+                            />
                           )}
                         </td>
 
