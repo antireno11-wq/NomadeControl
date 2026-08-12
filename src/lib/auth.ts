@@ -94,6 +94,28 @@ export function isVehicleOnlyRole(_role: string) {
   return false;
 }
 
+/**
+ * DdD. Por defecto solo lo ve quien administra: las reuniones de gerencia no
+ * son asunto de un supervisor de campamento. A quien deba verlas se le marca
+ * el módulo "Compromisos y minutas" en su usuario.
+ */
+export function canAccessDdd(role: string) {
+  return isAdminRole(role);
+}
+
+/**
+ * Puerta de entrada al DdD, para las páginas y no solo para el menú: ocultar
+ * un enlace no protege nada si la URL sigue abierta.
+ */
+export async function requireDdd() {
+  const user = await requireRole(TRABAJADORES_ROLES);
+  const permisos = parseModulePermissions((user as { modulePermissions?: unknown }).modulePermissions);
+  if (!canAccessModule(user.role, permisos, "ddd", canAccessDdd)) {
+    redirect("/?moduloDeshabilitado=ddd");
+  }
+  return user;
+}
+
 export function canAccessAdministration(role: string) {
   return normalizeRole(role) === "ADMINISTRADOR";
 }
@@ -154,6 +176,7 @@ export const ALL_MODULES = [
   { key: "bodega",       label: "Bodega",             description: "Stock y movimientos de bodega" },
   { key: "vehiculos",    label: "Vehículos",          description: "Control vehicular" },
   { key: "biblioteca",   label: "Biblioteca",         description: "Documentos y recursos" },
+  { key: "ddd",          label: "Compromisos y minutas", description: "Diálogo de Desempeño: reuniones, compromisos y minutas" },
 ] as const;
 
 export type ModuleKey = typeof ALL_MODULES[number]["key"];

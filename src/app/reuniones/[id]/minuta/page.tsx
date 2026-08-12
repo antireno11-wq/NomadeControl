@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { TRABAJADORES_ROLES, isAdminRole, requireRole } from "@/lib/auth";
+import { requireDdd, isAdminRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { etiquetaTipoReunion, fechaEfectiva } from "@/lib/ddd";
@@ -13,7 +13,7 @@ export default async function MinutaPage({
   params: { id: string };
   searchParams?: { status?: string };
 }) {
-  const user = await requireRole(TRABAJADORES_ROLES);
+  const user = await requireDdd();
 
   const reunion = await db.reunion.findUnique({
     where: { id: params.id },

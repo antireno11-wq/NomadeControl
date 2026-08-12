@@ -18,6 +18,7 @@ export const ENABLED_MODULES = {
   trabajadores:   true,    // /trabajadores — solo lista + control documental
   vehiculos:      true,    // /vehiculos — flota completa
   biblioteca:     false,   // /biblioteca — documentos compartidos
+  ddd:            true,    // /compromisos y /reuniones — Diálogo de Desempeño
   administracion: true,    // /administracion — CRUD de camps, usuarios, proyectos
 } as const;
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TRABAJADORES_ROLES, isAdminRole, requireRole } from "@/lib/auth";
+import { requireDdd, isAdminRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { getProyectos } from "@/lib/requisitos-db";
 import { TIPOS_REUNION, aInputDate } from "@/lib/ddd";
@@ -10,7 +10,7 @@ export default async function NuevaReunionPage({
 }: {
   searchParams?: { status?: string };
 }) {
-  const user = await requireRole(TRABAJADORES_ROLES);
+  const user = await requireDdd();
   const proyectos = await getProyectos();
 
   return (

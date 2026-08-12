@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { ADMIN_ROLES, TRABAJADORES_ROLES, isAdminRole, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, requireDdd, isAdminRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
 import {
@@ -22,7 +22,7 @@ type SearchParams = {
 const SEMAFOROS: Semaforo[] = ["atrasado", "por_vencer", "en_plazo", "cerrado"];
 
 export default async function CompromisosPage({ searchParams }: { searchParams?: SearchParams }) {
-  const user = await requireRole(TRABAJADORES_ROLES);
+  const user = await requireDdd();
   const puedeAdministrar = isAdminRole(user.role);
   const hoy = new Date();
 

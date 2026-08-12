@@ -5,7 +5,8 @@ import { logoutAction } from "@/app/dashboard/actions";
 import { NotificationBell } from "@/components/notification-bell";
 import {
   canAccessAdministration, canAccessBiblioteca,
-  canAccessDashboard, canAccessHSEC, canAccessVehicles, canViewTareas,
+  canAccessDashboard, canAccessHSEC,
+  canAccessDdd, canAccessVehicles, canViewTareas,
   canAccessTrabajadores, isVehicleOnlyRole, canAccessModule, parseModulePermissions
 } from "@/lib/auth";
 import { ENABLED_MODULES } from "@/lib/modules-config";
@@ -47,6 +48,7 @@ export function AppShell({
   const canSeeBiblioteca   = mod("biblioteca",   canAccessBiblioteca);
   const canSeeTareasBasic  = mod("tareas",        canViewTareas);
   const canSeeHSEC         = mod("hsec",          canAccessHSEC);
+  const canSeeDdd          = mod("ddd",           canAccessDdd);
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
 
   const opcionesActivas = ["resumen", "carga", "tareas", "operaciones"] as ShellNavKey[];
@@ -77,15 +79,16 @@ export function AppShell({
       active: opcionesActivas.includes(activeNav),
     }] : []),
 
-    // El DdD lo usa todo el equipo, incluida la oficina: es el tablero de
-    // compromisos de la gerencia, no una vista de faena.
-    {
+    // Las reuniones de gerencia no son asunto de un supervisor de campamento.
+    // Por defecto solo lo ve quien administra; a quien deba verlo se le marca
+    // el módulo en su usuario.
+    ...(ENABLED_MODULES.ddd && canSeeDdd ? [{
       type: "link" as const,
       href: "/compromisos",
       label: "Compromisos",
       navKey: "compromisos",
       active: activeNav === "compromisos" || activeNav === "reuniones",
-    },
+    }] : []),
 
     ...(ENABLED_MODULES.hsec && canSeeHSEC ? [{
       type: "link" as const,

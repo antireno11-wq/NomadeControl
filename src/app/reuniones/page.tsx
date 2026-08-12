@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { TRABAJADORES_ROLES, isAdminRole, requireRole } from "@/lib/auth";
+import { requireDdd, isAdminRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { etiquetaTipoReunion } from "@/lib/ddd";
 
 export default async function ReunionesPage() {
-  const user = await requireRole(TRABAJADORES_ROLES);
+  const user = await requireDdd();
   const reuniones = await db.reunion.findMany({
     where: { NOT: { referencia: "Alta manual" } },
     orderBy: [{ fecha: "desc" }],
