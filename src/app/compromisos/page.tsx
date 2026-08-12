@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { ADMIN_ROLES, TRABAJADORES_ROLES, isAdminRole, requireRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
@@ -89,6 +90,7 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
       user={user}
       activeNav="compromisos"
       showAdminSections={puedeAdministrar}
+      rightSlot={<Link href="/reuniones/nueva"><button type="button">+ Nueva reunión</button></Link>}
     >
       <div className="page-stack">
         {alerta && <div className={`alert ${alerta.type}`}>{alerta.text}</div>}
