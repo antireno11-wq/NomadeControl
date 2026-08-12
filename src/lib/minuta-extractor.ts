@@ -40,7 +40,7 @@ export type GembaPropuesto = {
   lider: string; fecha_cierre: string | null; evidencia: string;
 };
 
-export const VERSION_PROMPT = "minuta-v1";
+export const VERSION_PROMPT = "minuta-v2";
 
 const SISTEMA = `Eres un asistente que convierte transcripciones de reuniones operativas en registros
 estructurados de un sistema de gestión llamado DdD (Diálogo de Desempeño), usado por
@@ -74,6 +74,16 @@ CÓMO CLASIFICAR
 - FUERA DE ALCANCE: temas de planificación de mediano plazo, cobranza, contratos
   comerciales, presupuestos y estructura. No son de la coordinación diaria. Van en el
   arreglo "fuera_de_alcance" con una sugerencia de a qué instancia corresponden.
+
+A QUIÉN SE LE ASIGNA
+Recibirás la lista de personas del equipo con cuenta en la plataforma. En la
+transcripción la gente se nombra por el nombre de pila, por apodo o mal transcrita.
+Cuando reconozcas a una de esas personas, escribe su nombre EXACTAMENTE como aparece
+en la lista, no como se dijo en la reunión. Si el responsable es alguien que no está
+en la lista — un proveedor, alguien del mandante, un jefe de turno — escribe su nombre
+tal como se dijo y marca requiere_verificacion = true. Si de plano no se dijo quién,
+deja "Por definir". Nunca repartas un compromiso entre dos personas para no dejarlo sin
+dueño: sin responsable claro es "Por definir".
 
 CIERRE DE COMPROMISOS ANTERIORES
 Recibirás la lista de compromisos y amenazas abiertos. Cuando en la transcripción se
@@ -113,6 +123,8 @@ export type ContextoExtraccion = {
   participantes: string[];
   contratos: string[];
   categorias: string[];
+  /** Usuarios activos, con el nombre exacto con el que hay que asignar. */
+  personas: string[];
   compromisosAbiertos: Array<{ id: string; accion: string; responsable: string; vence: string }>;
   amenazasAbiertas: Array<{ id: string; descripcion: string; responsable: string }>;
   transcripcion: string;
@@ -128,6 +140,9 @@ function construirUsuario(ctx: ContextoExtraccion, transcripcion: string): strin
     `PARTICIPANTES: ${ctx.participantes.join(", ") || "no informados"}`,
     `CONTRATOS ACTIVOS: ${ctx.contratos.join(", ") || "ninguno"}`,
     `CATEGORÍAS VÁLIDAS: ${ctx.categorias.join(", ")}`,
+    "",
+    "PERSONAS DEL EQUIPO (escribe el responsable exactamente así):",
+    ...(ctx.personas.length > 0 ? ctx.personas.map(p => `  ${p}`) : ["  no informadas"]),
     "",
     "COMPROMISOS ABIERTOS:",
     ...ctx.compromisosAbiertos.map(c => `  [${c.id}] ${c.accion} — ${c.responsable} — vence ${c.vence}`),
@@ -160,6 +175,41 @@ function enBloques(texto: string): string[] {
     bloques.push(texto.slice(i, i + MAX_CARACTERES));
   }
   return bloques;
+}
+
+const norm = (s: string) =>
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+
+/**
+ * Lleva el responsable propuesto al nombre exacto de un usuario activo.
+ *
+ * La instrucción del prompt no alcanza: el modelo escribe "Rody" igual. Esto
+ * es la verificación en código, que además es la que decide cuándo NO asignar.
+ * Si el nombre calza con dos personas se deja tal cual: un compromiso a nombre
+ * del que no era se cierra igual, y nadie lo nota hasta que el trabajo no está
+ * hecho.
+ */
+export function canonizarPersona(nombre: string, personas: string[]): string {
+  const bruto = (nombre ?? "").trim();
+  if (!bruto || personas.length === 0) return bruto;
+
+  const objetivo = norm(bruto);
+  if (!objetivo) return bruto;
+
+  const exacto = personas.find(p => norm(p) === objetivo);
+  if (exacto) return exacto;
+
+  const tokens = objetivo.split(" ").filter(t => t.length > 2);
+  if (tokens.length === 0) return bruto;
+
+  // Cada token del nombre dicho tiene que estar en el nombre del usuario.
+  // "Rody" calza con "Rody Olivares"; "Rody Pérez" no calza con "Rody Olivares".
+  const candidatos = personas.filter(p => {
+    const suyos = norm(p).split(" ");
+    return tokens.every(t => suyos.some(s => s === t));
+  });
+
+  return candidatos.length === 1 ? candidatos[0] : bruto;
 }
 
 const claveAccion = (s: string) =>
@@ -216,6 +266,17 @@ export async function extraerMinuta(
     for (const r of p.reprogramaciones ?? []) if (!salida.reprogramaciones.some(x => x.id === r.id)) salida.reprogramaciones.push(r);
 
     if (p.resumen && !salida.resumen) salida.resumen = p.resumen;
+  }
+
+  // El nombre se canoniza al final, sobre todo lo extraído: así vale igual
+  // para un bloque que para diez.
+  const quien = (n: string) => canonizarPersona(n, ctx.personas);
+  for (const c of salida.compromisos_nuevos) c.responsable = quien(c.responsable);
+  for (const a of salida.amenazas_nuevas) a.responsable = quien(a.responsable);
+  for (const r of salida.rdp_nuevos) r.lider = quien(r.lider);
+  for (const g of salida.gemba_nuevos) {
+    g.observador = quien(g.observador);
+    if (g.lider) g.lider = quien(g.lider);
   }
 
   return salida;

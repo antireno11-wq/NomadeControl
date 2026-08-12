@@ -5,7 +5,7 @@ import { requireDdd, isAdminRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { aInputDate, etiquetaTipoReunion, fechaEfectiva } from "@/lib/ddd";
-import { getCategorias } from "@/lib/ddd-db";
+import { getCategorias, getPersonasAsignables } from "@/lib/ddd-db";
 import type { PropuestaMinuta } from "@/lib/minuta-extractor";
 import { RevisionMinuta } from "./revision-client";
 import { publicarReunionAction, reprocesarReunionAction } from "../actions";
@@ -30,8 +30,9 @@ export default async function RevisionReunionPage({
   if (!reunion) notFound();
   if (reunion.estado === "publicada") redirect(`/reuniones/${reunion.id}/minuta`);
 
-  const [categorias, abiertos] = await Promise.all([
+  const [categorias, personas, abiertos] = await Promise.all([
     getCategorias(),
+    getPersonasAsignables(),
     db.compromiso.findMany({
       where: { estado: 0 },
       select: { id: true, accion: true, responsable: true, fechaCierre: true, fecha2doCompromiso: true },
@@ -91,6 +92,7 @@ export default async function RevisionReunionPage({
           reunionId={reunion.id}
           inicial={propuesta}
           categorias={categorias.map(c => c.nombre)}
+          personas={personas.map(p => p.nombre)}
           abiertos={abiertos.map(a => ({
             id: a.id, accion: a.accion, responsable: a.responsable,
             vence: aInputDate(fechaEfectiva(a as never)),

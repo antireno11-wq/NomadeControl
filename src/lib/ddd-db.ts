@@ -40,12 +40,48 @@ export async function getKpis() {
   });
 }
 
-/** Los responsables que ya aparecen en algún compromiso, para filtrar. */
-export async function getResponsables(): Promise<string[]> {
-  const filas = await db.compromiso.findMany({
-    distinct: ["responsable"],
-    select: { responsable: true },
-    orderBy: { responsable: "asc" },
+/**
+ * Personas a las que se les puede asignar un compromiso.
+ *
+ * Son los usuarios activos de la plataforma. No es una lista cerrada: el
+ * responsable se sigue guardando como texto, porque en un daily se compromete
+ * gente que no tiene cuenta — un jefe de turno, un proveedor, alguien del
+ * mandante. Perder ese compromiso por no poder asignarlo es peor que tenerlo
+ * a nombre de alguien sin usuario.
+ */
+export async function getPersonasAsignables(): Promise<
+  Array<{ nombre: string; cargo: string | null }>
+> {
+  const filas = await db.user.findMany({
+    where: { isActive: true },
+    select: { name: true, positionTitle: true },
+    orderBy: { name: "asc" },
   });
-  return filas.map(f => f.responsable).filter(Boolean);
+  return filas
+    .filter(f => f.name.trim())
+    .map(f => ({ nombre: f.name.trim(), cargo: f.positionTitle }));
+}
+
+/**
+ * Responsables para el filtro del tablero.
+ *
+ * Mezcla los usuarios activos con los nombres que ya aparecen en algún
+ * compromiso: si alguien quedó registrado como responsable y después se
+ * desactivó su usuario, sus compromisos siguen ahí y hay que poder filtrarlos.
+ */
+export async function getResponsables(): Promise<string[]> {
+  const [filas, personas] = await Promise.all([
+    db.compromiso.findMany({
+      distinct: ["responsable"],
+      select: { responsable: true },
+      orderBy: { responsable: "asc" },
+    }),
+    getPersonasAsignables(),
+  ]);
+
+  const todos = new Set<string>();
+  for (const p of personas) todos.add(p.nombre);
+  for (const f of filas) if (f.responsable) todos.add(f.responsable);
+
+  return [...todos].sort((a, b) => a.localeCompare(b, "es"));
 }

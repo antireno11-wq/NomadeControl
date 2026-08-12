@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { ADMIN_ROLES, requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { deInputDate, semanaIso, aInputDate, fechaEfectiva } from "@/lib/ddd";
-import { getCategorias } from "@/lib/ddd-db";
+import { getCategorias, getPersonasAsignables } from "@/lib/ddd-db";
 import { extraerMinuta, VERSION_PROMPT, type PropuestaMinuta } from "@/lib/minuta-extractor";
 
 const DDD_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
@@ -26,8 +26,9 @@ async function procesar(reunionId: string): Promise<void> {
   });
   if (!reunion?.transcripcion) return;
 
-  const [categorias, proyectos, compromisos, amenazas] = await Promise.all([
+  const [categorias, personas, proyectos, compromisos, amenazas] = await Promise.all([
     getCategorias(),
+    getPersonasAsignables(),
     db.proyecto.findMany({ where: { activo: true, ambito: "mandante" }, select: { nombre: true } }),
     db.compromiso.findMany({
       where: { estado: 0 },
@@ -45,6 +46,7 @@ async function procesar(reunionId: string): Promise<void> {
     participantes: reunion.participantes,
     contratos: proyectos.map(p => p.nombre),
     categorias: categorias.map(c => c.nombre),
+    personas: personas.map(p => p.nombre),
     compromisosAbiertos: compromisos.map(c => ({
       id: c.id, accion: c.accion, responsable: c.responsable,
       vence: aInputDate(fechaEfectiva(c as never)),
@@ -73,8 +75,15 @@ export async function crearReunionAction(formData: FormData) {
   const referencia = String(formData.get("referencia") ?? "").trim() || null;
   const contratoId = String(formData.get("contratoId") ?? "").trim() || null;
   const transcripcion = String(formData.get("transcripcion") ?? "").trim();
-  const participantes = String(formData.get("participantes") ?? "")
-    .split(/[,\n]/).map(p => p.trim()).filter(Boolean);
+  // Vienen de dos lados: las casillas de los usuarios activos y el campo
+  // libre para quien no tiene cuenta. Se juntan y se deduplican.
+  const participantes = [...new Set(
+    formData.getAll("participantes")
+      .map(String)
+      .flatMap(v => v.split(/[,\n]/))
+      .map(p => p.trim())
+      .filter(Boolean),
+  )];
 
   if (transcripcion.length < 40) redirect("/reuniones/nueva?status=corta");
 

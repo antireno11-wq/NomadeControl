@@ -17,12 +17,15 @@ export function RevisionMinuta({
   reunionId,
   inicial,
   categorias,
+  personas,
   abiertos,
   puedePublicar,
 }: {
   reunionId: string;
   inicial: PropuestaMinuta;
   categorias: string[];
+  /** Usuarios activos. Sugerencia, no lista cerrada. */
+  personas: string[];
   abiertos: Abierto[];
   puedePublicar: boolean;
 }) {
@@ -44,11 +47,22 @@ export function RevisionMinuta({
 
   const nombreAbierto = (id: string) => abiertos.find(a => a.id === id);
 
+  /** Nombre escrito que no corresponde a ningún usuario activo. */
+  const sinUsuario = (n: string) =>
+    Boolean(n?.trim()) && n.trim() !== "Por definir" && !personas.includes(n.trim());
+
   const campo: React.CSSProperties = { padding: "4px 7px", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" };
   const th: React.CSSProperties = { textAlign: "left", padding: "6px 8px", fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700 };
 
   return (
     <div className="page-stack">
+      {/* Se escribe y filtra mientras se escribe, pero acepta cualquier
+          nombre: en un daily se compromete gente que no tiene cuenta. */}
+      <datalist id="personas-asignables">
+        <option value="Por definir" />
+        {personas.map(n => <option key={n} value={n} />)}
+      </datalist>
+
       {/* ── Resumen ─────────────────────────────────────────────────── */}
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Resumen</h3>
@@ -179,8 +193,14 @@ export function RevisionMinuta({
                     </div>
                   </td>
                   <td style={{ padding: "5px 8px" }}>
-                    <input value={c.responsable} style={campo}
-                           onChange={e => actualizar({ ...p, compromisos_nuevos: p.compromisos_nuevos.map((x, j) => j === i ? { ...x, responsable: e.target.value } : x) })} />
+                    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                      <input value={c.responsable} list="personas-asignables" style={campo}
+                             onChange={e => actualizar({ ...p, compromisos_nuevos: p.compromisos_nuevos.map((x, j) => j === i ? { ...x, responsable: e.target.value } : x) })} />
+                      {sinUsuario(c.responsable) && (
+                        <span style={{ color: "#f59e0b", flexShrink: 0, cursor: "help" }}
+                              title="No corresponde a ningún usuario activo. Se guarda igual, pero esa persona no va a ver el compromiso en su tablero.">●</span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: "5px 8px" }}>
                     <select value={c.oportunidad} style={campo}
@@ -225,7 +245,7 @@ export function RevisionMinuta({
                style={{ display: "grid", gridTemplateColumns: "1fr 150px 140px 130px auto", gap: 8, alignItems: "center", padding: "6px 0", borderTop: i ? "1px solid #f1f5f9" : undefined }}>
             <input value={a.descripcion} style={campo}
                    onChange={e => actualizar({ ...p, amenazas_nuevas: p.amenazas_nuevas.map((x, j) => j === i ? { ...x, descripcion: e.target.value } : x) })} />
-            <input value={a.responsable} placeholder="Responsable" style={campo}
+            <input value={a.responsable} placeholder="Responsable" list="personas-asignables" style={campo}
                    onChange={e => actualizar({ ...p, amenazas_nuevas: p.amenazas_nuevas.map((x, j) => j === i ? { ...x, responsable: e.target.value } : x) })} />
             <input value={a.area} placeholder="Área" style={campo}
                    onChange={e => actualizar({ ...p, amenazas_nuevas: p.amenazas_nuevas.map((x, j) => j === i ? { ...x, area: e.target.value } : x) })} />
@@ -257,7 +277,7 @@ export function RevisionMinuta({
                        onChange={e => actualizar({ ...p, rdp_nuevos: p.rdp_nuevos.map((x, j) => j === i ? { ...x, accion_correctiva: e.target.value } : x) })} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 150px auto", gap: 6 }}>
-                <input value={r.lider} placeholder="Líder" style={campo}
+                <input value={r.lider} placeholder="Líder" list="personas-asignables" style={campo}
                        onChange={e => actualizar({ ...p, rdp_nuevos: p.rdp_nuevos.map((x, j) => j === i ? { ...x, lider: e.target.value } : x) })} />
                 <input type="date" value={r.fecha_cierre ?? ""} style={campo}
                        onChange={e => actualizar({ ...p, rdp_nuevos: p.rdp_nuevos.map((x, j) => j === i ? { ...x, fecha_cierre: e.target.value } : x) })} />

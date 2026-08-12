@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireDdd, isAdminRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { getProyectos } from "@/lib/requisitos-db";
+import { getPersonasAsignables } from "@/lib/ddd-db";
 import { TIPOS_REUNION, aInputDate } from "@/lib/ddd";
 import { crearReunionAction } from "../actions";
 
@@ -11,7 +12,7 @@ export default async function NuevaReunionPage({
   searchParams?: { status?: string };
 }) {
   const user = await requireDdd();
-  const proyectos = await getProyectos();
+  const [proyectos, personas] = await Promise.all([getProyectos(), getPersonasAsignables()]);
 
   return (
     <AppShell
@@ -56,10 +57,23 @@ export default async function NuevaReunionPage({
                 </select>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label htmlFor="r-part">Participantes</label>
-                <input id="r-part" name="participantes" placeholder="Rody Olivares, Cristian Sandoval, Manuel Candia" />
+                <label>Participantes</label>
+                {personas.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", margin: "4px 0 8px" }}>
+                    {personas.map(p => (
+                      <label key={p.nombre}
+                             style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 400, fontSize: "0.85rem", cursor: "pointer" }}>
+                        <input type="checkbox" name="participantes" value={p.nombre} style={{ width: "auto", margin: 0 }} />
+                        {p.nombre}
+                        {p.cargo && <span style={{ color: "var(--muted)", fontSize: "0.74rem" }}>· {p.cargo}</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <input id="r-part" name="participantes" placeholder="Otros asistentes, separados por coma" />
                 <span style={{ color: "var(--muted)", fontSize: "0.76rem" }}>
-                  Separados por coma. Ayudan a asignar bien los responsables.
+                  Marca a los usuarios que asistieron y escribe acá a quien no tenga cuenta.
+                  Con esto el extractor asigna los compromisos al nombre correcto.
                 </span>
               </div>
             </div>
