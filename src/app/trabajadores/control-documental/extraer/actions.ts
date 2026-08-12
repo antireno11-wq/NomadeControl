@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, extraerFirmantes, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido } from "@/lib/acreditacion";
+import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -331,6 +331,47 @@ function normalizarPropuesta(
     r.reasoning = `${r.reasoning} · El RUT leído (${r.workerRut}) no es válido: el dígito verificador no corresponde. Se descartó.`.trim();
     r.workerRut = null;
     r.confidence = "low";
+  }
+
+  // 3.45 Un mismo nombre no puede tener dos RUT: gana el que más se repite.
+  //
+  //      La cédula resuelve el conflicto cuando viene en la carga, pero muchas
+  //      veces no viene. Ahí un solo documento con el RUT del profesional que
+  //      lo firma —la enfermera de la mutualidad, siempre el mismo número—
+  //      bastaba para partir a la persona en dos fichas, porque la agrupación
+  //      nunca junta dos RUT distintos.
+  //
+  //      Dos personas con el nombre completo idéntico en la misma carpeta no
+  //      existen en la práctica; un RUT mal leído, todo el tiempo.
+  const porNombre = new Map<string, number[]>();
+  results.forEach((r, i) => {
+    if (!r.workerName) return;
+    const k = claveNombre(r.workerName);
+    if (!k) return;
+    const lista = porNombre.get(k);
+    if (lista) lista.push(i); else porNombre.set(k, [i]);
+  });
+
+  for (const indices of porNombre.values()) {
+    const conteo = new Map<string, { rut: string; veces: number }>();
+    for (const i of indices) {
+      const norm = normalizarRut(results[i].workerRut);
+      if (!norm) continue;
+      const previo = conteo.get(norm);
+      if (previo) previo.veces++;
+      else conteo.set(norm, { rut: results[i].workerRut!, veces: 1 });
+    }
+    if (conteo.size < 2) continue;
+
+    const ganador = [...conteo.values()].sort((a, b) => b.veces - a.veces)[0];
+    for (const i of indices) {
+      const norm = normalizarRut(results[i].workerRut);
+      if (!norm || norm === normalizarRut(ganador.rut)) continue;
+      results[i].reasoning =
+        `${results[i].reasoning} · El RUT leído (${results[i].workerRut}) aparece solo en este documento; el resto de la carga usa ${ganador.rut}, así que se corrigió. Suele ser el RUT del profesional que firma.`.trim();
+      results[i].workerRut = ganador.rut;
+      results[i].confidence = "medium";
+    }
   }
 
   // 3.5 El RUT de la cédula manda.
