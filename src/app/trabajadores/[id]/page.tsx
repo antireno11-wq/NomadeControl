@@ -10,6 +10,7 @@ import { ExtractClient } from "@/app/trabajadores/control-documental/extraer/ext
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
 import { ESTADO_STYLE } from "@/lib/acreditacion";
+import { DocumentosPanel, type FilaDoc, type VersionDoc } from "./documentos-panel";
 import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
 import { getCargos, getProyectos, getRequisitosDeTrabajador, resumirExigencia } from "@/lib/requisitos-db";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
@@ -102,6 +103,55 @@ export default async function PerfilTrabajadorPage({
     .map(tipo => ({ tipo, entry: estadoWorker?.porTipo.get(tipo.id) }))
     .filter((x): x is { tipo: typeof tiposTodos[number]; entry: NonNullable<typeof x.entry> } =>
       Boolean(x.entry) && (x.tipo.mostrarEnMatriz || x.entry!.estado !== "sin_fecha"));
+  // Todas las versiones, incluidas las anuladas: el panel muestra el historial
+  // completo porque el modelo es append-only y una corrección solo se entiende
+  // al lado de lo que reemplazó.
+  const versiones = await db.documentoAcreditacion.findMany({
+    where: { staffMemberId: worker.id },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true, tipoDocumentoId: true, fechaEmision: true, fechaVencimiento: true,
+      sinVencimiento: true, vencimientoCalculado: true, origen: true,
+      confianzaExtraccion: true, archivoId: true, originalFilename: true, nota: true,
+      createdAt: true, confirmadoPorNombre: true, anulado: true,
+      anuladoPorNombre: true, motivoAnulacion: true,
+      archivosExtra: { select: { archivoId: true } },
+    },
+  });
+
+  const aIso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+  const aVersion = (v: typeof versiones[number]): VersionDoc => ({
+    id: v.id,
+    fechaEmision: aIso(v.fechaEmision),
+    fechaVencimiento: aIso(v.fechaVencimiento),
+    sinVencimiento: v.sinVencimiento,
+    vencimientoCalculado: v.vencimientoCalculado,
+    origen: v.origen,
+    confianza: v.confianzaExtraccion,
+    archivoId: v.archivoId,
+    archivosExtra: v.archivosExtra.map(a => a.archivoId),
+    nombreArchivo: v.originalFilename,
+    nota: v.nota,
+    creado: formatDisplayDate(v.createdAt),
+    confirmadoPor: v.confirmadoPorNombre,
+    anulado: v.anulado,
+    anuladoPor: v.anuladoPorNombre,
+    motivoAnulacion: v.motivoAnulacion,
+  });
+
+  const filasDocumentos: FilaDoc[] = docsAcreditacion.map(({ tipo, entry }) => {
+    const delTipo = versiones.filter(v => v.tipoDocumentoId === tipo.id);
+    const vigenteId = entry.documento?.id ?? null;
+    return {
+      tipoId: tipo.id,
+      tipoNombre: tipo.nombre,
+      estado: entry.estado,
+      dias: entry.dias,
+      actual: delTipo.filter(v => v.id === vigenteId).map(aVersion)[0] ?? null,
+      historial: delTipo.filter(v => v.id !== vigenteId).map(aVersion),
+    };
+  });
+
   const shiftProjection = getShiftProjection(
     { shiftPattern: worker.shiftPattern, shiftWorkDays: worker.shiftWorkDays, shiftOffDays: worker.shiftOffDays, shiftStartDate: worker.shiftStartDate },
     today
@@ -119,6 +169,13 @@ export default async function PerfilTrabajadorPage({
     : status === "foto-formato" ? { type: "error", text: "La foto tiene que ser JPG, PNG o WEBP." }
     : status === "foto-pesada" ? { type: "error", text: "La foto supera los 6 MB." }
     : status === "foto-invalida" ? { type: "error", text: "No se recibió ninguna imagen." }
+    : status === "doc-corregido" ? { type: "success", text: "Corrección guardada. La versión anterior quedó en el historial." }
+    : status === "doc-anulado" ? { type: "success", text: "Documento anulado. Sigue en el historial." }
+    : status === "doc-registrado" ? { type: "success", text: "Documento registrado sin archivo adjunto." }
+    : status === "doc-sin-fecha" ? { type: "error", text: "Pon al menos una fecha, o marca que el documento no vence." }
+    : status === "doc-sin-motivo" ? { type: "error", text: "Escribe el motivo de la anulación." }
+    : status === "doc-no-encontrado" ? { type: "error", text: "Ese documento no es de este trabajador." }
+    : status === "doc-invalido" ? { type: "error", text: "No se pudo procesar el documento." }
     : null;
 
   const expiredDocs  = docs.filter(d => d.status === "expired");
@@ -386,47 +443,9 @@ export default async function PerfilTrabajadorPage({
                 ))}
               </div>
 
-              {/* Detalle de cada documento, sin tener que cambiar de pestaña */}
-              <div style={{ display: "grid", gap: 6 }}>
-                {docsAcreditacion.map(({ tipo, entry }) => {
-                  const style = ESTADO_STYLE[entry.estado];
-                  const doc = entry.documento;
-                  return (
-                    <div key={tipo.id} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      gap: 10, flexWrap: "wrap",
-                      padding: "8px 12px", borderRadius: 8,
-                      background: style.bg, border: `1px solid ${style.border}`,
-                      borderStyle: doc?.vencimientoCalculado ? "dashed" : "solid",
-                    }}>
-                      <div style={{ display: "flex", gap: 10, alignItems: "baseline", minWidth: 0, flex: 1 }}>
-                        <span style={{ fontWeight: 600, color: style.color, fontSize: "0.86rem" }}>{tipo.nombre}</span>
-                        {doc?.archivoId && (
-                          <a href={`/api/archivo/${doc.archivoId}`} target="_blank" rel="noreferrer"
-                             style={{ fontSize: "0.72rem", color: style.color, textDecoration: "underline", flexShrink: 0 }}>
-                            📎 ver
-                          </a>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
-                        <span style={{ fontSize: "0.82rem", color: style.color }}>
-                          {entry.estado === "sin_vencimiento" ? "∞ No vence"
-                            : doc?.fechaVencimiento ? formatDisplayDate(doc.fechaVencimiento)
-                            : "—"}
-                        </span>
-                        <span style={{
-                          padding: "2px 10px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700,
-                          background: `${style.color}22`, color: style.color, whiteSpace: "nowrap",
-                        }}>
-                          {entry.dias != null
-                            ? (entry.dias < 0 ? `${Math.abs(entry.dias)}d vencido` : entry.dias === 0 ? "Vence hoy" : `${entry.dias}d`)
-                            : style.label}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Detalle de cada documento, sin tener que cambiar de pestaña.
+                  La fila abre el panel para revisar el archivo y corregir. */}
+              <DocumentosPanel workerId={worker.id} filas={filasDocumentos} variante="compacta" />
 
               {worker.notes && (
                 <div style={{ marginTop: 16, padding: "12px 14px", background: "rgba(0,0,0,0.03)", borderRadius: 8, fontSize: "0.88rem", color: "var(--text)", borderLeft: "3px solid var(--teal)" }}>
@@ -450,86 +469,11 @@ export default async function PerfilTrabajadorPage({
               </Link>
             </div>
 
-            <div style={{ display: "grid", gap: 10 }}>
-              {docsAcreditacion.map(({ tipo, entry }) => {
-                const style = ESTADO_STYLE[entry.estado];
-                const doc = entry.documento;
-                return (
-                  <div key={tipo.id} style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    flexWrap: "wrap", gap: 12,
-                    padding: "14px 16px", borderRadius: 12,
-                    background: style.bg, border: `1px solid ${style.border}`,
-                    borderStyle: doc?.vencimientoCalculado ? "dashed" : "solid",
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: style.color, fontSize: "0.95rem" }}>{tipo.nombre}</div>
-                      <div style={{ fontSize: "0.82rem", color: style.color, opacity: 0.85, marginTop: 2 }}>
-                        {entry.estado === "sin_vencimiento"
-                          ? "Sin fecha de término"
-                          : doc?.fechaVencimiento
-                            ? formatDisplayDate(doc.fechaVencimiento)
-                            : "Sin cargar"}
-                        {doc?.vencimientoCalculado && " · fecha calculada, no impresa"}
-                      </div>
-                      {doc && (
-                        <div style={{ fontSize: "0.72rem", color: style.color, opacity: 0.75, marginTop: 3, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                          <span>
-                            {doc.origen === "extraido" ? `Extraído con IA (confianza ${doc.confianzaExtraccion ?? "?"})`
-                              : doc.origen === "migracion" ? "Migrado de la ficha anterior"
-                              : doc.origen === "excel" ? "Cargado por Excel"
-                              : "Cargado manualmente"}
-                          </span>
-                          {doc.archivoId && (
-                            <a
-                              href={`/api/archivo/${doc.archivoId}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: style.color, fontWeight: 700, textDecoration: "underline" }}
-                            >
-                              📎 Ver documento
-                            </a>
-                          )}
-                          {doc.archivosExtra?.map((archivoId, i) => (
-                            <a
-                              key={archivoId}
-                              href={`/api/archivo/${archivoId}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ color: style.color, fontWeight: 700, textDecoration: "underline" }}
-                            >
-                              📎 Hoja {i + 2}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{
-                        padding: "5px 14px", borderRadius: 20,
-                        background: `${style.color}22`,
-                        color: style.color, fontWeight: 700, fontSize: "0.82rem",
-                        whiteSpace: "nowrap",
-                      }}>
-                        {style.label}
-                      </div>
-                      {entry.dias != null && (
-                        <div style={{ fontSize: "0.78rem", color: style.color, marginTop: 4, opacity: 0.85 }}>
-                          {entry.dias < 0
-                            ? `Venció hace ${Math.abs(entry.dias)} día${Math.abs(entry.dias) === 1 ? "" : "s"}`
-                            : entry.dias === 0 ? "Vence hoy"
-                            : `Vence en ${entry.dias} día${entry.dias === 1 ? "" : "s"}`}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+              <DocumentosPanel workerId={worker.id} filas={filasDocumentos} variante="detallada" />
 
             <div style={{ marginTop: 20, padding: "12px 16px", borderRadius: 10, background: "rgba(0,168,191,0.07)", border: "1px solid rgba(0,168,191,0.2)", fontSize: "0.85rem", color: "var(--muted)" }}>
-              💡 Para cargar o corregir fechas a mano, ve a <Link href={`/trabajadores/${worker.id}?tab=editar`} style={{ color: "var(--teal)", fontWeight: 600 }}>✏️ Editar</Link>.
-              Cada cambio queda como una versión nueva del documento.
+              💡 Haz clic en cualquier documento para verlo, corregir sus fechas o anularlo.
+              Nada se pisa: cada cambio queda como una versión nueva y la anterior sigue en el historial.
             </div>
           </div>
         )}

@@ -104,12 +104,20 @@ export async function cerrarCompromisoAction(formData: FormData) {
     redirect("/compromisos?status=ajeno");
   }
 
+  // Cerrar sin decir cómo no es cerrar, es sacarlo de la lista. A los tres
+  // meses, ante una pregunta del mandante, un cerrado sin explicación no se
+  // distingue de uno que nunca se hizo.
+  const observacion = String(formData.get("observacion") ?? "").trim();
+  if (observacion.length < 6) {
+    redirect("/compromisos?status=sin-cierre");
+  }
+
   await db.compromiso.update({
     where: { id },
     data: {
       estado: 1,
       fechaCierreReal: deInputDate(String(formData.get("fechaCierreReal") ?? "")) ?? new Date(),
-      observacion: String(formData.get("observacion") ?? "").trim() || undefined,
+      observacion,
       cerradoPorNombre: user.name,
     },
   });

@@ -32,6 +32,7 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
     reprogramado: { type: "success", text: "Fecha reprogramada. La original queda en el historial." },
     reabierto: { type: "success", text: "Compromiso reabierto." },
     ajeno: { type: "error", text: "Solo puedes cerrar los compromisos donde eres responsable." },
+    "sin-cierre": { type: "error", text: "Escribe cómo se cerró el compromiso. Sin eso no se puede cerrar." },
     invalido: { type: "error", text: "Revisa los datos del compromiso." },
     "no-encontrado": { type: "error", text: "Compromiso no encontrado." },
   }[searchParams?.status ?? ""] ?? null;
@@ -214,12 +215,29 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
                       <td style={{ padding: "8px 12px" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
                           {puedeCerrar && (
-                            <form action={cerrarCompromisoAction}>
-                              <input type="hidden" name="compromisoId" value={c.id} />
-                              <button type="submit" style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "3px 10px", fontSize: "0.74rem", fontWeight: 700, cursor: "pointer" }}>
+                            <details>
+                              <summary style={{
+                                cursor: "pointer", listStyle: "none", background: "#16a34a", color: "white",
+                                borderRadius: 6, padding: "3px 10px", fontSize: "0.74rem", fontWeight: 700,
+                              }}>
                                 Cerrar
-                              </button>
-                            </form>
+                              </summary>
+                              {/* Cerrar pide decir cómo se cerró. Un tablero lleno de
+                                  compromisos cerrados sin explicación no se puede auditar
+                                  ni sirve para responderle al mandante tres meses después. */}
+                              <form action={cerrarCompromisoAction} style={{ display: "grid", gap: 4, marginTop: 6, padding: 8, background: "var(--surface, #f8fafc)", borderRadius: 8, minWidth: 220 }}>
+                                <input type="hidden" name="compromisoId" value={c.id} />
+                                <label style={{ fontSize: "0.7rem", color: "var(--muted)" }}>¿Cómo se cerró?</label>
+                                <textarea name="observacion" required minLength={6} rows={2}
+                                          placeholder="Qué se hizo y cómo se verifica"
+                                          style={{ fontSize: "0.78rem", fontFamily: "inherit", minHeight: 0 }} />
+                                <label style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Fecha real de cierre</label>
+                                <input name="fechaCierreReal" type="date" defaultValue={aInputDate(hoy)} style={{ fontSize: "0.78rem" }} />
+                                <button type="submit" style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: "0.74rem", fontWeight: 700, cursor: "pointer" }}>
+                                  Confirmar cierre
+                                </button>
+                              </form>
+                            </details>
                           )}
                           {puedeAdministrar && c.estado !== 1 && (
                             <details>

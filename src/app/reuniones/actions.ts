@@ -218,13 +218,28 @@ export async function publicarReunionAction(formData: FormData) {
     // Cierres aceptados. Los dudosos NO se cierran: por eso están aparte.
     for (const c of p.cierres ?? []) {
       if (!c.id) continue;
-      await tx.compromiso.updateMany({
-        where: { id: c.id, estado: 0 },
+      // Igual que al cerrar a mano, el cierre tiene que decir cómo se cerró.
+      // Acá lo dice la cita de la transcripción, que además deja el rastro de
+      // en qué reunión se dio por cerrado.
+      const previo = await tx.compromiso.findUnique({
+        where: { id: c.id }, select: { observacion: true, estado: true },
+      });
+      if (!previo || previo.estado !== 0) continue;
+
+      const comoSeCerro = c.evidencia?.trim()
+        ? `Cerrado en el daily: «${c.evidencia.trim()}»`
+        : "Cerrado en el daily, sin cita en la transcripción";
+
+      await tx.compromiso.update({
+        where: { id: c.id },
         data: {
           estado: 1,
           fechaCierreReal: deInputDate(String(c.fecha_cierre_real ?? "")) ?? fechaCaptura,
           reunionCierreId: id,
           cerradoPorNombre: user.name,
+          observacion: previo.observacion?.trim()
+            ? `${previo.observacion.trim()}\n${comoSeCerro}`
+            : comoSeCerro,
         },
       });
     }
