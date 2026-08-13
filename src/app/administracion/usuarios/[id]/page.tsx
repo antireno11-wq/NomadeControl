@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ADMIN_ROLES,
-  ALL_MODULES,
+  modulosAsignables,
   isAdminRole,
   isFullAdminRole,
   normalizeRole,
@@ -216,7 +216,7 @@ export default async function EditarUsuarioPage({
                 <input type="hidden" name="userId" value={targetUser.id} />
                 <div style={{ marginBottom: "1rem" }}>
                   <ModulesChooser
-                    modules={ALL_MODULES as unknown as { key: string; label: string; description: string }[]}
+                    modules={modulosAsignables(currentModules) as unknown as { key: string; label: string; description: string }[]}
                     initialChecked={currentModules}
                   />
                 </div>

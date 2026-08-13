@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { logAuditEvent } from "@/lib/audit";
+import { ALL_MODULES, modulosAsignables } from "./modules-config";
 
 const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "camp_session";
 const SESSION_TTL_DAYS = 7;
@@ -168,16 +169,9 @@ export function canAccessTrabajadores(_role: string) {
 }
 
 // ── Permisos por módulo ──────────────────────────────────────────────────────
-export const ALL_MODULES = [
-  { key: "operaciones",  label: "Operaciones",       description: "Dashboard de campamentos e histórico" },
-  { key: "tareas",       label: "Tareas",             description: "Gestión de tareas" },
-  { key: "hsec",         label: "HSEC / Prevención",  description: "Incidentes y matrices de riesgo" },
-  { key: "trabajadores", label: "Trabajadores",       description: "Inducciones y Control EPP" },
-  { key: "bodega",       label: "Bodega",             description: "Stock y movimientos de bodega" },
-  { key: "vehiculos",    label: "Vehículos",          description: "Control vehicular" },
-  { key: "biblioteca",   label: "Biblioteca",         description: "Documentos y recursos" },
-  { key: "ddd",          label: "Compromisos y minutas", description: "Diálogo de Desempeño: reuniones, compromisos y minutas" },
-] as const;
+// El catálogo vive en modules-config para que también lo pueda importar el
+// formulario de alta de usuarios, que corre en el cliente.
+export { ALL_MODULES, modulosAsignables };
 
 export type ModuleKey = typeof ALL_MODULES[number]["key"];
 

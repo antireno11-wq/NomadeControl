@@ -4,16 +4,10 @@ import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { createUserAction, type CreateUserFormState } from "@/app/administracion/actions";
 import { ModulesChooser } from "@/components/modules-chooser";
+import { modulosAsignables } from "@/lib/modules-config";
 
-const ALL_MODULES_CLIENT = [
-  { key: "operaciones",  label: "Operaciones",      description: "Dashboard de campamentos e histórico" },
-  { key: "tareas",       label: "Tareas",            description: "Gestión de tareas" },
-  { key: "hsec",         label: "HSEC / Prevención", description: "Incidentes y matrices de riesgo" },
-  { key: "trabajadores", label: "Trabajadores",      description: "Inducciones y Control EPP" },
-  { key: "bodega",       label: "Bodega",            description: "Stock y movimientos de bodega" },
-  { key: "vehiculos",    label: "Vehículos",         description: "Control vehicular" },
-  { key: "biblioteca",   label: "Biblioteca",        description: "Documentos y recursos" },
-];
+const MODULOS = modulosAsignables();
+
 
 const ROLES = [
   {
@@ -324,7 +318,7 @@ export function NewUserForm({
             </div>
           ) : (
             <ModulesChooser
-              modules={ALL_MODULES_CLIENT}
+              modules={MODULOS as unknown as { key: string; label: string; description: string }[]}
               initialChecked={DEFAULT_MODULES_BY_ROLE[selectedRole] ?? []}
               key={selectedRole}
             />
