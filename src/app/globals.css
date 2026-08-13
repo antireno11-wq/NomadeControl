@@ -801,6 +801,42 @@ button.secondary {
   background: #334e5c;
 }
 
+/* Botones sobre fondo claro que no son la acción principal.
+   La regla de arriba le pone `color: white` a TODO button, así que sin esto
+   quedan invisibles: texto blanco sobre tarjeta blanca. */
+button.plano {
+  background: transparent;
+  color: var(--text);
+  font-weight: 400;
+}
+
+button.plano:hover {
+  background: var(--bg);
+}
+
+/* Opción dentro de una lista desplegable propia (no un <select> nativo). */
+button.opcion-lista {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 0;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  background: transparent;
+  color: var(--text);
+}
+
+button.opcion-lista:hover {
+  background: var(--bg);
+}
+
+button.opcion-lista.activa {
+  background: #dbeff2;
+  font-weight: 700;
+}
+
 button.danger {
   background: var(--danger);
 }

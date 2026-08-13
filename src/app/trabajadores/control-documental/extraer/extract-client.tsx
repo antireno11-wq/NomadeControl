@@ -136,13 +136,8 @@ function SelectorTipo({
           <button
             key={t.id}
             type="button"
+            className={t.id === valor ? "opcion-lista activa" : "opcion-lista"}
             onMouseDown={() => { onElegir(t.id); setAbierto(false); }}
-            style={{
-              display: "block", width: "100%", textAlign: "left",
-              padding: "6px 10px", fontSize: "0.8rem", border: "none",
-              background: t.id === valor ? "#eff6ff" : "transparent",
-              fontWeight: t.id === valor ? 700 : 400, cursor: "pointer",
-            }}
           >
             {t.nombre}
           </button>
@@ -604,7 +599,8 @@ export function ExtractClient({
             <button
               type="button"
               onClick={resetAll}
-              style={{ background: "transparent", border: "1px solid var(--border)", padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: "0.85rem" }}
+              className="plano"
+              style={{ border: "1px solid var(--border)", padding: "6px 14px", borderRadius: 8, cursor: "pointer", fontSize: "0.85rem" }}
             >
               🗑 Limpiar todo
             </button>
