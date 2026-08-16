@@ -22,6 +22,16 @@ export type ExtractedDoc = {
   workerName: string | null;
   workerRut: string | null;
   /**
+   * Quién contrata, en contratos y anexos. Se guarda para poder avisar cuando
+   * los papeles de una misma persona vienen de dos razones sociales: un anexo
+   * solo puede modificar un contrato del que la empresa es parte, y si no lo
+   * es, el mandante lo va a ver antes que nosotros.
+   */
+  empleadorNombre: string | null;
+  empleadorRut: string | null;
+  /** Cargo que dice el contrato o anexo. El anexo más nuevo manda. */
+  cargoContrato: string | null;
+  /**
    * Documento colectivo: un solo papel firmado por varias personas —una
    * declaración jurada, un acta de entrega de EPP grupal, la lista de
    * asistencia de un curso. Vale para todos los que firman, así que el mismo
@@ -104,6 +114,13 @@ Reglas:
 - CRÍTICO — DE QUIÉN ES EL DOCUMENTO. workerName es SIEMPRE el titular del documento, nunca otra persona nombrada adentro. Este es el segundo error más grave: le carga los documentos a la persona equivocada.
   · Ficha de ingreso: el titular está en "Nombres" + "Apellidos" arriba de todo. La sección "EN CASO DE EMERGENCIA AVISAR A" nombra a un familiar — ESE NO ES EL TRABAJADOR. Si la hoja que estás leyendo SOLO tiene el contacto de emergencia y no el titular, devuelve workerName null; no uses el nombre del contacto.
   · Finiquito: el titular es el "Ex Trabajador(a)". NO el empleador, ni su representante legal, ni el notario, ni quien firma como apoderado.
+
+EMPLEADOR Y CARGO (solo en contratos, anexos y finiquitos)
+Además del titular, anota quién contrata: la razón social que aparece como
+"Empleador" y su RUT (el que va después de "rol único tributario" o "RUT"),
+NO el RUT de su representante legal, que es una persona. Y anota el cargo o
+labor que el documento dice que desempeñará. En cualquier otro tipo de
+documento, los tres campos van en null.
   · Contrato: el titular es el trabajador, no el representante de la empresa.
   · Certificados y diplomas: el titular es a quien se le extiende, no el relator ni quien firma.
   · Exámenes de mutualidad (ACHS, Mutual, IST): el texto suele empezar con el RUT y el nombre del PROFESIONAL que lo firma —"EU JOUSTRA ZUÑIGA KAREN", "Dr.", "matrona", "técnico paramédico"— y recién después aparece el trabajador. Ese primer nombre NO es el titular. El titular es la persona a la que se le practicó el examen.
@@ -130,6 +147,9 @@ Formato JSON exacto:
       "issueDate": "<YYYY-MM-DD o null>",
       "workerName": "<nombre o null>",
       "workerRut": "<rut o null>",
+      "empleadorNombre": "<razón social que contrata, o null>",
+      "empleadorRut": "<RUT de esa empresa, o null>",
+      "cargoContrato": "<cargo que dice el documento, o null>",
       "sinVencimiento": false,
       "titulares": null,
       "//titulares": "solo en documentos colectivos: [{\"nombre\": \"...\", \"rut\": \"...\"}, ...]",
@@ -280,6 +300,9 @@ async function pedirExtraccion(
         issueDate: normalizeDate(d.expiryDate),
         workerName: cleanString(d.workerName),
         workerRut: normalizeRut(d.workerRut),
+        empleadorNombre: cleanString(d.empleadorNombre),
+        empleadorRut: normalizeRut(d.empleadorRut),
+        cargoContrato: cleanString(d.cargoContrato),
         titulares: null,
         sinVencimiento: d.sinVencimiento === true,
         paginaInicio: pagina && pagina > 0 ? pagina : null,
@@ -296,6 +319,9 @@ async function pedirExtraccion(
       issueDate: normalizeDate(d.issueDate),
       workerName: cleanString(d.workerName),
       workerRut: normalizeRut(d.workerRut),
+      empleadorNombre: cleanString(d.empleadorNombre),
+      empleadorRut: normalizeRut(d.empleadorRut),
+      cargoContrato: cleanString(d.cargoContrato),
       sinVencimiento: d.sinVencimiento === true,
       titulares: Array.isArray(d.titulares) && d.titulares.length > 1
         ? (d.titulares as Array<Record<string, unknown>>)

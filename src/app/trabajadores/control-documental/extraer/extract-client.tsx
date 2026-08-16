@@ -48,6 +48,9 @@ type EditableRow = {
   firmantes?: number | null;
   /** Colectivo que no incluye a la persona dueña del resto de la carga. */
   ajenoAlLote?: boolean;
+  empleadorNombre?: string | null;
+  empleadorRut?: string | null;
+  cargoContrato?: string | null;
   /** RUT de la cédula de esta carga, cuando el de esta fila no calza. */
   rutDeCedula?: string | null;
   /** Se guarda sin fecha de vencimiento, por decisión explícita del usuario.
@@ -340,6 +343,9 @@ export function ExtractClient({
               grupoId: res.grupoId ?? null,
               firmantes: res.firmantes ?? null,
               ajenoAlLote: res.ajenoAlLote,
+              empleadorNombre: res.empleadorNombre,
+              empleadorRut: res.empleadorRut,
+              cargoContrato: res.cargoContrato,
               rutDeCedula: res.rutDeCedula,
               // El documento dice que no vence: no hay fecha que pedir.
               sinVencimiento: res.sinVencimiento,
@@ -514,6 +520,9 @@ export function ExtractClient({
           sinVencimiento: Boolean(r.sinVencimiento),
           issueDate: r.issueDate,
           vencimientoCalculado: Boolean(r.expiryCalculada),
+          empleadorNombre: r.empleadorNombre ?? null,
+          empleadorRut: r.empleadorRut ?? null,
+          cargoContrato: r.cargoContrato ?? null,
           archivo: (() => {
             const a = infoDe(r.clientFileId);
             return a ? { clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 } : null;

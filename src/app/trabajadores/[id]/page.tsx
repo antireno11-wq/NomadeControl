@@ -127,6 +127,7 @@ export default async function PerfilTrabajadorPage({
       confianzaExtraccion: true, archivoId: true, originalFilename: true, nota: true,
       createdAt: true, confirmadoPorNombre: true, anulado: true,
       anuladoPorNombre: true, motivoAnulacion: true,
+      empleadorNombre: true, empleadorRut: true, cargoContrato: true,
       archivosExtra: { select: { archivoId: true } },
     },
   });
@@ -150,6 +151,28 @@ export default async function PerfilTrabajadorPage({
     anuladoPor: v.anuladoPorNombre,
     motivoAnulacion: v.motivoAnulacion,
   });
+
+  // ── Coherencia entre los papeles laborales ──────────────────────────
+  // Las fechas no son lo único que puede estar mal. Un anexo firmado por una
+  // razón social distinta a la del contrato no modifica nada: el mandante lo
+  // va a ver antes que nosotros, y hasta ahora eso solo se pillaba leyendo
+  // PDF por PDF.
+  const laborales = versiones.filter(v => !v.anulado && v.empleadorRut);
+  const rutsEmpleador = [...new Map(
+    laborales.map(v => [v.empleadorRut!.replace(/[.\s-]/g, "").toUpperCase(), v]),
+  ).values()];
+
+  const cargoDelPapel = versiones
+    .filter(v => !v.anulado && v.cargoContrato)
+    .sort((a, b) => (b.fechaEmision?.getTime() ?? 0) - (a.fechaEmision?.getTime() ?? 0))[0] ?? null;
+
+  const cargoAsignado = cargos.find(c => c.id === worker.cargoId)?.nombre ?? null;
+  const normCargo = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const cargoDiscrepa = Boolean(
+    cargoAsignado && cargoDelPapel?.cargoContrato &&
+    !normCargo(cargoDelPapel.cargoContrato).includes(normCargo(cargoAsignado)) &&
+    !normCargo(cargoAsignado).includes(normCargo(cargoDelPapel.cargoContrato)),
+  );
 
   const filasDocumentos: FilaDoc[] = docsAcreditacion.map(({ tipo, entry }) => {
     const delTipo = versiones.filter(v => v.tipoDocumentoId === tipo.id);
@@ -481,6 +504,37 @@ export default async function PerfilTrabajadorPage({
                 </button>
               </Link>
             </div>
+
+              {(rutsEmpleador.length > 1 || cargoDiscrepa) && (
+                <div style={{ padding: "14px 16px", borderRadius: 12, background: "#fff4dc", border: "1px solid #f5d98e" }}>
+                  <strong style={{ fontSize: "0.9rem", color: "#9a6300" }}>
+                    Revisa los papeles laborales
+                  </strong>
+                  {rutsEmpleador.length > 1 && (
+                    <div style={{ marginTop: 6, fontSize: "0.86rem", color: "#7a4f00" }}>
+                      Sus documentos vienen de <strong>{rutsEmpleador.length} razones sociales distintas</strong>:
+                      <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+                        {rutsEmpleador.map(v => (
+                          <li key={v.id}>
+                            {v.empleadorNombre ?? "Sin nombre"} — {v.empleadorRut}
+                          </li>
+                        ))}
+                      </ul>
+                      <p style={{ margin: "6px 0 0" }}>
+                        Un anexo solo puede modificar un contrato del que la empresa es parte. Si hubo
+                        cambio de empleador, falta el finiquito y el contrato nuevo.
+                      </p>
+                    </div>
+                  )}
+                  {cargoDiscrepa && (
+                    <p style={{ margin: "6px 0 0", fontSize: "0.86rem", color: "#7a4f00" }}>
+                      En la ficha está como <strong>{cargoAsignado}</strong>, pero su papel laboral más
+                      reciente dice <strong>{cargoDelPapel?.cargoContrato}</strong>. Se acredita con el
+                      cargo de la ficha: si el correcto es el otro, cámbialo antes de mandarlo a faena.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Calificaciones: habilitaciones que tiene además de su cargo.
                   De ellas depende qué documentos se le exigen. */}

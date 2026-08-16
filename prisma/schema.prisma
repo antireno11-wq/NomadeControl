@@ -508,6 +508,13 @@ model DocumentoAcreditacion {
 
   // ── Trazabilidad ─────────────────────────────────────────────────────
   /// manual | extraido | migracion | excel
+  /// Quién contrata, en contratos y anexos. Guardarlo es lo que permite
+  /// avisar cuando los papeles de una persona vienen de dos razones sociales.
+  empleadorNombre String?
+  empleadorRut    String?
+  /// Cargo que declara el contrato o anexo. El más nuevo manda.
+  cargoContrato   String?
+
   origen              String    @default("manual")
   /// alta | media | baja — solo cuando origen = extraido
   confianzaExtraccion String?

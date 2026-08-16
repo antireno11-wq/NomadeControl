@@ -83,6 +83,7 @@ export async function extractDocumentsAction(
           detectedDocTypeLabel: propuesto?.nombre ?? "Sin reconocer",
           expiryDate: null, issueDate: null,
           workerName: null, workerRut: null, titulares: null, sinVencimiento: false,
+        empleadorNombre: null, empleadorRut: null, cargoContrato: null,
           paginaInicio: null,
           confidence: "low",
           reasoning: porNombre
@@ -211,6 +212,7 @@ export async function extractDocumentsAction(
         detectedDocTypeLabel: "Error",
         expiryDate: null, issueDate: null,
         workerName: null, workerRut: null, titulares: null, sinVencimiento: false,
+        empleadorNombre: null, empleadorRut: null, cargoContrato: null,
         paginaInicio: null,
         confidence: "low",
         reasoning: "",
@@ -516,6 +518,10 @@ export type FilaAplicar = {
   expiryDate?: string | null;  // YYYY-MM-DD
   issueDate?: string | null;   // YYYY-MM-DD
   confidence?: "high" | "medium" | "low";
+  /** Razón social que contrata y cargo, en contratos y anexos. */
+  empleadorNombre?: string | null;
+  empleadorRut?: string | null;
+  cargoContrato?: string | null;
   /** true si la fecha se infirió de emisión + vigencia, en vez de leerse. */
   vencimientoCalculado?: boolean;
   /** El usuario decidió guardarlo sin vencimiento porque el documento no lo
@@ -731,6 +737,9 @@ export async function applyExtractionsAction(
           fechaVencimiento,
           sinVencimiento: !tieneFecha,
           vencimientoCalculado: calculado,
+          empleadorNombre: row.empleadorNombre ?? null,
+          empleadorRut: row.empleadorRut ?? null,
+          cargoContrato: row.cargoContrato ?? null,
           origen: "extraido",
           confianzaExtraccion:
             row.confidence === "high" ? "alta" : row.confidence === "medium" ? "media" : "baja",
