@@ -97,15 +97,15 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   // El Excel confirmó que 12 (16 hrs) y 12.1 (básico) NO son el mismo curso:
   // 10 trabajadores tienen uno aprobado y el otro pendiente.
   { codigo: "primeros_auxilios_basico", nombre: "Primeros auxilios (básico)",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux. bás.", legacyField: null, orden: 211 },
-  { codigo: "curso_primeros_auxilios",  nombre: "Curso de primeros auxilios (16 hrs)", categoria: "formacion",    vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux.",   legacyField: null, orden: 212 },
-  { codigo: "curso_extintores",         nombre: "Curso de uso de extintores",     categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Extintores",   legacyField: null, orden: 213 },
+  { codigo: "curso_primeros_auxilios",  nombre: "Curso de primeros auxilios (16 hrs)", categoria: "formacion",    vigenciaDias: 730 , requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "1eros aux.",   legacyField: null, orden: 212 },
+  { codigo: "curso_extintores",         nombre: "Curso de uso de extintores",     categoria: "formacion",         vigenciaDias: 730 , requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Extintores",   legacyField: null, orden: 213 },
   { codigo: "curso_epp",                nombre: "Curso de uso y mantención de EPP", categoria: "formacion",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Curso EPP",    legacyField: null, orden: 214 },
   { codigo: "capacitacion_ruv",         nombre: "Capacitación RUV",               categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "RUV",          legacyField: null, orden: 215 },
   { codigo: "capacitacion_mmc",         nombre: "Capacitación manejo manual de cargas", categoria: "formacion",   vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "MMC",          legacyField: null, orden: 216 },
   { codigo: "capacitacion_sustancias",  nombre: "Capacitación sustancias peligrosas", categoria: "formacion",     vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Sust. pelig.", legacyField: null, orden: 217 },
   { codigo: "capacitacion_tmert",       nombre: "Capacitación TMERT (trastornos musculoesqueléticos)", categoria: "formacion", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "TMERT",  legacyField: null, orden: 216.5 },
   { codigo: "capacitacion_radiacion_uv", nombre: "Capacitación en radiación UV",   categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Radiación UV", legacyField: null, orden: 216.7 },
-  { codigo: "prevencion_riesgos",       nombre: "Curso de orientación en prevención de riesgos", categoria: "formacion", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Prev. riesgos", legacyField: null, orden: 216.8 },
+  { codigo: "prevencion_riesgos",       nombre: "Curso de orientación en prevención de riesgos", categoria: "formacion", vigenciaDias: 730 , requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Prev. riesgos", legacyField: null, orden: 216.8 },
   { codigo: "entrenamientos_especificos", nombre: "Cursos de entrenamientos específicos", categoria: "formacion",  vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entren. esp.", legacyField: null, orden: 218 },
   // El rigger presenta dos papeles distintos y no son intercambiables: el
   // curso que aprobó y el carnet que lo habilita para dirigir la maniobra.
@@ -227,6 +227,13 @@ export const AJUSTES_VIGENCIA: { codigo: string; desde: number | null; vigenciaD
   // El certificado de antecedentes no trae vencimiento impreso; el mandante
   // lo acepta 60 días desde la emisión.
   { codigo: "certificado_antecedentes", desde: 30, vigenciaDias: 60 },
+  // Los cursos e-learning de la ACHS dicen al pie "Vigencia: 2 años, a partir
+  // de la fecha de término del curso". La fecha grande del diploma es la de
+  // término, no la de vencimiento: el sistema los daba por vencidos el mismo
+  // día que se aprobaron.
+  { codigo: "curso_extintores",        desde: null, vigenciaDias: 730 },
+  { codigo: "curso_primeros_auxilios", desde: null, vigenciaDias: 730 },
+  { codigo: "prevencion_riesgos",      desde: null, vigenciaDias: 730 },
 ];
 
 export const RENOMBRES_CATALOGO: { codigo: string; desde: string; nombre: string; etiquetaCorta: string }[] = [

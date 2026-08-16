@@ -268,6 +268,19 @@ function normalizarPropuesta(
     }
   }
 
+  // 1.5 Un documento no vence el mismo día que se emite.
+  //     Los diplomas e-learning traen "Inicio" y "Término" del curso y al pie,
+  //     en letra chica, "Vigencia: 2 años a partir de la fecha de término".
+  //     El modelo tomaba la fecha grande como vencimiento y el curso quedaba
+  //     vencido el día que se aprobó. Que emisión y vencimiento coincidan es
+  //     comprobable sin leer el documento: entonces esa fecha es de emisión, y
+  //     el vencimiento se recalcula abajo con la vigencia del tipo.
+  for (const r of results) {
+    if (!r.issueDate || !r.expiryDate || r.issueDate !== r.expiryDate) continue;
+    r.expiryDate = null;
+    r.reasoning = `${r.reasoning} · La fecha de vencimiento era la misma que la de emisión: se tomó como emisión.`.trim();
+  }
+
   // 2. Vencimiento deducido de la vigencia del tipo.
   //    El certificado de antecedentes no trae vencimiento impreso: vale 60
   //    días desde la emisión. Se muestra ya calculado en la propuesta, no
