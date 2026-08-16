@@ -272,20 +272,32 @@ export default async function DashboardAcreditacionPage({
           <div style={{ display: "grid", gap: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
               {[
-                { label: "No habilitables", valor: bloqueados.length, color: C.vencido, sub: "les falta un obligatorio", href: "/trabajadores/control-documental?estado=bloqueado" },
-                { label: "Vencidos",        valor: vencidos,          color: C.vencido, sub: "acción inmediata",        href: "/trabajadores/control-documental?estado=vencido" },
-                { label: "Por vencer",      valor: porVencer,         color: C.porVencer, sub: "próximos 30 días",      href: "/trabajadores/control-documental?estado=por_vencer" },
-                { label: "Sin cargar",      valor: sinCargar,         color: C.faltante, sub: "nunca se subieron",      href: "/trabajadores/control-documental?estado=sin_fecha" },
+                { label: "No habilitables", valor: bloqueados.length, color: C.vencido, sub: "les falta un obligatorio", estado: "bloqueado" },
+                { label: "Vencidos",        valor: vencidos,          color: C.vencido, sub: "acción inmediata",        estado: "vencido" },
+                { label: "Por vencer",      valor: porVencer,         color: C.porVencer, sub: "próximos 30 días",      estado: "por_vencer" },
+                { label: "Sin cargar",      valor: sinCargar,         color: C.faltante, sub: "nunca se subieron",      estado: "sin_fecha" },
               ].map(k => (
-                <Link key={k.label} href={k.href} style={{ textDecoration: "none" }}>
-                  <div className="card" style={{ padding: "14px 16px", height: "100%" }}>
-                    <div style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                      {k.label}
+                <Link
+                  key={k.label}
+                  // El filtro de proyecto viaja con el enlace: si estás mirando
+                  // Agua Verde, la lista tiene que abrirse en Agua Verde.
+                  href={`/trabajadores/control-documental?estado=${k.estado}${proyectoSel ? `&proyecto=${proyectoSel.id}` : ""}`}
+                  style={{ textDecoration: "none" }}
+                  title={`Ver quiénes: ${k.sub}`}
+                >
+                  <div className="card card-enlace" style={{ padding: "14px 16px", height: "100%" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {k.label}
+                      </span>
+                      <span className="flecha-ir" style={{ fontSize: "0.8rem", color: "var(--teal)", fontWeight: 700 }}>→</span>
                     </div>
                     <div style={{ fontSize: "1.9rem", fontWeight: 800, color: k.valor > 0 ? k.color : "var(--muted)", lineHeight: 1.15 }}>
                       {k.valor}
                     </div>
-                    <div style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{k.sub}</div>
+                    <div style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
+                      {k.sub} · <span style={{ color: "var(--teal)" }}>ver quiénes</span>
+                    </div>
                   </div>
                 </Link>
               ))}
