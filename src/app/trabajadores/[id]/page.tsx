@@ -132,6 +132,22 @@ export default async function PerfilTrabajadorPage({
     },
   });
 
+  // Qué archivos existen de verdad. La ficha ofrecía "hoja 4" apuntando a un
+  // archivo borrado —404 al abrirlo— y previsualizaba archivos sin contenido
+  // como un recuadro en blanco. Un enlace roto en la ficha hace dudar del
+  // documento entero, aunque el dato esté bien.
+  const idsArchivo = [...new Set(
+    versiones.flatMap(v => [v.archivoId, ...v.archivosExtra.map(a => a.archivoId)])
+      .filter((x): x is string => Boolean(x)),
+  )];
+  const archivosOk = new Set(
+    idsArchivo.length === 0 ? [] :
+    (await db.archivoAcreditacion.findMany({
+      where: { id: { in: idsArchivo }, OR: [{ contenido: { not: null } }, { url: { not: null } }] },
+      select: { id: true },
+    })).map(a => a.id),
+  );
+
   const aIso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
   const aVersion = (v: typeof versiones[number]): VersionDoc => ({
     id: v.id,
@@ -141,8 +157,8 @@ export default async function PerfilTrabajadorPage({
     vencimientoCalculado: v.vencimientoCalculado,
     origen: v.origen,
     confianza: v.confianzaExtraccion,
-    archivoId: v.archivoId,
-    archivosExtra: v.archivosExtra.map(a => a.archivoId),
+    archivoId: v.archivoId && archivosOk.has(v.archivoId) ? v.archivoId : null,
+    archivosExtra: v.archivosExtra.map(a => a.archivoId).filter(id => archivosOk.has(id)),
     nombreArchivo: v.originalFilename,
     nota: v.nota,
     creado: formatDisplayDate(v.createdAt),
