@@ -669,10 +669,23 @@ export default async function AdministracionPage({
             </div>
 
             <div className="card">
+              <h2 style={{ marginTop: 0 }}>Calificaciones</h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
+                Habilitaciones que una persona tiene <strong>además</strong> de su cargo: alguien es
+                montajista y además rigger. Sirven para exigir documentos solo a quien corresponde,
+                sin tener que inventar un cargo nuevo por cada carnet.
+              </p>
+              <Link href="/administracion/calificaciones">
+                <button type="button" className="secondary">Administrar</button>
+              </Link>
+            </div>
+
+            <div className="card">
               <h2 style={{ marginTop: 0 }}>Cargos</h2>
               <p style={{ color: "var(--muted)", fontSize: "0.875rem", margin: "0 0 1rem" }}>
                 El cargo es el grupo de dotación, no el título del contrato: «Montajista» agrupa a
-                los rigger, gásfiter y eléctricos, que se acreditan igual.
+                gásfiter y eléctricos, que se acreditan igual. Lo que distingue a una persona
+                dentro de su cargo —tener carnet de rigger, por ejemplo— va en Calificaciones.
               </p>
               <ul style={{ margin: "0 0 1rem", paddingLeft: "1.1rem", color: "var(--muted)", fontSize: "0.85rem" }}>
                 {cargosAcreditacion.map(c => <li key={c.id}>{c.nombre}</li>)}

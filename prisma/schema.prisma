@@ -273,16 +273,17 @@ model StaffMember {
   /// Distinto de `role`, que es el cargo textual del contrato
   /// ("MONTAJISTA - GASFITER" es role; "Montajista" es el cargo).
   cargoId               String?
-  cargo                 Cargo?    @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+  cargo                 Cargo?         @relation(fields: [cargoId], references: [id], onDelete: SetNull)
   /// Proyecto al que está asignado. Define la matriz de requisitos vigente.
   proyectoId            String?
-  proyecto              Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  proyecto              Proyecto?      @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  calificaciones        Calificacion[]
   /// Cuadrilla dentro del sistema de turno: "A" o "B".
   cuadrilla             String?
   /// continua | no_continua | por_definir
   continuidad           String?
   /// Trabajó antes en una faena del mandante. Activa el finiquito previo.
-  trabajoPrevioMandante Boolean   @default(false)
+  trabajoPrevioMandante Boolean        @default(false)
 
   @@index([campId, isActive])
   @@index([proyectoId, cargoId])
@@ -349,28 +350,50 @@ model Cargo {
 ///
 /// La ausencia de fila significa "no aplica": no hace falta guardar los
 /// no-aplica, que en la planilla original eran ~100 celdas escritas a mano.
+/// Calificación de una persona: una habilitación que tiene ADEMÁS de su cargo.
+/// Emanuel es montajista (cargo) y además rigger (calificación). No es un
+/// cargo nuevo: si lo fuera, habría que duplicar toda la matriz de montajista
+/// y crear un cargo más cada vez que alguien saque un carnet.
+/// El catálogo lo administra el usuario, no está fijo en el código.
+model Calificacion {
+  id           String               @id @default(cuid())
+  nombre       String               @unique
+  descripcion  String?
+  activo       Boolean              @default(true)
+  orden        Int                  @default(100)
+  trabajadores StaffMember[]
+  requisitos   RequisitoDocumento[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+}
+
 model RequisitoDocumento {
-  id            String        @id @default(cuid())
-  proyectoId    String
-  proyecto      Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  cargoId       String
-  cargo         Cargo         @relation(fields: [cargoId], references: [id], onDelete: Cascade)
-  tipoId        String
-  tipo          TipoDocumento @relation(fields: [tipoId], references: [id], onDelete: Cascade)
+  id             String        @id @default(cuid())
+  proyectoId     String
+  proyecto       Proyecto      @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  cargoId        String
+  cargo          Cargo         @relation(fields: [cargoId], references: [id], onDelete: Cascade)
+  tipoId         String
+  tipo           TipoDocumento @relation(fields: [tipoId], references: [id], onDelete: Cascade)
   /// obligatorio | deseable
-  nivel         String        @default("obligatorio")
+  nivel          String        @default("obligatorio")
+  /// Si viene, el requisito solo aplica a quien tenga esta calificación.
+  /// A los demás no se les pide ni les aparece como faltante. Es lo que
+  /// distingue una habilitación (rigger) de un cargo (montajista).
+  calificacionId String?
+  calificacion   Calificacion? @relation(fields: [calificacionId], references: [id], onDelete: Cascade)
   /// Condición del trabajador que activa el requisito. NULL = siempre.
   /// contrato_indefinido | trabajo_previo_mandante | contrato_vencido
-  condicion     String?
+  condicion      String?
   /// Requisitos que se cumplen con CUALQUIERA de ellos. El mandante pide
   /// "Examen Ocupacional y de Altura Geográfica" como un solo certificado, y
   /// "Acreditación profesional (o Declaración Jurada de Competencias)" como
   /// una u otra. Sin esto, tener el papel correcto igual dejaba pendiente al
   /// otro tipo del catálogo.
-  alternativaDe String?
-  nota          String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  alternativaDe  String?
+  nota           String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@unique([proyectoId, cargoId, tipoId])
   @@index([proyectoId, cargoId])

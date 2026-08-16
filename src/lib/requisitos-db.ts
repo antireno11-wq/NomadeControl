@@ -130,6 +130,8 @@ async function asegurarProgramas(): Promise<void> {
     await sembrarMatriz(proyectoId);
   }
 
+  await sembrarRequisitosDeRigger();
+
   // Los documentos de contratación que había sembrado por error en la matriz
   // del mandante: se quitan de ahí, donde bloqueaban el ingreso a faena. En la
   // matriz interna siguen exigiéndose.
@@ -155,6 +157,47 @@ async function asegurarProgramas(): Promise<void> {
   if (intactos.length > 0) {
     await db.requisitoDocumento.deleteMany({ where: { id: { in: intactos } } });
   }
+}
+
+/**
+ * Requisitos que cuelgan de la calificación de rigger.
+ *
+ * Van acá y no en las reglas por cargo porque rigger no es un cargo: es una
+ * habilitación que la persona tiene además del suyo. Se siembran una vez por
+ * cada cargo y proyecto que ya tengan matriz, y solo si no existen — quien
+ * los edite o los borre desde la grilla manda por sobre esto.
+ */
+async function sembrarRequisitosDeRigger(): Promise<void> {
+  const rigger = await db.calificacion.findUnique({
+    where: { nombre: "Rigger" }, select: { id: true },
+  });
+  if (!rigger) return;
+
+  const tipos = await db.tipoDocumento.findMany({
+    where: { codigo: { in: ["curso_rigger", "carnet_rigger"] } },
+    select: { id: true },
+  });
+  if (tipos.length === 0) return;
+
+  // Sobre los pares proyecto+cargo que ya tienen matriz: sin eso habría que
+  // adivinar a qué cargos puede alcanzarles la calificación, y la respuesta
+  // es a cualquiera que la tenga marcada.
+  const pares = await db.requisitoDocumento.findMany({
+    distinct: ["proyectoId", "cargoId"],
+    select: { proyectoId: true, cargoId: true },
+  });
+  if (pares.length === 0) return;
+
+  await db.requisitoDocumento.createMany({
+    data: pares.flatMap(par => tipos.map(t => ({
+      proyectoId: par.proyectoId,
+      cargoId: par.cargoId,
+      tipoId: t.id,
+      nivel: "obligatorio",
+      calificacionId: rigger.id,
+    }))),
+    skipDuplicates: true,
+  });
 }
 
 /** Proyectos activos con su mandante. */
@@ -252,6 +295,9 @@ export type TrabajadorParaRequisitos = {
   id?: string;
   proyectoId: string | null;
   cargoId: string | null;
+  /** Habilitaciones que tiene además de su cargo. Sin ellas no se le exigen
+   *  los documentos que cuelgan de una calificación. */
+  calificacionIds?: string[];
   contractIsIndefinite: boolean;
   trabajoPrevioMandante: boolean;
   contractEndDate: Date | null;
@@ -325,7 +371,7 @@ export async function getRequisitosPorTrabajador(
     },
     select: {
       proyectoId: true, cargoId: true, tipoId: true, nivel: true, condicion: true,
-      alternativaDe: true,
+      alternativaDe: true, calificacionId: true,
       proyecto: { select: { ambito: true, nombre: true } },
     },
   });
@@ -355,9 +401,16 @@ export async function getRequisitosPorTrabajador(
     // depende de a qué faena vaya la persona.
     if (delProyecto.length === 0 && internos.length === 0) { salida.set(t.id, null); continue; }
 
+    // Un requisito atado a una calificación solo aplica a quien la tiene. Al
+    // resto no se le pide ni le aparece como faltante: pedirle el carnet de
+    // rigger a un maestro de cocina es exactamente el ruido que hace que
+    // nadie mire la lista de pendientes.
+    const suyas = new Set(t.calificacionIds ?? []);
+
     salida.set(
       t.id,
       [...delProyecto, ...internos]
+        .filter(f => !f.calificacionId || suyas.has(f.calificacionId))
         .filter(f => requisitoAplica(f, cond))
         .map(f => ({
           tipoId: f.tipoId,
@@ -522,4 +575,48 @@ export function resumirExigencia(
 /** ¿Este trabajador tiene algún obligatorio faltante o vencido? */
 export function tieneBloqueos(r: ResumenExigencia): boolean {
   return r.faltantes.length > 0 || r.vencidos.length > 0;
+}
+
+// ─── Calificaciones ─────────────────────────────────────────────────────────
+
+/**
+ * Catálogo de calificaciones.
+ *
+ * Lo administra el usuario desde la aplicación, no está fijo en el código:
+ * cada mandante y cada faena piden habilitaciones distintas, y una lista
+ * inventada acá se llena de opciones muertas. Solo se siembra "Rigger",
+ * que es la que ya tiene documentos en el catálogo, y solo si la tabla está
+ * vacía — para no revivirla si alguien la desactiva.
+ */
+export async function getCalificaciones(soloActivas = true) {
+  const total = await db.calificacion.count();
+  if (total === 0) {
+    await db.calificacion.create({
+      data: {
+        nombre: "Rigger",
+        descripcion: "Habilita para dirigir maniobras de izaje. Exige curso y carnet vigentes.",
+        orden: 10,
+      },
+    });
+  }
+  return db.calificacion.findMany({
+    where: soloActivas ? { activo: true } : {},
+    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+    select: { id: true, nombre: true, descripcion: true, activo: true, orden: true },
+  });
+}
+
+/** Las calificaciones de cada trabajador, sin N+1. */
+export async function getCalificacionesPorTrabajador(
+  staffIds: string[],
+): Promise<Map<string, string[]>> {
+  const mapa = new Map<string, string[]>();
+  if (staffIds.length === 0) return mapa;
+
+  const filas = await db.staffMember.findMany({
+    where: { id: { in: staffIds } },
+    select: { id: true, calificaciones: { select: { id: true } } },
+  });
+  for (const f of filas) mapa.set(f.id, f.calificaciones.map(c => c.id));
+  return mapa;
 }

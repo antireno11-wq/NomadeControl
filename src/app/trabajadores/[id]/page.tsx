@@ -12,7 +12,8 @@ import { getStaffDocumentEntries } from "@/lib/staff-docs";
 import { ESTADO_STYLE } from "@/lib/acreditacion";
 import { DocumentosPanel, type FilaDoc, type VersionDoc } from "./documentos-panel";
 import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
-import { getCargos, getProyectos, getRequisitosDeTrabajador, resumirExigencia } from "@/lib/requisitos-db";
+import { getCalificaciones, getCargos, getProyectos, getRequisitosDeTrabajador, resumirExigencia } from "@/lib/requisitos-db";
+import { asignarCalificacionesAction } from "@/app/administracion/calificaciones/actions";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -83,12 +84,23 @@ export default async function PerfilTrabajadorPage({
   const estadoWorker = estadoMap.get(worker.id);
 
   // Qué le exige su matriz de acreditación y qué le falta de verdad.
+  // Las calificaciones se consultan antes: de ellas depende qué requisitos
+  // se le exigen, así que no pueden ir en paralelo con el cálculo.
+  const [calificaciones, susCalificaciones] = await Promise.all([
+    getCalificaciones(),
+    db.staffMember.findUnique({
+      where: { id: worker.id },
+      select: { calificaciones: { select: { id: true } } },
+    }).then(r => r?.calificaciones.map(c => c.id) ?? []),
+  ]);
+
   const [cargos, proyectos, requisitosWorker] = await Promise.all([
     getCargos(),
     getProyectos(),
     getRequisitosDeTrabajador({
       proyectoId: worker.proyectoId,
       cargoId: worker.cargoId,
+      calificacionIds: susCalificaciones,
       contractIsIndefinite: worker.contractIsIndefinite,
       trabajoPrevioMandante: worker.trabajoPrevioMandante,
       contractEndDate: worker.contractEndDate,
@@ -176,6 +188,7 @@ export default async function PerfilTrabajadorPage({
     : status === "doc-sin-motivo" ? { type: "error", text: "Escribe el motivo de la anulación." }
     : status === "doc-no-encontrado" ? { type: "error", text: "Ese documento no es de este trabajador." }
     : status === "doc-invalido" ? { type: "error", text: "No se pudo procesar el documento." }
+    : status === "calificaciones-ok" ? { type: "success", text: "Calificaciones actualizadas. Los documentos exigidos se recalcularon." }
     : null;
 
   const expiredDocs  = docs.filter(d => d.status === "expired");
@@ -468,6 +481,45 @@ export default async function PerfilTrabajadorPage({
                 </button>
               </Link>
             </div>
+
+              {/* Calificaciones: habilitaciones que tiene además de su cargo.
+                  De ellas depende qué documentos se le exigen. */}
+              <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)" }}>
+                <form action={asignarCalificacionesAction}>
+                  <input type="hidden" name="workerId" value={worker.id} />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                    <strong style={{ fontSize: "0.9rem" }}>Calificaciones</strong>
+                    <Link href="/administracion/calificaciones" style={{ fontSize: "0.76rem" }}>
+                      Administrar el catálogo
+                    </Link>
+                  </div>
+                  <p style={{ margin: "2px 0 8px", color: "var(--muted)", fontSize: "0.78rem" }}>
+                    Habilitaciones que tiene además de su cargo. Marcarlas cambia qué documentos se le exigen.
+                  </p>
+                  {calificaciones.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>
+                      Todavía no hay calificaciones en el catálogo.
+                    </p>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", marginBottom: 10 }}>
+                        {calificaciones.map(c => (
+                          <label key={c.id} title={c.descripcion ?? undefined}
+                                 style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.86rem", fontWeight: 400, cursor: "pointer" }}>
+                            <input type="checkbox" name="calificaciones" value={c.id}
+                                   defaultChecked={susCalificaciones.includes(c.id)}
+                                   style={{ width: "auto", margin: 0 }} />
+                            {c.nombre}
+                          </label>
+                        ))}
+                      </div>
+                      <button type="submit" style={{ width: "auto", padding: "6px 14px", fontSize: "0.82rem" }}>
+                        Guardar calificaciones
+                      </button>
+                    </>
+                  )}
+                </form>
+              </div>
 
               <DocumentosPanel workerId={worker.id} filas={filasDocumentos} variante="detallada" />
 
