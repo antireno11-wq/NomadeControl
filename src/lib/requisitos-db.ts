@@ -76,6 +76,26 @@ async function reconciliarCondiciones(): Promise<void> {
     });
   }
 
+  // Las alternativas quedaron vacías en las matrices que se sembraron antes
+  // de que existiera la columna. Sin esto, tener el examen de altura seguía
+  // dejando pendiente el ocupacional, cuando la mutualidad los emite en un
+  // solo certificado: la persona aparecía sin acreditar teniendo el papel.
+  // Se rellena solo donde está en NULL, así que no pisa una decisión manual.
+  const conAlternativa = [...REGLAS_MANDANTE_ANGLO, ...REGLAS_INTERNAS_NOMADE]
+    .filter(r => r.alternativaDe);
+  const tiposAlt = await db.tipoDocumento.findMany({
+    where: { codigo: { in: [...new Set(conAlternativa.map(r => r.tipo))] } },
+    select: { id: true, codigo: true },
+  });
+  for (const regla of conAlternativa) {
+    const tipo = tiposAlt.find(t => t.codigo === regla.tipo);
+    if (!tipo) continue;
+    await db.requisitoDocumento.updateMany({
+      where: { tipoId: tipo.id, alternativaDe: null },
+      data: { alternativaDe: regla.alternativaDe },
+    });
+  }
+
   // Los que se sembraron por error: están en el catálogo del mandante pero
   // sin columna en su matriz. Se borran solo si nadie los tocó desde la
   // grilla — updatedAt sigue igual a createdAt. Si alguien los definió a
