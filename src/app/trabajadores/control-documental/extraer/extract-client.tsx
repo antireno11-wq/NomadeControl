@@ -489,6 +489,26 @@ export function ExtractClient({
   const faltaDato = bloqueadas.filter(x => !x.motivo.startsWith("Falta la fecha"));
 
   const filasNuevas = readyRows.filter(r => r.workerId === CREAR_NUEVO);
+
+  /**
+   * A qué personas YA EXISTENTES se les van a agregar documentos.
+   *
+   * Sin esto, subir la carpeta completa de alguien que ya está en la base se
+   * veía igual que subir la de alguien nuevo: la pantalla solo avisaba de los
+   * que se iban a crear. Saber que es una actualización cambia lo que hay que
+   * revisar — no si la persona está bien identificada, sino si el documento
+   * reemplaza a uno que ya tenía.
+   */
+  const aExistentes = (() => {
+    const porWorker = new Map<string, number>();
+    for (const r of readyRows) {
+      if (!r.workerId || r.workerId === CREAR_NUEVO) continue;
+      porWorker.set(r.workerId, (porWorker.get(r.workerId) ?? 0) + 1);
+    }
+    return [...porWorker.entries()]
+      .map(([id, docs]) => ({ nombre: workers.find(w => w.id === id)?.fullName ?? "Trabajador", docs, id }))
+      .sort((a, b) => b.docs - a.docs);
+  })();
   const grupos = agruparPorPersona(
     filasNuevas.map(r => ({ nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null })),
   );
@@ -692,6 +712,29 @@ export function ExtractClient({
                 Los requisitos de contratación de NOMADE se aplican siempre, sin importar el
                 proyecto. Sin cargo no se puede calcular qué documentos le corresponden, así que
                 la persona queda «sin matriz» hasta que se lo asignes en su ficha.
+              </div>
+            </div>
+          )}
+
+          {aExistentes.length > 0 && (
+            <div style={{
+              padding: "12px 14px", borderRadius: 10, background: "#e0f2fe",
+              border: "1px solid #7dd3fc", fontSize: "0.85rem", color: "#075985",
+            }}>
+              ↻ Estos documentos se van a agregar a{" "}
+              <strong>
+                {aExistentes.length === 1 ? "alguien que ya existe" : `${aExistentes.length} personas que ya existen`}
+              </strong>
+              :{" "}
+              {aExistentes.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && " · "}
+                  {p.nombre} <span style={{ opacity: 0.75 }}>({p.docs} {p.docs === 1 ? "documento" : "documentos"})</span>
+                </span>
+              ))}
+              <div style={{ marginTop: 4, opacity: 0.85 }}>
+                No se crea a nadie de nuevo. Si alguno de estos documentos ya lo tenía, el nuevo
+                pasa a ser el vigente y el anterior queda en el historial de su ficha.
               </div>
             </div>
           )}
