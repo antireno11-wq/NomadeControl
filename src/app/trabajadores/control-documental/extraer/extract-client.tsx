@@ -425,19 +425,35 @@ export function ExtractClient({
    * para poder mandarle un documento a alguien que todavía no existe en la
    * base — antes había que crearlo primero y volver a subir.
    */
-  const personasNuevas = (() => {
+  const { lista: personasNuevas, porFila: nombreCanonicoDeFila } = (() => {
     const candidatas = activas.filter(r => r.workerId === CREAR_NUEVO && r.nuevoNombre.trim());
     // Se agrupa con el MISMO criterio que usa el guardado. Antes esta lista
     // deduplicaba por texto exacto, así que mostraba "Walter Garrido",
     // "Walter Garrido Morales" y "Walter Antonio Garrido Morales" como tres
     // personas cuando el guardado iba a crear una sola. La lista tiene que
     // decir la verdad sobre lo que va a pasar.
-    return agruparPorPersona(
+    const grupos = agruparPorPersona(
       candidatas.map(r => ({ nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null })),
     ).map(g => ({
       nombre: g.variantes.length > 0 ? formatearNombre(nombreMasProbable(g.variantes)) : g.nombre,
       rut: g.rut ?? "",
+      variantes: g.variantes.length > 0 ? g.variantes : [g.nombre],
     }));
+
+    // Cada fila tiene que saber con qué nombre quedó su grupo. El select
+    // ofrece el canónico —"Marco Antonio Flores Araya"— y la fila guarda el
+    // suyo —"Marco Flores"—: si busca el propio no encuentra la opción, y el
+    // navegador cae en la primera, que dice "Sin asignar". La fila se iba a
+    // crear igual, pero la pantalla decía lo contrario.
+    const porFila = new Map<string, string>();
+    for (const r of candidatas) {
+      const suyo = r.nuevoNombre.trim();
+      const grupo = grupos.find(g => g.variantes.includes(suyo) || g.nombre === suyo)
+        ?? grupos.find(g => g.rut && g.rut === r.nuevoRut.trim());
+      if (grupo) porFila.set(r.rowId, grupo.nombre);
+    }
+
+    return { lista: grupos.map(({ nombre, rut }) => ({ nombre, rut })), porFila };
   })();
 
   /** Por qué una fila no entra en el guardado. */
@@ -905,7 +921,7 @@ export function ExtractClient({
                               <select
                                 value={
                                   row.workerId === CREAR_NUEVO && row.nuevoNombre.trim()
-                                    ? `${NUEVO_PREFIX}${row.nuevoNombre.trim()}`
+                                    ? `${NUEVO_PREFIX}${nombreCanonicoDeFila.get(row.rowId) ?? row.nuevoNombre.trim()}`
                                     : row.workerId ?? ""
                                 }
                                 onChange={e => elegirTrabajador(row.rowId, e.target.value)}
