@@ -59,7 +59,14 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
         isActive: true,
         ...(selectedCampId ? { campId: selectedCampId } : {}),
       },
-      include: { camp: true },
+      include: {
+        camp: true,
+        // El «Faltan N» no significa nada sin saber para qué contrato: cada
+        // mandante exige una matriz distinta, y con más faenas esto se vuelve
+        // imposible de leer.
+        proyecto: { select: { nombre: true, ambito: true, mandante: { select: { nombre: true } } } },
+        cargo: { select: { nombre: true } },
+      },
       orderBy: [{ fullName: "asc" }],
     }),
     getTiposDocumento(true),
@@ -419,8 +426,16 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                           <div style={{ fontWeight: 600, color: "var(--teal)", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {worker.fullName}
                           </div>
+                          {/* Contra qué matriz se cuenta el «Faltan N». Sin
+                              proyecto no hay matriz del mandante que aplicar. */}
+                          <div style={{ fontSize: "0.72rem", fontWeight: 700, color: worker.proyecto ? "var(--text)" : "#9a6300" }}>
+                            {worker.proyecto
+                              ? `${worker.proyecto.mandante?.nombre ?? ""} — ${worker.proyecto.nombre}`.replace(/^ — /, "")
+                              : "Sin proyecto asignado"}
+                          </div>
                           <div style={{ color: "var(--muted)", fontSize: "0.72rem", display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {worker.nationalId && <span>{worker.nationalId}</span>}
+                            {worker.cargo?.nombre && <span>· {worker.cargo.nombre}</span>}
                             {worker.camp?.name && <span>· {worker.camp.name}</span>}
                           </div>
                         </Link>
