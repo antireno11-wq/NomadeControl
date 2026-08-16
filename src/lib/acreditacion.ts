@@ -702,10 +702,6 @@ export function adivinarTipoDesdeNombre(
     [/\b4\s*x\s*4\b|cuatro\s*por\s*cuatro/,     "curso_4x4"],
     [/riesgos?\s*operacional/,                  "riesgos_operacionales"],
     [/entrenamiento.*especifico/,               "entrenamientos_especificos"],
-    // "CARNET RIGGER" antes que /rigger/ a secas: si no, el carnet cae en el
-    // curso y quedan los dos documentos peleando por la misma fila.
-    [/(carn?et|credencial|licencia).*rigger|rigger.*(carn?et|credencial)/, "carnet_rigger"],
-    [/rigger|maniobras?\s*(de\s*)?izaje/,       "curso_rigger"],
 
     // Inducciones e IRL: van antes de /contrato/, porque el nombre real de
     // varios de estos archivos es "Inducción Interna Contrato".
@@ -720,6 +716,12 @@ export function adivinarTipoDesdeNombre(
     [/uso.*\bepp\b|curso.*\bepp\b/,             "curso_epp"],
     [/entrega.*\bepp\b|acta.*\bepp\b/,         "entrega_epp"],
     [/riohs|reglamento\s*interno/,               "recepcion_riohs"],
+    // El rigger va al final a propósito: la palabra aparece dentro de nombres
+    // de archivo que son de otra cosa —"Entrega EPP - MONTAJISTA - RIGGER"—,
+    // así que cualquier patrón que nombre el tipo de documento tiene que
+    // ganarle a la mención del oficio. Y el carnet antes que el curso.
+    [/(carn?et|credencial).*rigger|rigger.*(carn?et|credencial)/, "carnet_rigger"],
+    [/(curso|diploma|certificado).*rigger|rigger.*(curso|diploma)|maniobras?\s*(de\s*)?izaje/, "curso_rigger"],
     [/declaracion\s*jurada/,                    "declaracion_jurada"],
     [/alcohol|drogas/,                          "examen_alcohol_drogas"],
     [/altura\s*geografica/,                     "altura_geografica"],

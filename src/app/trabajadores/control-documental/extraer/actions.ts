@@ -156,16 +156,31 @@ export async function extractDocumentsAction(
       );
 
       expandidos.forEach((doc, i) => {
-        // Si el modelo no supo clasificarlo pero el nombre del archivo sí lo
-        // delata, aprovechamos esa pista.
-        if (!doc.detectedTipoId) {
-          const porNombre = adivinarTipoDesdeNombre(file.fileName, tipos);
-          if (porNombre) {
-            doc.detectedCodigo = porNombre.codigo;
-            doc.detectedTipoId = porNombre.id;
-            doc.detectedDocTypeLabel = porNombre.nombre;
-            doc.reasoning = `${doc.reasoning} · Tipo deducido del nombre del archivo.`.trim();
-          }
+        // El nombre del archivo no es solo un plan B para cuando el modelo no
+        // clasifica: también manda cuando lo contradice.
+        //
+        // La tabla de pistas solo dispara con palabras que nombran un tipo de
+        // documento —"RIOHS", "finiquito", "cédula"—, nunca con un nombre
+        // genérico. Cuando una de esas aparece, quien archivó el papel lo
+        // tenía en la mano y lo nombró a propósito; el modelo, en cambio,
+        // está distinguiendo entre documentos que se parecen. El RIOHS se
+        // guardaba como IRL teniendo "RIOHS" escrito en el nombre.
+        //
+        // Igual queda marcado: si el archivo estaba mal nombrado, el aviso lo
+        // delata en vez de esconderlo.
+        const porNombre = adivinarTipoDesdeNombre(file.fileName, tipos);
+        if (porNombre && !doc.detectedTipoId) {
+          doc.detectedCodigo = porNombre.codigo;
+          doc.detectedTipoId = porNombre.id;
+          doc.detectedDocTypeLabel = porNombre.nombre;
+          doc.reasoning = `${doc.reasoning} · Tipo deducido del nombre del archivo.`.trim();
+        } else if (porNombre && porNombre.id !== doc.detectedTipoId) {
+          const leido = doc.detectedDocTypeLabel ?? doc.detectedCodigo ?? "otro tipo";
+          doc.detectedCodigo = porNombre.codigo;
+          doc.detectedTipoId = porNombre.id;
+          doc.detectedDocTypeLabel = porNombre.nombre;
+          doc.confidence = "medium";
+          doc.reasoning = `${doc.reasoning} · REVISAR: el nombre del archivo dice «${porNombre.nombre}» y el contenido se leyó como «${leido}». Se usó el del nombre.`.trim();
         }
 
         const matches = matchWorker(
