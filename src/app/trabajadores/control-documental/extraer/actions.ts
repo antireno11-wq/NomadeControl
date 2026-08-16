@@ -565,6 +565,8 @@ export async function applyExtractionsAction(
   // Un PDF con 12 documentos adentro produce 12 filas, pero el binario se
   // guarda una vez y todas apuntan a él.
   const archivoIdPorClientFileId = new Map<string, string>();
+  /** Archivos que no se pudieron guardar, por nombre. Se anotan en el documento. */
+  const archivosFallidos = new Map<string, string>();
   const todosLosArchivos = rows.flatMap(r => [r.archivo, ...(r.archivosExtra ?? [])]);
   for (const a of todosLosArchivos) {
     if (!a || archivoIdPorClientFileId.has(a.clientFileId)) continue;
@@ -580,9 +582,14 @@ export async function applyExtractionsAction(
         select: { id: true },
       });
       archivoIdPorClientFileId.set(a.clientFileId, creado.id);
-    } catch {
-      // Si falla el archivo igual guardamos las fechas: perder el binario
-      // es malo, perder el vencimiento es peor.
+    } catch (e) {
+      // Si falla el archivo igual guardamos las fechas: perder el binario es
+      // malo, perder el vencimiento es peor. Pero NO en silencio: así quedaban
+      // documentos con la fecha correcta y sin papel, y en la ficha eso se ve
+      // igual que un error del sistema. Queda anotado en el documento para que
+      // se sepa qué hay que volver a subir.
+      archivosFallidos.set(a.clientFileId, a.fileName);
+      console.error("No se pudo guardar el archivo", a.fileName, e);
     }
   }
 
@@ -666,6 +673,9 @@ export async function applyExtractionsAction(
       };
 
       const archivoId = row.archivo ? archivoIdPorClientFileId.get(row.archivo.clientFileId) ?? null : null;
+      const archivoPerdido = row.archivo && !archivoId
+        ? archivosFallidos.get(row.archivo.clientFileId) ?? row.archivo.fileName
+        : null;
 
       // Foto del trabajador. Va a la ficha para mostrarla en el perfil, pero
       // además se registra como documento: el mandante la exige y si no queda
@@ -746,9 +756,14 @@ export async function applyExtractionsAction(
           confirmadoPorId: user.id,
           confirmadoPorNombre: user.name,
           confirmadoAt: new Date(),
-          nota: !tieneFecha && !tipo.noVence
-            ? "Extraído con IA. Guardado sin fecha de vencimiento: el documento no la trae y el tipo no tiene vigencia definida."
-            : "Extraído con IA y confirmado manualmente",
+          nota: [
+            !tieneFecha && !tipo.noVence
+              ? "Extraído con IA. Guardado sin fecha de vencimiento: el documento no la trae y el tipo no tiene vigencia definida."
+              : "Extraído con IA y confirmado manualmente",
+            archivoPerdido
+              ? `EL ARCHIVO NO SE PUDO GUARDAR («${archivoPerdido}»). La fecha quedó registrada, pero hay que volver a subir el documento.`
+              : null,
+          ].filter(Boolean).join(" · "),
           archivoId,
         },
       });
