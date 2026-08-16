@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
-import { extractDocumentInfo, extraerFirmantes, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
+import { extractDocumentInfo, extraerFirmantes, extraerMrz, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
 import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
 
@@ -113,6 +113,39 @@ export async function extractDocumentsAction(
           if (completos.length > doc.titulares.length) doc.titulares = completos;
         } catch {
           /* si falla, quedan los de la primera pasada */
+        }
+      }
+
+      // La cédula manda sobre la identidad, y la banda del reverso manda sobre
+      // la lectura libre del anverso. Es la única parte del documento con
+      // formato fijo y dígito verificador: se puede comprobar en código, y por
+      // eso pisa lo que dijo el modelo. Nos pasó leer bien el RUT, inventar el
+      // nombre y equivocar las dos fechas, todo con confianza «Alta».
+      for (const doc of encontrados) {
+        if (doc.detectedCodigo !== "cedula_identidad") continue;
+        try {
+          const mrz = await extraerMrz({
+            fileBase64: file.base64,
+            mimeType: file.mimeType,
+            fileName: file.fileName,
+          });
+          if (!mrz) continue;
+
+          const cambioNombre = doc.workerName && !mismoNombre(doc.workerName, mrz.nombre);
+          doc.workerName = mrz.nombre;
+          doc.workerRut = mrz.rut;
+          if (mrz.fechaVencimiento) doc.expiryDate = mrz.fechaVencimiento;
+          // La fecha de nacimiento NO es la de emisión: se descarta en vez de
+          // dejarla ocupando el campo equivocado, que es lo que pasaba antes.
+          if (doc.issueDate && doc.issueDate === mrz.fechaNacimiento) doc.issueDate = null;
+
+          doc.reasoning = `${doc.reasoning} · Identidad tomada de la banda del reverso de la cédula, con RUT validado.`.trim();
+          if (cambioNombre) {
+            doc.confidence = "medium";
+            doc.reasoning = `${doc.reasoning} REVISAR: el anverso se había leído como otro nombre.`;
+          }
+        } catch {
+          /* si falla el segundo pase, queda la lectura del anverso */
         }
       }
 

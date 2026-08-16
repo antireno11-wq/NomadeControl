@@ -491,3 +491,140 @@ export async function extraerFirmantes(input: {
     return [];
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cédula de identidad: la banda legible por máquina manda
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MrzCedula = {
+  nombre: string;
+  rut: string;
+  fechaNacimiento: string | null;
+  fechaVencimiento: string | null;
+};
+
+/** AAMMDD del MRZ → ISO. El siglo se decide por el tipo de fecha, no al azar. */
+function fechaMrz(aammdd: string, tipo: "nacimiento" | "vencimiento"): string | null {
+  if (!/^\d{6}$/.test(aammdd)) return null;
+  const aa = Number(aammdd.slice(0, 2));
+  const mm = aammdd.slice(2, 4);
+  const dd = aammdd.slice(4, 6);
+  if (Number(mm) < 1 || Number(mm) > 12 || Number(dd) < 1 || Number(dd) > 31) return null;
+  // Un vencimiento siempre es futuro y un nacimiento siempre es pasado: con eso
+  // se resuelve el siglo sin ambigüedad y sin depender de la fecha de hoy.
+  const anio = tipo === "vencimiento" ? 2000 + aa : (aa > 40 ? 1900 + aa : 2000 + aa);
+  return `${anio}-${mm}-${dd}`;
+}
+
+/** Dígito verificador módulo 11, para validar el RUT que sale del MRZ. */
+function dvDe(cuerpo: string): string {
+  let suma = 0, factor = 2;
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += Number(cuerpo[i]) * factor;
+    factor = factor === 7 ? 2 : factor + 1;
+  }
+  const resto = 11 - (suma % 11);
+  return resto === 11 ? "0" : resto === 10 ? "K" : String(resto);
+}
+
+/**
+ * Interpreta las tres líneas del MRZ de una cédula chilena.
+ *
+ * Formato (TD1, tres líneas de 30):
+ *   L2: AAMMDD<sexo>AAMMDD<CHL><RUT sin dv><dv>...
+ *   L3: APELLIDOS<<NOMBRES
+ *
+ * Todo lo que devuelve es verificable: el RUT se valida contra su dígito
+ * verificador y las fechas tienen formato fijo. Por eso puede mandar por sobre
+ * la lectura libre del modelo, que es donde se inventan los nombres.
+ */
+export function parsearMrzCedula(lineas: string[]): MrzCedula | null {
+  const limpio = lineas.map(l => l.toUpperCase().replace(/\s/g, ""));
+
+  const datos = limpio.find(l => /^\d{7}[MF<]\d{7}CHL/.test(l));
+  const nombres = limpio.find(l => /^[A-ZÑ<]+<<[A-ZÑ<]+$/.test(l) && l.includes("<<"));
+  if (!datos || !nombres) return null;
+
+  // …CHL15721062<9…  → cuerpo y dígito verificador, después del código de país
+  const rutRaw = datos.match(/CHL(\d{7,8})<?([\dK])/);
+  if (!rutRaw) return null;
+  const [, cuerpo, dv] = rutRaw;
+  if (dvDe(cuerpo) !== dv) return null;
+
+  const [apellidos, dados] = nombres.split("<<");
+  const enPalabras = (s: string) =>
+    s.split("<").filter(Boolean)
+      .map(p => p.charAt(0) + p.slice(1).toLowerCase())
+      .join(" ");
+  const nombre = `${enPalabras(dados)} ${enPalabras(apellidos)}`.replace(/\s+/g, " ").trim();
+  if (!nombre || nombre.length < 5) return null;
+
+  const miles = Number(cuerpo).toLocaleString("es-CL");
+  return {
+    nombre,
+    rut: `${miles}-${dv}`,
+    fechaNacimiento: fechaMrz(datos.slice(0, 6), "nacimiento"),
+    fechaVencimiento: fechaMrz(datos.slice(8, 14), "vencimiento"),
+  };
+}
+
+/**
+ * Segundo pase, solo para cédulas: transcribir la banda del reverso.
+ *
+ * Se separa de la extracción general por la misma razón que los firmantes:
+ * cuando algo falla por mezclar tareas, se parte la tarea. Transcribir una
+ * cadena de formato fijo es mucho más confiable que leer campos sueltos de un
+ * documento, y el resultado se puede verificar en código.
+ */
+export async function extraerMrz(input: {
+  fileBase64: string;
+  mimeType: string;
+  fileName: string;
+  model?: string;
+}): Promise<MrzCedula | null> {
+  const esPdf = input.mimeType === MIME_PDF;
+  const dataUrl = `data:${input.mimeType};base64,${input.fileBase64}`;
+
+  const instruccion =
+    `Este documento es (o contiene) una cédula de identidad chilena. Tu ÚNICA tarea es ` +
+    `transcribir la banda de lectura mecánica que va abajo del REVERSO: tres renglones de ` +
+    `caracteres en mayúsculas separados por los símbolos "<".\n\n` +
+    `Reglas:\n` +
+    `1. Transcribe carácter por carácter, exactamente como se ven, incluidos TODOS los "<".\n` +
+    `2. NO interpretes, NO corrijas y NO completes. Si un carácter no se lee, pon "<".\n` +
+    `3. No uses ningún dato del anverso: solo esos tres renglones.\n` +
+    `4. Si el documento no muestra el reverso o la banda no se ve, responde {"lineas": []}.\n\n` +
+    `Ejemplo de cómo se ven:\n` +
+    `INCHL5328685955S16<<<<<<<<<<<<\n` +
+    `8309053M3309058CHL15721062<9<8\n` +
+    `REYES<CONTRERAS<<EMANUEL<JESUS\n\n` +
+    `Responde solo: {"lineas": ["...", "...", "..."]}`;
+
+  const contenido = esPdf
+    ? [
+        { type: "file" as const, file: { filename: input.fileName, file_data: dataUrl } },
+        { type: "text" as const, text: instruccion },
+      ]
+    : [
+        { type: "text" as const, text: instruccion },
+        { type: "image_url" as const, image_url: { url: dataUrl, detail: "high" as const } },
+      ];
+
+  try {
+    const response = await openaiChatCompletion({
+      model: input.model ?? "gpt-4o-mini",
+      responseFormat: "json_object",
+      messages: [
+        { role: "system", content: "Transcribes bandas MRZ carácter por carácter. No interpretas ni corriges." },
+        { role: "user", content: contenido as never },
+      ],
+      temperature: 0,
+      maxTokens: 300,
+    });
+    const parsed = JSON.parse(response.choices[0]?.message.content ?? "{}");
+    const lineas = Array.isArray(parsed.lineas) ? parsed.lineas.map(String) : [];
+    return lineas.length === 0 ? null : parsearMrzCedula(lineas);
+  } catch {
+    return null;
+  }
+}
