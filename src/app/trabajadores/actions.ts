@@ -44,6 +44,7 @@ const workerSchema = z.object({
   vaccineDueDate: z.string().optional(),
   notes: z.string().optional(),
   isActive: z.union([z.literal("on"), z.literal("true"), z.literal("")]).optional(),
+  motivoBaja: z.string().optional(),
   successRedirectTo: z.string().min(1),
   errorRedirectTo: z.string().min(1)
 });
@@ -100,6 +101,7 @@ export async function createWorkerAction(formData: FormData) {
     vaccineDueDate: String(formData.get("vaccineDueDate") ?? ""),
     notes: String(formData.get("notes") ?? ""),
     isActive: String(formData.get("isActive") ?? ""),
+    motivoBaja: String(formData.get("motivoBaja") ?? ""),
     successRedirectTo: formData.get("successRedirectTo"),
     errorRedirectTo: formData.get("errorRedirectTo")
   });
@@ -142,6 +144,13 @@ export async function createWorkerAction(formData: FormData) {
       foodHandlingExamDueDate: normalizeOptionalDate(payload.foodHandlingExamDueDate),
       vaccineDueDate: normalizeOptionalDate(payload.vaccineDueDate),
       notes: payload.notes || null,
+      // El motivo solo se guarda si de verdad queda inactivo, y la fecha se
+      // pone sola: preguntar dos veces por algo que el sistema ya sabe es
+      // como se llenan los formularios de campos vacíos.
+      motivoBaja: (payload.isActive === "on" || payload.isActive === "true")
+        ? null
+        : (payload.motivoBaja?.trim() || null),
+      fechaBaja: (payload.isActive === "on" || payload.isActive === "true") ? null : new Date(),
       isActive: payload.isActive === "on" || payload.isActive === "true"
     }
   });
@@ -194,6 +203,7 @@ export async function updateWorkerAction(formData: FormData) {
     vaccineDueDate: String(formData.get("vaccineDueDate") ?? ""),
     notes: String(formData.get("notes") ?? ""),
     isActive: String(formData.get("isActive") ?? ""),
+    motivoBaja: String(formData.get("motivoBaja") ?? ""),
     successRedirectTo: formData.get("successRedirectTo"),
     errorRedirectTo: formData.get("errorRedirectTo")
   });

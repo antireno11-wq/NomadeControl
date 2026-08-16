@@ -278,6 +278,11 @@ model StaffMember {
   proyectoId            String?
   proyecto              Proyecto?      @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
   calificaciones        Calificacion[]
+  /// Por qué dejó de estar activo. Un candidato que nunca firmó y alguien que
+  /// trabajó dos años y renunció no son lo mismo, y hasta acá los dos
+  /// quedaban simplemente "inactivos".
+  motivoBaja            String?
+  fechaBaja             DateTime?
   /// Cuadrilla dentro del sistema de turno: "A" o "B".
   cuadrilla             String?
   /// continua | no_continua | por_definir

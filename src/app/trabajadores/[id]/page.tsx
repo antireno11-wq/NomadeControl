@@ -826,6 +826,7 @@ export default async function PerfilTrabajadorPage({
                 vaccineDueDate: worker.vaccineDueDate ? toInputDateValue(worker.vaccineDueDate) : "",
                 notes: worker.notes ?? "",
                 isActive: worker.isActive,
+                motivoBaja: worker.motivoBaja,
               }}
             />
           </div>

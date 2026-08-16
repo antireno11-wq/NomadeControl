@@ -765,3 +765,19 @@ export function adivinarTipoDesdeNombre(
   }
   return null;
 }
+
+/**
+ * Por qué alguien deja de estar activo.
+ *
+ * Un candidato que nunca firmó y alguien que trabajó dos años y renunció
+ * quedaban los dos como "inactivo", mezclados en la misma lista. El motivo es
+ * uno solo por persona: no se acumulan.
+ */
+export const MOTIVOS_BAJA = [
+  "No se contrató",
+  "No se presentó",
+  "Renunció",
+  "Término de contrato",
+  "Desvinculado",
+  "Otro",
+] as const;

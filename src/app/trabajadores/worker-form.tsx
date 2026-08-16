@@ -1,4 +1,5 @@
 import { STAFF_DOCUMENT_FIELDS, STAFF_ROLE_OPTIONS } from "@/lib/staff-docs";
+import { MOTIVOS_BAJA } from "@/lib/acreditacion";
 
 type CampOption = {
   id: string;
@@ -31,6 +32,7 @@ type WorkerFormDefaults = {
   vaccineDueDate: string;
   notes: string;
   isActive: boolean;
+  motivoBaja?: string | null;
 };
 
 export function WorkerForm({
@@ -213,6 +215,18 @@ export function WorkerForm({
           <input type="checkbox" name="isActive" defaultChecked={defaults.isActive} />
           Trabajador activo
         </label>
+        {/* Solo tiene sentido al darlo de baja. Se muestra siempre para no
+            depender de JS, pero el guardado lo ignora si sigue activo. */}
+        <div style={{ marginTop: 6 }}>
+          <label htmlFor="worker-motivo" style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+            Si lo desactivas, ¿por qué?
+          </label>
+          <select id="worker-motivo" name="motivoBaja" defaultValue={defaults.motivoBaja ?? ""}
+                  style={{ fontSize: "0.85rem" }}>
+            <option value="">— Sin especificar —</option>
+            {MOTIVOS_BAJA.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
         <button type="submit">{submitLabel}</button>
