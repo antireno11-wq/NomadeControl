@@ -107,6 +107,10 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   { codigo: "capacitacion_radiacion_uv", nombre: "Capacitación en radiación UV",   categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Radiación UV", legacyField: null, orden: 216.7 },
   { codigo: "prevencion_riesgos",       nombre: "Curso de orientación en prevención de riesgos", categoria: "formacion", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Prev. riesgos", legacyField: null, orden: 216.8 },
   { codigo: "entrenamientos_especificos", nombre: "Cursos de entrenamientos específicos", categoria: "formacion",  vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Entren. esp.", legacyField: null, orden: 218 },
+  // El rigger presenta dos papeles distintos y no son intercambiables: el
+  // curso que aprobó y el carnet que lo habilita para dirigir la maniobra.
+  { codigo: "curso_rigger",        nombre: "Curso de rigger / maniobras",  categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Curso rigger", legacyField: null, orden: 219 },
+  { codigo: "carnet_rigger",       nombre: "Carnet de rigger",             categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Carnet rigger", legacyField: null, orden: 219.5 },
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },
@@ -691,6 +695,10 @@ export function adivinarTipoDesdeNombre(
     [/\b4\s*x\s*4\b|cuatro\s*por\s*cuatro/,     "curso_4x4"],
     [/riesgos?\s*operacional/,                  "riesgos_operacionales"],
     [/entrenamiento.*especifico/,               "entrenamientos_especificos"],
+    // "CARNET RIGGER" antes que /rigger/ a secas: si no, el carnet cae en el
+    // curso y quedan los dos documentos peleando por la misma fila.
+    [/(carn?et|credencial|licencia).*rigger|rigger.*(carn?et|credencial)/, "carnet_rigger"],
+    [/rigger|maniobras?\s*(de\s*)?izaje/,       "curso_rigger"],
 
     // Inducciones e IRL: van antes de /contrato/, porque el nombre real de
     // varios de estos archivos es "Inducción Interna Contrato".
