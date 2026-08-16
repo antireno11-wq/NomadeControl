@@ -552,44 +552,41 @@ export default async function PerfilTrabajadorPage({
                 </div>
               )}
 
-              {/* Calificaciones: habilitaciones que tiene además de su cargo.
-                  De ellas depende qué documentos se le exigen. */}
-              <div style={{ padding: "14px 16px", borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)" }}>
-                <form action={asignarCalificacionesAction}>
-                  <input type="hidden" name="workerId" value={worker.id} />
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                    <strong style={{ fontSize: "0.9rem" }}>Calificaciones</strong>
-                    <Link href="/administracion/calificaciones" style={{ fontSize: "0.76rem" }}>
-                      Administrar el catálogo
+              {/* Calificaciones. Plegado y en una línea: se marcan una vez al
+                  contratar y después no se tocan, así que no pueden ocupar el
+                  encabezado de la pestaña que sí se usa todos los días. */}
+              {calificaciones.length > 0 && (
+                <details style={{ fontSize: "0.8rem" }}>
+                  <summary style={{ cursor: "pointer", color: "var(--muted)", listStyle: "revert" }}>
+                    Calificaciones:{" "}
+                    <strong style={{ color: "var(--text)" }}>
+                      {susCalificaciones.length === 0
+                        ? "ninguna"
+                        : calificaciones.filter(c => susCalificaciones.includes(c.id)).map(c => c.nombre).join(", ")}
+                    </strong>
+                  </summary>
+                  <form action={asignarCalificacionesAction}
+                        style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", alignItems: "center", margin: "8px 0 0 16px" }}>
+                    <input type="hidden" name="workerId" value={worker.id} />
+                    {calificaciones.map(c => (
+                      <label key={c.id} title={c.descripcion ?? undefined}
+                             style={{ display: "flex", alignItems: "center", gap: 5, fontWeight: 400, cursor: "pointer" }}>
+                        <input type="checkbox" name="calificaciones" value={c.id}
+                               defaultChecked={susCalificaciones.includes(c.id)}
+                               style={{ width: "auto", margin: 0 }} />
+                        {c.nombre}
+                      </label>
+                    ))}
+                    <button type="submit" className="plano"
+                            style={{ width: "auto", padding: "3px 10px", fontSize: "0.78rem", border: "1px solid var(--border)", borderRadius: 6 }}>
+                      Guardar
+                    </button>
+                    <Link href="/administracion/calificaciones" style={{ fontSize: "0.75rem" }}>
+                      Administrar catálogo
                     </Link>
-                  </div>
-                  <p style={{ margin: "2px 0 8px", color: "var(--muted)", fontSize: "0.78rem" }}>
-                    Habilitaciones que tiene además de su cargo. Marcarlas cambia qué documentos se le exigen.
-                  </p>
-                  {calificaciones.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>
-                      Todavía no hay calificaciones en el catálogo.
-                    </p>
-                  ) : (
-                    <>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 18px", marginBottom: 10 }}>
-                        {calificaciones.map(c => (
-                          <label key={c.id} title={c.descripcion ?? undefined}
-                                 style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.86rem", fontWeight: 400, cursor: "pointer" }}>
-                            <input type="checkbox" name="calificaciones" value={c.id}
-                                   defaultChecked={susCalificaciones.includes(c.id)}
-                                   style={{ width: "auto", margin: 0 }} />
-                            {c.nombre}
-                          </label>
-                        ))}
-                      </div>
-                      <button type="submit" style={{ width: "auto", padding: "6px 14px", fontSize: "0.82rem" }}>
-                        Guardar calificaciones
-                      </button>
-                    </>
-                  )}
-                </form>
-              </div>
+                  </form>
+                </details>
+              )}
 
               <DocumentosPanel workerId={worker.id} filas={filasDocumentos} variante="detallada" />
 
