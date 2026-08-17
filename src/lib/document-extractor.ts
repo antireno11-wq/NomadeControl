@@ -70,7 +70,11 @@ Reglas:
 - Elige el código EXACTO de la lista de arriba, o "unknown" si no coincide con ninguno.
 - CRÍTICO — NO CONFUNDAS EMISIÓN CON VENCIMIENTO. Es el error más grave posible: pone como "vencido" un documento que está vigente.
   · Van en issueDate (fecha de emisión/realización): "realizado con fecha", "de fecha", "efectuado el", "emitido el", "Santiago, a <fecha>", "fecha de examen", "fecha de la muestra", "fecha de aprobación", "fecha del curso", la fecha junto a una firma.
-  · Van en expiryDate SOLO si el texto lo dice explícitamente: "vence el", "válido hasta", "vigente hasta", "fecha de vencimiento", "FECHA EXPIRACIÓN", "expira el", "caduca el", "válido por ... hasta".
+  · Van en expiryDate SOLO si el texto lo dice explícitamente: "vence el", "válido hasta", "vigente hasta", "fecha de vencimiento", "FECHA EXPIRACIÓN", "expira el", "caduca el", "válido por ... hasta", "VIGENCIA DEL INFORME", "vigencia hasta", "próximo control".
+  · OJO con la palabra "vigencia": a veces rotula una FECHA y a veces una DURACIÓN. Si va seguida de una fecha, es el vencimiento. Si va seguida de un plazo ("Vigencia: 2 años"), es cuánto dura y NO es una fecha.
+  · Los certificados de salud laboral de la ACHS traen las tres cosas juntas y hay que separarlas bien. Ejemplo real:
+    "Fecha de emisión del informe 14/10/2024 · Periodicidad 2 años · Vigencia del Informe 14/10/2026"
+    → issueDate "2024-10-14", expiryDate "2026-10-14". "Periodicidad" es cada cuánto se repite el examen, no una fecha: se ignora.
   · Si el documento tiene UNA SOLA fecha y no dice explícitamente que sea de vencimiento, va en issueDate y expiryDate queda null. NO asumas que la única fecha es el vencimiento.
   · Ejemplo: "El examen de detección de consumo de drogas realizado con fecha 15/07/2026..." → issueDate "2026-07-15", expiryDate null. Esa fecha es cuándo se hizo el examen, NO cuándo caduca.
 - LICENCIA DE CONDUCIR CHILENA. Trae dos fechas con nombres casi iguales y es fácil confundirlas:
