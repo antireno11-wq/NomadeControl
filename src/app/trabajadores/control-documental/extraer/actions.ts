@@ -135,7 +135,12 @@ export async function extractDocumentsAction(
           const cambioNombre = doc.workerName && !mismoNombre(doc.workerName, mrz.nombre);
           doc.workerName = mrz.nombre;
           doc.workerRut = mrz.rut;
-          if (mrz.fechaVencimiento) doc.expiryDate = mrz.fechaVencimiento;
+          if (mrz.fechaVencimiento) {
+            doc.expiryDate = mrz.fechaVencimiento;
+            // Faltaba esto: la banda daba el vencimiento pero la fila seguía
+            // marcada «no vence», así que el dato bueno no llegaba a verse.
+            doc.sinVencimiento = false;
+          }
           // La fecha de nacimiento NO es la de emisión: se descarta en vez de
           // dejarla ocupando el campo equivocado, que es lo que pasaba antes.
           if (doc.issueDate && doc.issueDate === mrz.fechaNacimiento) doc.issueDate = null;
@@ -283,6 +288,18 @@ function normalizarPropuesta(
         r.reasoning = `${r.reasoning} · Titular tomado del resto de los archivos del lote.`.trim();
       }
     }
+  }
+
+  // 1.4 Una cédula de identidad chilena siempre trae vencimiento impreso.
+  //     Nunca dice que no vence, así que marcarla así solo puede ser un error
+  //     de lectura — pasó con un escaneo muy tenue. El efecto es el peor
+  //     posible: la persona queda acreditada para siempre con un carnet que
+  //     caduca. Sin fecha queda pendiente, que se ve; «no vence» no se ve.
+  for (const r of results) {
+    if (r.detectedCodigo !== "cedula_identidad" || !r.sinVencimiento) continue;
+    r.sinVencimiento = false;
+    r.confidence = "low";
+    r.reasoning = `${r.reasoning} · Se descartó «no vence»: la cédula siempre trae fecha de vencimiento. Complétala a mano.`.trim();
   }
 
   // 1.5 Un documento no vence el mismo día que se emite.
