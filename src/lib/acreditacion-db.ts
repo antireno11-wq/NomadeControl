@@ -239,6 +239,40 @@ export async function getEstadoDocumental(
     });
   }
 
+  // ── El anexo manda sobre el contrato ────────────────────────────────────
+  // Un anexo no es un documento aparte: modifica el contrato. Diego tiene un
+  // contrato a plazo fijo que vencía en 2021 y un anexo de 2022 que lo hizo
+  // indefinido — el contrato NO está vencido, pero el sistema lo mostraba así
+  // porque miraba cada tipo por separado y nunca los cruzaba.
+  //
+  // Misma idea que la fecha efectiva de un compromiso: la fecha que vale es la
+  // de la última reprogramación, no la original. Acá el anexo más nuevo define
+  // hasta cuándo rige el contrato. La fila del contrato conserva su fecha
+  // original —es lo que dice el papel— y lo que cambia es el estado.
+  const idTipo = (codigo: string) => tipos.find(t => t.codigo === codigo)?.id ?? null;
+  const idContrato = idTipo("contrato_trabajo");
+  const idAnexo = idTipo("anexo_contrato");
+
+  if (idContrato && idAnexo) {
+    for (const entry of resultado.values()) {
+      const contrato = entry.porTipo.get(idContrato);
+      const anexo = entry.porTipo.get(idAnexo);
+      if (!contrato?.documento || !anexo?.documento) continue;
+
+      // Solo si el anexo es posterior: un anexo viejo no revive un contrato
+      // que se venció después.
+      const fAnexo = anexo.documento.fechaEmision?.getTime() ?? 0;
+      const fContrato = contrato.documento.fechaEmision?.getTime() ?? 0;
+      if (fAnexo <= fContrato) continue;
+
+      entry.porTipo.set(idContrato, {
+        ...contrato,
+        estado: anexo.estado,
+        dias: anexo.dias,
+      });
+    }
+  }
+
   // Recuento por trabajador
   for (const entry of resultado.values()) {
     let vencidos = 0, porVencer = 0, sinFecha = 0, ok = 0;
