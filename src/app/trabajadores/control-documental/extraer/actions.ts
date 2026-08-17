@@ -23,6 +23,10 @@ export type ExtractedRow = ExtractedDoc & {
   grupoId?: string | null;
   /** El vencimiento se dedujo de la vigencia del tipo, no venía impreso. */
   expiryCalculada?: boolean;
+  /** Ya existe un documento vigente de este tipo para el trabajador que se
+   *  propone. Cargar no es lo mismo que reemplazar: uno llena un hueco y el
+   *  otro deja obsoleto un papel que hoy sirve. */
+  reemplazaA?: { vence: string | null; sinVencimiento: boolean } | null;
   /** El titular se heredó del resto del lote porque la hoja no lo traía. */
   titularHeredado?: boolean;
   /** Cantidad de firmantes cuando el documento es colectivo. */
@@ -46,13 +50,31 @@ export async function extractDocumentsAction(
 ): Promise<ExtractedRow[]> {
   await requireRole(STAFF_MANAGER_ROLES);
 
-  const [workers, tipos] = await Promise.all([
+  const [workers, tipos, vigentes] = await Promise.all([
     db.staffMember.findMany({
       where: { isActive: true },
       select: { id: true, fullName: true, nationalId: true },
     }),
     getTiposDocumento(),
+    // Lo que ya está cargado, para poder decir si esta fila llena un hueco o
+    // reemplaza un papel que hoy sirve. Son cosas distintas y hasta ahora se
+    // veían iguales.
+    db.documentoAcreditacion.findMany({
+      where: { anulado: false },
+      select: { staffMemberId: true, tipoDocumentoId: true, fechaVencimiento: true, sinVencimiento: true },
+      orderBy: { fechaVencimiento: "desc" },
+    }),
   ]);
+
+  const vigentePorPar = new Map<string, { vence: string | null; sinVencimiento: boolean }>();
+  for (const v of vigentes) {
+    const k = `${v.staffMemberId}|${v.tipoDocumentoId}`;
+    if (vigentePorPar.has(k)) continue;  // ya ordenado: el primero es el más lejano
+    vigentePorPar.set(k, {
+      vence: v.fechaVencimiento ? v.fechaVencimiento.toISOString().slice(0, 10) : null,
+      sinVencimiento: v.sinVencimiento,
+    });
+  }
 
   const results: ExtractedRow[] = [];
 
@@ -208,6 +230,9 @@ export async function extractDocumentsAction(
           fileName: file.fileName,
           ...doc,
           matches,
+          reemplazaA: matches[0] && doc.detectedTipoId
+            ? vigentePorPar.get(`${matches[0].workerId}|${doc.detectedTipoId}`) ?? null
+            : null,
           firmantes: doc.titulares && doc.titulares.length > 1 ? doc.titulares.length : null,
           ajenoAlLote: false,
         });

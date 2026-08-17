@@ -48,6 +48,7 @@ type EditableRow = {
   firmantes?: number | null;
   /** Colectivo que no incluye a la persona dueña del resto de la carga. */
   ajenoAlLote?: boolean;
+  reemplazaA?: { vence: string | null; sinVencimiento: boolean } | null;
   empleadorNombre?: string | null;
   empleadorRut?: string | null;
   cargoContrato?: string | null;
@@ -343,6 +344,7 @@ export function ExtractClient({
               grupoId: res.grupoId ?? null,
               firmantes: res.firmantes ?? null,
               ajenoAlLote: res.ajenoAlLote,
+              reemplazaA: res.reemplazaA,
               empleadorNombre: res.empleadorNombre,
               empleadorRut: res.empleadorRut,
               cargoContrato: res.cargoContrato,
@@ -1035,6 +1037,24 @@ export function ExtractClient({
                                   Ninguno de los firmantes es la persona del resto de la carpeta.
                                   Revisa si el archivo está guardado donde no corresponde.
                                 </div>
+                              )}
+                              {/* Llenar un hueco y reemplazar un papel que hoy
+                                  sirve no son lo mismo, y se veían iguales. */}
+                              {row.workerId && row.workerId !== CREAR_NUEVO && row.detectedTipoId && (
+                                row.reemplazaA ? (
+                                  <div style={{ color: "#0369a1", fontSize: "0.7rem", marginTop: 2 }}>
+                                    ↻ Reemplaza el que ya tiene
+                                    {row.reemplazaA.sinVencimiento
+                                      ? " (sin vencimiento)"
+                                      : row.reemplazaA.vence
+                                        ? `, que vence el ${row.reemplazaA.vence.split("-").reverse().join("-")}`
+                                        : " (sin fecha)"}
+                                  </div>
+                                ) : (
+                                  <div style={{ color: "#166534", fontSize: "0.7rem", marginTop: 2 }}>
+                                    ✓ Documento nuevo: no tenía ninguno de este tipo
+                                  </div>
+                                )
                               )}
                               {row.titularHeredado && (
                                 <div style={{ color: "#9a6300", fontSize: "0.7rem", marginTop: 2 }}>
