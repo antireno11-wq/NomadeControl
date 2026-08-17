@@ -332,6 +332,22 @@ function normalizarPropuesta(
     r.reasoning = `${r.reasoning} · Vencimiento calculado: ${tipo.vigenciaDias} días desde la emisión.`.trim();
   }
 
+  // 2.5 Un documento que nace vencido casi siempre es un año mal leído.
+  //     El certificado de antecedentes de Didier decía 14 de agosto de 2026 y
+  //     se leyó 2022: el día y el mes correctos, el año no. Nadie sube a
+  //     acreditar un papel que caducó hace cuatro años, así que la explicación
+  //     probable es la lectura, no el documento.
+  //     No se corrige sola —adivinar el año sería peor— pero se marca, que es
+  //     lo que faltaba: llegaba como confianza alta y nadie la miraba.
+  const hoy = new Date();
+  for (const r of results) {
+    if (!r.expiryDate || r.error) continue;
+    const vence = new Date(`${r.expiryDate}T12:00:00`);
+    if (Number.isNaN(vence.getTime()) || vence >= hoy) continue;
+    r.confidence = "low";
+    r.reasoning = `${r.reasoning} · REVISAR: llega vencido el ${r.expiryDate}. Puede ser un año mal leído — compara con el documento.`.trim();
+  }
+
   // 3. Agrupación por (persona, tipo).
   //    La cédula subida como dos fotos —o como un JPG y un PDF— son dos filas
   //    del mismo documento, no dos documentos. Se marcan con un grupo y la UI
