@@ -186,6 +186,11 @@ export async function extractDocumentsAction(
           doc.detectedTipoId = porNombre.id;
           doc.detectedDocTypeLabel = porNombre.nombre;
           doc.confidence = "medium";
+          // Las marcas que dependen del tipo se caen con el tipo. «No vence»
+          // salía de haberlo leído como ficha de ingreso, que sí es una
+          // constancia; al pasar a cédula deja de tener sentido y arrastraba
+          // el error hasta la ficha.
+          doc.sinVencimiento = false;
           doc.reasoning = `${doc.reasoning} · REVISAR: el nombre del archivo dice «${porNombre.nombre}» y el contenido se leyó como «${leido}». Se usó el del nombre.`.trim();
         }
 
