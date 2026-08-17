@@ -640,3 +640,54 @@ export async function getCalificacionesPorTrabajador(
   for (const f of filas) mapa.set(f.id, f.calificaciones.map(c => c.id));
   return mapa;
 }
+
+// ─── Acreditaciones por faena ───────────────────────────────────────────────
+
+let acreditacionesMigradas = false;
+
+/**
+ * Lleva el `proyectoId` suelto de cada trabajador a la tabla de acreditaciones.
+ *
+ * Es idempotente y no destructivo: `skipDuplicates` sobre la clave
+ * (trabajador, proyecto), y `StaffMember.proyectoId` se mantiene intacto. Todo
+ * el cálculo de exigencia sigue leyendo de ahí mientras dure la transición, así
+ * que esto no puede romper la acreditación que ya funciona.
+ */
+export async function migrarAcreditaciones(): Promise<void> {
+  if (acreditacionesMigradas) return;
+  acreditacionesMigradas = true;
+
+  const conProyecto = await db.staffMember.findMany({
+    where: { proyectoId: { not: null } },
+    select: { id: true, proyectoId: true },
+  });
+  if (conProyecto.length === 0) return;
+
+  await db.trabajadorProyecto.createMany({
+    data: conProyecto.map(t => ({
+      staffMemberId: t.id,
+      proyectoId: t.proyectoId!,
+    })),
+    skipDuplicates: true,
+  });
+}
+
+/** Faenas vigentes de cada trabajador, sin N+1. */
+export async function getAcreditacionesPorTrabajador(
+  staffIds: string[],
+): Promise<Map<string, Array<{ proyectoId: string; cargoId: string | null }>>> {
+  const mapa = new Map<string, Array<{ proyectoId: string; cargoId: string | null }>>();
+  if (staffIds.length === 0) return mapa;
+
+  const filas = await db.trabajadorProyecto.findMany({
+    // `hasta` con fecha es una faena de la que ya salió: no se le exige nada.
+    where: { staffMemberId: { in: staffIds }, hasta: null },
+    select: { staffMemberId: true, proyectoId: true, cargoId: true },
+  });
+  for (const f of filas) {
+    const lista = mapa.get(f.staffMemberId);
+    const item = { proyectoId: f.proyectoId, cargoId: f.cargoId };
+    if (lista) lista.push(item); else mapa.set(f.staffMemberId, [item]);
+  }
+  return mapa;
+}

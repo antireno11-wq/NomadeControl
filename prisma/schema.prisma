@@ -273,11 +273,12 @@ model StaffMember {
   /// Distinto de `role`, que es el cargo textual del contrato
   /// ("MONTAJISTA - GASFITER" es role; "Montajista" es el cargo).
   cargoId               String?
-  cargo                 Cargo?         @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+  cargo                 Cargo?               @relation(fields: [cargoId], references: [id], onDelete: SetNull)
   /// Proyecto al que está asignado. Define la matriz de requisitos vigente.
   proyectoId            String?
-  proyecto              Proyecto?      @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  proyecto              Proyecto?            @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
   calificaciones        Calificacion[]
+  acreditaciones        TrabajadorProyecto[]
   /// Por qué dejó de estar activo. Un candidato que nunca firmó y alguien que
   /// trabajó dos años y renunció no son lo mismo, y hasta acá los dos
   /// quedaban simplemente "inactivos".
@@ -288,7 +289,7 @@ model StaffMember {
   /// continua | no_continua | por_definir
   continuidad           String?
   /// Trabajó antes en una faena del mandante. Activa el finiquito previo.
-  trabajoPrevioMandante Boolean        @default(false)
+  trabajoPrevioMandante Boolean              @default(false)
 
   @@index([campId, isActive])
   @@index([proyectoId, cargoId])
@@ -328,11 +329,12 @@ model Proyecto {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  requisitos   RequisitoDocumento[]
-  trabajadores StaffMember[]
-  Reunion      Reunion[]
-  Compromiso   Compromiso[]
-  Amenaza      Amenaza[]
+  requisitos         RequisitoDocumento[]
+  trabajadores       StaffMember[]
+  Reunion            Reunion[]
+  Compromiso         Compromiso[]
+  Amenaza            Amenaza[]
+  TrabajadorProyecto TrabajadorProyecto[]
 
   @@unique([mandanteId, nombre])
 }
@@ -347,8 +349,9 @@ model Cargo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  requisitos   RequisitoDocumento[]
-  trabajadores StaffMember[]
+  requisitos         RequisitoDocumento[]
+  trabajadores       StaffMember[]
+  TrabajadorProyecto TrabajadorProyecto[]
 }
 
 /// Qué documento exige un proyecto a un cargo.
@@ -370,6 +373,40 @@ model Calificacion {
   requisitos   RequisitoDocumento[]
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+}
+
+/// Una acreditación: este trabajador en esta faena.
+///
+/// Reemplaza al `proyectoId` suelto de StaffMember, que asumía una sola faena
+/// por persona. Alguien puede estar habilitado en Anglo y no en Sierra, y esa
+/// es justo la pregunta que hay que responder antes de movilizarlo.
+///
+/// Un traslado no borra la faena anterior: le pone `hasta`. Mismo criterio que
+/// los documentos — el historial es lo que permite responderle a un mandante
+/// tres meses después.
+model TrabajadorProyecto {
+  id            String      @id @default(cuid())
+  staffMemberId String
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+  proyectoId    String
+  proyecto      Proyecto    @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  /// Cargo SOLO si en esta faena hace algo distinto de lo habitual. Vacío en
+  /// el 98% de los casos: manda el de la ficha. Obligar a elegirlo dos veces
+  /// para que casi siempre sea el mismo es como se llenan mal los formularios.
+  cargoId String?
+  cargo   Cargo?  @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+
+  desde DateTime  @default(now())
+  /// Null = sigue en esta faena.
+  hasta DateTime?
+
+  nota      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffMemberId, proyectoId])
+  @@index([proyectoId, hasta])
 }
 
 model RequisitoDocumento {
