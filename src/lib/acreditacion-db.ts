@@ -4,6 +4,8 @@ import {
   esEstadoOk,
   AJUSTES_NO_VENCE,
   AJUSTES_VIGENCIA,
+  AREA_POR_TIPO,
+  AREAS_RESPONSABLES,
   RENOMBRES_CATALOGO,
   seleccionarVigentes,
   TIPOS_DOCUMENTO_SEED,
@@ -95,6 +97,24 @@ async function asegurarCatalogo(): Promise<void> {
     await db.tipoDocumento.update({
       where: { codigo: a.codigo },
       data: { vigenciaDias: a.vigenciaDias },
+    });
+  }
+
+  // Área responsable y plazo de gestión, SOLO donde están vacíos. Los tipos
+  // cuyo responsable depende de cómo reparte el trabajo esta empresa —vacunas,
+  // manipulación de alimentos, las pólizas, las inducciones— quedan sin área a
+  // propósito: un responsable inventado ensucia la métrica más que un hueco,
+  // porque el hueco se ve y el inventado no.
+  const plazoDeArea = new Map(AREAS_RESPONSABLES.map(a => [a.codigo, a.plazoPorDefecto]));
+  const sinArea = await db.tipoDocumento.findMany({
+    where: { areaResponsable: null, codigo: { in: Object.keys(AREA_POR_TIPO) } },
+    select: { id: true, codigo: true },
+  });
+  for (const t of sinArea) {
+    const area = AREA_POR_TIPO[t.codigo];
+    await db.tipoDocumento.update({
+      where: { id: t.id },
+      data: { areaResponsable: area, plazoDiasHabiles: plazoDeArea.get(area) ?? null },
     });
   }
 

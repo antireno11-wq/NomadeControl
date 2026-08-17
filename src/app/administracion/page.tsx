@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
 import { createCampAction, createProjectAction, deleteCampAction, cerrarProyectoAction, reabrirProyectoAction, crearTipoDocumentoAction, actualizarTipoDocumentoAction, crearProyectoAcreditacionAction, crearCargoAction } from "./actions";
 
-import { CATEGORIA_LABEL, type CategoriaDocumento } from "@/lib/acreditacion";
+import { CATEGORIA_LABEL, AREAS_RESPONSABLES, type CategoriaDocumento } from "@/lib/acreditacion";
 import { getCargos, getProyectos, getRequisitos } from "@/lib/requisitos-db";
 import { RequisitosMatriz } from "./requisitos-matriz";
 
@@ -504,6 +504,8 @@ export default async function AdministracionPage({
                   <th>Categoría</th>
                   <th style={{ width: 120 }}>Etiqueta</th>
                   <th style={{ width: 110 }}>Vigencia</th>
+                  <th style={{ width: 130 }}>Área</th>
+                  <th style={{ width: 80 }}>Plazo</th>
                   <th style={{ width: 90 }}>No vence</th>
                   <th style={{ width: 90 }}>En matriz</th>
                   <th style={{ width: 80 }}>Activo</th>
@@ -513,7 +515,7 @@ export default async function AdministracionPage({
               <tbody>
                 {tiposDocumento.map((t) => (
                   <tr key={t.id}>
-                    <td colSpan={8} style={{ padding: 0 }}>
+                    <td colSpan={10} style={{ padding: 0 }}>
                       <form action={actualizarTipoDocumentoAction} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 4px", flexWrap: "wrap" }}>
                         <input type="hidden" name="tipoId" value={t.id} />
                         <input name="nombre" defaultValue={t.nombre} style={{ flex: "2 1 200px", minWidth: 160, padding: "5px 8px", fontSize: "0.85rem" }} />
@@ -521,7 +523,15 @@ export default async function AdministracionPage({
                           {CATEGORIA_LABEL[t.categoria as CategoriaDocumento] ?? t.categoria}
                         </span>
                         <input name="etiquetaCorta" defaultValue={t.etiquetaCorta ?? ""} maxLength={16} placeholder="corta" style={{ flex: "0 0 110px", padding: "5px 8px", fontSize: "0.85rem" }} />
-                        <input name="vigenciaDias" type="number" min={1} defaultValue={t.vigenciaDias ?? ""} placeholder="días" style={{ flex: "0 0 90px", padding: "5px 8px", fontSize: "0.85rem" }} />
+                        <input name="vigenciaDias" type="number" min={1} defaultValue={t.vigenciaDias ?? ""} placeholder="vigencia" title="Cuánto dura el documento una vez conseguido" style={{ flex: "0 0 90px", padding: "5px 8px", fontSize: "0.85rem" }} />
+                        <select name="areaResponsable" defaultValue={t.areaResponsable ?? ""}
+                                title="Quién responde por conseguirlo"
+                                style={{ flex: "0 0 130px", padding: "5px 8px", fontSize: "0.85rem",
+                                         borderColor: t.areaResponsable ? undefined : "#f59e0b" }}>
+                          <option value="">— sin área —</option>
+                          {AREAS_RESPONSABLES.map(a => <option key={a.codigo} value={a.codigo}>{a.nombre}</option>)}
+                        </select>
+                        <input name="plazoDiasHabiles" type="number" min={1} defaultValue={t.plazoDiasHabiles ?? ""} placeholder="plazo" title="Días hábiles para conseguirlo desde que se pide" style={{ flex: "0 0 80px", padding: "5px 8px", fontSize: "0.85rem" }} />
                         <label style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem", margin: 0 }}>
                           <input type="checkbox" name="noVence" defaultChecked={t.noVence} style={{ width: "auto", margin: 0 }} /> no vence
                         </label>
@@ -538,7 +548,19 @@ export default async function AdministracionPage({
                 ))}
               </tbody>
             </table>
+            {tiposDocumento.filter(t => t.activo && t.dominio !== "empresa" && !t.areaResponsable).length > 0 && (
+              <div className="alert" style={{ background: "#fff4dc", border: "1px solid #f5d98e", color: "#7a4f00", marginTop: 12, fontSize: "0.85rem" }}>
+                <strong>
+                  {tiposDocumento.filter(t => t.activo && t.dominio !== "empresa" && !t.areaResponsable).length} tipos activos sin área asignada.
+                </strong>{" "}
+                Quedan fuera de la medición de cumplimiento por área hasta que se les asigne una:
+                sin responsable no hay a quién exigirle el plazo.
+              </div>
+            )}
             <p style={{ color: "var(--muted)", fontSize: "0.8rem", marginTop: 12, marginBottom: 0 }}>
+              <strong>Vigencia</strong> es cuánto dura el documento una vez conseguido.{" "}
+              <strong>Plazo</strong> son los días hábiles para conseguirlo desde que se pide. Son
+              cosas distintas y conviven.<br />
               Desmarcar <strong>activo</strong> saca el tipo del extractor y de las fichas sin borrar
               los documentos ya cargados. <strong>En matriz</strong> lo agrega como columna del panel
               de control documental — con muchos tipos marcados la tabla se vuelve ilegible.

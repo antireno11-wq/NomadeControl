@@ -781,3 +781,71 @@ export const MOTIVOS_BAJA = [
   "Desvinculado",
   "Otro",
 ] as const;
+
+// ─── Áreas responsables y plazos de gestión ─────────────────────────────────
+
+/**
+ * Quién responde por conseguir cada documento.
+ *
+ * No se puede exigir cumplimiento sin saber a quién. Y el plazo va en días
+ * HÁBILES desde que se pide: es el tiempo para gestionarlo, distinto de la
+ * vigencia del documento, que ya existe y mide otra cosa.
+ */
+export const AREAS_RESPONSABLES = [
+  { codigo: "RRHH",          nombre: "RRHH",                 plazoPorDefecto: 5 },
+  { codigo: "HSEC",          nombre: "HSEC / Prevención",    plazoPorDefecto: 5 },
+  { codigo: "HABILITACION",  nombre: "Habilitación",         plazoPorDefecto: 15 },
+  { codigo: "OPERACIONES",   nombre: "Operaciones",          plazoPorDefecto: 10 },
+  { codigo: "TRABAJADOR",    nombre: "El propio trabajador", plazoPorDefecto: 3 },
+] as const;
+
+export type AreaResponsable = typeof AREAS_RESPONSABLES[number]["codigo"];
+
+export const AREA_LABEL: Record<string, string> = Object.fromEntries(
+  AREAS_RESPONSABLES.map(a => [a.codigo, a.nombre]),
+);
+
+/**
+ * Asignación inicial. Solo los tipos donde el responsable es evidente.
+ *
+ * Los que faltan —vacunas, manipulación de alimentos, las pólizas y las dos
+ * inducciones— quedan sin área a propósito, porque dependen de cómo se reparte
+ * el trabajo en esta empresa y no de una convención del rubro. La pantalla de
+ * administración muestra cuántos quedan sin asignar.
+ *
+ * Los documentos de dominio empresa quedan fuera: no son de un trabajador y no
+ * tienen cola de gestión.
+ */
+export const AREA_POR_TIPO: Record<string, AreaResponsable> = {
+  // RRHH — todo lo contractual y previsional
+  contrato_trabajo: "RRHH", anexo_contrato: "RRHH", finiquito: "RRHH",
+  finiquito_mandante: "RRHH", ficha_ingreso: "RRHH", afiliacion_afp: "RRHH",
+  certificado_cotizaciones: "RRHH", afiliacion_salud: "RRHH",
+  afiliacion_mutualidad: "RRHH", ley_trabajo_pesado: "RRHH",
+
+  // HSEC — constancias de seguridad y los cursos de prevención
+  entrega_epp: "HSEC", recepcion_riohs: "HSEC", declaracion_jurada: "HSEC",
+  irl_empresa: "HSEC", irl_cliente: "HSEC", odi: "HSEC",
+  curso_extintores: "HSEC", curso_primeros_auxilios: "HSEC",
+  primeros_auxilios_basico: "HSEC", curso_epp: "HSEC",
+  prevencion_riesgos: "HSEC", capacitacion_tmert: "HSEC",
+  capacitacion_radiacion_uv: "HSEC", capacitacion_mmc: "HSEC",
+  capacitacion_sustancias: "HSEC", capacitacion_ruv: "HSEC",
+  riesgos_operacionales: "HSEC", entrenamientos_especificos: "HSEC",
+
+  // Habilitación — exámenes y la carga en la plataforma del mandante
+  examen_ocupacional: "HABILITACION", altura_geografica: "HABILITACION",
+  altura_fisica: "HABILITACION", examen_alcohol_drogas: "HABILITACION",
+  psicosensotecnico: "HABILITACION", acreditacion: "HABILITACION",
+  curso_rigger: "HABILITACION", carnet_rigger: "HABILITACION",
+  certificacion_competencias: "HABILITACION",
+
+  // El propio trabajador — lo que solo él puede ir a buscar
+  cedula_identidad: "TRABAJADOR", licencia_conducir: "TRABAJADOR",
+  certificado_antecedentes: "TRABAJADOR", certificado_residencia: "TRABAJADOR",
+  titulo_estudios: "TRABAJADOR", cv: "TRABAJADOR", foto: "TRABAJADOR",
+  registro_discapacidad: "TRABAJADOR", hoja_vida_conductor: "TRABAJADOR",
+
+  // Operaciones — cursos de conducción, que coordina la faena
+  curso_4x4: "OPERACIONES", conduccion_defensiva: "OPERACIONES",
+};

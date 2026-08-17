@@ -953,6 +953,13 @@ export async function actualizarTipoDocumentoAction(formData: FormData) {
       etiquetaCorta: etiquetaCorta || null,
       vigenciaDias: noVence ? null : (vigencia && vigencia > 0 ? vigencia : null),
       noVence,
+      // Área y plazo de gestión. El plazo va en días hábiles y es de quién
+      // debe conseguir el documento, no de cuánto dura una vez conseguido.
+      areaResponsable: String(formData.get("areaResponsable") ?? "").trim() || null,
+      plazoDiasHabiles: (() => {
+        const v = Number(String(formData.get("plazoDiasHabiles") ?? "").trim());
+        return Number.isFinite(v) && v > 0 ? v : null;
+      })(),
       mostrarEnMatriz: formData.get("mostrarEnMatriz") === "on",
       activo: formData.get("activo") === "on",
     },

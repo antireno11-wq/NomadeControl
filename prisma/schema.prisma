@@ -446,37 +446,45 @@ model RequisitoDocumento {
 /// los 9 tipos que ya existían — permite el backfill y mantener el
 /// formulario de ficha funcionando durante la transición.
 model TipoDocumento {
-  id              String   @id @default(cuid())
-  codigo          String   @unique
-  nombre          String
+  id               String   @id @default(cuid())
+  codigo           String   @unique
+  nombre           String
   /// Vigencia por defecto cuando el documento no trae vencimiento impreso.
   /// NULL = no vence, o siempre se lee del documento.
-  vigenciaDias    Int?
-  requiereArchivo Boolean  @default(false)
+  vigenciaDias     Int?
+  requiereArchivo  Boolean  @default(false)
   /// identidad | previsional | salud_ocupacional | formacion | laboral | seguros
-  categoria       String   @default("laboral")
+  categoria        String   @default("laboral")
   /// A quién pertenece el documento: trabajador | empresa | vehiculo.
   /// El mandante exige los tres, y mezclarlos haría que a cada persona se le
   /// pidiera el inicio de actividades de la empresa.
-  dominio         String   @default("trabajador")
+  dominio          String   @default("trabajador")
   /// Si aparece como columna en la matriz de control documental.
   /// Con ~24 tipos la matriz sería ilegible; solo los core se muestran.
-  mostrarEnMatriz Boolean  @default(false)
+  mostrarEnMatriz  Boolean  @default(false)
   /// Etiqueta corta para el encabezado de columna en la matriz.
-  etiquetaCorta   String?
+  etiquetaCorta    String?
   /// Documento de constancia: prueba que algo se entregó o se firmó, no
   /// caduca (acta de entrega de EPP, recepción del RIOHS, declaración
   /// jurada). Se puede guardar sin fecha de vencimiento.
-  noVence         Boolean  @default(false)
+  noVence          Boolean  @default(false)
   /// Tipo especial: al cargarlo se guarda como foto del trabajador en vez
   /// de como documento con vencimiento.
-  esFoto          Boolean  @default(false)
+  esFoto           Boolean  @default(false)
   /// Nombre de la columna equivalente en StaffMember (solo tipos legacy).
-  legacyField     String?  @unique
-  orden           Int      @default(100)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  /// Quién responde por conseguir este documento: RRHH, HSEC, HABILITACION,
+  /// OPERACIONES o TRABAJADOR. Nullable a propósito — un tipo sin área queda
+  /// fuera de la métrica en vez de ensuciarla con un responsable inventado.
+  areaResponsable  String?
+  /// Días HÁBILES desde que se pide el documento hasta que debe estar. Es el
+  /// plazo para gestionarlo, no la vigencia del documento: son cosas distintas
+  /// y conviven.
+  plazoDiasHabiles Int?
+  legacyField      String?  @unique
+  orden            Int      @default(100)
+  activo           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   documentos       DocumentoAcreditacion[]
   requisitos       RequisitoDocumento[]
