@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isAdminRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, normalizeRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
@@ -8,7 +8,12 @@ import { AppShell } from "@/components/app-shell";
 export default async function VehiculosPage() {
   const user = await requireRole(VEHICLE_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
-  const canManageVehicles = canSeeAdminSections || user.role === "VEHICULOS";
+  // Quien puede escribir es quien las acciones del servidor ya aceptan. Esta
+  // línea comparaba contra "VEHICULOS", el nombre antiguo del rol: al guardar
+  // un usuario se persiste con el nombre nuevo, así que dejaba sin botones a
+  // los operativos que las acciones sí dejan pasar. La pantalla era más
+  // estricta que el servidor, que siempre es el error más confuso de depurar.
+  const canManageVehicles = VEHICLE_ROLES.includes(normalizeRole(user.role));
   const today = startOfDay(new Date());
 
   const vehicleWhere = canSeeAdminSections
