@@ -156,9 +156,29 @@ export async function publicarReunionAction(formData: FormData) {
 
   const alta = (s: string | null | undefined) => deInputDate(String(s ?? "")) ?? fechaCaptura;
 
+  // Un compromiso que ya está abierto no se vuelve a crear. Si se procesa dos
+  // veces el mismo daily —o el de hoy repite lo de ayer, que es lo normal en
+  // una reunión diaria— cada publicación agregaba una copia. El tablero
+  // terminaba con el mismo trabajo escrito tres veces y el cumplimiento
+  // contando tres veces lo mismo.
+  const norm = (t: string) =>
+    t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+
+  const abiertos = await db.compromiso.findMany({
+    where: { estado: 0 },
+    select: { accion: true, responsable: true },
+  });
+  const yaAbierto = new Set(abiertos.map(a => `${norm(a.accion)}|${norm(a.responsable)}`));
+  let omitidos = 0;
+
   await db.$transaction(async tx => {
     for (const c of p.compromisos_nuevos ?? []) {
       if (!c.accion?.trim()) continue;
+      // Misma acción y mismo responsable: es el mismo compromiso, no uno nuevo.
+      const clave = `${norm(c.accion)}|${norm(c.responsable || "Por definir")}`;
+      if (yaAbierto.has(clave)) { omitidos++; continue; }
+      yaAbierto.add(clave);
       await tx.compromiso.create({
         data: {
           reunionOrigenId: id, fechaCaptura,
@@ -274,10 +294,10 @@ export async function publicarReunionAction(formData: FormData) {
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
     action: "MINUTA_PUBLICAR", entityType: "reunion", entityId: id,
-    summary: `Publicó la minuta con ${p.compromisos_nuevos?.length ?? 0} compromisos nuevos y ${p.cierres?.length ?? 0} cierres`,
+    summary: `Publicó la minuta con ${(p.compromisos_nuevos?.length ?? 0) - omitidos} compromisos nuevos y ${p.cierres?.length ?? 0} cierres${omitidos > 0 ? ` (${omitidos} omitidos por estar ya abiertos)` : ""}`,
   }).catch(() => {});
 
   revalidatePath("/compromisos");
   revalidatePath("/reuniones");
-  redirect(`/reuniones/${id}/minuta?status=publicada`);
+  redirect(`/reuniones/${id}/minuta?status=publicada${omitidos > 0 ? `&omitidos=${omitidos}` : ""}`);
 }

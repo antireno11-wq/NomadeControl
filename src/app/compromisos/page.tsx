@@ -37,6 +37,8 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
     "no-encontrado": { type: "error", text: "Compromiso no encontrado." },
   }[searchParams?.status ?? ""] ?? null;
 
+  const estadoFiltro = searchParams?.estado ?? "abiertos";
+
   const [categorias, responsables, proyectos, compromisos] = await Promise.all([
     getCategorias(),
     getResponsables(),
@@ -63,8 +65,10 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
     if (searchParams?.responsable && c.responsable !== searchParams.responsable) return false;
     if (searchParams?.contrato && c.contratoId !== searchParams.contrato) return false;
     if (searchParams?.categoria && c.oportunidad !== searchParams.categoria) return false;
-    if (searchParams?.estado === "abiertos" && c.estado === 1) return false;
-    if (searchParams?.estado === "cerrados" && c.estado !== 1) return false;
+    // Por defecto se muestran solo los pendientes: el tablero es una cola de
+    // trabajo, no un archivo. Los cerrados se piden explícitamente.
+    if (estadoFiltro === "abiertos" && c.estado === 1) return false;
+    if (estadoFiltro === "cerrados" && c.estado !== 1) return false;
     return true;
   });
 
@@ -142,6 +146,14 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
                 {proyectos.filter(p => p.ambito !== "interno").map(p => (
                   <option key={p.id} value={p.id}>{p.mandanteNombre} — {p.nombre}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="f-estado">Estado</label>
+              <select id="f-estado" name="estado" defaultValue={estadoFiltro}>
+                <option value="abiertos">Solo pendientes</option>
+                <option value="cerrados">Solo cerrados</option>
+                <option value="todos">Todos</option>
               </select>
             </div>
             <button type="submit">Filtrar</button>
