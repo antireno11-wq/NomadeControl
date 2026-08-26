@@ -1066,6 +1066,15 @@ export function ExtractClient({
                                   Se guarda como hoja adicional del mismo documento.
                                 </div>
                               )}
+                              <button
+                                type="button"
+                                className="plano"
+                                disabled={row.applied}
+                                onClick={() => updateRow(row.rowId, { sinVencimiento: true, expiryDate: null })}
+                                style={{ width: "auto", padding: 0, fontSize: "0.68rem", textDecoration: "underline", display: "block", marginTop: 3 }}
+                              >
+                                no vence
+                              </button>
                             </>
                           )}
                         </td>
@@ -1107,10 +1116,30 @@ export function ExtractClient({
                             <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
                               Se guarda como foto
                             </span>
-                          ) : !pideFecha || row.sinVencimiento ? (
+                          ) : !pideFecha ? (
+                            /* El tipo es una constancia según el catálogo: eso no
+                               se discute por documento. */
                             <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
                               ∞ No vence
                             </span>
+                          ) : row.sinVencimiento ? (
+                            /* Acá «no vence» lo decidió la lectura, no el catálogo, y
+                               puede estar mal: tiene que poder corregirse. Antes era
+                               texto fijo y el error quedaba sin salida. */
+                            <div style={{ display: "grid", gap: 2 }}>
+                              <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
+                                ∞ No vence
+                              </span>
+                              <button
+                                type="button"
+                                className="plano"
+                                disabled={row.applied}
+                                onClick={() => updateRow(row.rowId, { sinVencimiento: false })}
+                                style={{ width: "auto", padding: 0, fontSize: "0.68rem", textDecoration: "underline", textAlign: "left" }}
+                              >
+                                sí vence, poner fecha
+                              </button>
+                            </div>
                           ) : (
                             <>
                               <input
