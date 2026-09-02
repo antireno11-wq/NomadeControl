@@ -884,7 +884,23 @@ export async function applyExtractionsAction(
       if (tipo.legacyField && fechaVencimiento) {
         await db.staffMember.update({
           where: { id: workerId },
-          data: { [tipo.legacyField]: fechaVencimiento },
+          data: {
+            [tipo.legacyField]: fechaVencimiento,
+            // Un contrato con fecha deja de ser indefinido.
+            ...(tipo.codigo === "contrato_trabajo" ? { contractIsIndefinite: false } : {}),
+          },
+        });
+      }
+
+      // Un contrato o anexo indefinido no tiene fecha, así que el espejo de
+      // arriba no corría y el trabajador seguía figurando a plazo fijo con la
+      // fecha vieja. De ahí dependen la etiqueta de la ficha y los requisitos
+      // condicionados al contrato indefinido —las pólizas—, que no se le
+      // pedían a nadie.
+      if ((tipo.codigo === "contrato_trabajo" || tipo.codigo === "anexo_contrato") && !tieneFecha) {
+        await db.staffMember.update({
+          where: { id: workerId },
+          data: { contractIsIndefinite: true, contractEndDate: null },
         });
       }
 
