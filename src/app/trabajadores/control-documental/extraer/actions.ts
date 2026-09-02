@@ -615,6 +615,7 @@ export async function applyExtractionsAction(
 ): Promise<{
   applied: number;
   creados: Array<{ id: string; nombre: string }>;
+  reactivados: string[];
   errors: Array<{ workerId: string; error: string }>;
 }> {
   const user = await requireRole(STAFF_MANAGER_ROLES);
@@ -627,6 +628,8 @@ export async function applyExtractionsAction(
 
   const errors: Array<{ workerId: string; error: string }> = [];
   const creados: Array<{ id: string; nombre: string }> = [];
+  /** Estaban de baja y volvieron porque se les cargaron documentos. */
+  const reactivados: string[] = [];
   let applied = 0;
 
   // ── Guardar los archivos una sola vez ────────────────────────────────
@@ -682,15 +685,32 @@ export async function applyExtractionsAction(
 
   for (const grupo of grupos) {
     try {
-      // ¿Ya existe alguien con ese RUT o nombre? Reusar antes que duplicar.
+      // ¿Ya existe alguien con ese RUT? Reusar antes que duplicar. Se busca
+      // también entre los inactivos: es la misma persona, y crear una ficha
+      // nueva le partiría el historial en dos.
       let existenteId: string | null = null;
+      let existenteInactivo = false;
       const rutNorm = normalizarRut(grupo.rut);
       if (rutNorm) {
         const candidatos = await db.staffMember.findMany({
           where: { nationalId: { not: null } },
-          select: { id: true, nationalId: true },
+          select: { id: true, nationalId: true, isActive: true },
         });
-        existenteId = candidatos.find(c => normalizarRut(c.nationalId) === rutNorm)?.id ?? null;
+        const hallado = candidatos.find(c => normalizarRut(c.nationalId) === rutNorm) ?? null;
+        existenteId = hallado?.id ?? null;
+        existenteInactivo = Boolean(hallado && !hallado.isActive);
+      }
+
+      // Si estaba de baja, se reactiva. Antes los documentos se guardaban en
+      // una ficha invisible: no aparecía en el tablero ni en la matriz, y la
+      // pantalla decía que se habían agregado igual. Cargarle documentos a
+      // alguien es la señal más clara de que volvió.
+      if (existenteId && existenteInactivo) {
+        await db.staffMember.update({
+          where: { id: existenteId },
+          data: { isActive: true, motivoBaja: null, fechaBaja: null },
+        });
+        reactivados.push(grupo.nombre);
       }
 
       const staffMemberId = existenteId ?? (await (async () => {
@@ -708,6 +728,15 @@ export async function applyExtractionsAction(
           select: { id: true, fullName: true },
         });
         creados.push({ id: creado.id, nombre: creado.fullName });
+
+        // La acreditación también se registra en la tabla nueva. Sin esto, los
+        // trabajadores creados después del arranque quedaban fuera del modelo
+        // de dos faenas, porque la migración solo corre una vez por proceso.
+        if (asignacion?.proyectoId) {
+          await db.trabajadorProyecto.create({
+            data: { staffMemberId: creado.id, proyectoId: asignacion.proyectoId },
+          }).catch(() => {});
+        }
         return creado.id;
       })());
 
@@ -883,5 +912,5 @@ export async function applyExtractionsAction(
     for (const c of creados) revalidatePath(`/trabajadores/${c.id}`);
   }
 
-  return { applied, creados, errors };
+  return { applied, creados, reactivados, errors };
 }

@@ -224,7 +224,7 @@ export function ExtractClient({
   const [archivos, setArchivos] = useState<ArchivoInfo[]>([]);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [applyResult, setApplyResult] = useState<{ applied: number; creados: number; errors: number } | null>(null);
+  const [applyResult, setApplyResult] = useState<{ applied: number; creados: number; reactivados: string[]; errors: number } | null>(null);
   const [isPending, startTransition] = useTransition();
   // Por defecto se combinan: dos caras de una cédula son un documento, no dos.
   const [accionGrupo, setAccionGrupo] = useState<Record<string, AccionGrupo>>({});
@@ -577,7 +577,7 @@ export function ExtractClient({
       );
       const appliedIds = new Set(readyRows.map(r => r.rowId));
       setRows(prev => prev.map(r => appliedIds.has(r.rowId) ? { ...r, applied: true } : r));
-      setApplyResult({ applied: result.applied, creados: result.creados.length, errors: result.errors.length });
+      setApplyResult({ applied: result.applied, creados: result.creados.length, reactivados: result.reactivados, errors: result.errors.length });
     });
   }
 
@@ -631,6 +631,14 @@ export function ExtractClient({
         <div className="alert success">
           ✅ Se guardaron <strong>{applyResult.applied}</strong> documento{applyResult.applied !== 1 ? "s" : ""}
           {applyResult.creados > 0 && <> · se crearon <strong>{applyResult.creados}</strong> trabajador{applyResult.creados !== 1 ? "es" : ""}</>}
+          {/* Reactivar a alguien no puede ser silencioso: cambia quién aparece
+              en el tablero y en la matriz. */}
+          {applyResult.reactivados.length > 0 && (
+            <div style={{ marginTop: 4, color: "#9a6300" }}>
+              Se reactivó a <strong>{applyResult.reactivados.join(", ")}</strong>, que estaba de baja.
+              Si fue un error, vuelve a darle de baja desde su ficha.
+            </div>
+          )}
           {applyResult.errors > 0 && <> · {applyResult.errors} error(es)</>}
         </div>
       )}
