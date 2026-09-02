@@ -151,6 +151,9 @@ async function asegurarProgramas(): Promise<void> {
   }
 
   await sembrarRequisitosDeRigger();
+  // Idempotente y una vez por proceso. Va acá para que la tabla de
+  // acreditaciones no arranque vacía el día que el cálculo la use.
+  await migrarAcreditaciones().catch(() => {});
 
   // Los documentos de contratación que había sembrado por error en la matriz
   // del mandante: se quitan de ahí, donde bloqueaban el ingreso a faena. En la
@@ -188,6 +191,11 @@ async function asegurarProgramas(): Promise<void> {
  * los edite o los borre desde la grilla manda por sobre esto.
  */
 async function sembrarRequisitosDeRigger(): Promise<void> {
+  // Se asegura la calificación acá en vez de esperar a que otra pantalla la
+  // cree: esto corría al arrancar y `getCalificaciones` solo se llama al abrir
+  // la ficha de un trabajador, así que en una base nueva los requisitos del
+  // rigger no se sembraban hasta el siguiente reinicio del servidor.
+  await getCalificaciones().catch(() => {});
   const rigger = await db.calificacion.findUnique({
     where: { nombre: "Rigger" }, select: { id: true },
   });

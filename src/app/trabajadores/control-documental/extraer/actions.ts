@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, extraerFirmantes, extraerMrz, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento } from "@/lib/acreditacion-db";
-import { agruparPorPersona, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
+import { agruparPorPersona, seleccionarVigentes, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -61,16 +61,21 @@ export async function extractDocumentsAction(
     // veían iguales.
     db.documentoAcreditacion.findMany({
       where: { anulado: false },
-      select: { staffMemberId: true, tipoDocumentoId: true, fechaVencimiento: true, sinVencimiento: true },
-      orderBy: { fechaVencimiento: "desc" },
+      select: {
+        id: true, staffMemberId: true, tipoDocumentoId: true, fechaVencimiento: true,
+        sinVencimiento: true, fechaEmision: true, anulado: true, createdAt: true,
+      },
     }),
   ]);
 
+  // Cuál es el vigente lo decide seleccionarVigentes, que es la única
+  // autoridad sobre eso en todo el sistema. Ordenar por fechaVencimiento
+  // descendente acá era distinto y además equivocado: en Postgres los NULL
+  // van primeros en DESC, así que un documento sin fecha se presentaba como
+  // el actual por encima de uno con vencimiento real.
   const vigentePorPar = new Map<string, { vence: string | null; sinVencimiento: boolean }>();
-  for (const v of vigentes) {
-    const k = `${v.staffMemberId}|${v.tipoDocumentoId}`;
-    if (vigentePorPar.has(k)) continue;  // ya ordenado: el primero es el más lejano
-    vigentePorPar.set(k, {
+  for (const [clave, v] of seleccionarVigentes(vigentes)) {
+    vigentePorPar.set(clave, {
       vence: v.fechaVencimiento ? v.fechaVencimiento.toISOString().slice(0, 10) : null,
       sinVencimiento: v.sinVencimiento,
     });
