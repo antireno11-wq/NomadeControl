@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, summarizeVehicleExpiries } from "@/lib/vehicle-status";
 import { AppShell } from "@/components/app-shell";
 import { VehicleChecklistForm } from "../vehicle-checklist-form";
+import { RESULTADO_LABEL, type ResultadoChecklist } from "@/lib/checklist-vehiculos";
 import { VehicleDocumentForm } from "../vehicle-document-form";
 import { VehicleForm } from "../vehicle-form";
 
@@ -92,8 +93,19 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
             <div className="dashboard-kpi-value" style={{ fontSize: "1.45rem" }}>
               {latestChecklist ? formatDisplayDate(latestChecklist.date) : "-"}
             </div>
+            {/* El veredicto va aquí, grande: es la respuesta a la única pregunta
+                que importa antes de salir. */}
+            {latestChecklist && (() => {
+              const r = RESULTADO_LABEL[(latestChecklist.resultado as ResultadoChecklist) ?? "apto"];
+              const color = r.tone === "danger" ? "#dc2626" : r.tone === "warn" ? "#9a6300" : "#16a34a";
+              return (
+                <div style={{ marginTop: 6, fontWeight: 800, color, fontSize: "0.9rem" }}>{r.label}</div>
+              );
+            })()}
             <div className="dashboard-kpi-meta">
-              {latestChecklist ? `${latestChecklist.driver.name} · ${checklistIssues} observaciones` : "Aún no hay checklist"}
+              {latestChecklist
+                ? `${latestChecklist.driver.name}${latestChecklist.resultadoMotivo ? ` · ${latestChecklist.resultadoMotivo}` : checklistIssues > 0 ? ` · ${checklistIssues} observaciones` : ""}`
+                : "Aún no hay checklist"}
             </div>
           </div>
         </div>
@@ -173,7 +185,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
         <div className="vehicle-detail-grid">
           <div className="card" style={{ gridColumn: "span 5" }}>
             <h2 style={{ marginTop: 0 }}>Checklist de salida</h2>
-            <VehicleChecklistForm vehicleId={vehicle.id} odometerKm={vehicle.odometerKm} />
+            <VehicleChecklistForm vehicleId={vehicle.id} odometerKm={vehicle.odometerKm} tipoVehiculo={vehicle.type} />
           </div>
 
           <div className="card table-card" style={{ gridColumn: "span 7" }}>
@@ -198,8 +210,32 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
                       <td>{checklist.odometerKm.toLocaleString("es-CL")} km</td>
                       <td>{checklist.fuelPercent}%</td>
                       <td>
-                        {issueCount > 0 ? `${issueCount} alerta(s)` : "Sin observaciones"}
-                        {checklist.observations ? ` · ${checklist.observations}` : ""}
+                        {(() => {
+                          const r = RESULTADO_LABEL[(checklist.resultado as ResultadoChecklist) ?? "apto"];
+                          const color = r.tone === "danger" ? "#dc2626" : r.tone === "warn" ? "#9a6300" : "#16a34a";
+                          const neum = Array.isArray(checklist.neumaticos)
+                            ? (checklist.neumaticos as Array<{ posicion: string; mm: number | null }>)
+                            : [];
+                          return (
+                            <>
+                              <strong style={{ color }}>{r.label}</strong>
+                              {neum.length > 0 && (
+                                <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+                                  {" · "}{neum.map(n => `${n.mm ?? "?"}`).join(" / ")} mm
+                                </span>
+                              )}
+                              {checklist.resultadoMotivo && (
+                                <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>{checklist.resultadoMotivo}</div>
+                              )}
+                              {!checklist.resultadoMotivo && issueCount > 0 && (
+                                <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>{issueCount} alerta(s)</div>
+                              )}
+                              {checklist.observations && (
+                                <div style={{ fontSize: "0.78rem" }}>{checklist.observations}</div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </td>
                     </tr>
                   );

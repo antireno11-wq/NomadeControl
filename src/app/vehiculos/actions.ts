@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ADMIN_ROLES, VEHICLE_ROLES, requireRole } from "@/lib/auth";
+import {
+  evaluarChecklist, plantillaPara, ITEMS_COMUNES,
+  type EstadoNeumatico, type NeumaticoMedido,
+} from "@/lib/checklist-vehiculos";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
@@ -369,6 +373,39 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
     const payload = parsed.data;
     const date = normalizeDateOnly(payload.date);
 
+    // La plantilla depende del tipo de vehículo: un camión tiene seis ruedas
+    // y frenos de aire, una camioneta tiene barra antivuelco y 4x4.
+    const vehiculo = await db.vehicle.findUnique({
+      where: { id: payload.vehicleId }, select: { type: true },
+    });
+    if (!vehiculo) return { error: "Vehículo no encontrado.", success: "" };
+    const plantilla = plantillaPara(vehiculo.type);
+
+    // Neumáticos: milímetros por posición. Vienen como neum_<i>_mm y
+    // neum_<i>_estado. Sin medida no hay veredicto favorable posible.
+    const estadosValidos = new Set(["bueno", "desgaste_parejo", "desgaste_irregular", "danado"]);
+    const neumaticos: NeumaticoMedido[] = plantilla.posiciones.map((posicion, i) => {
+      const mmRaw = String(formData.get(`neum_${i}_mm`) ?? "").trim().replace(",", ".");
+      const mm = mmRaw === "" ? null : Number(mmRaw);
+      const estadoRaw = String(formData.get(`neum_${i}_estado`) ?? "").trim();
+      return {
+        posicion,
+        mm: mm != null && Number.isFinite(mm) && mm >= 0 && mm <= 30 ? mm : null,
+        estado: estadosValidos.has(estadoRaw) ? (estadoRaw as EstadoNeumatico) : null,
+      };
+    });
+
+    const comunes = Object.fromEntries(
+      ITEMS_COMUNES.map(i => [i.clave, formData.get(i.clave) === "on"]),
+    );
+    const extras = Object.fromEntries(
+      plantilla.extras.map(i => [i.clave, formData.get(`extra_${i.clave}`) === "on"]),
+    );
+
+    // El veredicto lo pone el sistema. Que el conductor lo eligiera era la
+    // manera de que todo saliera "conforme".
+    const veredicto = evaluarChecklist({ plantilla, neumaticos, comunes, extras });
+
     const checklist = await db.vehicleChecklist.create({
       data: {
         vehicleId: payload.vehicleId,
@@ -378,9 +415,15 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
         fuelPercent: payload.fuelPercent,
         observations: payload.observations || null,
         incidentReported: checked(payload.incidentReported),
+        neumaticos: neumaticos as never,
+        itemsExtra: extras,
+        resultado: veredicto.resultado,
+        resultadoMotivo: veredicto.motivos.length > 0 ? veredicto.motivos.join(" · ") : null,
+        // tiresOk se mantiene como resumen para lo que ya lo lee, pero ahora
+        // sale de la medición y no de una casilla.
+        tiresOk: !veredicto.motivos.some(m => /mm|neum/i.test(m)),
         frontLightsOk: checked(payload.frontLightsOk),
         rearLightsOk: checked(payload.rearLightsOk),
-        tiresOk: checked(payload.tiresOk),
         brakesOk: checked(payload.brakesOk),
         mirrorsOk: checked(payload.mirrorsOk),
         hornOk: checked(payload.hornOk),
@@ -412,7 +455,16 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
 
     revalidatePath("/vehiculos");
     revalidatePath(`/vehiculos/${payload.vehicleId}`);
-    return { error: "", success: "Checklist registrado correctamente." };
+    if (veredicto.resultado === "no_apto") {
+      return {
+        error: `Registrado como NO APTO — el vehículo no debe salir. ${veredicto.motivos.join(" · ")}`,
+        success: "",
+      };
+    }
+    if (veredicto.resultado === "apto_con_observaciones") {
+      return { error: "", success: `Registrado. Apto con observaciones: ${veredicto.motivos.join(" · ")}` };
+    }
+    return { error: "", success: "Registrado. Vehículo apto para salir." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No se pudo registrar el checklist.", success: "" };
   }

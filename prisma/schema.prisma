@@ -727,8 +727,21 @@ model VehicleChecklist {
   cleanlinessOk    Boolean  @default(true)
   observations     String?
   incidentReported Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+
+  /// Neumáticos medidos por posición: [{ posicion, mm, estado }]. Un solo
+  /// "neumáticos OK" se marcaba sin mirar; la profundidad en milímetros hay
+  /// que medirla, y esa es la diferencia entre un checklist y un trámite.
+  neumaticos      Json?
+  /// Ítems que dependen del tipo de vehículo (tacógrafo, quinta rueda,
+  /// barra antivuelco…), como { clave: boolean }.
+  itemsExtra      Json?
+  /// apto | apto_con_observaciones | no_apto. Se calcula al guardar, no lo
+  /// elige el conductor: un vehículo con un neumático bajo el mínimo no sale.
+  resultado       String  @default("apto")
+  resultadoMotivo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([vehicleId, date])
   @@index([driverId, date])

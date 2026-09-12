@@ -16,6 +16,8 @@ type BaseVehicleDates = {
 };
 
 type ChecklistSnapshot = {
+  /** apto | apto_con_observaciones | no_apto. Lo calcula el checklist. */
+  resultado?: string;
   incidentReported?: boolean;
   frontLightsOk?: boolean;
   rearLightsOk?: boolean;
@@ -157,6 +159,12 @@ export function getVehicleHealthStatus(
 
   if (vehicle.status === "MANTENCION") {
     return { label: "Mantención", tone: "warn" as const };
+  }
+
+  // Un checklist NO APTO manda sobre todo lo demás: el vehículo puede tener
+  // los papeles al día y aun así no debe salir con un neumático bajo el mínimo.
+  if (checklist?.resultado === "no_apto") {
+    return { label: "No apto para salir", tone: "danger" as const };
   }
 
   if (expired.length > 0 || checklistIssues > 0) {
