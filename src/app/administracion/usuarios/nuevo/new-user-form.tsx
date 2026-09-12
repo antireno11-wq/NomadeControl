@@ -25,6 +25,13 @@ const ROLES = [
     adminOnly: false,
   },
   {
+    value: "CONDUCTOR",
+    label: "Conductor",
+    icon: "🚚",
+    description: "Solo el checklist de salida de vehículos. No ve personal ni campamentos",
+    adminOnly: false,
+  },
+  {
     value: "ADMINISTRADOR",
     label: "Administrador",
     icon: "⚙️",
@@ -39,6 +46,7 @@ const ADMIN_VALUES = ["ADMINISTRADOR"];
 const DEFAULT_MODULES_BY_ROLE: Record<string, string[]> = {
   OPERATIVO: ["trabajadores", "vehiculos", "operaciones"],
   CONSULTA:  ["trabajadores"],
+  CONDUCTOR: ["vehiculos"],
 };
 
 type CampOption = { id: string; name: string };

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { ADMIN_ROLES, VEHICLE_ROLES, requireRole } from "@/lib/auth";
+import { ADMIN_ROLES, VEHICLE_ROLES, VEHICLE_MANAGE_ROLES, requireRole } from "@/lib/auth";
 import {
   evaluarChecklist, plantillaPara, ITEMS_COMUNES,
   type EstadoNeumatico, type NeumaticoMedido,
@@ -107,7 +107,7 @@ function checked(value?: string) {
 
 export async function createVehicleAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const user = await requireRole(VEHICLE_ROLES);
+    const user = await requireRole(VEHICLE_MANAGE_ROLES);
 
     const parsed = vehicleSchema.safeParse({
       plate: formData.get("plate"),
@@ -204,7 +204,7 @@ export async function createVehicleAction(_: ActionState, formData: FormData): P
 
 export async function updateVehicleAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const user = await requireRole(VEHICLE_ROLES);
+    const user = await requireRole(VEHICLE_MANAGE_ROLES);
 
     const parsed = updateVehicleSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
@@ -303,7 +303,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
 
 export async function addVehicleDocumentAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireRole(VEHICLE_ROLES);
+    await requireRole(VEHICLE_MANAGE_ROLES);
 
     const parsed = vehicleDocumentSchema.safeParse({
       vehicleId: formData.get("vehicleId"),

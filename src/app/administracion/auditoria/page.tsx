@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { ADMIN_ROLES, requireRole } from "@/lib/auth";
 import { requireAuditOwner } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/app-shell";
@@ -10,7 +10,10 @@ function formatDateTime(date: Date) {
 }
 
 export default async function AuditoriaPage() {
-  const user = await requireUser();
+  // Solo pedía sesión, no rol: cualquier usuario con cuenta —Consulta
+  // incluido— podía leer quién hizo qué en todo el sistema. El menú solo se
+  // lo mostraba a los administradores, pero la URL estaba abierta.
+  const user = await requireRole(ADMIN_ROLES);
   await requireAuditOwner(user);
 
   const logs = await db.auditLog.findMany({

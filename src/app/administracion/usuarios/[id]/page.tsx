@@ -49,6 +49,10 @@ const ROLE_SUMMARY: Record<string, { puede: string[]; noPuede: string[] }> = {
     puede: ["Módulo de Vehículos únicamente"],
     noPuede: ["Todos los demás módulos"],
   },
+  CONDUCTOR: {
+    puede: ["Ver los vehículos", "Hacer el checklist de salida"],
+    noPuede: ["Crear o editar vehículos", "Subir documentos", "Personal, campamentos, compromisos y administración"],
+  },
   RRHH: {
     puede: ["Gestión completa de trabajadores", "Documentos, EPP e inducciones", "Tareas", "Biblioteca"],
     noPuede: ["Operaciones de campamento", "HSEC / Prevención", "Bodega", "Vehículos", "Administración"],
@@ -151,6 +155,7 @@ export default async function EditarUsuarioPage({
               <select id="edit-user-role" name="role" defaultValue={normalizeRole(targetUser.role)}>
                 <option value="OPERATIVO">Operativo</option>
                 <option value="CONSULTA">Consulta</option>
+                <option value="CONDUCTOR">Conductor — solo checklist de vehículos</option>
                 {canDeleteUsers ? <option value="ADMINISTRADOR">Administrador</option> : null}
               </select>
             </div>

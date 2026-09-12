@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isAdminRole, normalizeRole, VEHICLE_ROLES, requireRole } from "@/lib/auth";
+import { isAdminRole, normalizeRole, VEHICLE_ROLES, VEHICLE_MANAGE_ROLES, requireRole } from "@/lib/auth";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
@@ -13,7 +13,7 @@ export default async function VehiculosPage() {
   // un usuario se persiste con el nombre nuevo, así que dejaba sin botones a
   // los operativos que las acciones sí dejan pasar. La pantalla era más
   // estricta que el servidor, que siempre es el error más confuso de depurar.
-  const canManageVehicles = VEHICLE_ROLES.includes(normalizeRole(user.role));
+  const canManageVehicles = VEHICLE_MANAGE_ROLES.includes(normalizeRole(user.role));
   const today = startOfDay(new Date());
 
   const vehicleWhere = canSeeAdminSections

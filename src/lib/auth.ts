@@ -18,20 +18,25 @@ const SESSION_TTL_DAYS = 7;
 // funcionando gracias a `normalizeRole()`: si un usuario existente tiene
 // rol="RRHH", el sistema lo trata como "OPERATIVO" sin necesidad de migrar
 // la BD. Al editar el usuario, se persiste con el nombre nuevo.
-export type AppRole = "ADMINISTRADOR" | "OPERATIVO" | "CONSULTA";
+// Conductor: solo el checklist de salida y ver su vehículo. No es un
+// Operativo con un módulo menos —los módulos dicen dónde, el rol dice qué se
+// puede hacer— y un chofer no crea vehículos ni sube documentos.
+export type AppRole = "ADMINISTRADOR" | "OPERATIVO" | "CONSULTA" | "CONDUCTOR";
 
-export const MANAGED_USER_ROLE_VALUES = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"] as const;
+export const MANAGED_USER_ROLE_VALUES = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA", "CONDUCTOR"] as const;
 
 export const ROLE_LABEL: Record<AppRole, string> = {
   ADMINISTRADOR: "Administrador",
   OPERATIVO:     "Operativo",
   CONSULTA:      "Consulta",
+  CONDUCTOR:     "Conductor",
 };
 
 export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   ADMINISTRADOR: "Todo: gestión de usuarios, configuración, campamentos, personal, vehículos, borrar cosas",
   OPERATIVO:     "Crea/edita en Personal, Vehículos y Campamentos. No gestiona usuarios ni config",
   CONSULTA:      "Solo lectura de todos los paneles y fichas",
+  CONDUCTOR:     "Solo el checklist de salida de vehículos. No ve nada más",
 };
 
 // Mapeo de roles legacy → nuevos. Se aplica en memoria al leer el usuario.
@@ -47,7 +52,7 @@ const LEGACY_ROLE_MAP: Record<string, AppRole> = {
 };
 
 export function normalizeRole(role: string): AppRole {
-  if (role === "ADMINISTRADOR" || role === "OPERATIVO" || role === "CONSULTA") {
+  if (role === "ADMINISTRADOR" || role === "OPERATIVO" || role === "CONSULTA" || role === "CONDUCTOR") {
     return role;
   }
   return LEGACY_ROLE_MAP[role] ?? "CONSULTA";
@@ -58,10 +63,13 @@ export function normalizeRole(role: string): AppRole {
 // ya normaliza. Todos apuntan a los nuevos valores.
 export const FULL_ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR"];
 export const ADMIN_ROLES: AppRole[] = ["ADMINISTRADOR"];
-export const VEHICLE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
+/** Quién entra a Vehículos: incluye al conductor, que hace el checklist. */
+export const VEHICLE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONDUCTOR"];
+/** Quién crea, edita y sube documentos de vehículos. El conductor no. */
+export const VEHICLE_MANAGE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 export const OPERATION_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 export const TRABAJADORES_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
-export const PROFILE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
+export const PROFILE_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA", "CONDUCTOR"];
 export const SUPERVISOR_ROLES: AppRole[] = ["OPERATIVO"];
 export const BIBLIOTECA_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
 export const TAREAS_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
@@ -72,6 +80,7 @@ export const HSEC_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 export function defaultRouteForRole(role: string) {
   const norm = normalizeRole(role);
   if (norm === "CONSULTA") return "/trabajadores/control-documental";
+  if (norm === "CONDUCTOR") return "/vehiculos";
   return "/";
 }
 
@@ -133,11 +142,15 @@ export function canAccessCampOperations(role: string) {
 
 export function canAccessVehicles(role: string) {
   const norm = normalizeRole(role);
-  return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
+  return norm === "ADMINISTRADOR" || norm === "OPERATIVO" || norm === "CONDUCTOR";
+}
+
+export function isConductorRole(role: string) {
+  return normalizeRole(role) === "CONDUCTOR";
 }
 
 export function canAccessBiblioteca(role: string) {
-  return true; // los 3 niveles ven biblioteca cuando está habilitada
+  return !isConductorRole(role); // los 3 niveles ven biblioteca; el conductor no
 }
 
 export function canAccessTareas(role: string) {
@@ -150,8 +163,8 @@ export function canManageTareas(role: string) {
   return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
-export function canViewTareas(_role: string) {
-  return true; // los 3 niveles ven tareas cuando está habilitado
+export function canViewTareas(role: string) {
+  return !isConductorRole(role); // los 3 niveles ven tareas; el conductor no
 }
 
 export function canAccessEvaluaciones(role: string) {
@@ -164,8 +177,11 @@ export function canAccessHSEC(role: string) {
   return norm === "ADMINISTRADOR" || norm === "OPERATIVO";
 }
 
-export function canAccessTrabajadores(_role: string) {
-  return true; // los 3 niveles ven trabajadores (consulta = solo lectura)
+export function canAccessTrabajadores(role: string) {
+  // Los 3 niveles ven trabajadores (consulta = solo lectura). El conductor
+  // no: la portada armaba su lista de módulos con estas funciones y le
+  // ofrecía Control documental para redirigirlo al hacer clic.
+  return !isConductorRole(role);
 }
 
 // ── Permisos por módulo ──────────────────────────────────────────────────────
@@ -194,6 +210,10 @@ export function canAccessModule(
   defaultCheck: (role: string) => boolean
 ): boolean {
   if (isAdminRole(role)) return true;
+  // El conductor no se configura: ve Vehículos y nada más. Varias funciones
+  // canAccess* devuelven true para todos los roles y le habrían mostrado
+  // Trabajadores en el menú, para redirigirlo al hacer clic.
+  if (isConductorRole(role)) return module === "vehiculos";
   if (modulePermissions.length === 0) return defaultCheck(role);
   return modulePermissions.includes(module);
 }
