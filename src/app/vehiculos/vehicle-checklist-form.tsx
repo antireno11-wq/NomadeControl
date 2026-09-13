@@ -122,6 +122,19 @@ export function VehicleChecklistForm({
         </div>
       )}
 
+      {/* ── Fotos ──────────────────────────────────────────────────── */}
+      <div style={{ gridColumn: "1 / -1" }}>
+        <label htmlFor="check-fotos">Fotos del levantamiento</label>
+        {/* capture="environment" abre la cámara trasera en el celular, que es
+            donde se hace el checklist. En escritorio es un selector normal. */}
+        <input id="check-fotos" name="fotos" type="file" accept="image/*" capture="environment" multiple
+               style={{ padding: "8px" }} />
+        <div className="section-caption" style={{ marginTop: 4 }}>
+          Fotografía cualquier cosa que reportes: el neumático, el daño, el extintor vencido.
+          Una descripción se discute; una foto no. Hasta 8 fotos de 8 MB.
+        </div>
+      </div>
+
       <div style={{ gridColumn: "1 / -1" }}>
         <label htmlFor="check-observations">Observaciones</label>
         <textarea id="check-observations" name="observations" placeholder="Daños, faltantes, ruidos, algo que el próximo conductor deba saber..." />

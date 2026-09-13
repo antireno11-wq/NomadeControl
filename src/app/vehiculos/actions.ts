@@ -437,6 +437,45 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
       }
     });
 
+    // Fotos del levantamiento. Se guardan una a una y un fallo en una no
+    // bota el checklist: el registro de la inspección vale más que la foto,
+    // pero se dice cuántas quedaron fuera para que no se pierdan en silencio.
+    const permitidos = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const MAX_FOTO = 8 * 1024 * 1024;
+    const MAX_FOTOS = 8;
+    const fotos = formData.getAll("fotos").filter((f): f is File => f instanceof File && f.size > 0);
+    let fotosGuardadas = 0;
+    const fotosRechazadas: string[] = [];
+    for (const [i, foto] of fotos.slice(0, MAX_FOTOS).entries()) {
+      if (!permitidos.includes(foto.type)) { fotosRechazadas.push(`${foto.name}: formato no admitido`); continue; }
+      if (foto.size > MAX_FOTO) { fotosRechazadas.push(`${foto.name}: supera 8 MB`); continue; }
+      try {
+        const buffer = Buffer.from(await foto.arrayBuffer());
+        const archivo = await db.archivoAcreditacion.create({
+          data: {
+            contenido: buffer,
+            originalFilename: foto.name || `checklist-${i + 1}.jpg`,
+            mimeType: foto.type,
+            fileSize: buffer.length,
+            subidoPorNombre: user.name,
+          },
+          select: { id: true },
+        });
+        await db.checklistFoto.create({
+          data: { checklistId: checklist.id, archivoId: archivo.id, orden: i },
+        });
+        fotosGuardadas++;
+      } catch (e) {
+        fotosRechazadas.push(`${foto.name}: no se pudo guardar`);
+        console.error("Foto de checklist no guardada", foto.name, e);
+      }
+    }
+    if (fotos.length > MAX_FOTOS) fotosRechazadas.push(`${fotos.length - MAX_FOTOS} fotos de más: el máximo es ${MAX_FOTOS}`);
+    const notaFotos = [
+      fotosGuardadas > 0 ? `${fotosGuardadas} foto${fotosGuardadas === 1 ? "" : "s"} adjunta${fotosGuardadas === 1 ? "" : "s"}` : null,
+      fotosRechazadas.length > 0 ? `No se guardaron: ${fotosRechazadas.join("; ")}` : null,
+    ].filter(Boolean).join(". ");
+
     await db.vehicle.update({
       where: { id: payload.vehicleId },
       data: { odometerKm: payload.odometerKm }
@@ -455,16 +494,17 @@ export async function saveVehicleChecklistAction(_: ActionState, formData: FormD
 
     revalidatePath("/vehiculos");
     revalidatePath(`/vehiculos/${payload.vehicleId}`);
+    const sufijo = notaFotos ? ` ${notaFotos}.` : "";
     if (veredicto.resultado === "no_apto") {
       return {
-        error: `Registrado como NO APTO — el vehículo no debe salir. ${veredicto.motivos.join(" · ")}`,
+        error: `Registrado como NO APTO — el vehículo no debe salir. ${veredicto.motivos.join(" · ")}.${sufijo}`,
         success: "",
       };
     }
     if (veredicto.resultado === "apto_con_observaciones") {
-      return { error: "", success: `Registrado. Apto con observaciones: ${veredicto.motivos.join(" · ")}` };
+      return { error: "", success: `Registrado. Apto con observaciones: ${veredicto.motivos.join(" · ")}.${sufijo}` };
     }
-    return { error: "", success: "Registrado. Vehículo apto para salir." };
+    return { error: "", success: `Registrado. Vehículo apto para salir.${sufijo}` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No se pudo registrar el checklist.", success: "" };
   }

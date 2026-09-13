@@ -512,6 +512,7 @@ model ArchivoAcreditacion {
   fotoDe             StaffMember[]
   ArchivoDeDocumento ArchivoDeDocumento[]
   DocumentoEmpresa   DocumentoEmpresa[]
+  fotosChecklist     ChecklistFoto[]
 
   @@index([hash])
 }
@@ -703,6 +704,22 @@ model VehicleDocument {
   @@index([vehicleId, expiresAt])
 }
 
+/// Foto adjunta a un checklist de salida. Un neumático liso descrito con
+/// palabras se discute; fotografiado, no. Es la evidencia del levantamiento,
+/// y también lo que protege al conductor que sí lo reportó.
+model ChecklistFoto {
+  id          String              @id @default(cuid())
+  checklistId String
+  checklist   VehicleChecklist    @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  archivoId   String
+  archivo     ArchivoAcreditacion @relation(fields: [archivoId], references: [id], onDelete: Cascade)
+  descripcion String?
+  orden       Int                 @default(0)
+  createdAt   DateTime            @default(now())
+
+  @@index([checklistId])
+}
+
 model VehicleChecklist {
   id               String   @id @default(cuid())
   vehicleId        String
@@ -740,8 +757,9 @@ model VehicleChecklist {
   resultado       String  @default("apto")
   resultadoMotivo String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  fotos     ChecklistFoto[]
 
   @@index([vehicleId, date])
   @@index([driverId, date])

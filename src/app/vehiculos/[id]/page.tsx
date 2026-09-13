@@ -30,7 +30,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
         checklists: {
           take: 10,
           orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-          include: { driver: true }
+          include: { driver: true, fotos: { orderBy: { orden: "asc" }, select: { id: true, archivoId: true, descripcion: true } } }
         }
       }
     }),
@@ -232,6 +232,18 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
                               )}
                               {checklist.observations && (
                                 <div style={{ fontSize: "0.78rem" }}>{checklist.observations}</div>
+                              )}
+                              {checklist.fotos.length > 0 && (
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                                  {checklist.fotos.map(f => (
+                                    <a key={f.id} href={`/api/archivo/${f.archivoId}`} target="_blank" rel="noreferrer"
+                                       title={f.descripcion ?? "Abrir foto"}>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={`/api/archivo/${f.archivoId}`} alt="" loading="lazy"
+                                           style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", display: "block" }} />
+                                    </a>
+                                  ))}
+                                </div>
                               )}
                             </>
                           );
