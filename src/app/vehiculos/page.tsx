@@ -104,11 +104,16 @@ export default async function VehiculosPage() {
       showAdminSections={canSeeAdminSections}
       notifications={notifications}
       rightSlot={
-        canManageVehicles ? (
-          <Link href="/vehiculos/nuevo">
-            <button type="button">Nuevo vehículo</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/vehiculos/checklists">
+            <button type="button" className="secondary">Checklists</button>
           </Link>
-        ) : undefined
+          {canManageVehicles && (
+            <Link href="/vehiculos/nuevo">
+              <button type="button">Nuevo vehículo</button>
+            </Link>
+          )}
+        </div>
       }
     >
       <div className="page-stack">
