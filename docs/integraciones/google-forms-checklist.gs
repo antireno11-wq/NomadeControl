@@ -23,17 +23,37 @@ function alEnviar(e) {
   var archivos = {};
 
   respuesta.getItemResponses().forEach(function (ir) {
-    var titulo = ir.getItem().getTitle();
+    var item = ir.getItem();
+    var titulo = item.getTitle();
     var valor = ir.getResponse();
+    var tipo = item.getType();
+
     // Las preguntas de subir archivo devuelven ids de Drive: se convierten en
     // enlaces, que es lo que Nomade Control guarda.
-    if (ir.getItem().getType() === FormApp.ItemType.FILE_UPLOAD) {
+    if (tipo === FormApp.ItemType.FILE_UPLOAD) {
       var ids = Array.isArray(valor) ? valor : [valor];
       archivos[titulo] = ids.filter(String).map(function (id) {
         return "https://drive.google.com/file/d/" + id + "/view";
       });
       return;
     }
+
+    // Las secciones del SGI son CUADRÍCULAS: una pregunta con filas —"★
+    // Frenos", "Batería / carga"— y columnas C / NC / NA. La respuesta llega
+    // como un arreglo alineado con las filas, SIN el nombre de la fila. Se
+    // expande fila por fila para que cada ítem viaje con su nombre y su ★, que
+    // es lo que Nomade Control usa para decidir si un NC bloquea.
+    if (tipo === FormApp.ItemType.GRID || tipo === FormApp.ItemType.CHECKBOX_GRID) {
+      var filas = tipo === FormApp.ItemType.GRID
+        ? item.asGridItem().getRows()
+        : item.asCheckboxGridItem().getRows();
+      var vals = Array.isArray(valor) ? valor : [valor];
+      filas.forEach(function (fila, i) {
+        respuestas[titulo + " · " + fila] = vals[i] == null ? "" : vals[i];
+      });
+      return;
+    }
+
     respuestas[titulo] = valor;
   });
 

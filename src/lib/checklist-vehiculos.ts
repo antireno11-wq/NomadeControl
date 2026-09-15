@@ -170,3 +170,34 @@ export const RESULTADO_LABEL: Record<ResultadoChecklist, { label: string; tone: 
   apto_con_observaciones: { label: "Apto con observaciones",  tone: "warn" },
   no_apto:                { label: "NO APTO — no debe salir", tone: "danger" },
 };
+
+/**
+ * Veredicto a partir de las respuestas del formulario SGI-F-GE-024.
+ *
+ * Convención del SGI: cada ítem se marca C / NC / NA y los críticos llevan ★
+ * en el nombre. Un NC en un ★ deja el vehículo NO APTO; un NC en cualquier
+ * otro lo deja apto con observaciones. Las claves llegan como
+ * "<sección> · <ítem>", así que la ★ está en la clave.
+ *
+ * No depende de conocer las preguntas: si el formulario cambia de revisión,
+ * mientras mantenga la convención esto sigue funcionando.
+ */
+export function evaluarRespuestasSGI(
+  respuestas: Record<string, string | string[]>,
+): { resultado: ResultadoChecklist; bloqueos: string[]; avisos: string[] } {
+  const esNC = (v: string | string[]) => {
+    const t = (Array.isArray(v) ? v.join(" ") : String(v ?? "")).trim().toUpperCase();
+    return t === "NC" || t.startsWith("NC ") || t.startsWith("NC ·") || t.includes("NO CUMPLE");
+  };
+  const bloqueos: string[] = [];
+  const avisos: string[] = [];
+  for (const [clave, valor] of Object.entries(respuestas)) {
+    if (!esNC(valor)) continue;
+    // Se muestra solo el ítem, sin el prefijo de sección, y sin la estrella.
+    const item = clave.split(" · ").pop()!.replace("★", "").replace(/\s+/g, " ").trim();
+    (clave.includes("★") ? bloqueos : avisos).push(item);
+  }
+  const resultado: ResultadoChecklist =
+    bloqueos.length > 0 ? "no_apto" : avisos.length > 0 ? "apto_con_observaciones" : "apto";
+  return { resultado, bloqueos, avisos };
+}

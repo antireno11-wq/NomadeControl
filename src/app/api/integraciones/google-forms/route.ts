@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { plantillaPara, evaluarChecklist, ITEMS_COMUNES, type NeumaticoMedido } from "@/lib/checklist-vehiculos";
+import { plantillaPara, evaluarChecklist, evaluarRespuestasSGI, ITEMS_COMUNES, type NeumaticoMedido } from "@/lib/checklist-vehiculos";
 
 /**
  * Recibe una respuesta del formulario SGI-F-GE-024 (Google Forms) y la
@@ -39,11 +39,6 @@ function buscar(resp: Record<string, string | string[]>, ...fragmentos: string[]
     }
   }
   return "";
-}
-
-function esNC(v: string | string[]): boolean {
-  const t = (Array.isArray(v) ? v.join(" ") : String(v ?? "")).trim().toUpperCase();
-  return t === "NC" || t.startsWith("NC ") || t.startsWith("NC ·") || t.includes("NO CUMPLE");
 }
 
 export async function POST(req: NextRequest) {
@@ -101,13 +96,9 @@ export async function POST(req: NextRequest) {
 
   // Veredicto por la convención del SGI: NC en un ítem ★ bloquea; NC en otro
   // deja observación. Se recorre todo, sin saber de antemano qué preguntas hay.
-  const bloqueos: string[] = [];
-  const avisos: string[] = [];
-  for (const [pregunta, valor] of Object.entries(r)) {
-    if (!esNC(valor)) continue;
-    const titulo = pregunta.replace(/\s+/g, " ").trim();
-    (pregunta.includes("★") ? bloqueos : avisos).push(titulo.replace("★", "").trim());
-  }
+  const sgi = evaluarRespuestasSGI(r);
+  const bloqueos = [...sgi.bloqueos];
+  const avisos = [...sgi.avisos];
 
   // Si el formulario trae milímetros por neumático, se evalúan igual que en
   // la app. Si no los trae, no se inventan.
@@ -143,7 +134,12 @@ export async function POST(req: NextRequest) {
       date: fecha,
       odometerKm,
       fuelPercent,
-      observations: buscar(r, "observaci") || null,
+      observations: [
+        buscar(r, "da\u00f1os en carrocer") ? `Carrocería: ${buscar(r, "da\u00f1os en carrocer")}` : null,
+        buscar(r, "desviaciones") ? `Desviaciones: ${buscar(r, "desviaciones")}` : null,
+        buscar(r, "supervisor") ? `Supervisor: ${buscar(r, "supervisor")}` : null,
+        buscar(r, "observaci") || null,
+      ].filter(Boolean).join("\n") || null,
       incidentReported: bloqueos.length > 0,
       neumaticos: neumaticos.length > 0 ? (neumaticos as never) : undefined,
       resultado,
