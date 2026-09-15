@@ -11,7 +11,7 @@ import { getCategorias, getResponsables } from "@/lib/ddd-db";
 import { getProyectos } from "@/lib/requisitos-db";
 import {
   crearCompromisoAction, cerrarCompromisoAction,
-  reprogramarCompromisoAction, reabrirCompromisoAction,
+  reprogramarCompromisoAction, reabrirCompromisoAction, editarCompromisoAction,
 } from "./actions";
 
 type SearchParams = {
@@ -31,6 +31,7 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
     cerrado: { type: "success", text: "Compromiso cerrado." },
     reprogramado: { type: "success", text: "Fecha reprogramada. La original queda en el historial." },
     reabierto: { type: "success", text: "Compromiso reabierto." },
+    editado: { type: "success", text: "Compromiso editado. El cambio quedó en la auditoría." },
     ajeno: { type: "error", text: "Solo puedes cerrar los compromisos donde eres responsable." },
     "sin-cierre": { type: "error", text: "Escribe cómo se cerró el compromiso. Sin eso no se puede cerrar." },
     invalido: { type: "error", text: "Revisa los datos del compromiso." },
@@ -258,6 +259,21 @@ export default async function CompromisosPage({ searchParams }: { searchParams?:
                                 <input type="hidden" name="compromisoId" value={c.id} />
                                 <input name="fechaNueva" type="date" required defaultValue={aInputDate(fechaEfectiva(c))} style={{ fontSize: "0.78rem" }} />
                                 <input name="motivo" placeholder="Motivo" style={{ fontSize: "0.78rem" }} />
+                                <button type="submit" style={{ fontSize: "0.74rem", padding: "3px 8px" }}>Guardar</button>
+                              </form>
+                            </details>
+                          )}
+                          {puedeAdministrar && (
+                            <details>
+                              <summary style={{ cursor: "pointer", fontSize: "0.74rem", color: "var(--muted)", listStyle: "none" }}>Editar</summary>
+                              <form action={editarCompromisoAction} style={{ display: "grid", gap: 4, marginTop: 6, padding: 8, background: "var(--surface, #f8fafc)", borderRadius: 8, minWidth: 260 }}>
+                                <input type="hidden" name="compromisoId" value={c.id} />
+                                <label style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Acción</label>
+                                <textarea name="accion" required minLength={4} rows={2} defaultValue={c.accion}
+                                          style={{ fontSize: "0.78rem", fontFamily: "inherit", minHeight: 0 }} />
+                                <label style={{ fontSize: "0.7rem", color: "var(--muted)" }}>Responsable</label>
+                                <input name="responsable" required defaultValue={c.responsable}
+                                       list="responsables-existentes" style={{ fontSize: "0.78rem" }} />
                                 <button type="submit" style={{ fontSize: "0.74rem", padding: "3px 8px" }}>Guardar</button>
                               </form>
                             </details>

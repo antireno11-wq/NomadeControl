@@ -176,6 +176,46 @@ export async function reprogramarCompromisoAction(formData: FormData) {
   redirect("/compromisos?status=reprogramado");
 }
 
+/**
+ * Edita la acción y el responsable. Solo Administrador.
+ *
+ * Los dos vienen de la transcripción y llegan sucios: "Rody / Randolph" no es
+ * nadie, y una acción mal redactada no se puede cerrar con claridad. Pero
+ * cambiar qué se prometió o quién responde es cambiar la regla con la que
+ * se mide, así que va con el mismo permiso que reprogramar, y queda en la
+ * auditoría con el antes y el después.
+ */
+export async function editarCompromisoAction(formData: FormData) {
+  const user = await requireRole(ADMIN_ROLES);
+  const id = String(formData.get("compromisoId") ?? "");
+  const accion = String(formData.get("accion") ?? "").trim();
+  const responsable = String(formData.get("responsable") ?? "").trim();
+
+  if (!id || accion.length < 4 || !responsable) redirect("/compromisos?status=invalido");
+
+  const antes = await db.compromiso.findUnique({
+    where: { id }, select: { accion: true, responsable: true },
+  });
+  if (!antes) redirect("/compromisos?status=no-encontrado");
+  if (antes.accion === accion && antes.responsable === responsable) redirect("/compromisos");
+
+  await db.compromiso.update({ where: { id }, data: { accion, responsable } });
+
+  const cambios = [
+    antes.accion !== accion ? `acción: «${antes.accion.slice(0, 50)}» → «${accion.slice(0, 50)}»` : null,
+    antes.responsable !== responsable ? `responsable: ${antes.responsable} → ${responsable}` : null,
+  ].filter(Boolean).join(" · ");
+
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "COMPROMISO_EDITAR", entityType: "compromiso", entityId: id,
+    summary: `Editó un compromiso — ${cambios}`,
+  }).catch(() => {});
+
+  revalidatePath("/compromisos");
+  redirect("/compromisos?status=editado");
+}
+
 /** Reabre un compromiso cerrado por error. Solo Administrador. */
 export async function reabrirCompromisoAction(formData: FormData) {
   const user = await requireRole(ADMIN_ROLES);
