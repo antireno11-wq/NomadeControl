@@ -3,6 +3,10 @@ import { isAdminRole, normalizeRole, VEHICLE_ROLES, VEHICLE_MANAGE_ROLES, requir
 import { formatDisplayDate } from "@/lib/report-utils";
 import { db } from "@/lib/db";
 import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, startOfDay, summarizeByDocumentType, summarizeVehicleExpiries } from "@/lib/vehicle-status";
+
+/** Quién hizo el checklist: usuario de la app, o el nombre que dio en el formulario. */
+const quienHizo = (c: { driver?: { name: string } | null; conductorNombre?: string | null; origen?: string }) =>
+  c.driver?.name ?? c.conductorNombre ?? (c.origen === "google_forms" ? "Formulario Google" : "—");
 import { AppShell } from "@/components/app-shell";
 
 export default async function VehiculosPage() {
@@ -188,7 +192,7 @@ export default async function VehiculosPage() {
                     <td style={{ fontSize: "0.88rem" }}>{alertText}</td>
                     <td style={{ fontSize: "0.88rem" }}>
                       {vehicle.latestChecklist
-                        ? `${formatDisplayDate(vehicle.latestChecklist.date)} · ${vehicle.latestChecklist.driver.name}`
+                        ? `${formatDisplayDate(vehicle.latestChecklist.date)} · ${quienHizo(vehicle.latestChecklist)}`
                         : <span style={{ color: "var(--muted)" }}>Sin checklist</span>}
                     </td>
                     <td>

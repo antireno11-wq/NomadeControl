@@ -721,29 +721,43 @@ model ChecklistFoto {
 }
 
 model VehicleChecklist {
-  id               String   @id @default(cuid())
-  vehicleId        String
-  vehicle          Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  driverId         String
-  driver           User     @relation(fields: [driverId], references: [id], onDelete: Restrict)
-  date             DateTime
-  odometerKm       Int
-  fuelPercent      Int
-  frontLightsOk    Boolean  @default(true)
-  rearLightsOk     Boolean  @default(true)
-  tiresOk          Boolean  @default(true)
-  brakesOk         Boolean  @default(true)
-  mirrorsOk        Boolean  @default(true)
-  hornOk           Boolean  @default(true)
-  fluidsOk         Boolean  @default(true)
-  jackOk           Boolean  @default(true)
-  spareTireOk      Boolean  @default(true)
-  extinguisherOk   Boolean  @default(true)
-  documentsOk      Boolean  @default(true)
-  bodyworkOk       Boolean  @default(true)
-  cleanlinessOk    Boolean  @default(true)
-  observations     String?
-  incidentReported Boolean  @default(false)
+  id                    String   @id @default(cuid())
+  vehicleId             String
+  vehicle               Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  /// Opcional desde que los checklists también llegan del formulario de
+  /// Google: el conductor se identifica por nombre y RUT, no siempre tiene
+  /// usuario en la plataforma.
+  driverId              String?
+  driver                User?    @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  conductorNombre       String?
+  conductorRut          String?
+  /// app | google_forms
+  origen                String   @default("app")
+  /// Id de la respuesta en Google Forms. Único: reenviar la misma respuesta
+  /// no crea otro checklist.
+  formularioRespuestaId String?  @unique
+  /// Todas las respuestas del formulario tal cual llegaron, por pregunta.
+  /// Se guarda todo porque el formulario es del SGI y lo revisan ellos: si
+  /// agregan una pregunta, no se pierde.
+  respuestas            Json?
+  date                  DateTime
+  odometerKm            Int
+  fuelPercent           Int
+  frontLightsOk         Boolean  @default(true)
+  rearLightsOk          Boolean  @default(true)
+  tiresOk               Boolean  @default(true)
+  brakesOk              Boolean  @default(true)
+  mirrorsOk             Boolean  @default(true)
+  hornOk                Boolean  @default(true)
+  fluidsOk              Boolean  @default(true)
+  jackOk                Boolean  @default(true)
+  spareTireOk           Boolean  @default(true)
+  extinguisherOk        Boolean  @default(true)
+  documentsOk           Boolean  @default(true)
+  bodyworkOk            Boolean  @default(true)
+  cleanlinessOk         Boolean  @default(true)
+  observations          String?
+  incidentReported      Boolean  @default(false)
 
   /// Neumáticos medidos por posición: [{ posicion, mm, estado }]. Un solo
   /// "neumáticos OK" se marcaba sin mirar; la profundidad en milímetros hay

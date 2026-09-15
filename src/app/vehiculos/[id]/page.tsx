@@ -7,6 +7,10 @@ import { daysUntil, getChecklistIssueCount, getVehicleHealthStatus, summarizeVeh
 import { AppShell } from "@/components/app-shell";
 import { VehicleChecklistForm } from "../vehicle-checklist-form";
 import { RESULTADO_LABEL, type ResultadoChecklist } from "@/lib/checklist-vehiculos";
+
+/** Quién hizo el checklist: usuario de la app, o el nombre que dio en el formulario. */
+const quienHizo = (c: { driver?: { name: string } | null; conductorNombre?: string | null; origen?: string }) =>
+  c.driver?.name ?? c.conductorNombre ?? (c.origen === "google_forms" ? "Formulario Google" : "—");
 import { VehicleDocumentForm } from "../vehicle-document-form";
 import { VehicleForm } from "../vehicle-form";
 
@@ -104,7 +108,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
             })()}
             <div className="dashboard-kpi-meta">
               {latestChecklist
-                ? `${latestChecklist.driver.name}${latestChecklist.resultadoMotivo ? ` · ${latestChecklist.resultadoMotivo}` : checklistIssues > 0 ? ` · ${checklistIssues} observaciones` : ""}`
+                ? `${quienHizo(latestChecklist)}${latestChecklist.resultadoMotivo ? ` · ${latestChecklist.resultadoMotivo}` : checklistIssues > 0 ? ` · ${checklistIssues} observaciones` : ""}`
                 : "Aún no hay checklist"}
             </div>
           </div>
@@ -206,7 +210,7 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
                   return (
                     <tr key={checklist.id}>
                       <td>{formatDisplayDate(checklist.date)}</td>
-                      <td>{checklist.driver.name}</td>
+                      <td>{quienHizo(checklist)}</td>
                       <td>{checklist.odometerKm.toLocaleString("es-CL")} km</td>
                       <td>{checklist.fuelPercent}%</td>
                       <td>
