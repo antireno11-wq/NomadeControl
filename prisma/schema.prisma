@@ -335,6 +335,7 @@ model Proyecto {
   Compromiso         Compromiso[]
   Amenaza            Amenaza[]
   TrabajadorProyecto TrabajadorProyecto[]
+  informesAvance     InformeAvance[]
 
   @@unique([mandanteId, nombre])
 }
@@ -407,6 +408,39 @@ model TrabajadorProyecto {
 
   @@unique([staffMemberId, proyectoId])
   @@index([proyectoId, hasta])
+}
+
+/// Informe diario de avance en terreno. Llega del formulario de Google que
+/// completa el responsable al cierre de cada jornada: dotación, horario,
+/// actividades, hallazgos y fotos. Es el registro de qué pasó cada día en
+/// cada faena, que es lo primero que pregunta el mandante cuando algo falla.
+model InformeAvance {
+  id                    String    @id @default(cuid())
+  /// Se resuelve por el nombre que viene en el formulario. Nullable: si el
+  /// formulario dice "Otro", el informe se guarda igual con el texto.
+  proyectoId            String?
+  proyecto              Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
+  proyectoTexto         String
+  fecha                 DateTime
+  responsable           String
+  email                 String?
+  dotacionTotal         Int?
+  dotacionDetalle       String?
+  horaIngreso           String?
+  horaTermino           String?
+  actividades           String
+  hallazgos             String?
+  observaciones         String?
+  /// Enlaces a Drive, en el orden en que se subieron.
+  fotosDocumentacion    Json?
+  fotosAvance           Json?
+  origen                String    @default("google_forms")
+  formularioRespuestaId String?   @unique
+  respuestas            Json?
+  createdAt             DateTime  @default(now())
+
+  @@index([proyectoId, fecha])
+  @@index([fecha])
 }
 
 model RequisitoDocumento {

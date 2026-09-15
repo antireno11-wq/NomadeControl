@@ -70,11 +70,32 @@ export async function POST(req: NextRequest) {
   if (!patente) return NextResponse.json({ error: "La respuesta no trae patente" }, { status: 422 });
 
   const vehiculos = await db.vehicle.findMany({ select: { id: true, plate: true, type: true } });
-  const vehiculo = vehiculos.find(v => normPatente(v.plate) === normPatente(patente)) ?? null;
+  let vehiculo = vehiculos.find(v => normPatente(v.plate) === normPatente(patente)) ?? null;
+  let vehiculoCreado = false;
   if (!vehiculo) {
-    // No se inventa un vehículo desde un formulario: una patente mal escrita
-    // crearía uno fantasma. Se rechaza con el dato, y el script avisa.
-    return NextResponse.json({ error: `Patente «${patente}» no existe en Nomade Control`, patente }, { status: 422 });
+    // Patente que no está en la flota: se crea el vehículo. Antes se
+    // rechazaba para no inventar uno con una patente mal escrita, pero la
+    // empresa arrienda vehículos, y un checklist rechazado es un checklist
+    // perdido. Se crea marcado como externo —empresa "Arrendado / externo",
+    // estado de acreditación pendiente— para que se distinga en la flota, y
+    // si era un error de tipeo, se ve y se corrige desde la ficha.
+    const marcaModelo = buscar(r, "interno", "marca") || buscar(r, "marca") || "";
+    const creado = await db.vehicle.create({
+      data: {
+        plate: patente.toUpperCase().trim(),
+        brand: marcaModelo.split(/[·\-–/]/)[0]?.trim() || "Por definir",
+        model: marcaModelo.trim() || "Por definir",
+        type: "Camioneta",
+        company: "Arrendado / externo",
+        internalCode: buscar(r, "interno").trim() || null,
+        status: "OPERATIVO",
+        accreditationStatus: "PENDIENTE",
+        notes: `Creado automáticamente desde el formulario de checklist el ${new Date().toISOString().slice(0, 10)}. Completar datos y documentos.`,
+      },
+      select: { id: true, plate: true, type: true },
+    });
+    vehiculo = creado;
+    vehiculoCreado = true;
   }
 
   const conductorNombre = buscar(r, "nombre del conductor") || buscar(r, "conductor") || null;
@@ -165,5 +186,8 @@ export async function POST(req: NextRequest) {
     await db.vehicle.update({ where: { id: vehiculo.id }, data: { odometerKm } }).catch(() => {});
   }
 
-  return NextResponse.json({ ok: true, checklistId: checklist.id, resultado, motivos });
+  return NextResponse.json({
+    ok: true, checklistId: checklist.id, resultado, motivos,
+    vehiculoCreado: vehiculoCreado ? vehiculo.plate : undefined,
+  });
 }

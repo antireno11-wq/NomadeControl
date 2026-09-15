@@ -78,6 +78,13 @@ export function AppShell({
       navKey: "operaciones",
       active: opcionesActivas.includes(activeNav),
     }] : []),
+    ...(ENABLED_MODULES.operaciones && !isOfficeRole && canSeeOperaciones ? [{
+      type: "link" as const,
+      href: "/operaciones/informes",
+      label: "Informes de avance",
+      navKey: "operaciones",
+      active: false,
+    }] : []),
 
     // Las reuniones de gerencia no son asunto de un supervisor de campamento.
     // Por defecto solo lo ve quien administra; a quien deba verlo se le marca
