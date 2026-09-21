@@ -5,6 +5,15 @@ import { useFormState, useFormStatus } from "react-dom";
 import { saveReportAction } from "./actions";
 import type { ReportFormState } from "./actions";
 
+const COMIDAS = [
+  { clave: "breakfast",        label: "Desayunos" },
+  { clave: "lunch",            label: "Almuerzos" },
+  { clave: "dinner",           label: "Cenas" },
+  { clave: "snackSimple",      label: "Colaciones simples" },
+  { clave: "snackReplacement", label: "Colaciones de reemplazo" },
+] as const;
+type ComidaClave = typeof COMIDAS[number]["clave"];
+
 type CampOption = {
   id: string;
   name: string;
@@ -23,6 +32,11 @@ type ReportFormDefaults = {
   dinnerCount: number;
   snackSimpleCount: number;
   snackReplacementCount: number;
+  breakfastMandante?: number; breakfastNomade?: number;
+  lunchMandante?: number; lunchNomade?: number;
+  dinnerMandante?: number; dinnerNomade?: number;
+  snackSimpleMandante?: number; snackSimpleNomade?: number;
+  snackReplacementMandante?: number; snackReplacementNomade?: number;
   waterBottleCount: number;
   lodgingCount: number;
   equipoCompleto?: boolean;
@@ -73,6 +87,13 @@ export function ReportForm({
 }) {
   const [state, formAction] = useFormState(saveReportAction, initialState);
   const [wasteFillPercent, setWasteFillPercent] = useState(defaults?.wasteFillPercent ?? 0);
+  const [comidas, setComidas] = useState<Record<ComidaClave, { mandante: string; nomade: string }>>(() =>
+    Object.fromEntries(COMIDAS.map(c => [c.clave, {
+      mandante: String(defaults?.[`${c.clave}Mandante`] ?? 0),
+      nomade: String(defaults?.[`${c.clave}Nomade`] ?? 0),
+    }])) as Record<ComidaClave, { mandante: string; nomade: string }>);
+  const setComida = (clave: ComidaClave, lado: "mandante" | "nomade", v: string) =>
+    setComidas(prev => ({ ...prev, [clave]: { ...prev[clave], [lado]: v } }));
   const [campIdSel, setCampIdSel] = useState<string>(defaults?.campId ?? defaultCampId ?? camps[0]?.id ?? "");
   const campSel = camps.find(c => c.id === campIdSel) ?? null;
   const [blackWaterRemoved, setBlackWaterRemoved] = useState(defaults?.blackWaterRemoved ?? "NO");
@@ -115,32 +136,44 @@ export function ReportForm({
       <section className="report-section">
         <h3 className="section-title">Alimentación</h3>
         <div className="grid two">
-          <div>
-            <label htmlFor="breakfastCount">Desayunos entregados</label>
-            <input id="breakfastCount" name="breakfastCount" type="number" min={0} defaultValue={defaults?.breakfastCount ?? 0} required />
-          </div>
-          <div>
-            <label htmlFor="lunchCount">Almuerzos entregados</label>
-            <input id="lunchCount" name="lunchCount" type="number" min={0} defaultValue={defaults?.lunchCount ?? 0} required />
-          </div>
-          <div>
-            <label htmlFor="dinnerCount">Cenas entregadas</label>
-            <input id="dinnerCount" name="dinnerCount" type="number" min={0} defaultValue={defaults?.dinnerCount ?? 0} required />
-          </div>
-          <div>
-            <label htmlFor="snackSimpleCount">Colaciones simples</label>
-            <input id="snackSimpleCount" name="snackSimpleCount" type="number" min={0} defaultValue={defaults?.snackSimpleCount ?? 0} required />
-          </div>
-          <div>
-            <label htmlFor="snackReplacementCount">Colaciones de reemplazo</label>
-            <input
-              id="snackReplacementCount"
-              name="snackReplacementCount"
-              type="number"
-              min={0}
-              defaultValue={defaults?.snackReplacementCount ?? 0}
-              required
-            />
+          {/* Se cobra por comida: hay que saber cuántas fueron del mandante y
+              cuántas del personal Nómade. El total sale solo. */}
+          <div style={{ gridColumn: "1 / -1", overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "4px 8px", fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase" }}></th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase" }}>Personal mandante</th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase" }}>Personal Nómade</th>
+                  <th style={{ textAlign: "left", padding: "4px 8px", fontSize: "0.72rem", color: "var(--muted)", textTransform: "uppercase" }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMIDAS.map(c => (
+                  <tr key={c.clave}>
+                    <td style={{ padding: "4px 8px", fontWeight: 600, whiteSpace: "nowrap" }}>{c.label}</td>
+                    <td style={{ padding: "4px 8px" }}>
+                      <input name={`${c.clave}Mandante`} type="number" min={0} inputMode="numeric" required
+                             value={comidas[c.clave].mandante}
+                             onChange={e => setComida(c.clave, "mandante", e.target.value)}
+                             style={{ width: 90, padding: "6px 8px" }} />
+                    </td>
+                    <td style={{ padding: "4px 8px" }}>
+                      <input name={`${c.clave}Nomade`} type="number" min={0} inputMode="numeric" required
+                             value={comidas[c.clave].nomade}
+                             onChange={e => setComida(c.clave, "nomade", e.target.value)}
+                             style={{ width: 90, padding: "6px 8px" }} />
+                    </td>
+                    <td style={{ padding: "4px 8px", fontWeight: 800 }}>
+                      {(Number(comidas[c.clave].mandante) || 0) + (Number(comidas[c.clave].nomade) || 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="section-caption" style={{ marginTop: 6 }}>
+              Lo que se factura es la columna del mandante. El total alimenta el consumo del campamento.
+            </div>
           </div>
           <div>
             <label htmlFor="waterBottleCount">Botellas de agua</label>

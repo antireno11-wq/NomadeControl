@@ -143,11 +143,26 @@ model DailyReport {
   createdById                  String
   createdBy                    User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
   peopleCount                  Int
+  /// Totales servidos: mandante + Nómade. Los tableros de consumo leen
+  /// estos. Lo que se factura es solo la parte del mandante, de abajo.
   breakfastCount               Int
   lunchCount                   Int
   dinnerCount                  Int
   snackSimpleCount             Int
   snackReplacementCount        Int
+  /// Se cobra por comida, así que hay que saber cuántas fueron del mandante
+  /// y cuántas del personal propio. Un solo número obligaba a elegir entre
+  /// el que sirve para el consumo y el que sirve para el cobro.
+  breakfastMandante            Int      @default(0)
+  breakfastNomade              Int      @default(0)
+  lunchMandante                Int      @default(0)
+  lunchNomade                  Int      @default(0)
+  dinnerMandante               Int      @default(0)
+  dinnerNomade                 Int      @default(0)
+  snackSimpleMandante          Int      @default(0)
+  snackSimpleNomade            Int      @default(0)
+  snackReplacementMandante     Int      @default(0)
+  snackReplacementNomade       Int      @default(0)
   waterBottleCount             Int      @default(0)
   /// Igual a peopleCount desde que el formulario dejó de pedirlo aparte: eran
   /// el mismo dato preguntado dos veces. Se mantiene por los informes viejos

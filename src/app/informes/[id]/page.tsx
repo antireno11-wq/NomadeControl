@@ -75,14 +75,18 @@ export default async function InformeDetallePage({ params }: { params: { id: str
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Alimentación</h2>
             <table>
+              <thead>
+                <tr><th></th><th>Mandante</th><th>Nómade</th><th>Total</th></tr>
+              </thead>
               <tbody>
-                <tr><th>Desayunos</th><td>{report.breakfastCount}</td></tr>
-                <tr><th>Almuerzos</th><td>{report.lunchCount}</td></tr>
-                <tr><th>Cenas</th><td>{report.dinnerCount}</td></tr>
-                <tr><th>Colación simple</th><td>{report.snackSimpleCount}</td></tr>
-                <tr><th>Colación reemplazo</th><td>{report.snackReplacementCount}</td></tr>
+                <tr><th>Desayunos</th><td>{report.breakfastMandante}</td><td>{report.breakfastNomade}</td><td><strong>{report.breakfastCount}</strong></td></tr>
+                <tr><th>Almuerzos</th><td>{report.lunchMandante}</td><td>{report.lunchNomade}</td><td><strong>{report.lunchCount}</strong></td></tr>
+                <tr><th>Cenas</th><td>{report.dinnerMandante}</td><td>{report.dinnerNomade}</td><td><strong>{report.dinnerCount}</strong></td></tr>
+                <tr><th>Colación simple</th><td>{report.snackSimpleMandante}</td><td>{report.snackSimpleNomade}</td><td><strong>{report.snackSimpleCount}</strong></td></tr>
+                <tr><th>Colación reemplazo</th><td>{report.snackReplacementMandante}</td><td>{report.snackReplacementNomade}</td><td><strong>{report.snackReplacementCount}</strong></td></tr>
               </tbody>
             </table>
+            <div className="section-caption" style={{ marginTop: 6 }}>Se factura la columna Mandante.</div>
           </div>
 
           <div className="card">
