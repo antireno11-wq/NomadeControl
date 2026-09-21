@@ -8,7 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
 import { buildOperacionesTabs } from "@/lib/section-nav";
 
-export default async function CargaDiariaPage() {
+export default async function CargaDiariaPage({ searchParams }: { searchParams?: { camp?: string; status?: string } }) {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
   // Antes el administrador era solo lectura acá, y el supervisor era el único
@@ -17,10 +17,19 @@ export default async function CargaDiariaPage() {
   // además puede corregir cualquier informe, no solo los suyos.
   const canEdit = true;
   const puedeEditarCualquiera = canSeeAdminSections;
-  const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
+  // Regla única de alcance: un usuario con campamento asignado ve SOLO ese
+  // campamento, sea cual sea su rol. Quien no tiene campamento —la gerencia
+  // en Santiago— ve todos y puede elegir uno. Así el "administrador de Agua
+  // Verde" se crea con su campamento y no ve los informes de Filo Sur.
+  const campSel = typeof searchParams?.camp === "string" ? searchParams.camp : "";
+  const campFilter = user.campId ?? (campSel || undefined);
 
   const today = new Date();
   const todayDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+
+  const todosLosCamps = user.campId ? [] : await db.camp.findMany({
+    where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true },
+  });
 
   const [camps, recentReports, reportsToday] = await Promise.all([
     db.camp.findMany({
@@ -91,8 +100,19 @@ export default async function CargaDiariaPage() {
         <SectionTabs items={buildOperacionesTabs(user.role, "carga-diaria")} />
 
         {!canSeeAdminSections && !user.campId ? (
-          <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
+          <div className="alert error">Tu usuario no tiene campamento asignado. Pide al administrador que lo configure.</div>
         ) : null}
+
+        {!user.campId && (
+          <form method="GET" className="card" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <label htmlFor="f-camp" style={{ margin: 0, fontWeight: 700, fontSize: "0.85rem" }}>Campamento</label>
+            <select id="f-camp" name="camp" defaultValue={campSel} style={{ width: "auto" }}>
+              <option value="">Todos</option>
+              {todosLosCamps.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button type="submit" className="secondary" style={{ width: "auto" }}>Ver</button>
+          </form>
+        )}
 
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Estado de carga de hoy</h2>

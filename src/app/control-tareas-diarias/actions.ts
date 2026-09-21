@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isSupervisorRole, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { ADMIN_DAILY_TASKS, OPERATIONAL_DAILY_TASKS, taskKeyFromLabel } from "@/lib/daily-task-checklists";
@@ -35,10 +35,8 @@ export async function saveDailyTasksAction(
   }
 
   const payload = parsed.data;
-  if (isSupervisorRole(user.role)) {
-    if (!user.campId) {
-      return { error: "Tu usuario supervisor no tiene campamento asignado.", success: "" };
-    }
+  // Misma regla que el informe diario: con campamento asignado, solo el suyo.
+  if (user.campId) {
     if (user.campId !== payload.campId) {
       return { error: "Solo puedes registrar tareas de tu campamento.", success: "" };
     }

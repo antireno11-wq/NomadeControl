@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { clearSession, isSupervisorRole, normalizeRole, OPERATION_ROLES, requireUser } from "@/lib/auth";
+import { clearSession, normalizeRole, OPERATION_ROLES, requireUser } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { formatDisplayDate, normalizeDateOnly } from "@/lib/report-utils";
@@ -174,10 +174,10 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     return { error: "Indica los m3 ingresados de agua potable.", success: "" };
   }
 
-  if (isSupervisorRole(user.role)) {
-    if (!user.campId) {
-      return { error: "Tu usuario supervisor no tiene campamento asignado.", success: "" };
-    }
+  // Un usuario con campamento asignado solo carga el suyo. Antes esto colgaba
+  // de isSupervisorRole, que devuelve siempre false: la puerta estaba muerta y
+  // cualquiera con sesión podía cargar informes de cualquier campamento.
+  if (user.campId) {
     if (payload.campId !== user.campId) {
       return { error: "Solo puedes cargar información de tu campamento asignado.", success: "" };
     }
