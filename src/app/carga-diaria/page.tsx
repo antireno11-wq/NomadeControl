@@ -11,7 +11,12 @@ import { buildOperacionesTabs } from "@/lib/section-nav";
 export default async function CargaDiariaPage() {
   const user = await requireRole(OPERATION_ROLES);
   const canSeeAdminSections = isAdminRole(user.role);
-  const canEdit = !canSeeAdminSections;
+  // Antes el administrador era solo lectura acá, y el supervisor era el único
+  // que cargaba. Con los roles simplificados eso dejó la pantalla sin nadie
+  // que pudiera escribir. Operativo y administrador cargan; el administrador
+  // además puede corregir cualquier informe, no solo los suyos.
+  const canEdit = true;
+  const puedeEditarCualquiera = canSeeAdminSections;
   const campFilter = !canSeeAdminSections ? user.campId ?? "__none__" : undefined;
 
   const today = new Date();
@@ -89,12 +94,6 @@ export default async function CargaDiariaPage() {
           <div className="alert error">Tu usuario supervisor no tiene campamento asignado. Pide al administrador que lo configure.</div>
         ) : null}
 
-        {canSeeAdminSections ? (
-          <div className="alert success">
-            Vista solo lectura. Como administrador puedes revisar resúmenes e historial, pero no editar el informe diario.
-          </div>
-        ) : null}
-
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Estado de carga de hoy</h2>
           <div className="summary-grid">
@@ -146,7 +145,7 @@ export default async function CargaDiariaPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span className="status-pill ok">Guardado</span>
-                  {canEdit && row.createdById === user.id ? (
+                  {canEdit && (puedeEditarCualquiera || row.createdById === user.id) ? (
                     <Link href={`/informes/${row.id}/editar`}>
                       <button type="button" className="secondary">Editar</button>
                     </Link>
@@ -244,7 +243,7 @@ export default async function CargaDiariaPage() {
                       <Link href={`/informes/${report.id}`}>
                         <button type="button" className="secondary">Ver</button>
                       </Link>
-                      {canEdit && report.createdById === user.id ? (
+                      {canEdit && (puedeEditarCualquiera || report.createdById === user.id) ? (
                         <Link href={`/informes/${report.id}/editar`}>
                           <button type="button" className="secondary">Editar</button>
                         </Link>

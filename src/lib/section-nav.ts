@@ -20,6 +20,9 @@ export function buildOperacionesTabs(role: string, activeKey:
 
   return [
     { href: "/operaciones?vista=campamentos", label: "Campamentos activos", active: activeKey === "campamentos" || activeKey === "hoy" },
+    // Volvió: sin esta pestaña el informe diario solo se alcanzaba por URL, y
+    // nadie la sabía.
+    { href: "/carga-diaria", label: "Informe diario", active: activeKey === "carga-diaria" },
     ...(canSeeAdmin ? [{ href: "/operaciones?vista=cerrados", label: "Campamentos cerrados", active: activeKey === "cerrados" }] : []),
   ];
 }

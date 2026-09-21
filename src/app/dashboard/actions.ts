@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { clearSession, isSupervisorRole, requireUser } from "@/lib/auth";
+import { clearSession, isSupervisorRole, normalizeRole, OPERATION_ROLES, requireUser } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { formatDisplayDate, normalizeDateOnly } from "@/lib/report-utils";
@@ -100,8 +100,13 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
   const user = await requireUser();
   const reportId = String(formData.get("reportId") ?? "").trim() || undefined;
 
-  if (!isSupervisorRole(user.role)) {
-    return { error: "Solo usuarios SUPERVISOR pueden cargar información diaria.", success: "" };
+  // Esta puerta estaba muerta: cuando los roles se simplificaron a tres,
+  // isSupervisorRole pasó a devolver siempre false y NADIE podía guardar el
+  // informe diario —ni administradores ni operativos—. El error decía "solo
+  // usuarios SUPERVISOR", un rol que ya no existe. Quien opera campamentos
+  // carga el informe; quien administra también.
+  if (!OPERATION_ROLES.includes(normalizeRole(user.role))) {
+    return { error: "Tu rol no puede cargar el informe diario.", success: "" };
   }
 
   const parsed = reportSchema.safeParse({
