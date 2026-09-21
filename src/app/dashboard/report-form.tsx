@@ -27,6 +27,8 @@ type ReportFormDefaults = {
   lodgingCount: number;
   equipoCompleto?: boolean;
   cargoFaltante?: string | null;
+  congelamiento?: boolean;
+  congelamientoDetalle?: string | null;
   meterReading: number;
   fuelLiters: number;
   fuelRemainingLiters: number;
@@ -342,6 +344,18 @@ export function ReportForm({
               <div>
                 <label htmlFor="phLevel">Medición de pH</label>
                 <input id="phLevel" name="phLevel" type="number" min={0} step="0.01" defaultValue={defaults?.phLevel ?? 7} required />
+              </div>
+              <div>
+                <label htmlFor="congelamiento">¿Hubo congelamiento?</label>
+                <select id="congelamiento" name="congelamiento" defaultValue={defaults?.congelamiento ? "si" : "no"}>
+                  <option value="no">No</option>
+                  <option value="si">Sí</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="congelamientoDetalle">Qué se congeló y qué se hizo</label>
+                <input id="congelamientoDetalle" name="congelamientoDetalle" defaultValue={defaults?.congelamientoDetalle ?? ""}
+                       placeholder="Ej: cañería de duchas, se descongeló a las 09:00" />
               </div>
             </div>
           </div>

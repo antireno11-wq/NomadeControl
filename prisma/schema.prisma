@@ -180,6 +180,10 @@ model DailyReport {
   potableWaterDeliveredM3      Float    @default(0)
   wasteFillPercent             Int      @default(0)
   chlorineLevel                Float    @default(0)
+  /// Congelamiento en la jornada: cañerías, estanques o equipos. En faena de
+  /// altura es lo que deja sin agua o sin baño, y no cabe en ningún número.
+  congelamiento                Boolean  @default(false)
+  congelamientoDetalle         String?
   phLevel                      Float    @default(7)
   extras                       String?
   notes                        String?

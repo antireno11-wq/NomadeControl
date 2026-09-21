@@ -97,6 +97,7 @@ export default async function InformeDetallePage({ params }: { params: { id: str
                 <tr><th>Retiro aguas negras</th><td>{report.blackWaterRemoved ? "Si" : "No"}</td></tr>
                 <tr><th>Aguas negras retiradas</th><td>{report.blackWaterRemovedM3.toFixed(2)} m3</td></tr>
                 <tr><th>Nivel estanque agua potable</th><td>{report.potableWaterTankLevelM3 != null ? `${report.potableWaterTankLevelM3} m³` : "—"}{report.potableWaterTankLevelPercent ? ` (${report.potableWaterTankLevelPercent}%)` : ""}</td></tr>
+                <tr><th>Congelamiento</th><td style={{ color: report.congelamiento ? "#0369a1" : undefined, fontWeight: report.congelamiento ? 700 : undefined }}>{report.congelamiento ? `Sí — ${report.congelamientoDetalle}` : "No"}</td></tr>
                 <tr><th>Ingreso agua potable</th><td>{report.potableWaterDelivered ? "Si" : "No"}</td></tr>
                 <tr><th>Agua potable ingresada</th><td>{report.potableWaterDeliveredM3.toFixed(2)} m3</td></tr>
                 <tr><th>Basura</th><td>{report.wasteFillPercent}%</td></tr>

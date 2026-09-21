@@ -85,6 +85,8 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
           peopleCount: report.peopleCount,
           equipoCompleto: report.equipoCompleto,
           cargoFaltante: report.cargoFaltante,
+          congelamiento: report.congelamiento,
+          congelamientoDetalle: report.congelamientoDetalle,
         }
       ])
     ).values()
@@ -169,6 +171,11 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
                   {row.equipoCompleto === false && (
                     <div style={{ color: "#9e2f23", fontWeight: 700, fontSize: "0.82rem", marginTop: 2 }}>
                       ⚠ Falta un cargo: {row.cargoFaltante}
+                    </div>
+                  )}
+                  {row.congelamiento && (
+                    <div style={{ color: "#0369a1", fontWeight: 700, fontSize: "0.82rem", marginTop: 2 }}>
+                      ❄ Congelamiento: {row.congelamientoDetalle}
                     </div>
                   )}
                 </div>
