@@ -187,7 +187,7 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
         </div>
 
         {canEdit && camps.length > 0 ? (
-          <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name }))} defaultDate={toInputDateValue(new Date())} />
+          <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name, potableCapM3: camp.potableWaterTankCapacityM3, blackCapM3: camp.blackWaterTankCapacityM3 }))} defaultDate={toInputDateValue(new Date())} />
         ) : canEdit ? (
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Carga diaria</h2>
@@ -259,7 +259,11 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
                   <td>{report.generator1Hours.toFixed(2)}</td>
                   <td>{report.generator2Hours.toFixed(2)}</td>
                   <td>{report.internetStatus.replaceAll("_", " ")}</td>
-                  <td>{report.blackWaterTankLevelPercent}%</td>
+                  <td>
+                    {report.blackWaterTankLevelM3 != null
+                      ? `${report.blackWaterTankLevelM3} m³${report.blackWaterTankLevelPercent ? ` (${report.blackWaterTankLevelPercent}%)` : ""}`
+                      : `${report.blackWaterTankLevelPercent}%`}
+                  </td>
                   <td>{report.blackWaterRemoved ? `${report.blackWaterRemovedM3.toFixed(2)} m3` : "No"}</td>
                   <td>{report.potableWaterDelivered ? `${report.potableWaterDeliveredM3.toFixed(2)} m3` : "No"}</td>
                   <td>{report.waterLiters} L</td>

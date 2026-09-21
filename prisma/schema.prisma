@@ -167,6 +167,13 @@ model DailyReport {
   internetStatus               String   @default("FUNCIONANDO")
   blackWaterRemoved            Boolean  @default(false)
   blackWaterRemovedM3          Float    @default(0)
+  /// Lo que se ingresa: metros cúbicos, que es lo que marca el medidor del
+  /// estanque. El porcentaje de abajo se calcula al guardar con la capacidad
+  /// del campamento, y se mantiene porque los tableros lo usan para estimar
+  /// litros y autonomía. Si el campamento no tiene capacidad configurada,
+  /// queda en 0 y el formulario lo avisa.
+  potableWaterTankLevelM3      Float?
+  blackWaterTankLevelM3        Float?
   potableWaterTankLevelPercent Int      @default(0)
   blackWaterTankLevelPercent   Int      @default(0)
   potableWaterDelivered        Boolean  @default(false)

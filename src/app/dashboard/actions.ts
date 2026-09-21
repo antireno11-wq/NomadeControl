@@ -28,8 +28,8 @@ const reportSchema = z.object({
   internetStatus: z.enum(["FUNCIONANDO", "CON_INTERRUPCIONES", "NO_FUNCIONA"]),
   blackWaterRemoved: z.enum(["SI", "NO"]),
   blackWaterRemovedM3: z.coerce.number().int().min(0).max(40),
-  potableWaterTankLevelPercent: z.coerce.number().int().min(0).max(100),
-  blackWaterTankLevelPercent: z.coerce.number().int().min(0).max(100),
+  potableWaterTankLevelM3: z.coerce.number().min(0),
+  blackWaterTankLevelM3: z.coerce.number().min(0),
   potableWaterDelivered: z.enum(["SI", "NO"]),
   potableWaterDeliveredM3: z.coerce.number().int().min(0).max(40),
   wasteFillPercent: z.coerce.number().int().min(0).max(100),
@@ -130,8 +130,8 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     internetStatus: formData.get("internetStatus"),
     blackWaterRemoved: formData.get("blackWaterRemoved"),
     blackWaterRemovedM3: formData.get("blackWaterRemovedM3"),
-    potableWaterTankLevelPercent: formData.get("potableWaterTankLevelPercent"),
-    blackWaterTankLevelPercent: formData.get("blackWaterTankLevelPercent"),
+    potableWaterTankLevelM3: String(formData.get("potableWaterTankLevelM3") ?? "").replace(",", "."),
+    blackWaterTankLevelM3: String(formData.get("blackWaterTankLevelM3") ?? "").replace(",", "."),
     potableWaterDelivered: formData.get("potableWaterDelivered"),
     potableWaterDeliveredM3: formData.get("potableWaterDeliveredM3"),
     wasteFillPercent: formData.get("wasteFillPercent"),
@@ -251,6 +251,13 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     ? Math.max(0, Math.round(payload.meterReading - previousReport.meterReading))
     : 0;
 
+  const campCap = await db.camp.findUnique({
+    where: { id: payload.campId },
+    select: { potableWaterTankCapacityM3: true, blackWaterTankCapacityM3: true },
+  });
+  const pct = (m3: number, cap: number | null | undefined) =>
+    cap && cap > 0 ? Math.max(0, Math.min(100, Math.round((m3 / cap) * 100))) : 0;
+
   const reportData = {
     campId: payload.campId,
     date,
@@ -274,8 +281,13 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     internetStatus: payload.internetStatus,
     blackWaterRemoved: payload.blackWaterRemoved === "SI",
     blackWaterRemovedM3,
-    potableWaterTankLevelPercent: payload.potableWaterTankLevelPercent,
-    blackWaterTankLevelPercent: payload.blackWaterTankLevelPercent,
+    potableWaterTankLevelM3: payload.potableWaterTankLevelM3,
+    blackWaterTankLevelM3: payload.blackWaterTankLevelM3,
+    // El porcentaje se deriva de la capacidad del campamento: los tableros lo
+    // usan para estimar litros y autonomía. Sin capacidad configurada queda
+    // en 0, y el formulario ya lo avisó.
+    potableWaterTankLevelPercent: pct(payload.potableWaterTankLevelM3, campCap?.potableWaterTankCapacityM3),
+    blackWaterTankLevelPercent: pct(payload.blackWaterTankLevelM3, campCap?.blackWaterTankCapacityM3),
     potableWaterDelivered: payload.potableWaterDelivered === "SI",
     potableWaterDeliveredM3,
     wasteFillPercent: payload.wasteFillPercent,

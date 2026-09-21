@@ -8,6 +8,9 @@ import type { ReportFormState } from "./actions";
 type CampOption = {
   id: string;
   name: string;
+  /** Capacidades en m³, para mostrarlas junto al nivel y validar. */
+  potableCapM3?: number | null;
+  blackCapM3?: number | null;
 };
 
 type ReportFormDefaults = {
@@ -34,6 +37,8 @@ type ReportFormDefaults = {
   blackWaterRemovedM3: number;
   potableWaterTankLevelPercent: number;
   blackWaterTankLevelPercent: number;
+  potableWaterTankLevelM3?: number | null;
+  blackWaterTankLevelM3?: number | null;
   potableWaterDelivered: "SI" | "NO";
   potableWaterDeliveredM3: number;
   wasteFillPercent: number;
@@ -66,6 +71,8 @@ export function ReportForm({
 }) {
   const [state, formAction] = useFormState(saveReportAction, initialState);
   const [wasteFillPercent, setWasteFillPercent] = useState(defaults?.wasteFillPercent ?? 0);
+  const [campIdSel, setCampIdSel] = useState<string>(defaults?.campId ?? defaultCampId ?? camps[0]?.id ?? "");
+  const campSel = camps.find(c => c.id === campIdSel) ?? null;
   const [blackWaterRemoved, setBlackWaterRemoved] = useState(defaults?.blackWaterRemoved ?? "NO");
   const [potableWaterDelivered, setPotableWaterDelivered] = useState(defaults?.potableWaterDelivered ?? "NO");
   const cubicMeterOptions = Array.from({ length: 40 }, (_, index) => index + 1);
@@ -87,7 +94,7 @@ export function ReportForm({
 
           <div>
             <label htmlFor="campId">Campamento</label>
-            <select id="campId" name="campId" defaultValue={defaults?.campId ?? defaultCampId ?? camps[0]?.id} required>
+            <select id="campId" name="campId" value={campIdSel} onChange={e => setCampIdSel(e.target.value)} required>
               {camps.map((camp) => (
                 <option key={camp.id} value={camp.id}>
                   {camp.name}
@@ -215,27 +222,44 @@ export function ReportForm({
           <div className="report-section">
             <h4 className="section-title" style={{ fontSize: "0.95rem" }}>Agua y saneamiento</h4>
             <div className="grid">
+              {/* En m³, que es lo que marca el medidor. El porcentaje lo
+                  calcula el sistema con la capacidad del campamento. */}
               <div>
-                <label htmlFor="potableWaterTankLevelPercent">Nivel estanque agua potable (%)</label>
+                <label htmlFor="potableWaterTankLevelM3">
+                  Nivel estanque agua potable (m³)
+                  {campSel?.potableCapM3 ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · capacidad {campSel.potableCapM3} m³</span> : null}
+                </label>
                 <input
-                  id="potableWaterTankLevelPercent"
-                  name="potableWaterTankLevelPercent"
+                  id="potableWaterTankLevelM3"
+                  name="potableWaterTankLevelM3"
                   type="number"
                   min={0}
-                  max={100}
-                  defaultValue={defaults?.potableWaterTankLevelPercent ?? 0}
+                  step="0.1"
+                  inputMode="decimal"
+                  max={campSel?.potableCapM3 ?? undefined}
+                  defaultValue={defaults?.potableWaterTankLevelM3 ?? ""}
                   required
                 />
+                {campSel && !campSel.potableCapM3 && (
+                  <span style={{ fontSize: "0.74rem", color: "#9a6300" }}>
+                    Este campamento no tiene capacidad de estanque configurada: se guarda el m³ pero no se puede calcular el porcentaje.
+                  </span>
+                )}
               </div>
               <div>
-                <label htmlFor="blackWaterTankLevelPercent">Utilización estanque aguas negras (%)</label>
+                <label htmlFor="blackWaterTankLevelM3">
+                  Nivel estanque aguas negras (m³)
+                  {campSel?.blackCapM3 ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · capacidad {campSel.blackCapM3} m³</span> : null}
+                </label>
                 <input
-                  id="blackWaterTankLevelPercent"
-                  name="blackWaterTankLevelPercent"
+                  id="blackWaterTankLevelM3"
+                  name="blackWaterTankLevelM3"
                   type="number"
                   min={0}
-                  max={100}
-                  defaultValue={defaults?.blackWaterTankLevelPercent ?? 0}
+                  step="0.1"
+                  inputMode="decimal"
+                  max={campSel?.blackCapM3 ?? undefined}
+                  defaultValue={defaults?.blackWaterTankLevelM3 ?? ""}
                   required
                 />
               </div>

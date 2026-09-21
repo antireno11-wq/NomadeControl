@@ -49,7 +49,7 @@ export default async function EditarInformePage({ params }: { params: { id: stri
         </div>
 
         <ReportForm
-          camps={[{ id: report.camp.id, name: report.camp.name }]}
+          camps={[{ id: report.camp.id, name: report.camp.name, potableCapM3: report.camp.potableWaterTankCapacityM3, blackCapM3: report.camp.blackWaterTankCapacityM3 }]}
           defaultDate={toInputDateValue(report.date)}
           defaultCampId={report.camp.id}
           title={`Editar informe · ${report.camp.name}`}
@@ -75,6 +75,8 @@ export default async function EditarInformePage({ params }: { params: { id: stri
             blackWaterRemoved: report.blackWaterRemoved ? "SI" : "NO",
             blackWaterRemovedM3: Math.max(1, Math.round(report.blackWaterRemovedM3 || 1)),
             potableWaterTankLevelPercent: report.potableWaterTankLevelPercent,
+            potableWaterTankLevelM3: report.potableWaterTankLevelM3,
+            blackWaterTankLevelM3: report.blackWaterTankLevelM3,
             blackWaterTankLevelPercent: report.blackWaterTankLevelPercent,
             potableWaterDelivered: report.potableWaterDelivered ? "SI" : "NO",
             potableWaterDeliveredM3: Math.max(1, Math.round(report.potableWaterDeliveredM3 || 1)),
