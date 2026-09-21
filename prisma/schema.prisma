@@ -149,7 +149,15 @@ model DailyReport {
   snackSimpleCount             Int
   snackReplacementCount        Int
   waterBottleCount             Int      @default(0)
+  /// Igual a peopleCount desde que el formulario dejó de pedirlo aparte: eran
+  /// el mismo dato preguntado dos veces. Se mantiene por los informes viejos
+  /// y por lo que lo lee (exportación, resumen).
   lodgingCount                 Int
+  /// Si la dotación de servicio está completa. Un campamento con toda la
+  /// gente alojada pero sin cocinero es un problema distinto de uno con
+  /// menos gente, y el número de personas no lo muestra.
+  equipoCompleto               Boolean  @default(true)
+  cargoFaltante                String?
   meterReading                 Float    @default(0)
   waterLiters                  Int
   fuelLiters                   Int

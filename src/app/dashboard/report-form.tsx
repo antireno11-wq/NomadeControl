@@ -22,6 +22,8 @@ type ReportFormDefaults = {
   snackReplacementCount: number;
   waterBottleCount: number;
   lodgingCount: number;
+  equipoCompleto?: boolean;
+  cargoFaltante?: string | null;
   meterReading: number;
   fuelLiters: number;
   fuelRemainingLiters: number;
@@ -138,12 +140,22 @@ export function ReportForm({
         </div>
       </section>
 
+      {/* "Alojamientos" era el mismo número que "Personas en campamento",
+          preguntado dos veces. Se dejó uno solo. */}
       <section className="report-section">
-        <h3 className="section-title">Alojamiento</h3>
+        <h3 className="section-title">Equipo de servicio</h3>
         <div className="grid two">
           <div>
-            <label htmlFor="lodgingCount">Alojamientos</label>
-            <input id="lodgingCount" name="lodgingCount" type="number" min={0} defaultValue={defaults?.lodgingCount ?? 0} required />
+            <label htmlFor="equipoCompleto">¿El equipo está completo dando el servicio?</label>
+            <select id="equipoCompleto" name="equipoCompleto" defaultValue={defaults?.equipoCompleto === false ? "no" : "si"}>
+              <option value="si">Sí, equipo completo</option>
+              <option value="no">No, falta un cargo</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="cargoFaltante">Qué cargo falta y por qué</label>
+            <input id="cargoFaltante" name="cargoFaltante" defaultValue={defaults?.cargoFaltante ?? ""}
+                   placeholder="Ej: cocinero, licencia médica hasta el viernes" />
           </div>
         </div>
       </section>

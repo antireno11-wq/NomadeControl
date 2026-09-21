@@ -63,8 +63,10 @@ export default async function InformeDetallePage({ params }: { params: { id: str
               <div className="value">{report.waterBottleCount}</div>
             </div>
             <div className="metric">
-              <div className="label">Alojamientos</div>
-              <div className="value">{report.lodgingCount}</div>
+              <div className="label">Equipo de servicio</div>
+              <div className="value" style={{ color: report.equipoCompleto ? "#146c3d" : "#9e2f23", fontSize: "1rem" }}>
+                {report.equipoCompleto ? "Completo" : `Falta: ${report.cargoFaltante ?? "sin especificar"}`}
+              </div>
             </div>
           </div>
         </div>

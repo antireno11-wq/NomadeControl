@@ -82,7 +82,9 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
           campName: report.camp.name,
           createdById: report.createdById,
           createdBy: report.createdBy.name,
-          peopleCount: report.peopleCount
+          peopleCount: report.peopleCount,
+          equipoCompleto: report.equipoCompleto,
+          cargoFaltante: report.cargoFaltante,
         }
       ])
     ).values()
@@ -162,6 +164,13 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
                   <div style={{ color: "var(--muted)" }}>
                     {row.campName} · {row.peopleCount} personas · cargado por {row.createdBy}
                   </div>
+                  {/* Un campamento con la gente alojada pero sin cocinero es
+                      un problema que el número de personas no muestra. */}
+                  {row.equipoCompleto === false && (
+                    <div style={{ color: "#9e2f23", fontWeight: 700, fontSize: "0.82rem", marginTop: 2 }}>
+                      ⚠ Falta un cargo: {row.cargoFaltante}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span className="status-pill ok">Guardado</span>
