@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
@@ -325,11 +325,29 @@ export async function getCurrentUser() {
   return session.user;
 }
 
+/**
+ * Un destino de vuelta que es seguro obedecer.
+ *
+ * Solo rutas internas. "//otro-sitio" y "https://…" son URL absolutas
+ * disfrazadas de ruta: aceptarlas convierte el login en un redirector
+ * abierto hacia cualquier dominio.
+ */
+export function destinoSeguro(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  if (!valor.startsWith("/") || valor.startsWith("//")) return null;
+  if (valor.startsWith("/login") || valor.startsWith("/logout")) return null;
+  return valor;
+}
+
 export async function requireUser() {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    // Se guarda a dónde iba. Sin esto, abrir el enlace directo a una ficha
+    // —o volver con la sesión ya vencida— terminaba siempre en el dashboard,
+    // que desde afuera se ve como si la página "se devolviera sola".
+    const destino = destinoSeguro(headers().get("x-ruta-pedida"));
+    redirect(destino ? `/login?destino=${encodeURIComponent(destino)}` : "/login");
   }
 
   return user;

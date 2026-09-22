@@ -34,7 +34,12 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  // La ruta pedida viaja en una cabecera para que `requireUser` pueda
+  // devolver a la persona acá después del login. En App Router un Server
+  // Component no puede leer la URL por su cuenta.
+  const headers = new Headers(req.headers);
+  headers.set("x-ruta-pedida", pathname + req.nextUrl.search);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

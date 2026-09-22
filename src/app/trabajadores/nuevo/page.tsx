@@ -26,6 +26,8 @@ export default async function NuevoTrabajadorPage({
   const alert =
     status === "invalid"
       ? { type: "error", text: "Revisa los datos del trabajador." }
+      : status === "rut-invalido"
+      ? { type: "error", text: "El RUT no es válido: revisa el dígito verificador. Si la persona se identifica con pasaporte, escríbelo sin formato de RUT." }
       : status === "forbidden"
         ? { type: "error", text: "Solo administradores pueden crear trabajadores." }
           : null;

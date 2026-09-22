@@ -453,6 +453,37 @@ export function normalizarRut(rut?: string | null): string {
 }
 
 /**
+ * RUT en el formato único de la aplicación: 12.345.678-9.
+ *
+ * Se guardaban dos formatos a la vez —12 trabajadores con puntos y 9 sin
+ * ellos— así que buscar por RUT fallaba según cómo lo hubiera tecleado quien
+ * cargó la ficha, y dos escrituras del mismo RUT no se reconocían como la
+ * misma persona. Si no es un RUT válido se devuelve tal cual vino: inventarle
+ * puntos a un dato malo solo lo hace parecer bueno.
+ */
+export function formatearRut(rut?: string | null): string {
+  const limpio = normalizarRut(rut);
+  if (!limpio) return "";
+  if (!rutValido(limpio)) return (rut ?? "").trim();
+  const cuerpo = limpio.slice(0, -1);
+  const dv = limpio.slice(-1);
+  return `${cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}-${dv}`;
+}
+
+/**
+ * Limpia lo que sobra en un nombre tecleado o copiado de una planilla:
+ * espacios dobles, comas y puntos al final, dígitos pegados.
+ */
+export function limpiarNombre(nombre: string): string {
+  return nombre
+    .normalize("NFC")
+    .replace(/[0-9_|]+/g, " ")
+    .replace(/[,;.]+\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Clave de nombre invariante al orden de las palabras.
  *
  * Los documentos chilenos alternan entre "Apellidos Nombres" y

@@ -5,11 +5,37 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ADMIN_ROLES, isSupervisorRole, TRABAJADORES_ROLES, requireRole, type AppRole } from "@/lib/auth";
 import { sincronizarDesdeFicha } from "@/lib/acreditacion-db";
+import { formatearRut, limpiarNombre, normalizarRut, rutValido } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
+
+/**
+ * Deja el nombre y el RUT en la forma única con la que se guardan.
+ *
+ * El RUT se valida por módulo 11 SOLO cuando tiene forma de RUT. Hay
+ * trabajadores extranjeros que se identifican con pasaporte, y rechazar su
+ * ficha porque no pasa un cálculo chileno sería impedir contratarlos. Pero
+ * un RUT mal tecleado sí se rechaza: en un sistema de acreditación una
+ * persona con el RUT cambiado es una persona que el mandante no reconoce.
+ */
+function limpiarIdentidad(payload: { fullName: string; nationalId?: string }): {
+  fullName: string;
+  nationalId: string;
+  rutInvalido: boolean;
+} {
+  const crudo = (payload.nationalId ?? "").trim();
+  const limpio = normalizarRut(crudo);
+  const pareceRut = /^\d{7,9}[0-9K]$/.test(limpio);
+
+  return {
+    fullName: limpiarNombre(payload.fullName),
+    nationalId: pareceRut && rutValido(limpio) ? formatearRut(limpio) : crudo,
+    rutInvalido: pareceRut && !rutValido(limpio),
+  };
+}
 
 const patternToDays: Record<string, { work: number; off: number }> = {
   "14x14": { work: 14, off: 14 },
@@ -111,6 +137,10 @@ export async function createWorkerAction(formData: FormData) {
   }
 
   const payload = parsed.data;
+  const identidad = limpiarIdentidad(payload);
+  if (identidad.rutInvalido) {
+    redirect(`${String(formData.get("errorRedirectTo") ?? "/trabajadores/nuevo")}?status=rut-invalido`);
+  }
 
   const rule = patternToDays[payload.shiftPattern];
 
@@ -118,10 +148,10 @@ export async function createWorkerAction(formData: FormData) {
     data: {
       campId: payload.campId || null,
       createdById: adminUser.id,
-      fullName: payload.fullName,
+      fullName: identidad.fullName,
       role: payload.role || null,
       employerCompany: payload.employerCompany || null,
-      nationalId: payload.nationalId || null,
+      nationalId: identidad.nationalId || null,
       phone: payload.phone || null,
       personalEmail: payload.personalEmail || null,
       shiftPattern: payload.shiftPattern,
@@ -232,16 +262,21 @@ export async function updateWorkerAction(formData: FormData) {
     redirect(`${payload.errorRedirectTo}?status=forbidden`);
   }
 
+  const identidad = limpiarIdentidad(payload);
+  if (identidad.rutInvalido) {
+    redirect(`${payload.errorRedirectTo}?status=rut-invalido`);
+  }
+
   const rule = patternToDays[payload.shiftPattern];
 
   const updatedWorker = await db.staffMember.update({
     where: { id: worker.id },
     data: {
       campId: payload.campId || null,
-      fullName: payload.fullName,
+      fullName: identidad.fullName,
       role: payload.role || null,
       employerCompany: payload.employerCompany || null,
-      nationalId: payload.nationalId || null,
+      nationalId: identidad.nationalId || null,
       phone: payload.phone || null,
       personalEmail: payload.personalEmail || null,
       shiftPattern: payload.shiftPattern,

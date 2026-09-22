@@ -23,6 +23,27 @@ function fecha(valor: FormDataEntryValue | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * ¿Se puede guardar este tipo como "no vence"?
+ *
+ * Un examen ocupacional con vigencia de un año no puede quedar marcado como
+ * que no caduca: el documento desaparece de todas las alertas y del cálculo
+ * de vencidos, y a los tres meses nadie se acuerda de que lo marcó. Es la
+ * forma más silenciosa que hay de perder un vencimiento.
+ *
+ * Solo se rechaza cuando el catálogo tiene una vigencia definida para ese
+ * tipo. A los que todavía no la tienen no se les inventa una regla acá: se
+ * configura en Administración, donde queda a la vista.
+ */
+async function vigenciaDelTipo(tipoId: string): Promise<{ dias: number; nombre: string } | null> {
+  const tipo = await db.tipoDocumento.findUnique({
+    where: { id: tipoId },
+    select: { nombre: true, vigenciaDias: true, noVence: true },
+  });
+  if (!tipo || tipo.noVence || !tipo.vigenciaDias) return null;
+  return { dias: tipo.vigenciaDias, nombre: tipo.nombre };
+}
+
 /** Corrige fechas: fila nueva con los datos buenos, la vieja queda anulada. */
 export async function corregirDocumentoAction(formData: FormData) {
   const user = await requireRole(TRABAJADORES_ROLES);
@@ -45,6 +66,10 @@ export async function corregirDocumentoAction(formData: FormData) {
   // documento peor que antes: se rechaza en vez de guardar un registro mudo.
   if (!sinVencimiento && !fechaVencimiento && !fechaEmision) {
     redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-sin-fecha`);
+  }
+
+  if (sinVencimiento && await vigenciaDelTipo(anterior.tipoDocumentoId)) {
+    redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-si-vence`);
   }
 
   await db.$transaction([
@@ -155,6 +180,10 @@ export async function registrarDocumentoAction(formData: FormData) {
 
   if (!sinVencimiento && !fechaVencimiento && !fechaEmision) {
     redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-sin-fecha`);
+  }
+
+  if (sinVencimiento && await vigenciaDelTipo(tipoId)) {
+    redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-si-vence`);
   }
 
   await db.documentoAcreditacion.create({

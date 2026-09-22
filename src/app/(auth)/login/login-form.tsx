@@ -10,12 +10,14 @@ function SubmitButton() {
   return <button type="submit">{pending ? "Ingresando..." : "Ingresar"}</button>;
 }
 
-export function LoginForm() {
+export function LoginForm({ destino }: { destino?: string }) {
   const [state, formAction] = useFormState(loginAction, initialState);
 
   return (
     <>
       <form action={formAction} className="grid">
+        {/* A dónde iba antes de que le pidieran la clave. */}
+        <input type="hidden" name="destino" value={destino ?? ""} />
         <div>
           <label htmlFor="accessRole">Tipo de acceso</label>
           <select id="accessRole" name="accessRole" defaultValue="OPERATIVO" required>

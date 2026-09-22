@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createSession, defaultRouteForRole, normalizeRole, verifyPassword, type AppRole, ROLE_LABEL } from "@/lib/auth";
+import { createSession, defaultRouteForRole, destinoSeguro, normalizeRole, verifyPassword, type AppRole, ROLE_LABEL } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function loginAction(_: { error?: string } | undefined, formData: FormData) {
@@ -45,5 +45,10 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
   }
 
   await createSession(user.id);
-  redirect(defaultRouteForRole(user.role));
+
+  // Vuelve a donde iba. Si la ruta no le corresponde a su rol, el propio
+  // `requireRole` de esa página lo va a mandar a su inicio: acá no hace falta
+  // repetir ese control, y repetirlo sería tener dos listas de permisos.
+  const destino = destinoSeguro(String(formData.get("destino") ?? ""));
+  redirect(destino ?? defaultRouteForRole(user.role));
 }

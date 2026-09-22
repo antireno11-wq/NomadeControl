@@ -216,6 +216,7 @@ export default async function PerfilTrabajadorPage({
   const alert =
     status === "updated" ? { type: "success", text: "Trabajador actualizado correctamente." }
     : status === "invalid" ? { type: "error", text: "Revisa los datos del trabajador." }
+    : status === "rut-invalido" ? { type: "error", text: "El RUT no es válido: revisa el dígito verificador. Si la persona se identifica con pasaporte, escríbelo sin formato de RUT." }
     : status === "forbidden" ? { type: "error", text: "No puedes editar trabajadores de otro campamento." }
     : status === "foto-ok" ? { type: "success", text: "Foto actualizada." }
     : status === "foto-formato" ? { type: "error", text: "La foto tiene que ser JPG, PNG o WEBP." }
@@ -225,6 +226,7 @@ export default async function PerfilTrabajadorPage({
     : status === "doc-anulado" ? { type: "success", text: "Documento anulado. Sigue en el historial." }
     : status === "doc-registrado" ? { type: "success", text: "Documento registrado sin archivo adjunto." }
     : status === "doc-sin-fecha" ? { type: "error", text: "Pon al menos una fecha, o marca que el documento no vence." }
+    : status === "doc-si-vence" ? { type: "error", text: "Este tipo de documento tiene vigencia definida: no se puede guardar como «no vence». Pon la fecha de emisión o la de vencimiento. Si de verdad no caduca, cambia la regla del tipo en Administración." }
     : status === "doc-sin-motivo" ? { type: "error", text: "Escribe el motivo de la anulación." }
     : status === "doc-no-encontrado" ? { type: "error", text: "Ese documento no es de este trabajador." }
     : status === "doc-invalido" ? { type: "error", text: "No se pudo procesar el documento." }
