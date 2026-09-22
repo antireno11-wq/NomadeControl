@@ -14,6 +14,7 @@ import { ExigenciaChip } from "@/app/trabajadores/exigencia-banner";
 type SearchParams = {
   campId?: string | string[];
   status?: string | string[];
+  inactivos?: string | string[];
 };
 
 function getStatusInfo(status: string) {
@@ -36,6 +37,10 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
   const selectedCampId = typeof selectedCampIdRaw === "string" && selectedCampIdRaw !== "general" ? selectedCampIdRaw : undefined;
   const scopedSelectedCampId = canSeeAllStaff ? selectedCampId : user.campId ?? selectedCampId;
   const campFilter = !canSeeAllStaff ? user.campId ?? "__none__" : undefined;
+  // La lista traía a todos, activos e inactivos, sin nada que los
+  // distinguiera: alguien daba de baja a un duplicado y lo seguía viendo
+  // igual, así que parecía que la baja no había funcionado.
+  const verInactivos = searchParams?.inactivos === "1";
 
   const [camps, staffMembers] = await Promise.all([
     db.camp.findMany({
@@ -44,6 +49,7 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
     }),
     db.staffMember.findMany({
       where: {
+        ...(verInactivos ? {} : { isActive: true }),
         ...(campFilter ? { campId: campFilter } : {}),
         ...(scopedSelectedCampId ? { campId: scopedSelectedCampId } : {})
       },
@@ -197,7 +203,13 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
           <div className="dashboard-kpi teal">
             <div className="dashboard-kpi-label">Trabajadores</div>
             <div className="dashboard-kpi-value">{staffRows.length}</div>
-            <div className="dashboard-kpi-meta">{staffRows.filter((row) => row.worker.isActive).length} activos</div>
+            <div className="dashboard-kpi-meta">
+              {verInactivos ? "activos e inactivos" : "activos"}
+              {" · "}
+              <Link href={verInactivos ? "/trabajadores" : "/trabajadores?inactivos=1"}>
+                {verInactivos ? "ver solo activos" : "ver también los dados de baja"}
+              </Link>
+            </div>
           </div>
           <div className="dashboard-kpi teal">
             <div className="dashboard-kpi-label">En turno hoy</div>
@@ -320,7 +332,15 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
                       <tr key={row.worker.id} style={tieneBloqueos(row.exigencia) ? { background: "#fff5f5" } : undefined}>
                         {/* Trabajador (nombre + RUT) */}
                         <td>
-                          <div style={{ fontWeight: 600, color: "var(--text)" }}>{row.worker.fullName}</div>
+                          <div style={{ fontWeight: 600, color: "var(--text)" }}>
+                            {row.worker.fullName}
+                            {/* Sin esto, un dado de baja se veía idéntico a uno activo. */}
+                            {!row.worker.isActive && (
+                              <span style={{ marginLeft: 8, fontSize: "0.7rem", fontWeight: 700, color: "#9a6300", background: "#fff4dc", padding: "1px 7px", borderRadius: 20 }}>
+                                de baja{row.worker.motivoBaja ? ` · ${row.worker.motivoBaja}` : ""}
+                              </span>
+                            )}
+                          </div>
                           {row.worker.nationalId && (
                             <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 2 }}>{row.worker.nationalId}</div>
                           )}
