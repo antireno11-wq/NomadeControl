@@ -7,7 +7,7 @@
 #
 # El endpoint es idempotente: guarda qué umbral avisó de cada documento, así
 # que si el barrido corre dos veces el mismo día no manda nada repetido.
-name: Alertas de vencimiento documental
+name: Alertas diarias
 
 on:
   schedule:
@@ -25,11 +25,23 @@ on:
 jobs:
   avisar:
     runs-on: ubuntu-latest
+    strategy:
+      # Los dos barridos son independientes: que falle el de compromisos no
+      # tiene por qué impedir que salgan las alertas de documentos.
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: Vencimientos documentales
+            endpoint: document-alerts
+          - nombre: Compromisos por cerrar
+            endpoint: compromiso-alerts
+    name: ${{ matrix.nombre }}
     steps:
-      - name: Barrer vencimientos
+      - name: Barrer
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           DRY: ${{ inputs.dryRun && '1' || '0' }}
+          ENDPOINT: ${{ matrix.endpoint }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "Falta el secreto CRON_SECRET en la configuración del repositorio."
@@ -37,7 +49,7 @@ jobs:
           fi
 
           RESPUESTA=$(curl -sS -w "\n%{http_code}" -X POST \
-            "https://control.nomadechile.cl/api/cron/document-alerts?dryRun=$DRY" \
+            "https://control.nomadechile.cl/api/cron/$ENDPOINT?dryRun=$DRY" \
             -H "Authorization: Bearer $CRON_SECRET")
 
           CODIGO=$(echo "$RESPUESTA" | tail -n1)
@@ -46,8 +58,8 @@ jobs:
           echo "$CUERPO"
 
           # Un fallo silencioso acá es peor que no tener alertas: se cree que
-          # están funcionando. Si el endpoint no responde 200, la ejecución
-          # falla y GitHub avisa.
+          # están funcionando. Si el endpoint no responde 200 -- lo que incluye
+          # que un correo no haya salido -- la ejecución falla y GitHub avisa.
           if [ "$CODIGO" != "200" ]; then
             echo "El endpoint respondió $CODIGO"
             exit 1

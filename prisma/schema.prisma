@@ -682,6 +682,32 @@ model DocumentoAdicional {
 // Registro de alertas ya enviadas — evita enviar duplicados en el mismo umbral
 // para la misma fecha de vencimiento. Cuando el documento se renueva (nueva
 // fechaVencimiento), los umbrales se resetean.
+/// Qué aviso de qué compromiso ya se mandó.
+///
+/// Misma idea que AlertaDocumento: sin esto, el barrido diario reenvía lo
+/// mismo todas las mañanas hasta que alguien cierra el compromiso, y un
+/// correo que repite lo de ayer se deja de leer en una semana.
+model AlertaCompromiso {
+  id           String     @id @default(cuid())
+  compromisoId String
+  compromiso   Compromiso @relation(fields: [compromisoId], references: [id], onDelete: Cascade)
+  /// La fecha contra la que se midió. Si el compromiso se reprograma, la
+  /// fecha cambia y los avisos vuelven a correr desde cero: es un plazo
+  /// nuevo, no el mismo atraso.
+  fechaCierre  DateTime
+  /// Días respecto del plazo. Positivo = antes, negativo = atrasado.
+  umbral       Int
+  /// personal | supervision. Son dos correos distintos y cada uno lleva su
+  /// propia cuenta: que al responsable ya se le haya avisado no significa
+  /// que la supervisión lo sepa.
+  destino      String
+  sentAt       DateTime   @default(now())
+  recipients   String
+
+  @@unique([compromisoId, fechaCierre, umbral, destino])
+  @@index([sentAt])
+}
+
 model AlertaDocumento {
   id            String      @id @default(cuid())
   staffMemberId String
@@ -1344,6 +1370,7 @@ model Compromiso {
   updatedAt        DateTime @updatedAt
 
   reprogramaciones CompromisoReprogramacion[]
+  alertas          AlertaCompromiso[]
 
   @@index([estado, fechaCierre])
   @@index([responsable])

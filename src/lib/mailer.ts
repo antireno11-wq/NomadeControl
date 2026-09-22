@@ -365,3 +365,131 @@ export async function sendAlertasVencimientoEmail(input: SendAlertasVencimientoE
     }),
   }).catch(() => {});
 }
+
+// ─── Compromisos atrasados ───────────────────────────────────────────────────
+
+export type CompromisoAtrasadoItem = {
+  accion: string;
+  responsable: string;
+  /** Negativo = atrasado. 0 = vence hoy. Positivo = le quedan días. */
+  dias: number;
+  fechaCierre: Date;
+  reprogramado: boolean;
+  contrato: string | null;
+};
+
+type SendCompromisosEmailInput = {
+  to: string[];
+  fechaLabel: string;
+  items: CompromisoAtrasadoItem[];
+  /** Nombre de la persona cuando es el correo personal. */
+  paraQuien?: string;
+};
+
+function filaCompromiso(c: CompromisoAtrasadoItem, conResponsable: boolean): string {
+  const color = c.dias < 0 ? "#dc2626" : c.dias === 0 ? "#f97316" : "#64748b";
+  const plazo =
+    c.dias < 0 ? `${Math.abs(c.dias)} día${Math.abs(c.dias) === 1 ? "" : "s"} de atraso`
+    : c.dias === 0 ? "vence hoy"
+    : `en ${c.dias} día${c.dias === 1 ? "" : "s"}`;
+  const fecha = c.fechaCierre.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+
+  return `<tr>
+    <td style="padding:10px;border-bottom:1px solid #e5e7eb">
+      <div style="font-weight:600;color:#0f172a">${escaparHtml(c.accion)}</div>
+      ${c.contrato ? `<div style="font-size:0.78rem;color:#64748b;margin-top:2px">${escaparHtml(c.contrato)}</div>` : ""}
+    </td>
+    ${conResponsable ? `<td style="padding:10px;border-bottom:1px solid #e5e7eb;white-space:nowrap">${escaparHtml(c.responsable)}</td>` : ""}
+    <td style="padding:10px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#475569">
+      ${fecha}${c.reprogramado ? '<div style="font-size:0.72rem;color:#92400e">reprogramado</div>' : ""}
+    </td>
+    <td style="padding:10px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:${color};font-weight:700">${plazo}</td>
+  </tr>`;
+}
+
+/** El texto del usuario puede traer comillas y signos que rompen el HTML. */
+function escaparHtml(v: string): string {
+  return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Manda un correo de compromisos y DEVUELVE si se pudo mandar.
+ *
+ * A diferencia de los otros envíos de este archivo, acá el error no se traga:
+ * quien llama necesita poder decir "fallaron 3 de 8 correos" en vez de
+ * terminar en verde habiendo mandado nada. Un aviso que falla en silencio es
+ * peor que no tener aviso, porque se cree que está funcionando.
+ */
+export async function sendCompromisosAtrasadosEmail(
+  input: SendCompromisosEmailInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) return { ok: false, error: "Falta RESEND_API_KEY o RESEND_FROM_EMAIL" };
+  if (input.to.length === 0) return { ok: false, error: "Sin destinatarios" };
+  if (input.items.length === 0) return { ok: false, error: "Sin compromisos que informar" };
+
+  const personal = Boolean(input.paraQuien);
+  const url = appUrl();
+  const atrasados = input.items.filter(c => c.dias < 0).length;
+  const vencenHoy = input.items.filter(c => c.dias === 0).length;
+
+  const encabezado = personal
+    ? `Hola ${escaparHtml(input.paraQuien!)}, tienes ${input.items.length} compromiso${input.items.length === 1 ? "" : "s"} por cerrar`
+    : `${input.items.length} compromiso${input.items.length === 1 ? "" : "s"} necesita${input.items.length === 1 ? "" : "n"} atención`;
+
+  const bajada = [
+    atrasados > 0 ? `<strong style="color:#dc2626">${atrasados} atrasado${atrasados === 1 ? "" : "s"}</strong>` : null,
+    vencenHoy > 0 ? `<strong style="color:#f97316">${vencenHoy} vence${vencenHoy === 1 ? "" : "n"} hoy</strong>` : null,
+  ].filter(Boolean).join(" · ");
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:720px;margin:0 auto;padding:24px;color:#0f172a">
+      <h2 style="margin:0 0 4px;color:#006878">${encabezado}</h2>
+      <p style="margin:0 0 20px;color:#475569">${input.fechaLabel}${bajada ? ` — ${bajada}` : ""}</p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Compromiso</th>
+            ${personal ? "" : '<th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Responsable</th>'}
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Plazo</th>
+            <th align="left" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Situación</th>
+          </tr>
+        </thead>
+        <tbody>${input.items.map(c => filaCompromiso(c, !personal)).join("")}</tbody>
+      </table>
+
+      <a href="${url}/compromisos" style="display:inline-block;margin-top:20px;padding:10px 24px;background:#006878;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+        ${personal ? "Cerrar mis compromisos" : "Ver el tablero"}
+      </a>
+
+      ${personal ? `<p style="color:#64748b;font-size:0.82rem;margin-top:18px">
+        Para cerrar uno hay que escribir cómo se cerró. No es burocracia: a los tres meses,
+        ante una pregunta del mandante, un cerrado sin explicación no se distingue de uno
+        que nunca se hizo.
+      </p>` : ""}
+
+      <p style="color:#94a3b8;font-size:0.75rem;margin-top:24px">
+        Aviso automático diario. Cada compromiso avisa una vez por hito, no todos los días.<br>
+        NomadeControl — control.nomadechile.cl
+      </p>
+    </div>
+  `;
+
+  const asunto = personal
+    ? `Tienes ${input.items.length} compromiso${input.items.length === 1 ? "" : "s"} por cerrar`
+    : `Compromisos ${input.fechaLabel}: ${atrasados} atrasado${atrasados === 1 ? "" : "s"}${vencenHoy > 0 ? `, ${vencenHoy} vence${vencenHoy === 1 ? "" : "n"} hoy` : ""}`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: input.to, subject: asunto, html }),
+    });
+    if (!res.ok) return { ok: false, error: `Resend respondió ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error de red" };
+  }
+}
