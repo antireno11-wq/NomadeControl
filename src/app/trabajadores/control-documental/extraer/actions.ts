@@ -819,7 +819,10 @@ export async function applyExtractionsAction(
       // vigencia por defecto, la derivamos de la emisión. Queda marcada como
       // calculada: ante un reclamo del mandante hay que poder distinguir una
       // fecha inferida de una que estaba escrita en el papel.
-      if (!fechaVencimiento && fechaEmision && tipo.vigenciaDias && tipo.vigenciaDias > 0) {
+      // La condición `!tipo.noVence` no estaba: a un tipo declarado perpetuo
+      // al que le quedara una vigencia vieja en el catálogo, acá se le seguía
+      // inventando un vencimiento. Más arriba sí se miraba; en este camino no.
+      if (!fechaVencimiento && fechaEmision && !tipo.noVence && tipo.vigenciaDias && tipo.vigenciaDias > 0) {
         fechaVencimiento = new Date(fechaEmision.getTime() + tipo.vigenciaDias * 86_400_000);
         calculado = true;
       }

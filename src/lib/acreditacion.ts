@@ -221,12 +221,15 @@ export const AJUSTES_NO_VENCE: string[] = [
   "titulo_estudios",
   "finiquito",
   "finiquito_mandante",
+  // El certificado de antecedentes no caduca: es el estado de una persona a
+  // la fecha en que se emitió, no un permiso con plazo. Se le había puesto
+  // una vigencia de 60 días suponiendo que el mandante solo lo acepta
+  // reciente, y eso dejaba a tres trabajadores con un "vencido" rojo por un
+  // papel que nunca venció.
+  "certificado_antecedentes",
 ];
 
 export const AJUSTES_VIGENCIA: { codigo: string; desde: number | null; vigenciaDias: number }[] = [
-  // El certificado de antecedentes no trae vencimiento impreso; el mandante
-  // lo acepta 60 días desde la emisión.
-  { codigo: "certificado_antecedentes", desde: 30, vigenciaDias: 60 },
   // Los cursos e-learning de la ACHS dicen al pie "Vigencia: 2 años, a partir
   // de la fecha de término del curso". La fecha grande del diploma es la de
   // término, no la de vencimiento: el sistema los daba por vencidos el mismo

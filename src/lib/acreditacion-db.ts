@@ -121,9 +121,13 @@ async function asegurarCatalogo(): Promise<void> {
   const yaNoVence = new Set(actuales.filter(t => t.noVence).map(t => t.codigo));
   const aMarcar = AJUSTES_NO_VENCE.filter(c => codigos.has(c) && !yaNoVence.has(c));
   if (aMarcar.length > 0) {
+    // Se borra la vigencia además de marcarlo. Un tipo que no vence con una
+    // vigencia guardada es una contradicción que alguien va a leer: el
+    // extractor deriva fechas de `vigenciaDias` y volvería a inventarle un
+    // vencimiento al documento que acabamos de declarar perpetuo.
     await db.tipoDocumento.updateMany({
       where: { codigo: { in: aMarcar } },
-      data: { noVence: true },
+      data: { noVence: true, vigenciaDias: null },
     });
   }
 
