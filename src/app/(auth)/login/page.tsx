@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { destinoSeguro } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage({
@@ -6,7 +7,9 @@ export default function LoginPage({
 }: {
   searchParams?: { destino?: string | string[] };
 }) {
-  const destino = typeof searchParams?.destino === "string" ? searchParams.destino : "";
+  // Se filtra acá además de en la acción. La acción es la que decide, pero
+  // una URL ajena no tiene por qué llegar siquiera a dibujarse en la página.
+  const destino = destinoSeguro(typeof searchParams?.destino === "string" ? searchParams.destino : "") ?? "";
   return (
     <main style={{ maxWidth: 460, paddingTop: 80 }}>
       <div className="card">
