@@ -190,6 +190,33 @@ function formatoAceptado(f: File): boolean {
 }
 const MAX_FILE_MB = 18;
 
+/**
+ * Tope de cada envío al servidor. El límite real de la acción es 25 MB y el
+ * base64 infla los archivos ~33%, así que tres fotos de celular ya lo pasaban
+ * y la carga moría con "Body exceeded 25mb limit" — un error genérico que no
+ * decía nada. Se manda por tandas y no hay tope de cuántos archivos suelta
+ * alguien de una vez.
+ */
+const MAX_LOTE_BYTES = 14 * 1024 * 1024;
+
+/** Parte una lista en tandas que no superen el tope, por tamaño de base64. */
+function enTandas<T extends { base64: string }>(items: T[]): T[][] {
+  const tandas: T[][] = [];
+  let actual: T[] = [];
+  let peso = 0;
+  for (const it of items) {
+    const p = it.base64.length;
+    // Un archivo que por sí solo pasa el tope va igual: el servidor lo
+    // rechazará con su propio mensaje, que es más claro que no intentarlo.
+    if (actual.length > 0 && peso + p > MAX_LOTE_BYTES) {
+      tandas.push(actual); actual = []; peso = 0;
+    }
+    actual.push(it); peso += p;
+  }
+  if (actual.length > 0) tandas.push(actual);
+  return tandas;
+}
+
 /** Valor especial del select: crear un trabajador con los datos detectados. */
 const CREAR_NUEVO = "__crear__";
 /** Prefijo de las opciones "persona que se crea con esta misma carga". */
@@ -298,14 +325,16 @@ export function ExtractClient({
 
     startTransition(async () => {
       try {
-        const results = await extractDocumentsAction(
-          nuevosArchivos.map(a => ({
-            clientFileId: a.clientFileId,
-            fileName: a.fileName,
-            mimeType: a.mimeType,
-            base64: a.base64,
-          }))
-        );
+        const tandas = enTandas(nuevosArchivos.map(a => ({
+          clientFileId: a.clientFileId,
+          fileName: a.fileName,
+          mimeType: a.mimeType,
+          base64: a.base64,
+        })));
+        const results: Awaited<ReturnType<typeof extractDocumentsAction>> = [];
+        for (const tanda of tandas) {
+          results.push(...await extractDocumentsAction(tanda));
+        }
         const idsProcesados = new Set(nuevosArchivos.map(a => a.clientFileId));
 
         setRows(prev => [
@@ -546,8 +575,7 @@ export function ExtractClient({
   function handleApply() {
     if (readyRows.length === 0) return;
     startTransition(async () => {
-      const result = await applyExtractionsAction(
-        readyRows.map(r => ({
+      const filas = readyRows.map(r => ({
           workerId: r.workerId === CREAR_NUEVO ? null : r.workerId,
           nuevoTrabajador: r.workerId === CREAR_NUEVO
             ? { nombre: r.nuevoNombre.trim(), rut: r.nuevoRut.trim() || null }
@@ -572,12 +600,35 @@ export function ExtractClient({
                 .filter((a): a is ArchivoInfo => Boolean(a))
                 .map(a => ({ clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 }))
             : [],
-        })),
-        { proyectoId: proyectoNuevo || null, cargoId: cargoNuevo || null },
-      );
+      }));
+
+      // Guardar también va por tandas: una carpeta completa con fotos pasa el
+      // límite igual que la extracción.
+      const asignacion = { proyectoId: proyectoNuevo || null, cargoId: cargoNuevo || null };
+      const pesoDe = (f: typeof filas[number]) =>
+        (f.archivo?.base64.length ?? 0) + (f.archivosExtra ?? []).reduce((s2, a) => s2 + a.base64.length, 0);
+
+      const tandas: (typeof filas)[] = [];
+      let actual: typeof filas = [];
+      let peso = 0;
+      for (const f of filas) {
+        const p = pesoDe(f);
+        if (actual.length > 0 && peso + p > MAX_LOTE_BYTES) { tandas.push(actual); actual = []; peso = 0; }
+        actual.push(f); peso += p;
+      }
+      if (actual.length > 0) tandas.push(actual);
+
+      let applied = 0, creados = 0, errors = 0;
+      const reactivados: string[] = [];
+      for (const tanda of tandas) {
+        const r = await applyExtractionsAction(tanda, asignacion);
+        applied += r.applied; creados += r.creados.length; errors += r.errors.length;
+        reactivados.push(...r.reactivados);
+      }
+
       const appliedIds = new Set(readyRows.map(r => r.rowId));
       setRows(prev => prev.map(r => appliedIds.has(r.rowId) ? { ...r, applied: true } : r));
-      setApplyResult({ applied: result.applied, creados: result.creados.length, reactivados: result.reactivados, errors: result.errors.length });
+      setApplyResult({ applied, creados, reactivados, errors });
     });
   }
 
