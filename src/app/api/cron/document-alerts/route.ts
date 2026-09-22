@@ -68,7 +68,19 @@ export async function POST(req: NextRequest) {
   const today = new Date();
 
   // ── Destinatarios ────────────────────────────────────────────────────
-  const gestores = await db.user.findMany({
+  // `DOCUMENT_ALERT_EMAILS` manda. Quién debe enterarse de que a un
+  // trabajador se le vence un examen es una decisión de la empresa, no una
+  // consecuencia de a quién le tocó ser Administrador en la aplicación: con
+  // los roles de hoy la lista automática incluía al contador externo.
+  //
+  // Sin la variable configurada cae a todos los gestores, para que una
+  // instalación nueva no quede muda. Pero lo dice en la respuesta.
+  const envEmails = (process.env.DOCUMENT_ALERT_EMAILS ?? "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+
+  const listaExplicita = envEmails.length > 0;
+
+  const gestores = listaExplicita ? [] : await db.user.findMany({
     where: {
       isActive: true,
       role: { in: ["ADMINISTRADOR", "OPERATIVO", "ADMIN", "ADMIN_LIMITADO", "RRHH"] },
@@ -76,10 +88,9 @@ export async function POST(req: NextRequest) {
     select: { email: true },
   });
 
-  const envEmails = (process.env.DOCUMENT_ALERT_EMAILS ?? "")
-    .split(",").map(e => e.trim()).filter(Boolean);
-
-  const recipients = Array.from(new Set([...envEmails, ...gestores.map(u => u.email).filter(Boolean)]));
+  const recipients = listaExplicita
+    ? envEmails
+    : Array.from(new Set(gestores.map(u => u.email).filter(Boolean)));
 
   if (recipients.length === 0) {
     return NextResponse.json({
@@ -226,6 +237,9 @@ export async function POST(req: NextRequest) {
     trabajadoresRevisados: staff.length,
     documentosVigentes: vigentes.size,
     umbrales: ALERT_THRESHOLDS,
+    destinatarios: listaExplicita
+      ? "lista explícita (DOCUMENT_ALERT_EMAILS)"
+      : "todos los gestores — configura DOCUMENT_ALERT_EMAILS para acotarla",
     cruces: pendientes.length,
     yaAvisadas: pendientes.length - nuevas.length,
     nuevasAlertas: nuevas.length,
