@@ -1,0 +1,54 @@
+# Barrido diario de vencimientos documentales.
+#
+# Vive acá y no en un servicio aparte porque así la programación queda en el
+# repositorio, a la vista y con historial: si mañana alguien cambia la hora o
+# lo apaga, se ve en el diff. Un cron configurado a mano en un panel es una
+# pieza de la operación que no está escrita en ninguna parte.
+#
+# El endpoint es idempotente: guarda qué umbral avisó de cada documento, así
+# que si el barrido corre dos veces el mismo día no manda nada repetido.
+name: Alertas de vencimiento documental
+
+on:
+  schedule:
+    # 12:00 UTC = 08:00 en Chile continental (horario de invierno), 09:00 en
+    # verano. Llega antes de que se arme la dotación del día.
+    - cron: "0 12 * * *"
+  # Para correrlo a mano desde la pestaña Actions cuando haga falta.
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "Simular sin enviar correos"
+        type: boolean
+        default: false
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Barrer vencimientos
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRY: ${{ inputs.dryRun && '1' || '0' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Falta el secreto CRON_SECRET en la configuración del repositorio."
+            exit 1
+          fi
+
+          RESPUESTA=$(curl -sS -w "\n%{http_code}" -X POST \
+            "https://control.nomadechile.cl/api/cron/document-alerts?dryRun=$DRY" \
+            -H "Authorization: Bearer $CRON_SECRET")
+
+          CODIGO=$(echo "$RESPUESTA" | tail -n1)
+          CUERPO=$(echo "$RESPUESTA" | sed '$d')
+
+          echo "$CUERPO"
+
+          # Un fallo silencioso acá es peor que no tener alertas: se cree que
+          # están funcionando. Si el endpoint no responde 200, la ejecución
+          # falla y GitHub avisa.
+          if [ "$CODIGO" != "200" ]; then
+            echo "El endpoint respondió $CODIGO"
+            exit 1
+          fi
