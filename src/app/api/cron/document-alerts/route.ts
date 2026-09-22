@@ -11,6 +11,26 @@ import { diasRestantes, seleccionarVigentes } from "@/lib/acreditacion";
  */
 const ALERT_THRESHOLDS = [60, 30, 15, 7, 0, -3, -7] as const;
 
+const UMBRALES_ASC = [...ALERT_THRESHOLDS].sort((a, b) => a - b);
+
+/**
+ * El umbral que a este documento le toca hoy, o `null` si todavía no le
+ * toca ninguno.
+ *
+ * Devuelve el umbral MÁS CERCANO ya cruzado, no el que coincide exacto con
+ * los días que faltan. Antes se comparaba `dias === umbral`, así que la
+ * alerta existía un solo día: si el barrido no corría ese día puntual
+ * —servidor caído, tarea que no se disparó, cualquier cosa— ese aviso se
+ * perdía para siempre y nadie se enteraba de que se había perdido. Un aviso
+ * de vencimiento que depende de que un cron no falle nunca no es un aviso.
+ *
+ * No duplica nada: `AlertaDocumento` ya guarda (trabajador, tipo, fecha,
+ * umbral), así que cada umbral se manda una sola vez.
+ */
+function umbralQueCorresponde(dias: number): number | null {
+  return UMBRALES_ASC.find(t => dias <= t) ?? null;
+}
+
 function severidad(t: number): "vencido" | "critico" | "medio" | "preventivo" {
   if (t <= 0) return "vencido";
   if (t <= 7) return "critico";
@@ -120,7 +140,7 @@ export async function POST(req: NextRequest) {
     const dias = diasRestantes(doc.fechaVencimiento, today);
     if (dias == null) continue;
 
-    const threshold = ALERT_THRESHOLDS.find(t => dias === t);
+    const threshold = umbralQueCorresponde(dias);
     if (threshold == null) continue;
 
     const worker = staffById.get(doc.staffMemberId);

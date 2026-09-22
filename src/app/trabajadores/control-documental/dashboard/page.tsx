@@ -210,9 +210,16 @@ export default async function DashboardAcreditacionPage({
       activeNav="trabajadores"
       showAdminSections={canSeeAdmin}
       rightSlot={
-        <Link href="/trabajadores/control-documental">
-          <button type="button" className="secondary">Ver matriz</button>
-        </Link>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* El export respeta el proyecto seleccionado: es la planilla que
+              se le manda a ESE mandante, no la dotación completa. */}
+          <a href={`/api/acreditacion/export${proyectoSel ? `?proyecto=${proyectoSel.id}` : ""}`} download>
+            <button type="button" className="secondary">⬇ Exportar a Excel</button>
+          </a>
+          <Link href="/trabajadores/control-documental">
+            <button type="button" className="secondary">Ver matriz</button>
+          </Link>
+        </div>
       }
     >
       <div className="page-stack">

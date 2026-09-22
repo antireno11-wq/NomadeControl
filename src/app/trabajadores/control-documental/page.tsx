@@ -204,6 +204,11 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                 🤖 Extraer con IA
               </button>
             </Link>
+            <a href="/api/acreditacion/export" download>
+              <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 14px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
+                ⬇ Exportar a Excel
+              </button>
+            </a>
             <Link href="/trabajadores/importar">
               <button type="button" style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 14px", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>
                 ⬆ Importar Excel
