@@ -106,6 +106,7 @@ export default async function PerfilTrabajadorPage({
       contractEndDate: worker.contractEndDate,
     }),
   ]);
+  const proyectoAsignado = proyectos.find(p => p.id === worker.proyectoId) ?? null;
   const nombresTipos = new Map(tiposTodos.map(t => [t.id, t.nombre]));
   // Dos cumplimientos separados. El del mandante decide si puede entrar a la
   // faena; el interno es de la contratación y no bloquea nada allá.
@@ -237,10 +238,37 @@ export default async function PerfilTrabajadorPage({
 
   const overallStatus = expiredDocs.length > 0 ? "expired" : dueSoonDocs.length > 0 ? "dueSoon" : "ok";
 
-  // Contract days remaining
-  const contractDays = worker.contractEndDate
-    ? Math.ceil((worker.contractEndDate.getTime() - today.getTime()) / 86400000)
-    : null;
+  // ── Estado del contrato ───────────────────────────────────────────────
+  // Sale del documento vigente, igual que la matriz. Las columnas planas de
+  // la ficha (`contractEndDate`, `contractIsIndefinite`) son un rezago del
+  // modelo viejo y quedan desfasadas apenas alguien corrige un contrato: de
+  // 20 trabajadores activos, 8 tenían la columna diciendo una cosa y el
+  // contrato cargado diciendo otra. Tres figuraban como indefinidos en la
+  // ficha con un contrato a plazo fijo adjunto. Esa es exactamente la
+  // contradicción que el mandante ve entre una pantalla y otra.
+  const tipoContrato = tiposTodos.find(t => t.codigo === "contrato_trabajo");
+  const entryContrato = tipoContrato ? estadoWorker?.porTipo.get(tipoContrato.id) : undefined;
+  const docContrato = entryContrato?.documento ?? null;
+
+  // La columna plana solo se usa cuando NO hay contrato cargado: es lo único
+  // que hay, y mostrar un hueco cuando existe el dato sería peor.
+  const contratoIndefinido = docContrato
+    ? entryContrato!.estado === "sin_vencimiento"
+    : worker.contractIsIndefinite;
+  const contratoVence = docContrato
+    ? docContrato.fechaVencimiento
+    : (worker.contractIsIndefinite ? null : worker.contractEndDate);
+  const contratoDesdeDocumento = Boolean(docContrato);
+
+  const contractDays = contratoIndefinido || !contratoVence
+    ? null
+    : Math.ceil((contratoVence.getTime() - today.getTime()) / 86400000);
+
+  // Contadores de las pestañas: del modelo de acreditación, que es el que
+  // manda. Antes salían de las nueve columnas planas y por eso la pestaña
+  // decía "2 vencidos" mientras el panel de abajo no mostraba ninguno.
+  const acredVencidos  = docsAcreditacion.filter(d => d.entry.estado === "vencido").length;
+  const acredPorVencer = docsAcreditacion.filter(d => d.entry.estado === "por_vencer").length;
 
   return (
     <AppShell
@@ -286,9 +314,26 @@ export default async function PerfilTrabajadorPage({
                 )}
                 <div>
                   <h2 style={{ margin: 0, fontSize: "1.25rem", color: "var(--text)" }}>{worker.fullName}</h2>
+                  {/* Cargo y proyecto salen de las mismas relaciones que lee la
+                      matriz. Antes el encabezado mostraba `role` —el cargo escrito
+                      a mano en el contrato— y el campamento, así que la misma
+                      persona aparecía con cargo y proyecto en la matriz y como
+                      "Sin cargo · Sin asignar" acá. Son campos distintos con
+                      nombres parecidos, y solo uno decide qué documentos se le
+                      exigen: el grupo de dotación. */}
                   <div style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: 2 }}>
-                    {worker.role ?? "Sin cargo"} · {worker.camp?.name ?? "Sin asignar"}
+                    {cargoAsignado ?? "Sin grupo de dotación"}
+                    {" · "}
+                    {proyectoAsignado
+                      ? `${proyectoAsignado.mandanteNombre} — ${proyectoAsignado.nombre}`
+                      : "Sin proyecto"}
+                    {worker.camp?.name ? ` · ${worker.camp.name}` : ""}
                   </div>
+                  {worker.role && worker.role !== cargoAsignado && (
+                    <div style={{ color: "var(--muted)", fontSize: "0.78rem", marginTop: 2 }}>
+                      Cargo en el contrato: {worker.role}
+                    </div>
+                  )}
                 </div>
                 <span style={{
                   padding: "4px 12px", borderRadius: 20, fontSize: "0.78rem", fontWeight: 700,
@@ -343,7 +388,7 @@ export default async function PerfilTrabajadorPage({
         <div style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 4, width: "fit-content" }}>
           {[
             { key: "perfil", label: "👤 Perfil" },
-            { key: "documentos", label: `📄 Documentos${expiredDocs.length > 0 ? ` (${expiredDocs.length} vencido${expiredDocs.length > 1 ? "s" : ""})` : dueSoonDocs.length > 0 ? ` (${dueSoonDocs.length} por vencer)` : ""}` },
+            { key: "documentos", label: `📄 Documentos${acredVencidos > 0 ? ` (${acredVencidos} vencido${acredVencidos > 1 ? "s" : ""})` : acredPorVencer > 0 ? ` (${acredPorVencer} por vencer)` : ""}` },
             { key: "turno", label: "📅 Turno" },
             { key: "contrato", label: `📋 Contrato${contractDays !== null && contractDays < 0 ? " ⚠️" : ""}` },
             { key: "editar", label: "✏️ Editar" },
@@ -376,13 +421,15 @@ export default async function PerfilTrabajadorPage({
                   },
                   {
                     label: "Vencimiento contrato",
-                    value: worker.contractIsIndefinite
+                    value: contratoIndefinido
                       ? "∞ Indefinido"
-                      : worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Sin fecha",
-                    sub: worker.contractIsIndefinite
-                      ? "Contrato sin fecha de término"
-                      : worker.contractEndDate ? contractDaysLabel(worker.contractEndDate, false) : "Falta cargar fecha",
-                    highlight: worker.contractIsIndefinite ? null : (contractDays !== null && contractDays <= 30 ? (contractDays < 0 ? "danger" : "warn") : null),
+                      : contratoVence ? formatDisplayDate(contratoVence) : "Sin fecha",
+                    sub: contratoIndefinido
+                      ? (contratoDesdeDocumento ? "Según el contrato cargado" : "Contrato sin fecha de término")
+                      : contratoVence
+                        ? contractDaysLabel(contratoVence, false)
+                        : (contratoDesdeDocumento ? "El contrato cargado no trae fecha" : "Falta cargar el contrato"),
+                    highlight: contratoIndefinido ? null : (contractDays !== null && contractDays <= 30 ? (contractDays < 0 ? "danger" : "warn") : null),
                   },
                   {
                     label: "Patrón de turno",
@@ -652,15 +699,17 @@ export default async function PerfilTrabajadorPage({
                   },
                   {
                     label: "Vencimiento contrato",
-                    value: worker.contractIsIndefinite
+                    value: contratoIndefinido
                       ? "∞ Indefinido"
-                      : worker.contractEndDate ? formatDisplayDate(worker.contractEndDate) : "Sin fecha",
-                    highlight: worker.contractIsIndefinite
+                      : contratoVence ? formatDisplayDate(contratoVence) : "Sin fecha",
+                    highlight: contratoIndefinido
                       ? null
                       : contractDays !== null && contractDays < 0 ? "danger" as const : contractDays !== null && contractDays <= 30 ? "warn" as const : null,
-                    sub: worker.contractIsIndefinite
-                      ? "Sin fecha de término"
-                      : worker.contractEndDate ? contractDaysLabel(worker.contractEndDate, false) : "Falta cargar fecha",
+                    sub: contratoIndefinido
+                      ? (contratoDesdeDocumento ? "Según el contrato cargado" : "Sin fecha de término")
+                      : contratoVence
+                        ? contractDaysLabel(contratoVence, false)
+                        : (contratoDesdeDocumento ? "El contrato cargado no trae fecha" : "Falta cargar el contrato"),
                   },
                   ...(worker.cierre ? [{
                     label: "Tipo de cierre",

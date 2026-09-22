@@ -283,6 +283,24 @@ export const ESTADO_STYLE: Record<EstadoDocumento, { bg: string; color: string; 
   sin_fecha:       { bg: "#f1f5f9", color: "#64748b", border: "#cbd5e1", label: "Sin cargar" },
 };
 
+/**
+ * "No aplica" no es un estado del documento sino de la relación entre el
+ * trabajador y el tipo: su cargo no lo exige.
+ *
+ * Va aparte de `EstadoDocumento` a propósito — `calcularEstado` nunca puede
+ * devolverlo, porque no depende de ninguna fecha. Pero la matriz necesita
+ * pintarlo, y hasta ahora una licencia de conducir que a un ayudante de
+ * cocina nadie le pide se veía igual que una que falta: gris, "Sin cargar",
+ * sumando al contador de pendientes. Cuarenta celdas grises que no
+ * significan nada son la razón por la que nadie mira la matriz.
+ */
+export type EstadoCelda = EstadoDocumento | "no_aplica";
+
+export const CELDA_STYLE: Record<EstadoCelda, { bg: string; color: string; border: string; label: string }> = {
+  ...ESTADO_STYLE,
+  no_aplica: { bg: "transparent", color: "#94a3b8", border: "#e2e8f0", label: "No aplica" },
+};
+
 const DAY_MS = 86_400_000;
 
 export function diasRestantes(fechaVencimiento: Date | null, hoy = new Date()): number | null {

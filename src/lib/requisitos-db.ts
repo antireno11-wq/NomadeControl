@@ -605,6 +605,73 @@ export function tieneBloqueos(r: ResumenExigencia): boolean {
   return r.faltantes.length > 0 || r.vencidos.length > 0;
 }
 
+export type TotalesCumplimiento = {
+  /** Trabajadores con matriz asignada. Es la base de todos los demás. */
+  medidos: number;
+  sinMatriz: number;
+  bloqueados: number;
+  /** Suma de obligatorios de cada cargo. NUNCA el catálogo completo. */
+  obligatorios: number;
+  cumplidos: number;
+  vencidos: number;
+  faltantes: number;
+  porVencer: number;
+  /** cumplidos / obligatorios. `null` si nadie tiene matriz. */
+  porcentaje: number | null;
+};
+
+/**
+ * Los números de cabecera, calculados UNA vez para todas las pantallas.
+ *
+ * Existe porque cada vista se hacía su propia suma y las tres daban
+ * distinto: la matriz dividía por el catálogo completo (20 trabajadores ×
+ * 9 columnas = 180) y marcaba 37%, mientras el dashboard dividía por los
+ * obligatorios de cada cargo y marcaba 100%. Los dos números eran
+ * defendibles por separado y juntos no significaban nada, que es lo peor
+ * que le puede pasar a un dato que se le muestra al mandante.
+ *
+ * El denominador es siempre lo que el cargo exige. Si una pantalla necesita
+ * otro recorte, filtra la lista ANTES de llamar acá — no rehace la suma.
+ */
+export function totalizarExigencias(resumenes: ResumenExigencia[]): TotalesCumplimiento {
+  const conMatriz = resumenes.filter(r => !r.sinMatriz);
+  const obligatorios = conMatriz.reduce((s, r) => s + r.obligatorios, 0);
+  const cumplidos = conMatriz.reduce((s, r) => s + r.cumplidos, 0);
+
+  return {
+    medidos: conMatriz.length,
+    sinMatriz: resumenes.length - conMatriz.length,
+    bloqueados: conMatriz.filter(tieneBloqueos).length,
+    obligatorios,
+    cumplidos,
+    vencidos:  conMatriz.reduce((s, r) => s + r.vencidos.length, 0),
+    faltantes: conMatriz.reduce((s, r) => s + r.faltantes.length, 0),
+    porVencer: conMatriz.reduce((s, r) => s + r.porVencer.length, 0),
+    porcentaje: obligatorios === 0 ? null : Math.round((cumplidos / obligatorios) * 100),
+  };
+}
+
+/**
+ * Qué tipos le corresponden a cada trabajador, para pintar el resto como
+ * "No aplica" en vez de como un hueco.
+ *
+ * Incluye los deseables: que no bloqueen no quiere decir que no se pidan.
+ */
+export function tiposExigidosPorTrabajador(
+  requisitos: Map<string, RequisitoDeTrabajador[] | null>,
+  ambito: AmbitoRequisito = "mandante",
+): Map<string, Set<string> | null> {
+  const salida = new Map<string, Set<string> | null>();
+  for (const [id, reqs] of requisitos) {
+    if (!reqs) { salida.set(id, null); continue; }
+    const delAmbito = reqs.filter(r => r.ambito === ambito);
+    // Sin matriz de ese ámbito no se puede afirmar que algo "no aplica":
+    // no se sabe qué aplica. `null` lo distingue de un conjunto vacío.
+    salida.set(id, delAmbito.length === 0 ? null : new Set(delAmbito.map(r => r.tipoId)));
+  }
+  return salida;
+}
+
 // ─── Calificaciones ─────────────────────────────────────────────────────────
 
 /**

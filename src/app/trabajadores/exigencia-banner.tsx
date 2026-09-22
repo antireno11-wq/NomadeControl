@@ -172,7 +172,45 @@ export function ExigenciaBanner({
 }
 
 /** Versión de una línea para tablas: el número grande y nada más. */
-export function ExigenciaChip({ exigencia }: { exigencia: ResumenExigencia }) {
+/**
+ * Resumen de una línea del cumplimiento de un trabajador.
+ *
+ * Dice SIEMPRE contra qué matriz cuenta. Un "✓ 14/14" verde al lado de
+ * alguien que tiene papeles vencidos parece un error del sistema aunque no
+ * lo sea: mide la matriz del mandante, y lo vencido es de la contratación
+ * interna. El dato era correcto y aun así hacía desconfiar de la pantalla
+ * entera, que para esto es lo mismo que estar equivocado.
+ */
+export function ExigenciaChip({
+  exigencia,
+  interna,
+}: {
+  exigencia: ResumenExigencia;
+  /** Cumplimiento interno de NOMADE. No bloquea, pero no se esconde. */
+  interna?: ResumenExigencia;
+}) {
+  const pendientesInternos = interna && !interna.sinMatriz
+    ? interna.vencidos.length + interna.faltantes.length
+    : 0;
+
+  const marcaInterna = pendientesInternos > 0 ? (
+    <span
+      title={[
+        "Contratación NOMADE (no bloquea la faena):",
+        ...interna!.vencidos.map(d => `· ${d.nombre} (vencido)`),
+        ...interna!.faltantes.map(d => `· ${d.nombre}`),
+      ].join("\n")}
+      style={{ background: "#fffbeb", color: "#92400e", border: "1px solid #fcd34d", borderRadius: 6, padding: "2px 6px", fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap" }}
+    >
+      +{pendientesInternos} interno{pendientesInternos === 1 ? "" : "s"}
+    </span>
+  ) : null;
+
+  const envolver = (chip: React.ReactNode) =>
+    marcaInterna
+      ? <span style={{ display: "inline-flex", gap: 4, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>{chip}{marcaInterna}</span>
+      : chip;
+
   if (exigencia.sinMatriz) {
     return (
       <span
@@ -184,18 +222,29 @@ export function ExigenciaChip({ exigencia }: { exigencia: ResumenExigencia }) {
     );
   }
 
+  const matriz = exigencia.fuente ? `la matriz de ${exigencia.fuente}` : "la matriz del mandante";
   const bloqueantes = exigencia.vencidos.length + exigencia.faltantes.length;
+
   if (bloqueantes === 0) {
-    return (
-      <span style={{ background: "#e8f7ef", color: "#146c3d", border: "1px solid #b6e8c8", borderRadius: 6, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+    return envolver(
+      <span
+        key="ok"
+        title={`${exigencia.obligatorios} de ${exigencia.obligatorios} obligatorios de ${matriz}, al día. No incluye la contratación interna de NOMADE, que se mide aparte.`}
+        style={{ background: "#e8f7ef", color: "#146c3d", border: "1px solid #b6e8c8", borderRadius: 6, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}
+      >
         ✓ {exigencia.obligatorios}/{exigencia.obligatorios}
       </span>
     );
   }
 
-  return (
+  return envolver(
     <span
-      title={[...exigencia.vencidos.map(d => `${d.nombre} (vencido)`), ...exigencia.faltantes.map(d => d.nombre)].join("\n")}
+      key="falta"
+      title={[
+        `Obligatorios de ${matriz}:`,
+        ...exigencia.vencidos.map(d => `· ${d.nombre} (vencido)`),
+        ...exigencia.faltantes.map(d => `· ${d.nombre}`),
+      ].join("\n")}
       style={{ background: "#dc2626", color: "white", borderRadius: 6, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 800, whiteSpace: "nowrap" }}
     >
       ⛔ Faltan {bloqueantes}

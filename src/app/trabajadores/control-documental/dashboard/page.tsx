@@ -8,7 +8,7 @@ import { formatDisplayDate } from "@/lib/report-utils";
 import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
 import {
   getCargos, getProyectos, getRequisitosPorTrabajador,
-  resumirExigencia, tieneBloqueos, type ResumenExigencia,
+  resumirExigencia, tieneBloqueos, totalizarExigencias, type ResumenExigencia,
 } from "@/lib/requisitos-db";
 import {
   BarraApilada, BarraAvance, BarrasVerticales, Dona,
@@ -94,14 +94,32 @@ export default async function DashboardAcreditacionPage({
   // El denominador son los obligatorios de cada cargo, no el catálogo
   // completo: es la diferencia entre medir el avance real y castigar a un
   // maestro de cocina por no tener curso 4x4.
-  const aplicables   = filas.reduce((s, f) => s + f.exigencia.obligatorios, 0);
-  const cumplidos    = filas.reduce((s, f) => s + f.exigencia.cumplidos, 0);
-  const vencidos     = filas.reduce((s, f) => s + f.exigencia.vencidos.length, 0);
-  const sinCargar    = filas.reduce((s, f) => s + f.exigencia.faltantes.length, 0);
-  const porVencer    = filas.reduce((s, f) => s + f.exigencia.porVencer.length, 0);
+  const totales      = totalizarExigencias(filas.map(f => f.exigencia));
+  const aplicables   = totales.obligatorios;
+  const cumplidos    = totales.cumplidos;
+  const vencidos     = totales.vencidos;
+  const sinCargar    = totales.faltantes;
+  const porVencer    = totales.porVencer;
   const porGestionar = vencidos + sinCargar;
-  const avance       = aplicables === 0 ? 0 : Math.round((cumplidos / aplicables) * 100);
+  const avance       = totales.porcentaje ?? 0;
   const bloqueados   = filas.filter(f => tieneBloqueos(f.exigencia));
+
+  // Solo la matriz que se está midiendo. El gráfico de tramos contaba
+  // TODOS los requisitos —incluidos los de la contratación interna, que no
+  // bloquean faena— mientras el KPI de arriba contaba solo los del
+  // mandante: la misma pantalla decía "0 vencidos" y dibujaba 5.
+  const obligatoriosDelAmbito = (f: (typeof filas)[number]) => {
+    const vistos = new Set<string>();
+    return (f.reqs ?? []).filter(r => {
+      if (r.ambito !== "mandante" || r.nivel !== "obligatorio") return false;
+      // Las alternativas son un solo documento pedido de dos formas: contarlas
+      // dos veces infla el gráfico igual que inflaba el denominador.
+      if (!r.alternativaDe) return true;
+      if (vistos.has(r.alternativaDe)) return false;
+      vistos.add(r.alternativaDe);
+      return true;
+    });
+  };
 
   // ── Distribución por estado general ──────────────────────────────────
   const conteoEstado = new Map<keyof typeof ESTADO_GENERAL_META, number>();
@@ -121,8 +139,7 @@ export default async function DashboardAcreditacionPage({
   const conteoTramo = tramos.map(() => 0);
   for (const f of filas) {
     if (!f.reqs) continue;
-    for (const req of f.reqs) {
-      if (req.nivel !== "obligatorio") continue;
+    for (const req of obligatoriosDelAmbito(f)) {
       const dias = f.estado?.porTipo.get(req.tipoId)?.dias;
       if (dias == null) continue;
       const i = tramos.findIndex(t => t.test(dias));
@@ -154,7 +171,7 @@ export default async function DashboardAcreditacionPage({
     .map(t => {
       let exigido = 0, ok = 0, ven = 0, fal = 0;
       for (const f of filas) {
-        const req = f.reqs?.find(r => r.tipoId === t.id && r.nivel === "obligatorio");
+        const req = obligatoriosDelAmbito(f).find(r => r.tipoId === t.id);
         if (!req) continue;
         exigido++;
         if (f.exigencia.vencidos.some(d => d.tipoId === t.id)) ven++;
