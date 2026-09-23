@@ -493,3 +493,142 @@ export async function sendCompromisosAtrasadosEmail(
     return { ok: false, error: e instanceof Error ? e.message : "Error de red" };
   }
 }
+
+// ─── Ranking semanal de pendientes atrasados ─────────────────────────────────
+
+export type FilaRanking = {
+  nombre: string;
+  /** Tiene cuenta activa. Si no, nadie le está avisando durante la semana. */
+  tieneCuenta: boolean;
+  tareas: number;
+  compromisos: number;
+  amenazas: number;
+  total: number;
+  /** Días del pendiente más viejo. Es el que de verdad duele. */
+  peorAtraso: number;
+  /** Cerrados en los últimos 7 días. Sin esto el ranking solo castiga. */
+  cerradosSemana: number;
+};
+
+type SendRankingInput = {
+  to: string[];
+  semanaLabel: string;
+  filas: FilaRanking[];
+  /** Atrasados que no son de nadie. Van aparte: no son el peor de la lista. */
+  sinDueno: { tareas: number; compromisos: number; amenazas: number; total: number };
+  totalAtrasados: number;
+  cerradosSemana: number;
+};
+
+/**
+ * Ranking semanal por persona, los lunes.
+ *
+ * Incluye los cerrados de la semana a propósito. Un ranking que solo cuenta
+ * lo que se debe premia a quien no se compromete a nada: el que toma diez
+ * tareas y cierra ocho aparece peor que el que no tomó ninguna. Con las dos
+ * columnas al lado, la lista se puede leer sin injusticia.
+ *
+ * Los pendientes sin responsable van en su propio bloque, no en el ranking.
+ * Meterlos como "Sin asignar" los pondría compitiendo por el primer lugar
+ * con personas de carne y hueso, y lo que hay que hacer con ellos es otra
+ * cosa: asignarlos.
+ */
+export async function sendRankingSemanalEmail(
+  input: SendRankingInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) return { ok: false, error: "Falta RESEND_API_KEY o RESEND_FROM_EMAIL" };
+  if (input.to.length === 0) return { ok: false, error: "Sin destinatarios" };
+
+  const url = appUrl();
+  const medalla = (i: number) => (i === 0 ? "🔴" : i === 1 ? "🟠" : i === 2 ? "🟡" : "•");
+
+  const filas = input.filas.map((f, i) => {
+    const desglose = [
+      f.tareas > 0 ? `${f.tareas} tarea${f.tareas === 1 ? "" : "s"}` : null,
+      f.compromisos > 0 ? `${f.compromisos} compromiso${f.compromisos === 1 ? "" : "s"}` : null,
+      f.amenazas > 0 ? `${f.amenazas} amenaza${f.amenazas === 1 ? "" : "s"}` : null,
+    ].filter(Boolean).join(" · ");
+
+    return `<tr>
+      <td style="padding:10px;border-bottom:1px solid #e5e7eb;white-space:nowrap">
+        ${medalla(i)} <strong>${escaparHtml(f.nombre)}</strong>
+        ${f.tieneCuenta ? "" : '<div style="font-size:0.72rem;color:#b45309">sin cuenta — no recibe avisos</div>'}
+      </td>
+      <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;font-size:1.15rem;font-weight:800;color:#dc2626">${f.total}</td>
+      <td style="padding:10px;border-bottom:1px solid #e5e7eb;color:#475569;font-size:0.84rem">${desglose}</td>
+      <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:#dc2626;font-weight:600;white-space:nowrap">${f.peorAtraso}d</td>
+      <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:${f.cerradosSemana > 0 ? "#16a34a" : "#94a3b8"};font-weight:700">${f.cerradosSemana}</td>
+    </tr>`;
+  }).join("");
+
+  const bloqueSinDueno = input.sinDueno.total > 0 ? `
+    <div style="margin-top:22px;padding:14px 18px;border:1px solid #fcd34d;background:#fffbeb;border-radius:10px">
+      <strong style="color:#92400e">${input.sinDueno.total} pendiente${input.sinDueno.total === 1 ? "" : "s"} atrasado${input.sinDueno.total === 1 ? "" : "s"} sin responsable</strong>
+      <div style="color:#92400e;font-size:0.85rem;margin-top:4px">
+        ${[
+          input.sinDueno.tareas > 0 ? `${input.sinDueno.tareas} tarea(s)` : null,
+          input.sinDueno.compromisos > 0 ? `${input.sinDueno.compromisos} compromiso(s)` : null,
+          input.sinDueno.amenazas > 0 ? `${input.sinDueno.amenazas} amenaza(s)` : null,
+        ].filter(Boolean).join(" · ")}.
+        No están en el ranking porque no son de nadie: nadie los va a cerrar hasta que se asignen.
+      </div>
+    </div>` : "";
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:760px;margin:0 auto;padding:24px;color:#0f172a">
+      <h2 style="margin:0 0 4px;color:#006878">Pendientes atrasados — ${input.semanaLabel}</h2>
+      <p style="margin:0 0 20px;color:#475569">
+        <strong style="color:#dc2626">${input.totalAtrasados}</strong> atrasado${input.totalAtrasados === 1 ? "" : "s"} en total
+        · <strong style="color:#16a34a">${input.cerradosSemana}</strong> cerrado${input.cerradosSemana === 1 ? "" : "s"} en los últimos 7 días
+      </p>
+
+      ${input.filas.length === 0 ? `
+        <div style="padding:18px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:10px;color:#166534;font-weight:600">
+          Nadie tiene pendientes atrasados esta semana.
+        </div>` : `
+        <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th align="left"   style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Persona</th>
+              <th align="center" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Atrasados</th>
+              <th align="left"   style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Desglose</th>
+              <th align="center" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">El más viejo</th>
+              <th align="center" style="padding:8px 10px;border-bottom:2px solid #cbd5e1">Cerrados<br><span style="font-weight:400;font-size:0.72rem">7 días</span></th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>`}
+
+      ${bloqueSinDueno}
+
+      <div style="margin-top:22px">
+        <a href="${url}/compromisos" style="display:inline-block;padding:10px 20px;background:#006878;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;margin-right:8px">Compromisos</a>
+        <a href="${url}/gestion-tareas" style="display:inline-block;padding:10px 20px;background:#fff;color:#006878;border:1px solid #006878;border-radius:8px;text-decoration:none;font-weight:700">Tareas</a>
+      </div>
+
+      <p style="color:#94a3b8;font-size:0.75rem;margin-top:24px">
+        Resumen semanal de los lunes. Cuenta tareas, compromisos y amenazas cuyo plazo ya pasó.<br>
+        NomadeControl — control.nomadechile.cl
+      </p>
+    </div>
+  `;
+
+  const lider = input.filas[0];
+  const asunto = input.filas.length === 0
+    ? `Pendientes atrasados — ${input.semanaLabel}: ninguno`
+    : `Pendientes atrasados — ${input.semanaLabel}: ${input.totalAtrasados} en total, ${lider.nombre} encabeza con ${lider.total}`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: input.to, subject: asunto, html }),
+    });
+    if (!res.ok) return { ok: false, error: `Resend respondió ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error de red" };
+  }
+}

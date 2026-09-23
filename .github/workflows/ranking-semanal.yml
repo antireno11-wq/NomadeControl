@@ -1,0 +1,53 @@
+# Ranking semanal de pendientes atrasados, los lunes por la mañana.
+#
+# Va aparte de las alertas diarias porque tiene otro ritmo y otro público:
+# las diarias le hablan a cada responsable, esta le habla a la oficina.
+name: Ranking semanal
+
+on:
+  schedule:
+    # Lunes. Cuatro intentos por lo mismo que las diarias: Chile cambia de
+    # hora, y el cron de GitHub Actions se salta ejecuciones sin avisar. El
+    # endpoint no manda dos veces el mismo día, así que los intentos de más
+    # no cuestan nada.
+    - cron: "0 11 * * 1"
+    - cron: "0 12 * * 1"
+    - cron: "0 15 * * 1"
+    - cron: "0 19 * * 1"
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: "Simular sin enviar"
+        type: boolean
+        default: false
+      forzar:
+        description: "Mandarlo aunque ya haya salido hoy"
+        type: boolean
+        default: false
+
+jobs:
+  ranking:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar ranking
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRY: ${{ inputs.dryRun && '1' || '0' }}
+          FORZAR: ${{ inputs.forzar && '1' || '0' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Falta el secreto CRON_SECRET en la configuración del repositorio."
+            exit 1
+          fi
+
+          RESPUESTA=$(curl -sS -w "\n%{http_code}" -X POST \
+            "https://control.nomadechile.cl/api/cron/ranking-semanal?dryRun=$DRY&forzar=$FORZAR" \
+            -H "Authorization: Bearer $CRON_SECRET")
+
+          CODIGO=$(echo "$RESPUESTA" | tail -n1)
+          echo "$RESPUESTA" | sed '$d'
+
+          if [ "$CODIGO" != "200" ]; then
+            echo "El endpoint respondió $CODIGO"
+            exit 1
+          fi
