@@ -11,9 +11,25 @@ name: Alertas diarias
 
 on:
   schedule:
-    # 12:00 UTC = 08:00 en Chile continental (horario de invierno), 09:00 en
-    # verano. Llega antes de que se arme la dotación del día.
+    # Cuatro intentos, no uno. Dos razones:
+    #
+    # 1. Chile cambia de hora. En invierno es UTC-4 y en verano UTC-3, así que
+    #    las 08:00 de allá son las 12:00 UTC o las 11:00 UTC según el mes. Un
+    #    solo cron acierta medio año.
+    #
+    # 2. El cron de GitHub Actions es "best effort": se atrasa y a veces
+    #    directamente no corre. El 23-09-2026 la ejecución programada no se
+    #    disparó nunca y ese día nadie recibió sus avisos, sin que ninguna
+    #    pantalla se pusiera roja. Un aviso que falla en silencio es peor que
+    #    no tener aviso, porque se cree que está funcionando.
+    #
+    # Repetir no duplica correos: el endpoint registra qué umbral avisó de
+    # cada documento y de cada compromiso, así que el segundo intento del día
+    # no manda nada. El costo de un intento de más es una llamada HTTP.
+    - cron: "0 11 * * *"
     - cron: "0 12 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 19 * * *"
   # Para correrlo a mano desde la pestaña Actions cuando haga falta.
   workflow_dispatch:
     inputs:
