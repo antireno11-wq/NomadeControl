@@ -5,9 +5,9 @@ import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
 import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { formatDisplayDate } from "@/lib/report-utils";
-import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
 import {
-  getCargos, getProyectos, getRequisitosPorTrabajador,
+  getCargos, getCumplimiento, getProyectos,
   resumirExigencia, tieneBloqueos, totalizarExigencias, type ResumenExigencia,
 } from "@/lib/requisitos-db";
 import {
@@ -68,17 +68,18 @@ export default async function DashboardAcreditacionPage({
     orderBy: { fullName: "asc" },
   });
 
-  const [estados, requisitos] = await Promise.all([
-    getEstadoDocumental(staff.map(w => w.id), tipos, today),
-    getRequisitosPorTrabajador(staff.map(w => ({
+  const { estados, requisitos } = await getCumplimiento(
+    staff.map(w => ({
       id: w.id,
       proyectoId: w.proyectoId,
       cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
       contractEndDate: w.contractEndDate,
-    }))),
-  ]);
+    })),
+    tipos,
+    today,
+  );
 
   const nombrePorTipo = new Map(tipos.map(t => [t.id, t.nombre]));
   const nombreCargo = new Map(cargos.map(c => [c.id, c.nombre]));

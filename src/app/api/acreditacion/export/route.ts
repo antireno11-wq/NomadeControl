@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getEstadoDocumental, getTiposDocumento } from "@/lib/acreditacion-db";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
 import {
-  getRequisitosPorTrabajador, resumirExigencia, tieneBloqueos,
+  getCumplimiento, resumirExigencia, tieneBloqueos,
   tiposExigidosPorTrabajador, totalizarExigencias,
 } from "@/lib/requisitos-db";
 import { CELDA_STYLE, type EstadoCelda } from "@/lib/acreditacion";
@@ -12,7 +12,7 @@ import { CELDA_STYLE, type EstadoCelda } from "@/lib/acreditacion";
 /**
  * Matriz de acreditación en Excel, para mandarle al mandante.
  *
- * Sale del MISMO cálculo que la pantalla —`getEstadoDocumental` y
+ * Sale del MISMO cálculo que la pantalla —`getCumplimiento` y
  * `resumirExigencia`— y no de una consulta propia. Un export que arma sus
  * números por su cuenta es el quinto lugar donde el cumplimiento puede dar
  * distinto, y sería el peor de todos: es el único que sale de la empresa.
@@ -52,15 +52,16 @@ export async function GET(request: NextRequest) {
     orderBy: { fullName: "asc" },
   });
 
-  const [estado, requisitos] = await Promise.all([
-    getEstadoDocumental(staff.map(w => w.id), tiposTodos, hoy),
-    getRequisitosPorTrabajador(staff.map(w => ({
+  const { estados: estado, requisitos } = await getCumplimiento(
+    staff.map(w => ({
       id: w.id, proyectoId: w.proyectoId, cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
       contractEndDate: w.contractEndDate,
-    }))),
-  ]);
+    })),
+    tiposTodos,
+    hoy,
+  );
 
   const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));
   const exigidos = tiposExigidosPorTrabajador(requisitos);
@@ -120,8 +121,9 @@ export async function GET(request: NextRequest) {
       const celdaEstado: EstadoCelda = aplica(t.id) ? (e?.estado ?? "sin_fecha") : "no_aplica";
       if (celdaEstado === "no_aplica" && !e?.documento) { fila[t.nombre] = "N/A"; continue; }
       if (celdaEstado === "sin_vencimiento") { fila[t.nombre] = "No vence"; continue; }
-      fila[t.nombre] = e?.documento?.fechaVencimiento
-        ? `${fechaChile(e.documento.fechaVencimiento)} · ${CELDA_STYLE[celdaEstado].label}`
+      const vence = e?.venceSegunMandante ?? e?.documento?.fechaVencimiento;
+      fila[t.nombre] = vence
+        ? `${fechaChile(vence)} · ${CELDA_STYLE[celdaEstado].label}`
         : CELDA_STYLE[celdaEstado].label;
     }
     return fila;
@@ -145,7 +147,7 @@ export async function GET(request: NextRequest) {
       "Cargo": w.cargo?.nombre ?? "",
       "Documento": d.nombre,
       "Situación": situacion,
-      "Vence": fechaChile(e?.documento?.fechaVencimiento),
+      "Vence": fechaChile(e?.venceSegunMandante ?? e?.documento?.fechaVencimiento),
       "Días": e?.dias ?? "",
       "Bloquea la habilitación": situacion === "Por vencer" ? "No" : "Sí",
     };
@@ -183,6 +185,7 @@ export async function GET(request: NextRequest) {
     ["Cómo se cuenta", "Solo los documentos que la matriz del mandante le exige a cada cargo."],
     ["", "Lo que el cargo no exige aparece como N/A y no cuenta como pendiente."],
     ["", "De cada documento se toma la última versión vigente; las anteriores quedan como historial."],
+    ["", "Si el mandante pone su propio plazo (por ejemplo 36 meses para el RIOHS), el vencimiento se cuenta desde la emisión y gana el más estricto entre ese y el impreso."],
     ["", "La contratación interna de NOMADE se mide aparte y no está en estas cifras."],
   ];
   const hojaFicha = XLSX.utils.aoa_to_sheet(ficha);

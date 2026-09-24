@@ -49,6 +49,13 @@ export type EstadoPorTipo = {
   documento: DocumentoVigente | null;
   estado: EstadoDocumento;
   dias: number | null;
+  /**
+   * La fecha contra la que se mide cuando el mandante pone su propio plazo.
+   * Puede ser anterior a la impresa en el documento —o existir aunque el
+   * documento diga que no vence—, y es la que hay que mostrar: es la que
+   * decide si el trabajador entra.
+   */
+  venceSegunMandante?: Date;
 };
 
 export type EstadoTrabajador = {
@@ -277,22 +284,24 @@ export async function getEstadoDocumental(
     }
   }
 
-  // Recuento por trabajador
-  for (const entry of resultado.values()) {
-    let vencidos = 0, porVencer = 0, sinFecha = 0, ok = 0;
-    for (const e of entry.porTipo.values()) {
-      if (e.estado === "vencido") vencidos++;
-      else if (e.estado === "por_vencer") porVencer++;
-      else if (e.estado === "sin_fecha") sinFecha++;
-      else if (esEstadoOk(e.estado)) ok++;
-    }
-    entry.vencidos = vencidos;
-    entry.porVencer = porVencer;
-    entry.sinFecha = sinFecha;
-    entry.ok = ok;
-  }
+  for (const entry of resultado.values()) recontar(entry);
 
   return resultado;
+}
+
+/** Recalcula los totales de un trabajador a partir de su estado por tipo. */
+export function recontar(entry: EstadoTrabajador): void {
+  let vencidos = 0, porVencer = 0, sinFecha = 0, ok = 0;
+  for (const e of entry.porTipo.values()) {
+    if (e.estado === "vencido") vencidos++;
+    else if (e.estado === "por_vencer") porVencer++;
+    else if (e.estado === "sin_fecha") sinFecha++;
+    else if (esEstadoOk(e.estado)) ok++;
+  }
+  entry.vencidos = vencidos;
+  entry.porVencer = porVencer;
+  entry.sinFecha = sinFecha;
+  entry.ok = ok;
 }
 
 /**

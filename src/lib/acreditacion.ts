@@ -111,6 +111,11 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   // curso que aprobó y el carnet que lo habilita para dirigir la maniobra.
   { codigo: "curso_rigger",        nombre: "Curso de rigger / maniobras",  categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Curso rigger", legacyField: null, orden: 219 },
   { codigo: "carnet_rigger",       nombre: "Carnet de rigger",             categoria: "formacion",         vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Carnet rigger", legacyField: null, orden: 219.5 },
+  // Los pide Transelec. La vigencia del curso NO va en el tipo: depende de
+  // quién lo dictó —12 meses si fue una mutualidad, lo que diga el papel si
+  // fue una OTEC—, así que se toma la fecha impresa en cada documento.
+  { codigo: "curso_riesgos_electricos", nombre: "Curso de riesgos eléctricos", categoria: "formacion",   vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Riesgo eléctr.", legacyField: null, orden: 219.7 },
+  { codigo: "autorizacion_funciones_criticas", nombre: "Autorización del mandante para funciones críticas", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Autoriz. crítica", legacyField: null, orden: 219.8 },
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },

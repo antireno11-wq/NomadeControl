@@ -1062,6 +1062,24 @@ export async function crearCargoAction(formData: FormData) {
  * `nivel: null` borra la fila: la ausencia de fila ES el "no aplica", así que
  * no se guardan ~400 negativos como hacía la planilla.
  */
+/**
+ * Lo que es del documento y no de la celda: la alternativa, la vigencia del
+ * mandante y la nota. Una celda nueva en una fila existente tiene que
+ * heredarlo. Si no, marcar un cargo más en la fila de la ODI la exigía sola,
+ * sin aceptar el IRL, y con un plazo distinto al del resto de la fila.
+ */
+async function propiedadesDeFila(proyectoId: string, tipoId: string) {
+  const fila = await db.requisitoDocumento.findFirst({
+    where: { proyectoId, tipoId },
+    select: { alternativaDe: true, vigenciaMeses: true, nota: true },
+  });
+  return {
+    alternativaDe: fila?.alternativaDe ?? null,
+    vigenciaMeses: fila?.vigenciaMeses ?? null,
+    nota: fila?.nota ?? null,
+  };
+}
+
 export async function setRequisitoAction(input: {
   proyectoId: string;
   cargoId: string;
@@ -1083,10 +1101,11 @@ export async function setRequisitoAction(input: {
   if (nivel === null) {
     await db.requisitoDocumento.deleteMany({ where: { proyectoId, cargoId, tipoId } });
   } else {
+    const deFila = await propiedadesDeFila(proyectoId, tipoId);
     await db.requisitoDocumento.upsert({
       where:  clave,
       update: { nivel, ...(input.condicion !== undefined ? { condicion: input.condicion } : {}) },
-      create: { proyectoId, cargoId, tipoId, nivel, condicion: input.condicion ?? null },
+      create: { proyectoId, cargoId, tipoId, nivel, condicion: input.condicion ?? null, ...deFila },
     });
   }
 
@@ -1113,15 +1132,69 @@ export async function setRequisitoFilaAction(input: {
   if (nivel === null) {
     await db.requisitoDocumento.deleteMany({ where: { proyectoId, tipoId } });
   } else {
-    const cargos = await db.cargo.findMany({ where: { activo: true }, select: { id: true } });
+    const [cargos, deFila, condicionFila] = await Promise.all([
+      db.cargo.findMany({ where: { activo: true }, select: { id: true } }),
+      propiedadesDeFila(proyectoId, tipoId),
+      db.requisitoDocumento.findFirst({ where: { proyectoId, tipoId }, select: { condicion: true } }),
+    ]);
     await db.$transaction([
       db.requisitoDocumento.updateMany({ where: { proyectoId, tipoId }, data: { nivel } }),
       db.requisitoDocumento.createMany({
-        data: cargos.map(c => ({ proyectoId, cargoId: c.id, tipoId, nivel })),
+        data: cargos.map(c => ({
+          proyectoId, cargoId: c.id, tipoId, nivel,
+          condicion: condicionFila?.condicion ?? null, ...deFila,
+        })),
         skipDuplicates: true,
       }),
     ]);
   }
+
+  revalidatePath("/administracion");
+  revalidatePath("/trabajadores/control-documental");
+  return { ok: true };
+}
+
+/**
+ * Fija el plazo que un mandante le pone a un documento, en toda la fila.
+ *
+ * Va en el requisito y no en el tipo porque cada mandante pone el suyo:
+ * Transelec pide renovar el RIOHS cada 36 meses y para Anglo no vence. Se
+ * audita con el antes y el después: cambiar un plazo cambia quién puede
+ * entrar a faena, y a los tres meses alguien va a preguntar por qué.
+ */
+export async function setVigenciaFilaAction(input: {
+  proyectoId: string;
+  tipoId: string;
+  vigenciaMeses: number | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  let user;
+  try {
+    user = await requireRole(ADMIN_ROLES);
+  } catch {
+    return { ok: false, error: "Sin permisos" };
+  }
+
+  const { proyectoId, tipoId, vigenciaMeses } = input;
+  if (!proyectoId || !tipoId) return { ok: false, error: "Datos incompletos" };
+  if (vigenciaMeses !== null && (!Number.isInteger(vigenciaMeses) || vigenciaMeses < 1 || vigenciaMeses > 240)) {
+    return { ok: false, error: "La vigencia va en meses enteros, entre 1 y 240" };
+  }
+
+  const [antes, tipo, proyecto] = await Promise.all([
+    db.requisitoDocumento.findFirst({ where: { proyectoId, tipoId }, select: { vigenciaMeses: true } }),
+    db.tipoDocumento.findUnique({ where: { id: tipoId }, select: { nombre: true } }),
+    db.proyecto.findUnique({ where: { id: proyectoId }, select: { nombre: true } }),
+  ]);
+  if ((antes?.vigenciaMeses ?? null) === vigenciaMeses) return { ok: true };
+
+  await db.requisitoDocumento.updateMany({ where: { proyectoId, tipoId }, data: { vigenciaMeses } });
+
+  const texto = (m: number | null | undefined) => (m == null ? "lo que diga el documento" : `${m} meses`);
+  await logAuditEvent({
+    actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+    action: "REQUISITO_VIGENCIA", entityType: "requisitoDocumento",
+    summary: `Cambió la vigencia de «${tipo?.nombre ?? "documento"}» en ${proyecto?.nombre ?? "el proyecto"}: ${texto(antes?.vigenciaMeses)} → ${texto(vigenciaMeses)}`,
+  }).catch(() => {});
 
   revalidatePath("/administracion");
   revalidatePath("/trabajadores/control-documental");

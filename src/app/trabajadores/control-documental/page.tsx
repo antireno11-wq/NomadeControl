@@ -6,9 +6,9 @@ import { SectionTabs } from "@/components/section-tabs";
 import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { CELDA_STYLE, type EstadoCelda, type EstadoDocumento } from "@/lib/acreditacion";
-import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
 import {
-  getRequisitosPorTrabajador, resumirExigencia, tieneBloqueos,
+  getCumplimiento, resumirExigencia, tieneBloqueos,
   tiposExigidosPorTrabajador, totalizarExigencias, type ResumenExigencia,
 } from "@/lib/requisitos-db";
 import { ExigenciaChip } from "@/app/trabajadores/exigencia-banner";
@@ -82,30 +82,33 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
   })();
 
   const today = new Date();
-  const estadoPorTrabajador = await getEstadoDocumental(staff.map(w => w.id), tipos, today);
 
   // Cumplimiento contra la matriz del cargo. Necesita el catálogo completo,
   // no solo las columnas visibles: un obligatorio fuera de la matriz también
-  // bloquea, y era justamente el que se perdía de vista en la planilla.
+  // bloquea, y era justamente el que se perdía de vista en la planilla. La
+  // grilla lee del mismo estado —solo mira sus columnas—, así que lo que se
+  // pinta y lo que se cuenta no pueden diferir.
   const tiposTodos = await getTiposDocumento();
-  const [estadoCompleto, requisitosPorTrabajador] = await Promise.all([
-    getEstadoDocumental(staff.map(w => w.id), tiposTodos, today),
-    getRequisitosPorTrabajador(staff.map(w => ({
+  const { estados: estadoCompleto, requisitos: requisitosPorTrabajador } = await getCumplimiento(
+    staff.map(w => ({
       id: w.id,
       proyectoId: w.proyectoId,
       cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
       contractEndDate: w.contractEndDate,
-    }))),
-  ]);
+    })),
+    tiposTodos,
+    today,
+  );
+  const idsMatriz = new Set(tipos.map(t => t.id));
   const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));
   // Qué le pide la matriz del mandante a cada uno. Lo que no está acá no es
   // un pendiente suyo: es una columna que no le corresponde.
   const exigidosPorTrabajador = tiposExigidosPorTrabajador(requisitosPorTrabajador);
 
   const rows = staff.map(worker => {
-    const estado = estadoPorTrabajador.get(worker.id)!;
+    const estado = estadoCompleto.get(worker.id)!;
     const exigencia = resumirExigencia(
       requisitosPorTrabajador.get(worker.id) ?? null,
       estadoCompleto.get(worker.id),
@@ -175,13 +178,14 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
   const tipoNombre = new Map(tipos.map(t => [t.id, t.nombre]));
   const upcoming = rows.flatMap(r =>
     Array.from(r.estado.porTipo.values())
-      .filter(e => e.documento?.fechaVencimiento && e.dias != null && e.dias >= -3 && e.dias <= 60)
+      .filter(e => idsMatriz.has(e.tipoId))
+      .filter(e => (e.venceSegunMandante ?? e.documento?.fechaVencimiento) && e.dias != null && e.dias >= -3 && e.dias <= 60)
       .map(e => ({
         workerId: r.worker.id,
         workerName: r.worker.fullName,
         campName: r.worker.camp?.name ?? "Sin asignar",
         label: tipoNombre.get(e.tipoId) ?? "",
-        date: e.documento!.fechaVencimiento!,
+        date: (e.venceSegunMandante ?? e.documento!.fechaVencimiento)!,
         dias: e.dias!,
         estado: e.estado,
         // Se sigue mostrando —el papel existe y se está venciendo— pero
@@ -494,7 +498,9 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                               title={
                                 noAplica
                                   ? `${t.nombre}: no lo exige la matriz de este cargo${tieneDoc ? " — igual está cargado" : ""}`
-                                  : `${t.nombre}: ${style.label}${calculada ? " · fecha calculada, no impresa" : ""}`
+                                  : `${t.nombre}: ${style.label}${
+                                      e.venceSegunMandante ? " · plazo del mandante, contado desde la emisión"
+                                      : calculada ? " · fecha calculada, no impresa" : ""}`
                               }
                               style={{
                                 display: "inline-block", padding: "4px 4px", borderRadius: 5,
@@ -510,8 +516,8 @@ export default async function ControlDocumentalPage({ searchParams }: { searchPa
                                 ? "N/A"
                                 : e.estado === "sin_vencimiento"
                                   ? "∞"
-                                  : e.documento?.fechaVencimiento
-                                    ? formatDisplayDate(e.documento.fechaVencimiento)
+                                  : (e.venceSegunMandante ?? e.documento?.fechaVencimiento)
+                                    ? formatDisplayDate((e.venceSegunMandante ?? e.documento!.fechaVencimiento)!)
                                     : "—"}
                               {!noAplica && (e.estado === "vencido" || e.estado === "por_vencer") && e.dias != null && (
                                 <div style={{ fontSize: "0.62rem", fontWeight: 500, opacity: 0.9 }}>

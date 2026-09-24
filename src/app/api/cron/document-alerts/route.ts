@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sendAlertasVencimientoEmail } from "@/lib/mailer";
 import { logAuditEvent } from "@/lib/audit";
-import { diasRestantes, seleccionarVigentes } from "@/lib/acreditacion";
+import { calcularEstado, UMBRAL_POR_VENCER_DIAS } from "@/lib/acreditacion";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
+import { getCumplimiento } from "@/lib/requisitos-db";
 
 /**
  * Umbrales de alerta, en días respecto del vencimiento.
@@ -102,7 +104,11 @@ export async function POST(req: NextRequest) {
   // ── Documentos vigentes de trabajadores activos ──────────────────────
   const staff = await db.staffMember.findMany({
     where: { isActive: true },
-    select: { id: true, fullName: true, camp: { select: { name: true } } },
+    select: {
+      id: true, fullName: true, camp: { select: { name: true } },
+      cargoId: true, proyectoId: true,
+      contractIsIndefinite: true, trabajoPrevioMandante: true, contractEndDate: true,
+    },
   });
   const staffById = new Map(staff.map(s => [s.id, s]));
 
@@ -110,26 +116,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, dryRun, aviso: "No hay trabajadores activos" });
   }
 
-  const [documentos, tipos] = await Promise.all([
-    db.documentoAcreditacion.findMany({
-      where: { staffMemberId: { in: staff.map(s => s.id) }, anulado: false },
-      select: {
-        id: true, staffMemberId: true, tipoDocumentoId: true,
-        fechaEmision: true, fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
-      },
-    }),
-    db.tipoDocumento.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
-  ]);
-
+  const tipos = await getTiposDocumento();
   if (tipos.length === 0) {
     return NextResponse.json({
       ok: false,
-      error: "El catálogo de tipos no está inicializado. Corré /api/admin/migrar-acreditacion primero.",
+      error: "El catálogo de tipos no está inicializado.",
     }, { status: 400 });
   }
 
+  // El mismo cálculo que las pantallas. Antes este barrido elegía y medía los
+  // documentos por su cuenta, y se le escapaban dos cosas que las pantallas
+  // sí veían: los tipos declarados perpetuos en el catálogo —seguía avisando
+  // el vencimiento de certificados de antecedentes que ya no vencen— y los
+  // plazos propios del mandante, como los 36 meses que Transelec le pone al
+  // RIOHS. Un aviso que dice algo distinto que la pantalla es un aviso que se
+  // deja de creer.
+  const { estados } = await getCumplimiento(
+    staff.map(s => ({
+      id: s.id, proyectoId: s.proyectoId, cargoId: s.cargoId,
+      contractIsIndefinite: s.contractIsIndefinite,
+      trabajoPrevioMandante: s.trabajoPrevioMandante,
+      contractEndDate: s.contractEndDate,
+    })),
+    tipos,
+    today,
+  );
+
   const nombreTipo = new Map(tipos.map(t => [t.id, t.nombre]));
-  const vigentes = seleccionarVigentes(documentos);
+  const noVencePorTipo = new Map(tipos.map(t => [t.id, t.noVence]));
+  let documentosVigentes = 0;
 
   // ── Detectar cruces de umbral ────────────────────────────────────────
   type Pendiente = {
@@ -145,28 +160,44 @@ export async function POST(req: NextRequest) {
 
   const pendientes: Pendiente[] = [];
 
-  for (const doc of vigentes.values()) {
-    if (doc.sinVencimiento || !doc.fechaVencimiento) continue;
-
-    const dias = diasRestantes(doc.fechaVencimiento, today);
-    if (dias == null) continue;
-
-    const threshold = umbralQueCorresponde(dias);
-    if (threshold == null) continue;
-
-    const worker = staffById.get(doc.staffMemberId);
+  for (const [staffMemberId, estado] of estados) {
+    const worker = staffById.get(staffMemberId);
     if (!worker) continue;
 
-    pendientes.push({
-      staffMemberId: doc.staffMemberId,
-      workerName: worker.fullName,
-      campName: worker.camp?.name ?? "Sin asignar",
-      tipoDocumentoId: doc.tipoDocumentoId,
-      docLabel: nombreTipo.get(doc.tipoDocumentoId) ?? "Documento",
-      dueDate: doc.fechaVencimiento,
-      dias,
-      threshold,
-    });
+    for (const entry of estado.porTipo.values()) {
+      const doc = entry.documento;
+      if (!doc) continue;
+      documentosVigentes++;
+      if (entry.estado === "sin_vencimiento" || entry.estado === "sin_fecha") continue;
+
+      // Si el estado no sale de las fechas de ESTE documento —el contrato que
+      // un anexo posterior extendió—, no se avisa por su fecha: la que manda
+      // es la del anexo, y el anexo tiene su propio aviso.
+      if (!entry.venceSegunMandante) {
+        const propio = calcularEstado(doc, today, UMBRAL_POR_VENCER_DIAS, noVencePorTipo.get(entry.tipoId) ?? false);
+        if (propio.estado !== entry.estado || propio.dias !== entry.dias) continue;
+      }
+
+      // La fecha del aviso es la que decide: la del mandante si pone plazo,
+      // la impresa si no. Para un documento sin plazo del mandante es la misma
+      // fecha que se usaba antes, así que los avisos ya enviados se reconocen.
+      const dueDate = entry.venceSegunMandante ?? doc.fechaVencimiento;
+      if (!dueDate || entry.dias == null) continue;
+
+      const threshold = umbralQueCorresponde(entry.dias);
+      if (threshold == null) continue;
+
+      pendientes.push({
+        staffMemberId,
+        workerName: worker.fullName,
+        campName: worker.camp?.name ?? "Sin asignar",
+        tipoDocumentoId: entry.tipoId,
+        docLabel: nombreTipo.get(entry.tipoId) ?? "Documento",
+        dueDate,
+        dias: entry.dias,
+        threshold,
+      });
+    }
   }
 
   // ── Descartar los ya avisados ────────────────────────────────────────
@@ -235,7 +266,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     dryRun,
     trabajadoresRevisados: staff.length,
-    documentosVigentes: vigentes.size,
+    documentosVigentes,
     umbrales: ALERT_THRESHOLDS,
     destinatarios: listaExplicita
       ? "lista explícita (DOCUMENT_ALERT_EMAILS)"

@@ -501,6 +501,14 @@ model RequisitoDocumento {
   /// una u otra. Sin esto, tener el papel correcto igual dejaba pendiente al
   /// otro tipo del catálogo.
   alternativaDe  String?
+  /// Plazo que exige ESTE mandante, en meses desde la emisión. Manda por
+  /// sobre lo que diga el catálogo del tipo, pero solo para este proyecto.
+  ///
+  /// Existe porque cada mandante pone sus propios plazos al mismo papel:
+  /// Transelec pide renovar la recepción del RIOHS cada 36 meses, y para
+  /// Anglo no vence nunca. Si la vigencia viviera en el tipo, fijarla para
+  /// uno vencía documentos en el otro. NULL = manda el documento.
+  vigenciaMeses  Int?
   nota           String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt

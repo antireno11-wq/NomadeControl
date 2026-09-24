@@ -75,6 +75,10 @@ export type ReglaSeed = {
   sobreMsnm?: number;
   /** Se cumple con cualquiera de los requisitos que compartan esta clave. */
   alternativaDe?: string;
+  /** Plazo que exige este mandante, en meses desde la emisión. */
+  vigenciaMeses?: number;
+  /** Lo que el documento tiene que traer para que el mandante lo acepte. */
+  nota?: string;
 };
 
 /**
@@ -165,11 +169,79 @@ export const REGLAS_INTERNAS_NOMADE: ReglaSeed[] = [
   { tipo: "registro_discapacidad",     cargos: null, nivel: "deseable" },
 ];
 
+/**
+ * Lo que Transelec exige para acreditar en Monte Mina. Sale de la planilla
+ * "requisitos Montemina" que mandó el mandante.
+ *
+ * La diferencia con Anglo son los plazos: Transelec pone vigencia a papeles
+ * que para Anglo no vencen nunca —RIOHS, EPP, ODI, la inducción—, y por eso
+ * la vigencia va en el requisito y no en el tipo.
+ *
+ * El punto 1.8, "Autorización de Transelec para funciones críticas", NO se
+ * siembra: la planilla no dice cuáles cargos son funciones críticas y remite
+ * a un "ítem II" que no venía en el archivo. Exigírselo a todos bloquearía
+ * a la dotación entera por un papel que a la mayoría no le corresponde.
+ */
+export const REGLAS_MANDANTE_TRANSELEC: ReglaSeed[] = [
+  // 1.1 — La ODI se reemplazó por el IRL (DS 44, vigente desde 2025), así que
+  // quien entró después trae IRL y no ODI. Transelec todavía lo escribe como
+  // ODI; se aceptan los dos.
+  { tipo: "odi",               cargos: null, nivel: "obligatorio", alternativaDe: "odi_irl", vigenciaMeses: 36,
+    nota: "Acorde al cargo del contrato. Nombre, RUT y firma del trabajador y del relator. Duración mínima 60 minutos." },
+  { tipo: "irl_empresa",       cargos: null, nivel: "obligatorio", alternativaDe: "odi_irl", vigenciaMeses: 36,
+    nota: "Acorde al cargo del contrato. Nombre, RUT y firma del trabajador y del relator. Duración mínima 60 minutos." },
+  // 1.2 y 1.3
+  { tipo: "recepcion_riohs",   cargos: null, nivel: "obligatorio", vigenciaMeses: 36,
+    nota: "Nombre, RUT y firma del trabajador." },
+  { tipo: "entrega_epp",       cargos: null, nivel: "obligatorio", vigenciaMeses: 36,
+    nota: "Nombre, RUT y firma del trabajador. EPP de acuerdo al cargo y funciones críticas, actualizada." },
+  // 1.4 y 1.5
+  { tipo: "contrato_trabajo",  cargos: null, nivel: "obligatorio",
+    nota: "Con los 10 elementos mínimos del Código del Trabajo y firmado por ambas partes." },
+  { tipo: "anexo_contrato",    cargos: null, nivel: "obligatorio", condicion: "contrato_vencido" },
+  { tipo: "cedula_identidad",  cargos: null, nivel: "obligatorio", nota: "Por ambos lados." },
+  // 1.6
+  { tipo: "induccion_mandante", cargos: null, nivel: "obligatorio", vigenciaMeses: 36,
+    nota: "Inducción para ingresar a obras o faenas de Transelec. Nombre, RUT y firma del trabajador y del relator." },
+  // 1.7 — "Según corresponda": altura física, geográfica o batería básica,
+  // de acuerdo al trabajo. Cualquiera de los tres satisface el requisito; que
+  // sea el correcto para ese trabajo lo verifica quien valida.
+  { tipo: "examen_ocupacional", cargos: null, nivel: "obligatorio", alternativaDe: "examen_mutualidad",
+    nota: "Solo de mutualidad (IST, ISL, CCHC, ACHS) y a nombre del empleador. Batería básica, o altura física, geográfica o espacios confinados según el trabajo." },
+  { tipo: "altura_fisica",      cargos: null, nivel: "obligatorio", alternativaDe: "examen_mutualidad",
+    nota: "Solo de mutualidad (IST, ISL, CCHC, ACHS) y a nombre del empleador." },
+  { tipo: "altura_geografica",  cargos: null, nivel: "obligatorio", alternativaDe: "examen_mutualidad",
+    nota: "Solo de mutualidad (IST, ISL, CCHC, ACHS) y a nombre del empleador." },
+  { tipo: "examen_alcohol_drogas", cargos: null, nivel: "obligatorio",
+    nota: "Transelec exige que todos los exámenes de salud lo incluyan. Solo de mutualidad." },
+  // 1.9 — Sin vigencia fija a propósito: 12 meses si lo dictó una mutualidad,
+  // lo que diga el documento si fue una OTEC. Manda la fecha impresa.
+  { tipo: "curso_riesgos_electricos", cargos: null, nivel: "obligatorio",
+    nota: "Si es de mutualidad (IST, ISL, CCHC, ACHS), a nombre del empleador y vence a los 12 meses. Si es de OTEC o CFT, vale lo que indique el documento." },
+
+  // 2 — Conductores
+  { tipo: "licencia_conducir",  cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+  { tipo: "psicosensotecnico",  cargos: CARGOS_CONDUCTORES, nivel: "obligatorio" },
+  // 2.2 y 2.3 son el mismo requisito con dos alcances: el teórico-práctico
+  // habilita fuera del asfalto y dura 24 meses; el solo teórico, solo sobre
+  // asfalto y un mes. Cualquiera de los dos cumple.
+  { tipo: "curso_4x4",            cargos: CARGOS_CONDUCTORES, nivel: "obligatorio", alternativaDe: "manejo_defensivo", vigenciaMeses: 24,
+    nota: "Teórico y práctico. Habilita para rutas fuera del asfalto (off road 4x4)." },
+  { tipo: "conduccion_defensiva", cargos: CARGOS_CONDUCTORES, nivel: "obligatorio", alternativaDe: "manejo_defensivo", vigenciaMeses: 1,
+    nota: "Solo teórico: dura un mes y autoriza únicamente conducción sobre asfalto." },
+];
+
 /** Se crean solos al arrancar, para no armarlos a mano en la interfaz. */
 export const PROGRAMAS_SEED: ProgramaSeed[] = [
   { mandante: "Anglo American", proyecto: "Agua Verde", faena: "Los Bronces", ambito: "mandante", reglas: REGLAS_MANDANTE_ANGLO },
+  { mandante: "Transelec", proyecto: "Monte Mina", faena: "Monte Mina", ambito: "mandante", reglas: REGLAS_MANDANTE_TRANSELEC },
   { mandante: "Servicios Integrales Nómade Chile", proyecto: "Contratación", ambito: "interno", reglas: REGLAS_INTERNAS_NOMADE },
 ];
+
+/** Las reglas de un proyecto, según el programa que lo creó. */
+export function reglasDelPrograma(mandante: string, proyecto: string): ReglaSeed[] | null {
+  return PROGRAMAS_SEED.find(p => p.mandante === mandante && p.proyecto === proyecto)?.reglas ?? null;
+}
 
 /** Compatibilidad: el sembrado por defecto de un proyecto de mandante. */
 export const REGLAS_SEED: ReglaSeed[] = REGLAS_MANDANTE_ANGLO;

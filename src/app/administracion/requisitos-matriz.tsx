@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { setRequisitoAction, setRequisitoFilaAction, setCondicionFilaAction } from "./actions";
+import { setRequisitoAction, setRequisitoFilaAction, setCondicionFilaAction, setVigenciaFilaAction } from "./actions";
 import { CATEGORIA_LABEL, type CategoriaDocumento } from "@/lib/acreditacion";
 import { CONDICION_LABEL, CONDICIONES, TIPOS_SIN_REGLA_DEFINIDA, type CondicionRequisito } from "@/lib/requisitos";
 
@@ -21,6 +21,7 @@ export type CeldaInicial = {
   tipoId: string;
   nivel: Nivel;
   condicion: string | null;
+  vigenciaMeses?: number | null;
 };
 
 /** Ciclo del clic: no aplica → obligatorio → deseable → no aplica. */
@@ -67,6 +68,40 @@ export function RequisitosMatriz({
     for (const c of iniciales) if (c.condicion) m.set(c.tipoId, c.condicion);
     return m;
   });
+
+  // La vigencia del mandante también es del documento: se edita por fila.
+  const [vigenciaPorTipo, setVigenciaPorTipo] = React.useState<Map<string, number>>(() => {
+    const m = new Map<string, number>();
+    for (const c of iniciales) if (c.vigenciaMeses != null) m.set(c.tipoId, c.vigenciaMeses);
+    return m;
+  });
+
+  function cambiarVigencia(tipoId: string, valor: string) {
+    const meses = valor.trim() === "" ? null : Number(valor);
+    if (meses !== null && (!Number.isInteger(meses) || meses < 1 || meses > 240)) {
+      setError("La vigencia va en meses enteros, entre 1 y 240.");
+      return;
+    }
+    const anterior = vigenciaPorTipo.get(tipoId) ?? null;
+    if (anterior === meses) return;
+    setVigenciaPorTipo(prev => {
+      const m = new Map(prev);
+      if (meses === null) m.delete(tipoId); else m.set(tipoId, meses);
+      return m;
+    });
+    setError(null);
+    startTransition(async () => {
+      const r = await setVigenciaFilaAction({ proyectoId, tipoId, vigenciaMeses: meses });
+      if (!r.ok) {
+        setError(r.error);
+        setVigenciaPorTipo(prev => {
+          const m = new Map(prev);
+          if (anterior === null) m.delete(tipoId); else m.set(tipoId, anterior);
+          return m;
+        });
+      }
+    });
+  }
 
   function cambiarCondicion(tipoId: string, condicion: string) {
     setCondicionPorTipo(prev => {
@@ -235,6 +270,30 @@ export function RequisitosMatriz({
                             <option key={c} value={c}>{CONDICION_LABEL[c]}</option>
                           ))}
                         </select>
+                        {/* Solo tiene sentido en una fila que se exige a alguien. */}
+                        {cargos.some(c => celdas.has(clave(c.id, t.id))) && (
+                          <label
+                            title="Plazo que exige este mandante, contado desde la emisión. Vacío: vale la fecha que trae el documento."
+                            style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: "0.68rem", color: vigenciaPorTipo.has(t.id) ? "#7c2d12" : "var(--muted)" }}
+                          >
+                            <span>Vigencia</span>
+                            <input
+                              key={`${t.id}-${vigenciaPorTipo.get(t.id) ?? ""}`}
+                              type="number" min={1} max={240} step={1}
+                              defaultValue={vigenciaPorTipo.get(t.id) ?? ""}
+                              placeholder="—"
+                              onBlur={e => cambiarVigencia(t.id, e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                              style={{
+                                width: 46, padding: "0 4px", fontSize: "0.68rem",
+                                border: vigenciaPorTipo.has(t.id) ? "1px solid #fdba74" : "1px solid var(--border, #e2e8f0)",
+                                background: vigenciaPorTipo.has(t.id) ? "#fff7ed" : "transparent",
+                                borderRadius: 4,
+                              }}
+                            />
+                            <span>meses</span>
+                          </label>
+                        )}
                       </td>
                       <td style={{ borderBottom: "1px solid var(--border, #e2e8f0)", padding: "0.25rem", textAlign: "center", whiteSpace: "nowrap" }}>
                         <button

@@ -7,8 +7,8 @@ import { buildTrabajadoresTabs } from "@/lib/section-nav";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { getNearestDocument, getStaffDocumentEntries } from "@/lib/staff-docs";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
-import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
-import { getRequisitosPorTrabajador, resumirExigencia, tieneBloqueos } from "@/lib/requisitos-db";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
+import { getCumplimiento, resumirExigencia, tieneBloqueos } from "@/lib/requisitos-db";
 import { ExigenciaChip } from "@/app/trabajadores/exigencia-banner";
 
 type SearchParams = {
@@ -63,17 +63,18 @@ export default async function TrabajadoresPage({ searchParams }: { searchParams?
   // Obligatorios faltantes según la matriz del cargo. Es lo primero que se
   // mira de una dotación, así que se calcula acá y no solo en la ficha.
   const tiposTodos = await getTiposDocumento();
-  const [estadoCompleto, requisitosPorTrabajador] = await Promise.all([
-    getEstadoDocumental(staffMembers.map(w => w.id), tiposTodos, today),
-    getRequisitosPorTrabajador(staffMembers.map(w => ({
+  const { estados: estadoCompleto, requisitos: requisitosPorTrabajador } = await getCumplimiento(
+    staffMembers.map(w => ({
       id: w.id,
       proyectoId: w.proyectoId,
       cargoId: w.cargoId,
       contractIsIndefinite: w.contractIsIndefinite,
       trabajoPrevioMandante: w.trabajoPrevioMandante,
       contractEndDate: w.contractEndDate,
-    }))),
-  ]);
+    })),
+    tiposTodos,
+    today,
+  );
   const nombrePorTipo = new Map(tiposTodos.map(t => [t.id, t.nombre]));
 
   const staffRows = staffMembers.map((worker) => {

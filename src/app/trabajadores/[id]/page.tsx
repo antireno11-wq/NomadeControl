@@ -11,8 +11,8 @@ import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
 import { getStaffDocumentEntries } from "@/lib/staff-docs";
 import { ESTADO_STYLE } from "@/lib/acreditacion";
 import { DocumentosPanel, type FilaDoc, type VersionDoc } from "./documentos-panel";
-import { getTiposDocumento, getEstadoDocumental } from "@/lib/acreditacion-db";
-import { getCalificaciones, getCargos, getProyectos, getRequisitosDeTrabajador, resumirExigencia } from "@/lib/requisitos-db";
+import { getTiposDocumento } from "@/lib/acreditacion-db";
+import { getCalificaciones, getCargos, getCumplimiento, getProyectos, resumirExigencia } from "@/lib/requisitos-db";
 import { asignarCalificacionesAction } from "@/app/administracion/calificaciones/actions";
 import { formatShiftRange, getShiftProjection } from "@/lib/shift-projection";
 
@@ -80,32 +80,29 @@ export default async function PerfilTrabajadorPage({
   // tipos core (los de la matriz) más cualquier otro que tenga documento
   // cargado — así un certificado de antecedentes no queda invisible.
   const tiposTodos = await getTiposDocumento();
-  const estadoMap = await getEstadoDocumental([worker.id], tiposTodos, today);
-  const estadoWorker = estadoMap.get(worker.id);
 
-  // Qué le exige su matriz de acreditación y qué le falta de verdad.
-  // Las calificaciones se consultan antes: de ellas depende qué requisitos
-  // se le exigen, así que no pueden ir en paralelo con el cálculo.
-  const [calificaciones, susCalificaciones] = await Promise.all([
+  // Qué le exige su matriz de acreditación y qué le falta de verdad. Sale de
+  // la misma función que la matriz y el dashboard: si la ficha armara el
+  // cálculo por su cuenta, volvería a dar un número distinto.
+  const [calificaciones, susCalificaciones, cumplimiento, cargos, proyectos] = await Promise.all([
     getCalificaciones(),
     db.staffMember.findUnique({
       where: { id: worker.id },
       select: { calificaciones: { select: { id: true } } },
     }).then(r => r?.calificaciones.map(c => c.id) ?? []),
-  ]);
-
-  const [cargos, proyectos, requisitosWorker] = await Promise.all([
-    getCargos(),
-    getProyectos(),
-    getRequisitosDeTrabajador({
+    getCumplimiento([{
+      id: worker.id,
       proyectoId: worker.proyectoId,
       cargoId: worker.cargoId,
-      calificacionIds: susCalificaciones,
       contractIsIndefinite: worker.contractIsIndefinite,
       trabajoPrevioMandante: worker.trabajoPrevioMandante,
       contractEndDate: worker.contractEndDate,
-    }),
+    }], tiposTodos, today),
+    getCargos(),
+    getProyectos(),
   ]);
+  const estadoWorker = cumplimiento.estados.get(worker.id);
+  const requisitosWorker = cumplimiento.requisitos.get(worker.id) ?? null;
   const proyectoAsignado = proyectos.find(p => p.id === worker.proyectoId) ?? null;
   const nombresTipos = new Map(tiposTodos.map(t => [t.id, t.nombre]));
   // Dos cumplimientos separados. El del mandante decide si puede entrar a la
@@ -199,6 +196,7 @@ export default async function PerfilTrabajadorPage({
       tipoNombre: tipo.nombre,
       estado: entry.estado,
       dias: entry.dias,
+      venceSegunMandante: entry.venceSegunMandante ? entry.venceSegunMandante.toISOString().slice(0, 10) : null,
       actual: delTipo.filter(v => v.id === vigenteId).map(aVersion)[0] ?? null,
       historial: delTipo.filter(v => v.id !== vigenteId).map(aVersion),
     };

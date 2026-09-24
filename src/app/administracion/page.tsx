@@ -628,6 +628,7 @@ export default async function AdministracionPage({
                 cargos={cargosAcreditacion.map(c => ({ id: c.id, nombre: c.nombre }))}
                 iniciales={requisitosSel.map(r => ({
                   cargoId: r.cargoId, tipoId: r.tipoId, nivel: r.nivel, condicion: r.condicion,
+                  vigenciaMeses: r.vigenciaMeses,
                 }))}
               />
             </div>

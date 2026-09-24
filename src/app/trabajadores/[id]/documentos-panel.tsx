@@ -31,6 +31,12 @@ export type FilaDoc = {
   tipoNombre: string;
   estado: EstadoDocumento;
   dias: number | null;
+  /**
+   * Vencimiento según el plazo del mandante (YYYY-MM-DD). Puede existir
+   * aunque el papel diga que no vence: Transelec pide renovar el RIOHS cada
+   * 36 meses. Es la fecha que decide, así que es la que se muestra.
+   */
+  venceSegunMandante: string | null;
   /** El vigente. null cuando el tipo está sin cargar. */
   actual: VersionDoc | null;
   /** Anuladas y reemplazadas, de la más nueva a la más vieja. */
@@ -115,7 +121,7 @@ export function DocumentosPanel({
               <span style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
                 <span style={{ fontSize: "0.82rem" }}>
                   {f.estado === "sin_vencimiento" ? "∞ No vence"
-                    : fmt(f.actual?.fechaVencimiento ?? null) ?? "—"}
+                    : fmt(f.venceSegunMandante ?? f.actual?.fechaVencimiento ?? null) ?? "—"}
                 </span>
                 <span style={{
                   padding: "2px 10px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700,
@@ -182,6 +188,11 @@ function Detalle({
               {fila.dias != null && fila.dias < 0 && ` · ${Math.abs(fila.dias)} días vencido`}
               {fila.dias != null && fila.dias >= 0 && ` · quedan ${fila.dias} días`}
             </div>
+            {fila.venceSegunMandante && (
+              <div style={{ fontSize: "0.74rem", color: "var(--muted)", marginTop: 2 }}>
+                Vence el {fmt(fila.venceSegunMandante)} por el plazo del mandante, contado desde la emisión
+              </div>
+            )}
           </div>
           <button type="button" className="plano" onClick={onCerrar}
                   style={{ width: "auto", padding: "4px 10px", fontSize: "1.1rem", lineHeight: 1 }}>

@@ -1,6 +1,9 @@
 import { db } from "@/lib/db";
-import { getTiposDocumento, type EstadoTrabajador } from "@/lib/acreditacion-db";
-import { esEstadoOk, type EstadoDocumento } from "@/lib/acreditacion";
+import {
+  getEstadoDocumental, getTiposDocumento, recontar,
+  type EstadoPorTipo, type EstadoTrabajador, type TipoDocumentoRow,
+} from "@/lib/acreditacion-db";
+import { diasRestantes, esEstadoOk, UMBRAL_POR_VENCER_DIAS, type EstadoDocumento } from "@/lib/acreditacion";
 import {
   AJUSTES_CONDICION,
   CARGOS_SEED,
@@ -9,6 +12,7 @@ import {
   REGLAS_MANDANTE_ANGLO,
   TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE,
   REGLAS_SEED,
+  reglasDelPrograma,
   requisitoAplica,
   type CondicionesTrabajador,
   type CondicionRequisito,
@@ -33,6 +37,7 @@ export type RequisitoRow = {
   tipoId: string;
   nivel: NivelRequisito;
   condicion: CondicionRequisito | null;
+  vigenciaMeses: number | null;
   nota: string | null;
 };
 
@@ -158,9 +163,14 @@ async function asegurarProgramas(): Promise<void> {
   // Los documentos de contratación que había sembrado por error en la matriz
   // del mandante: se quitan de ahí, donde bloqueaban el ingreso a faena. En la
   // matriz interna siguen exigiéndose.
+  // Contra todos los programas de mandante, no solo el de Anglo: un tipo que
+  // Transelec sí exige no es "de contratación" aunque Anglo no lo pida.
+  const deAlgunMandante = new Set(
+    PROGRAMAS_SEED.filter(p => p.ambito === "mandante").flatMap(p => p.reglas.map(r => r.tipo)),
+  );
   const soloInternos = REGLAS_INTERNAS_NOMADE
     .map(r => r.tipo)
-    .filter(t => !REGLAS_MANDANTE_ANGLO.some(m => m.tipo === t));
+    .filter(t => !deAlgunMandante.has(t));
 
   const tipos = await db.tipoDocumento.findMany({
     where: { codigo: { in: soloInternos } }, select: { id: true },
@@ -250,7 +260,7 @@ export async function getProyectos(): Promise<ProyectoRow[]> {
 export async function getRequisitos(proyectoId: string): Promise<RequisitoRow[]> {
   const filas = await db.requisitoDocumento.findMany({
     where: { proyectoId },
-    select: { id: true, cargoId: true, tipoId: true, nivel: true, condicion: true, nota: true },
+    select: { id: true, cargoId: true, tipoId: true, nivel: true, condicion: true, vigenciaMeses: true, nota: true },
   });
   return filas as RequisitoRow[];
 }
@@ -267,11 +277,20 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
   if (yaTiene > 0) return 0;
 
   const proyecto = await db.proyecto.findUnique({
-    where: { id: proyectoId }, select: { altitudMsnm: true, ambito: true },
+    where: { id: proyectoId },
+    select: { altitudMsnm: true, ambito: true, nombre: true, mandante: { select: { nombre: true } } },
   });
   if (!proyecto) return 0;
 
-  const reglas = proyecto.ambito === "interno" ? REGLAS_INTERNAS_NOMADE : REGLAS_MANDANTE_ANGLO;
+  // Las reglas del programa que definió ESTE proyecto. Antes todo proyecto de
+  // mandante recibía las de Anglo, así que agregar Transelec a la lista de
+  // programas habría sembrado Monte Mina con los requisitos de Los Bronces,
+  // sin error y sin que nadie lo notara hasta que el mandante rechazara a
+  // alguien. Un proyecto creado a mano desde Administración, que no tiene
+  // programa, sigue partiendo de la matriz de Anglo como plantilla.
+  const reglas =
+    reglasDelPrograma(proyecto.mandante?.nombre ?? "", proyecto.nombre)
+    ?? (proyecto.ambito === "interno" ? REGLAS_INTERNAS_NOMADE : REGLAS_MANDANTE_ANGLO);
 
   const [cargos, tipos] = await Promise.all([getCargos(), getTiposDocumento()]);
   const porNombre = new Map(cargos.map(c => [c.nombre, c.id]));
@@ -280,20 +299,21 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
   const data: Array<{
     proyectoId: string; cargoId: string; tipoId: string;
     nivel: string; condicion: string | null; nota: string | null;
-    alternativaDe: string | null;
+    alternativaDe: string | null; vigenciaMeses: number | null;
   }> = [];
 
   for (const regla of reglas) {
     const tipoId = porCodigo.get(regla.tipo);
     if (!tipoId) continue;
 
-    let nota: string | null = null;
+    let nota: string | null = regla.nota ?? null;
     if (regla.sobreMsnm != null) {
       // Sin altura registrada se exige igual: un documento de más se ve en
       // la matriz, uno de menos no se ve hasta que el mandante lo rechaza.
       if (proyecto.altitudMsnm != null && proyecto.altitudMsnm < regla.sobreMsnm) continue;
       if (proyecto.altitudMsnm == null) {
-        nota = `Aplica sobre ${regla.sobreMsnm.toLocaleString("es-CL")} m. Confirmar la altura de la faena.`;
+        const aviso = `Aplica sobre ${regla.sobreMsnm.toLocaleString("es-CL")} m. Confirmar la altura de la faena.`;
+        nota = nota ? `${nota} ${aviso}` : aviso;
       }
     }
 
@@ -306,6 +326,7 @@ export async function sembrarMatriz(proyectoId: string): Promise<number> {
         nivel: regla.nivel,
         condicion: regla.condicion ?? null,
         alternativaDe: regla.alternativaDe ?? null,
+        vigenciaMeses: regla.vigenciaMeses ?? null,
         nota,
       });
     }
@@ -356,6 +377,8 @@ export type RequisitoDeTrabajador = {
   proyectoNombre: string;
   /** Se cumple con cualquiera de los requisitos que compartan esta clave. */
   alternativaDe: string | null;
+  /** Plazo propio del mandante, en meses desde la emisión. */
+  vigenciaMeses: number | null;
 };
 
 /**
@@ -399,7 +422,7 @@ export async function getRequisitosPorTrabajador(
     },
     select: {
       proyectoId: true, cargoId: true, tipoId: true, nivel: true, condicion: true,
-      alternativaDe: true, calificacionId: true,
+      alternativaDe: true, calificacionId: true, vigenciaMeses: true,
       proyecto: { select: { ambito: true, nombre: true } },
     },
   });
@@ -447,10 +470,126 @@ export async function getRequisitosPorTrabajador(
           ambito: (f.proyecto?.ambito === "interno" ? "interno" : "mandante") as AmbitoRequisito,
           proyectoNombre: f.proyecto?.nombre ?? "",
           alternativaDe: f.alternativaDe,
+          vigenciaMeses: f.vigenciaMeses,
         })),
     );
   }
   return salida;
+}
+
+// ─── Vigencia propia del mandante ──────────────────────────────────────
+
+/**
+ * Suma meses sin desbordar: 31 de enero + 1 mes es 28 de febrero, no 3 de
+ * marzo. En un plazo de acreditación, tres días de más son tres días en que
+ * alguien entra a faena con un papel que ya no vale.
+ */
+function sumarMeses(fecha: Date, meses: number): Date {
+  const destino = new Date(Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth() + meses, 1, 12));
+  const ultimoDia = new Date(Date.UTC(destino.getUTCFullYear(), destino.getUTCMonth() + 1, 0, 12)).getUTCDate();
+  destino.setUTCDate(Math.min(fecha.getUTCDate(), ultimoDia));
+  return destino;
+}
+
+/**
+ * El estado de un documento medido con el plazo de un mandante.
+ *
+ * Gana el más estricto de los dos: lo que dice el papel y lo que exige el
+ * mandante. Un examen que vence en diciembre pero se emitió hace 35 meses,
+ * bajo un plazo de 36, vence el mes que viene.
+ *
+ * Sin fecha de emisión no se puede medir el plazo del mandante, y entonces
+ * manda el documento. Hoy los RIOHS, EPP y ODI cargados la tienen todos; la
+ * excepción son 16 IRL de 73, y lo que corresponde ahí es completar la fecha,
+ * no inventarla.
+ */
+export function estadoConVigencia(
+  entry: EstadoPorTipo,
+  vigenciaMeses: number | null,
+  hoy: Date,
+  umbralDias = UMBRAL_POR_VENCER_DIAS,
+): EstadoPorTipo {
+  if (vigenciaMeses == null || !entry.documento?.fechaEmision) return entry;
+
+  const limite = sumarMeses(entry.documento.fechaEmision, vigenciaMeses);
+  const propio = entry.estado === "sin_vencimiento" ? null : entry.documento.fechaVencimiento;
+  const vence = propio && propio.getTime() < limite.getTime() ? propio : limite;
+  const dias = diasRestantes(vence, hoy)!;
+
+  return {
+    ...entry,
+    estado: dias < 0 ? "vencido" : dias <= umbralDias ? "por_vencer" : "vigente",
+    dias,
+    venceSegunMandante: vence,
+  };
+}
+
+/**
+ * Aplica a cada trabajador los plazos que pone SU mandante.
+ *
+ * Se hace una vez, sobre el mismo estado que después leen la matriz, el
+ * dashboard, la ficha y el export. Si cada pantalla lo aplicara por su
+ * cuenta volveríamos a tener un cumplimiento distinto en cada una, que es
+ * exactamente lo que se arregló.
+ *
+ * Solo se miran los requisitos del mandante. Si la contratación interna
+ * pidiera el mismo papel, también lo vería con el plazo del mandante: es la
+ * lectura más estricta, y hoy no hay ningún tipo que pidan los dos.
+ */
+export function aplicarVigenciasDelMandante(
+  estados: Map<string, EstadoTrabajador>,
+  requisitos: Map<string, RequisitoDeTrabajador[] | null>,
+  hoy = new Date(),
+): void {
+  for (const [id, estado] of estados) {
+    const reqs = requisitos.get(id);
+    if (!reqs) continue;
+
+    let cambio = false;
+    for (const r of reqs) {
+      if (r.ambito !== "mandante" || r.vigenciaMeses == null) continue;
+      const entry = estado.porTipo.get(r.tipoId);
+      if (!entry) continue;
+      const ajustado = estadoConVigencia(entry, r.vigenciaMeses, hoy);
+      if (ajustado !== entry) {
+        estado.porTipo.set(r.tipoId, ajustado);
+        cambio = true;
+      }
+    }
+    if (cambio) recontar(estado);
+  }
+}
+
+/**
+ * Estado documental y requisitos de un grupo de trabajadores, listos para
+ * resumir. Es LA forma de calcular cumplimiento: todas las pantallas y el
+ * export pasan por acá.
+ *
+ * Existe porque cada pantalla armaba el cálculo con sus propias piezas y se
+ * les olvidaban distintas: solo la ficha le pasaba las calificaciones, así
+ * que a un rigger la ficha le exigía documentos que la matriz no le contaba.
+ * Con los plazos del mandante habría pasado lo mismo. Una sola función es la
+ * única forma de que una pieza nueva llegue a todas las pantallas a la vez.
+ */
+export async function getCumplimiento(
+  trabajadores: Array<TrabajadorParaRequisitos & { id: string }>,
+  tipos: TipoDocumentoRow[],
+  hoy = new Date(),
+): Promise<{
+  estados: Map<string, EstadoTrabajador>;
+  requisitos: Map<string, RequisitoDeTrabajador[] | null>;
+}> {
+  const ids = trabajadores.map(t => t.id);
+  const [estados, calificaciones] = await Promise.all([
+    getEstadoDocumental(ids, tipos, hoy),
+    getCalificacionesPorTrabajador(ids),
+  ]);
+  const requisitos = await getRequisitosPorTrabajador(trabajadores.map(t => ({
+    ...t,
+    calificacionIds: t.calificacionIds ?? calificaciones.get(t.id) ?? [],
+  })));
+  aplicarVigenciasDelMandante(estados, requisitos, hoy);
+  return { estados, requisitos };
 }
 
 // ─── Cumplimiento: qué le falta de verdad a cada trabajador ────────────
