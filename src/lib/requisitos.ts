@@ -60,7 +60,9 @@ export const CARGOS_SEED: CargoSeed[] = [
 ];
 
 const CARGOS_CONDUCTORES = ["Conductor Abastecedor B", "Conductor A4"];
-const CARGOS_COCINA      = ["Maestro de Cocina", "Ayudante de Cocina"];
+// El auxiliar manipula alimentos igual que el ayudante: se le exige el mismo
+// certificado. Se creó desde Administración para Monte Mina.
+const CARGOS_COCINA      = ["Maestro de Cocina", "Ayudante de Cocina", "Auxiliar de Cocina"];
 
 // ─── Matriz por defecto ────────────────────────────────────────────────
 

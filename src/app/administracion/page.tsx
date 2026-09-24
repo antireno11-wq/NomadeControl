@@ -76,7 +76,9 @@ export default async function AdministracionPage({
   const reqStatus = typeof searchParams?.reqStatus === "string" ? searchParams.reqStatus : "";
   const reqAlert =
     reqStatus === "creado" ? { type: "success", text: "Proyecto creado y matriz de requisitos sembrada." }
-    : reqStatus === "cargo" ? { type: "success", text: "Cargo agregado." }
+    : reqStatus === "cargo" ? { type: "success", text: "Cargo agregado, con los mismos requisitos que el cargo elegido en todos los proyectos." }
+    : reqStatus === "cargo-vacio" ? { type: "error", text: "Cargo agregado SIN requisitos. Quien quede asignado ahí aparecerá sin matriz hasta que marques sus documentos en la grilla de cada proyecto." }
+    : reqStatus === "cargo-existe" ? { type: "error", text: "Ese cargo ya existía: no se cambió nada." }
     : reqStatus === "duplicado" ? { type: "error", text: "Ese proyecto ya existía para el mandante." }
     : reqStatus === "invalido" ? { type: "error", text: "Revisa los datos del proyecto." }
     : null;
@@ -713,11 +715,20 @@ export default async function AdministracionPage({
               <ul style={{ margin: "0 0 1rem", paddingLeft: "1.1rem", color: "var(--muted)", fontSize: "0.85rem" }}>
                 {cargosAcreditacion.map(c => <li key={c.id}>{c.nombre}</li>)}
               </ul>
-              <form action={crearCargoAction} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+              <form action={crearCargoAction} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap" }}>
                 <input type="hidden" name="proyectoId" value={proyectoSel?.id ?? ""} />
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 180px" }}>
                   <label htmlFor="cargo-nombre">Agregar cargo</label>
                   <input id="cargo-nombre" name="nombre" required placeholder="Ej: Bodeguero" />
+                </div>
+                {/* Sin esto el cargo nace sin ningún requisito en ningún
+                    proyecto, y la contratación interna tampoco se le revisa. */}
+                <div style={{ flex: "1 1 180px" }}>
+                  <label htmlFor="cargo-igual">Se acredita igual que</label>
+                  <select id="cargo-igual" name="igualQue" defaultValue="">
+                    <option value="">— ninguno: lo defino en la grilla —</option>
+                    {cargosAcreditacion.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
                 </div>
                 <button type="submit" className="secondary">Agregar</button>
               </form>

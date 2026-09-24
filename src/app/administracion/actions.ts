@@ -9,7 +9,7 @@ import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { sendWelcomeEmail } from "@/lib/mailer";
 import { geocodeLocation } from "@/lib/weather";
-import { sembrarMatriz } from "@/lib/requisitos-db";
+import { copiarRequisitosDeCargo, sembrarMatriz } from "@/lib/requisitos-db";
 
 const createUserSchema = z.object({
   name: z.string().trim().min(2),
@@ -1039,21 +1039,42 @@ export async function crearProyectoAcreditacionAction(formData: FormData) {
 }
 
 export async function crearCargoAction(formData: FormData) {
-  await requireRole(ADMIN_ROLES);
+  const user = await requireRole(ADMIN_ROLES);
   const nombre = String(formData.get("nombre") ?? "").trim();
   const proyectoId = String(formData.get("proyectoId") ?? "");
   if (nombre.length < 2) {
     redirect(`/administracion?seccion=requisitos&proyecto=${proyectoId}&reqStatus=invalido`);
   }
 
+  const igualQue = String(formData.get("igualQue") ?? "");
+
   const existente = await db.cargo.findUnique({ where: { nombre }, select: { id: true } });
+  let copiados = 0;
   if (!existente) {
+    // Queda junto al cargo del que copia, no al final de la lista: el
+    // auxiliar de cocina se busca al lado del ayudante.
+    const origen = igualQue
+      ? await db.cargo.findUnique({ where: { id: igualQue }, select: { id: true, nombre: true, orden: true } })
+      : null;
     const ultimo = await db.cargo.findFirst({ orderBy: { orden: "desc" }, select: { orden: true } });
-    await db.cargo.create({ data: { nombre, orden: (ultimo?.orden ?? 0) + 10 } });
+    const creado = await db.cargo.create({
+      data: { nombre, orden: origen ? origen.orden + 5 : (ultimo?.orden ?? 0) + 10 },
+      select: { id: true },
+    });
+    if (origen) copiados = await copiarRequisitosDeCargo(origen.id, creado.id);
+
+    await logAuditEvent({
+      actorUserId: user.id, actorName: user.name, actorEmail: user.email,
+      action: "CARGO_CREATE", entityType: "cargo", entityId: creado.id,
+      summary: origen
+        ? `Creó el grupo de dotación «${nombre}» con los requisitos de «${origen.nombre}» (${copiados} filas)`
+        : `Creó el grupo de dotación «${nombre}» sin requisitos`,
+    }).catch(() => {});
   }
 
   revalidatePath("/administracion");
-  redirect(`/administracion?seccion=requisitos&proyecto=${proyectoId}&reqStatus=cargo`);
+  redirect(`/administracion?seccion=requisitos&proyecto=${proyectoId}&reqStatus=${
+    existente ? "cargo-existe" : igualQue ? "cargo" : "cargo-vacio"}`);
 }
 
 /**

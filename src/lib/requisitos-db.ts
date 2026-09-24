@@ -81,36 +81,58 @@ async function reconciliarCondiciones(): Promise<void> {
     });
   }
 
-  // Las alternativas quedaron vacías en las matrices que se sembraron antes
-  // de que existiera la columna. Sin esto, tener el examen de altura seguía
-  // dejando pendiente el ocupacional, cuando la mutualidad los emite en un
-  // solo certificado: la persona aparecía sin acreditar teniendo el papel.
-  // Se rellena solo donde está en NULL, así que no pisa una decisión manual.
-  const conAlternativa = [...REGLAS_MANDANTE_ANGLO, ...REGLAS_INTERNAS_NOMADE]
-    .filter(r => r.alternativaDe);
+  // Las dos correcciones que siguen son de UN programa, no de todos. Se
+  // escribieron para la matriz de Anglo y se aplicaban a cualquier proyecto:
+  // la segunda borraba la ODI de Monte Mina en cada arranque del servidor,
+  // porque la planilla de Anglo dice que la ODI va "solo si el cliente la
+  // exige" — y Transelec sí la exige. Ahora cada proyecto se corrige con las
+  // reglas del programa que lo definió.
+  const proyectos = await db.proyecto.findMany({
+    select: { id: true, nombre: true, ambito: true, mandante: { select: { nombre: true } } },
+  });
+  const reglasDe = (p: (typeof proyectos)[number]) =>
+    reglasDelPrograma(p.mandante?.nombre ?? "", p.nombre)
+    ?? (p.ambito === "interno" ? REGLAS_INTERNAS_NOMADE : REGLAS_MANDANTE_ANGLO);
+
+  const todosLosCodigos = [...new Set(
+    proyectos.flatMap(p => reglasDe(p).filter(r => r.alternativaDe).map(r => r.tipo)),
+  )];
   const tiposAlt = await db.tipoDocumento.findMany({
-    where: { codigo: { in: [...new Set(conAlternativa.map(r => r.tipo))] } },
+    where: { codigo: { in: todosLosCodigos } },
     select: { id: true, codigo: true },
   });
-  for (const regla of conAlternativa) {
-    const tipo = tiposAlt.find(t => t.codigo === regla.tipo);
-    if (!tipo) continue;
-    await db.requisitoDocumento.updateMany({
-      where: { tipoId: tipo.id, alternativaDe: null },
-      data: { alternativaDe: regla.alternativaDe },
-    });
-  }
+  const idPorCodigo = new Map([...tiposAlt, ...tipos].map(t => [t.codigo, t.id]));
 
-  // Los que se sembraron por error: están en el catálogo del mandante pero
-  // sin columna en su matriz. Se borran solo si nadie los tocó desde la
-  // grilla — updatedAt sigue igual a createdAt. Si alguien los definió a
-  // mano, esa decisión manda y no se pisa.
-  const idsRetirar = tipos
-    .filter(t => TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE.includes(t.codigo))
-    .map(t => t.id);
-  if (idsRetirar.length > 0) {
+  for (const proyecto of proyectos) {
+    const reglas = reglasDe(proyecto);
+
+    // Las alternativas quedaron vacías en las matrices que se sembraron antes
+    // de que existiera la columna. Sin esto, tener el examen de altura seguía
+    // dejando pendiente el ocupacional, cuando la mutualidad los emite en un
+    // solo certificado. Se rellena solo donde está en NULL, así que no pisa
+    // una decisión manual.
+    for (const regla of reglas.filter(r => r.alternativaDe)) {
+      const tipoId = idPorCodigo.get(regla.tipo);
+      if (!tipoId) continue;
+      await db.requisitoDocumento.updateMany({
+        where: { proyectoId: proyecto.id, tipoId, alternativaDe: null },
+        data: { alternativaDe: regla.alternativaDe },
+      });
+    }
+
+    // Los que se sembraron por error: están en el catálogo del mandante pero
+    // sin columna en SU matriz. Solo si el programa de este proyecto no los
+    // pide, y solo si nadie los tocó desde la grilla —updatedAt igual a
+    // createdAt—: una decisión manual manda.
+    const pedidos = new Set(reglas.map(r => r.tipo));
+    const idsRetirar = TIPOS_SOLO_SI_EL_CLIENTE_LOS_EXIGE
+      .filter(c => !pedidos.has(c))
+      .map(c => idPorCodigo.get(c))
+      .filter((id): id is string => Boolean(id));
+    if (idsRetirar.length === 0) continue;
+
     const candidatos = await db.requisitoDocumento.findMany({
-      where: { tipoId: { in: idsRetirar } },
+      where: { proyectoId: proyecto.id, tipoId: { in: idsRetirar } },
       select: { id: true, createdAt: true, updatedAt: true },
     });
     const intactos = candidatos
@@ -236,6 +258,37 @@ async function sembrarRequisitosDeRigger(): Promise<void> {
     }))),
     skipDuplicates: true,
   });
+}
+
+/**
+ * Le da a un cargo los mismos requisitos que otro, en todos los proyectos.
+ *
+ * Un cargo recién creado no tiene ninguna fila de requisito, en ninguna
+ * matriz. Quien quedaba asignado ahí aparecía "sin matriz" ante el mandante,
+ * y peor: la contratación interna también quedaba vacía, y como ese aviso se
+ * oculta cuando no hay matriz, no se le revisaban ni antecedentes ni
+ * manipulación de alimentos, sin que nada lo dijera.
+ *
+ * Copiar de un cargo parecido —el auxiliar de cocina se acredita igual que
+ * el ayudante— respeta todo lo que ya se ajustó a mano en cada matriz: los
+ * plazos, las notas, lo que se quitó. Sembrarlo de nuevo desde las reglas
+ * del código deshacería esos ajustes para el cargo nuevo.
+ */
+export async function copiarRequisitosDeCargo(origenId: string, destinoId: string): Promise<number> {
+  if (origenId === destinoId) return 0;
+  const filas = await db.requisitoDocumento.findMany({
+    where: { cargoId: origenId },
+    select: {
+      proyectoId: true, tipoId: true, nivel: true, condicion: true,
+      alternativaDe: true, vigenciaMeses: true, calificacionId: true, nota: true,
+    },
+  });
+  if (filas.length === 0) return 0;
+  const { count } = await db.requisitoDocumento.createMany({
+    data: filas.map(f => ({ ...f, cargoId: destinoId })),
+    skipDuplicates: true,
+  });
+  return count;
 }
 
 /** Proyectos activos con su mandante. */
