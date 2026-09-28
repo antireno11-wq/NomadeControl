@@ -96,6 +96,13 @@ export function WorkerForm({
         <label htmlFor="worker-role">Cargo del contrato</label>
         <select id="worker-role" name="role" defaultValue={defaults.role}>
           <option value="">Selecciona un cargo</option>
+          {/* Un cargo guardado que no está en la lista —lo trae el importador
+              de Excel tal como venía en la planilla— tiene que aparecer igual.
+              Si no, el selector lo muestra vacío y al guardar la ficha se
+              borra sin que nadie lo haya pedido. */}
+          {defaults.role && !(STAFF_ROLE_OPTIONS as readonly string[]).includes(defaults.role) && (
+            <option value={defaults.role}>{defaults.role}</option>
+          )}
           {STAFF_ROLE_OPTIONS.map((role) => (
             <option key={role} value={role}>
               {role}

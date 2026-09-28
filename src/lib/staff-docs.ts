@@ -16,6 +16,7 @@ export const STAFF_DOCUMENT_FIELDS = [
  * "MONTAJISTA" son cargos distintos que se acreditan igual.
  */
 export const STAFF_ROLE_OPTIONS = [
+  "COORDINADOR DE CONTRATO",
   "SUPERVISOR",
   "SUPERVISOR DE MONTAJE",
   "HSEC",
