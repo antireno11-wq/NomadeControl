@@ -116,6 +116,12 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
   // fue una OTEC—, así que se toma la fecha impresa en cada documento.
   { codigo: "curso_riesgos_electricos", nombre: "Curso de riesgos eléctricos", categoria: "formacion",   vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Riesgo eléctr.", legacyField: null, orden: 219.7 },
   { codigo: "autorizacion_funciones_criticas", nombre: "Autorización del mandante para funciones críticas", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Autoriz. crítica", legacyField: null, orden: 219.8 },
+  // La "Ficha del trabajador" de Transelec (V.12): la carátula que el
+  // contratista presenta por cada persona, con el ítem II donde se marcan
+  // sus funciones críticas. No es la ficha de ingreso de NOMADE —esa es de
+  // contratación— y clasificarla así daba por cumplido un requisito interno
+  // con un documento que no lo es.
+  { codigo: "ficha_trabajador_transelec", nombre: "Ficha del trabajador Transelec", categoria: "laboral", vigenciaDias: null, requiereArchivo: true, mostrarEnMatriz: false, etiquetaCorta: "Ficha Transelec", legacyField: null, noVence: true, orden: 219.9 },
 
   // ── Laboral ──────────────────────────────────────────────────────────
   { codigo: "anexo_contrato",           nombre: "Anexo de contrato",              categoria: "laboral",           vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Anexo",        legacyField: null, orden: 220 },
@@ -779,6 +785,8 @@ export function adivinarTipoDesdeNombre(
     // ganarle a la mención del oficio. Y el carnet antes que el curso.
     [/(carn?et|credencial).*rigger|rigger.*(carn?et|credencial)/, "carnet_rigger"],
     [/(curso|diploma|certificado).*rigger|rigger.*(curso|diploma)|maniobras?\s*(de\s*)?izaje/, "curso_rigger"],
+    // Antes que la ficha de ingreso: la de Transelec es otro documento.
+    [/ficha.*(verificaci|del[\s_]*trabajador|transelec)|transelec.*ficha/, "ficha_trabajador_transelec"],
     [/declaracion\s*jurada/,                    "declaracion_jurada"],
     [/alcohol|drogas/,                          "examen_alcohol_drogas"],
     [/altura\s*geografica/,                     "altura_geografica"],
