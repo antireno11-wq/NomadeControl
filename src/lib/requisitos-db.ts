@@ -281,11 +281,24 @@ export async function copiarRequisitosDeCargo(origenId: string, destinoId: strin
     select: {
       proyectoId: true, tipoId: true, nivel: true, condicion: true,
       alternativaDe: true, vigenciaMeses: true, calificacionId: true, nota: true,
+      createdAt: true, updatedAt: true,
     },
   });
   if (filas.length === 0) return 0;
+
+  // La limpieza del arranque distingue una fila sembrada por error de una
+  // decisión manual por `updatedAt == createdAt`. Una copia recién creada
+  // tiene las dos fechas iguales y parecía "sin tocar" aunque viniera de una
+  // fila que alguien había decidido a mano: así el auxiliar de cocina perdió
+  // en Agua Verde la foto que el ayudante conserva. La copia hereda la marca.
+  const ahora = Date.now();
   const { count } = await db.requisitoDocumento.createMany({
-    data: filas.map(f => ({ ...f, cargoId: destinoId })),
+    data: filas.map(({ createdAt, updatedAt, ...f }) => ({
+      ...f,
+      cargoId: destinoId,
+      createdAt: new Date(ahora),
+      updatedAt: new Date(updatedAt.getTime() === createdAt.getTime() ? ahora : ahora + 1),
+    })),
     skipDuplicates: true,
   });
   return count;
