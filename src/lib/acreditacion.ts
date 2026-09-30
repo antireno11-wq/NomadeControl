@@ -69,7 +69,7 @@ export const TIPOS_DOCUMENTO_SEED: TipoDocumentoSeed[] = [
 
   // ── Previsional ──────────────────────────────────────────────────────
   { codigo: "afiliacion_afp",           nombre: "Certificado de afiliación AFP",  categoria: "previsional",       vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "AFP",          legacyField: null, orden: 130 },
-  { codigo: "certificado_cotizaciones", nombre: "Certificado de cotizaciones",    categoria: "previsional",       vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Cotizaciones", legacyField: null, orden: 140 },
+  { codigo: "certificado_cotizaciones", nombre: "Certificado de cotizaciones",    categoria: "previsional",       vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Cotizaciones", legacyField: null, noVence: true, orden: 140 },
   { codigo: "afiliacion_salud",         nombre: "Afiliación salud (Fonasa/Isapre)", categoria: "previsional",     vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Salud",        legacyField: null, orden: 150 },
   { codigo: "afiliacion_mutualidad",    nombre: "Afiliación mutualidad",          categoria: "previsional",       vigenciaDias: 30,   requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Mutualidad",   legacyField: null, orden: 160 },
   { codigo: "ley_trabajo_pesado",       nombre: "Certificado Ley de Trabajo Pesado", categoria: "previsional",    vigenciaDias: null, requiereArchivo: true,  mostrarEnMatriz: false, etiquetaCorta: "Trab. pesado", legacyField: null, noVence: true, orden: 165 },
@@ -238,6 +238,10 @@ export const AJUSTES_NO_VENCE: string[] = [
   // reciente, y eso dejaba a tres trabajadores con un "vencido" rojo por un
   // papel que nunca venció.
   "certificado_antecedentes",
+  // Tampoco vence el de cotizaciones: se le habían puesto 30 días y el
+  // barrido diario lo avisaba como "vence hoy". La mitad de las fechas las
+  // había calculado el sistema con esa regla, no venían en el papel.
+  "certificado_cotizaciones",
 ];
 
 export const AJUSTES_VIGENCIA: { codigo: string; desde: number | null; vigenciaDias: number }[] = [
