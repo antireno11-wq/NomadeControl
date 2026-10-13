@@ -4,6 +4,7 @@ import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { AppShell } from "@/components/app-shell";
+import { proyeccionesInternas } from "@/lib/informe-cliente";
 
 export default async function InformeDetallePage({ params }: { params: { id: string } }) {
   const user = await requireRole(OPERATION_ROLES);
@@ -26,6 +27,21 @@ export default async function InformeDetallePage({ params }: { params: { id: str
   }
 
   const canEditOwnReport = !canSeeAdminSections && report.createdById === user.id;
+
+  // Proyecciones de autonomía con los informes hasta este día. Son de uso
+  // interno: el informe del cliente no las lleva.
+  const historia = await db.dailyReport.findMany({
+    where: { campId: report.campId, date: { lte: report.date } },
+    orderBy: { date: "desc" },
+    take: 8,
+    select: {
+      date: true, peopleCount: true, fuelLiters: true, fuelRemainingLiters: true,
+      generator1Hours: true, generator2Hours: true, potableWaterTankLevelM3: true,
+      blackWaterTankLevelM3: true, blackWaterRemovedM3: true, potableWaterDeliveredM3: true,
+      waterLiters: true, wasteFillPercent: true,
+    },
+  });
+  const proyecciones = proyeccionesInternas(historia, { aguaNegrasM3: report.camp.blackWaterTankCapacityM3 });
 
   return (
     <AppShell
@@ -74,6 +90,35 @@ export default async function InformeDetallePage({ params }: { params: { id: str
                 {report.equipoCompleto ? "Completo" : `Falta: ${report.cargoFaltante ?? "sin especificar"}`}
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ borderLeft: "4px solid #64748b" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+            <h2 style={{ margin: 0 }}>Proyecciones</h2>
+            <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", background: "#f1f5f9", borderRadius: 999, padding: "2px 10px" }}>
+              Uso interno · no salen en el informe del cliente
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginTop: 12 }}>
+            {proyecciones.map(p => {
+              const critico = p.dias != null && p.dias < 3;
+              return (
+                <div key={p.nombre} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>{p.nombre}</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 700, marginTop: 2 }}>
+                    {p.dias == null ? "—" : `${p.dias.toLocaleString("es-CL", { maximumFractionDigits: 1 })} días`}
+                  </div>
+                  {critico && (
+                    <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#b91c1c", marginTop: 2 }}>⚠ Menos de 3 días</div>
+                  )}
+                  <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: 4, lineHeight: 1.35 }}>{p.base}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="section-caption" style={{ marginTop: 8 }}>
+            Con la mediana de los últimos informes, para que un dato mal cargado no arrastre la estimación. Con menos de tres datos no se proyecta.
           </div>
         </div>
 

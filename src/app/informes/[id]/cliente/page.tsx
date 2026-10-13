@@ -5,7 +5,8 @@ import { OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDisplayDate } from "@/lib/report-utils";
 import { BotonImprimir } from "./imprimir";
-import { HojaCliente } from "./hoja";
+import { HojaCliente, type ValoresDelDia } from "./hoja";
+import { MINIMO_TENDENCIA, seriesCliente } from "@/lib/informe-cliente";
 
 /**
  * Informe diario para el cliente, con el formato REG-OP-OPE-001.
@@ -38,10 +39,6 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   return { title: r ? `Informe diario ${r.camp.name} ${formatDisplayDate(r.date)}` : "Informe diario" };
 }
 
-function num(v: number | null | undefined): string {
-  if (v == null) return "—";
-  return Number.isInteger(v) ? String(v) : v.toLocaleString("es-CL", { maximumFractionDigits: 1 });
-}
 
 export default async function InformeClientePage({ params }: { params: { id: string } }) {
   const user = await requireRole(OPERATION_ROLES);
@@ -62,8 +59,7 @@ export default async function InformeClientePage({ params }: { params: { id: str
   const mandante = proyecto?.mandante.nombre ?? "—";
 
   const capacidad = r.camp.capacityPeople ?? null;
-  const disponibilidad = capacidad != null ? Math.max(0, capacidad - r.peopleCount) : null;
-  const internet =
+  const internet: ValoresDelDia["internet"] =
     r.internetStatus === "FUNCIONANDO" ? "Sí"
     : r.internetStatus === "NO_FUNCIONA" ? "No"
     : "Con interrupciones";
@@ -71,22 +67,35 @@ export default async function InformeClientePage({ params }: { params: { id: str
   const desglose = (r.ocupacionEmpresas as unknown as Fila[] | null) ?? [];
   const servicios = (r.serviciosPlanificados ?? "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-  const filas: Array<[string, string]> = [
-    ["Capacidad Total del Campamento (N° de camas) [ref.]:", num(capacidad)],
-    ["Ocupación Total del Campamento (N° de camas):", num(r.peopleCount)],
-    ["Disponibilidad de Camas:", num(disponibilidad)],
-    ["Congelamiento en Redes (Sí/No):", r.congelamiento ? "Sí" : "No"],
-    ["Nivel de Contenedor de Basura (%):", `${r.wasteFillPercent}%`],
-    ["Nivel de Combustible Disponible (Litros):", num(r.fuelRemainingLiters)],
-    ["Horómetro Generador N° 1 (h):", num(r.generator1Hours)],
-    ["Horómetro Generador N° 2 (h):", num(r.generator2Hours)],
-    ["Carga de Consumos BSALE:", num(r.consumosBsale)],
-    ["Estatus Starlink / Internet (Operativo Sí/No):", internet],
-    ["Bidones de Agua 20 Lts — Cantidad Utilizada en el Día (unidades):", num(r.bidonesUsados)],
-    ["Bidones de Agua 20 Lts — Stock Disponible (unidades):", num(r.bidonesStock)],
-    ["Agua potable M3", num(r.potableWaterTankLevelM3)],
-    ["Acumulacion de aguas negras m3", num(r.blackWaterTankLevelM3)],
-  ];
+  // Los últimos 14 informes del campamento HASTA esta fecha: el informe de un
+  // día nunca muestra datos de días posteriores, aunque ya existan.
+  const historia = await db.dailyReport.findMany({
+    where: { campId: r.campId, date: { lte: r.date } },
+    orderBy: { date: "desc" },
+    take: 14,
+    select: {
+      date: true, peopleCount: true, fuelLiters: true, fuelRemainingLiters: true,
+      generator1Hours: true, generator2Hours: true, potableWaterTankLevelM3: true,
+      blackWaterTankLevelM3: true, blackWaterRemovedM3: true, potableWaterDeliveredM3: true,
+      waterLiters: true, wasteFillPercent: true,
+    },
+  });
+
+  const hoy: ValoresDelDia = {
+    capacidad,
+    ocupacion: r.peopleCount,
+    combustible: r.fuelRemainingLiters,
+    aguaPotable: r.potableWaterTankLevelM3,
+    aguasNegras: r.blackWaterTankLevelM3,
+    basura: r.wasteFillPercent,
+    internet,
+    congelamiento: r.congelamiento,
+    horometro1: r.generator1Hours,
+    horometro2: r.generator2Hours,
+    bsale: r.consumosBsale,
+    bidonesUsados: r.bidonesUsados,
+    bidonesStock: r.bidonesStock,
+  };
 
   // Lo que falta se avisa en pantalla —no en el PDF— para completarlo antes de
   // mandarlo. En el PDF va "—": un cero inventado es peor que un hueco.
@@ -98,6 +107,10 @@ export default async function InformeClientePage({ params }: { params: { id: str
     servicios.length === 0 ? "servicios planificados" : null,
     capacidad == null ? "capacidad del campamento (se configura en Administración)" : null,
   ].filter(Boolean) as string[];
+
+  const generado = new Date().toLocaleString("es-CL", {
+    timeZone: "America/Santiago", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 
   return (
     <div className="hoja-cliente" style={{ background: "#fff", color: "#000", minHeight: "100vh" }}>
@@ -128,7 +141,11 @@ export default async function InformeClientePage({ params }: { params: { id: str
         mandante={mandante}
         fecha={formatDisplayDate(r.date).replace(/-/g, "/")}
         supervisor={r.createdBy.name}
-        filas={filas}
+        generado={`Generado el ${generado}`}
+        logoSrc="/nomade-logo-v2.png"
+        hoy={hoy}
+        series={seriesCliente(historia)}
+        minimoTendencia={MINIMO_TENDENCIA}
         desglose={desglose}
         servicios={servicios}
       />
