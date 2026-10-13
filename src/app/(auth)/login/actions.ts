@@ -13,7 +13,7 @@ export async function loginAction(_: { error?: string } | undefined, formData: F
     return { error: "Tipo de acceso, correo y contraseña son obligatorios." };
   }
 
-  const VALID_ACCESS_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA"];
+  const VALID_ACCESS_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO", "CONSULTA", "CONDUCTOR"];
   if (!VALID_ACCESS_ROLES.includes(accessRole)) {
     return { error: "Selecciona un tipo de acceso válido." };
   }

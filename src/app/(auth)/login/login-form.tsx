@@ -24,6 +24,9 @@ export function LoginForm({ destino }: { destino?: string }) {
             <option value="ADMINISTRADOR">Administrador</option>
             <option value="OPERATIVO">Operativo</option>
             <option value="CONSULTA">Consulta</option>
+            {/* Sin esta opción un conductor no podía entrar: el login exige que el
+                tipo elegido coincida con su rol, y el suyo no estaba en la lista. */}
+            <option value="CONDUCTOR">Conductor</option>
           </select>
         </div>
 
