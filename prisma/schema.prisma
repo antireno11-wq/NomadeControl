@@ -9,12 +9,12 @@ datasource db {
 }
 
 model User {
-  id                    String             @id @default(cuid())
+  id                    String              @id @default(cuid())
   name                  String
-  email                 String             @unique
+  email                 String              @unique
   passwordHash          String
   role                  String
-  isActive              Boolean            @default(true)
+  isActive              Boolean             @default(true)
   phone                 String?
   profilePhotoUrl       String?
   positionTitle         String?
@@ -29,9 +29,10 @@ model User {
   shiftOffDays          Int?
   shiftStartDate        DateTime?
   campId                String?
-  camp                  Camp?              @relation(fields: [campId], references: [id], onDelete: SetNull)
-  modulePermissions     Json               @default("[]")
+  camp                  Camp?               @relation(fields: [campId], references: [id], onDelete: SetNull)
+  modulePermissions     Json                @default("[]")
   sessions              Session[]
+  recuperacionesClave   RecuperacionClave[]
   reports               DailyReport[]
   dailyTaskControls     DailyTaskControl[]
   stockMovements        StockMovement[]
@@ -39,13 +40,32 @@ model User {
   vehicleChecklists     VehicleChecklist[]
   alertDeliveries       AlertDelivery[]
   auditLogs             AuditLog[]
-  incidentesReportados  Incidente[]        @relation("IncidenteReportado")
-  incidentesAsignados   Incidente[]        @relation("IncidenteResponsable")
-  matricesRiesgo        MatrizRiesgo[]     @relation("MatrizResponsable")
-  eppEntregados         EntregaEPP[]       @relation("EPPEntregador")
-  cursosCreados         Curso[]            @relation("CursoCreador")
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  incidentesReportados  Incidente[]         @relation("IncidenteReportado")
+  incidentesAsignados   Incidente[]         @relation("IncidenteResponsable")
+  matricesRiesgo        MatrizRiesgo[]      @relation("MatrizResponsable")
+  eppEntregados         EntregaEPP[]        @relation("EPPEntregador")
+  cursosCreados         Curso[]             @relation("CursoCreador")
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+}
+
+/// Enlace de un solo uso para que alguien que olvidó su contraseña la cambie
+/// sin tener que pedírsela al administrador.
+///
+/// Se guarda la huella del token y no el token: si alguien lee esta tabla no
+/// puede usar los enlaces que están vigentes. Dura una hora y se invalida al
+/// usarse. Las filas viejas quedan como rastro de quién pidió recuperar y
+/// cuándo.
+model RecuperacionClave {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usadoAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model Session {

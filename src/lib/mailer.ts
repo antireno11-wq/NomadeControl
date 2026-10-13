@@ -632,3 +632,58 @@ export async function sendRankingSemanalEmail(
     return { ok: false, error: e instanceof Error ? e.message : "Error de red" };
   }
 }
+
+// ─── Recuperación de contraseña ──────────────────────────────────────────────
+
+/**
+ * Manda el enlace para elegir una contraseña nueva.
+ *
+ * Recuerda además el tipo de acceso: el login pide elegirlo y que coincida con
+ * el rol, así que quien olvida la contraseña muchas veces también olvidó cuál
+ * de los tipos le corresponde, y vuelve a quedar afuera con la clave nueva.
+ */
+export async function sendRecuperacionClaveEmail(input: {
+  to: string;
+  nombre: string;
+  enlace: string;
+  tipoAcceso: string;
+  minutosVigencia: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) return { ok: false, error: "Falta RESEND_API_KEY o RESEND_FROM_EMAIL" };
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;line-height:1.5">
+      <h2 style="margin:0 0 12px;color:#006878">Cambiar tu contraseña</h2>
+      <p>Hola ${escaparHtml(input.nombre)}, recibimos un pedido para cambiar la contraseña de tu cuenta en NomadeControl.</p>
+      <p style="margin:24px 0">
+        <a href="${input.enlace}" style="display:inline-block;padding:12px 24px;background:#006878;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+          Elegir una contraseña nueva
+        </a>
+      </p>
+      <p style="color:#475569;font-size:0.9rem">
+        El enlace sirve una sola vez y vence en ${input.minutosVigencia} minutos.
+      </p>
+      <div style="margin:20px 0;padding:12px 16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:0.9rem">
+        Al entrar, en <strong>Tipo de acceso</strong> elige <strong>${escaparHtml(input.tipoAcceso)}</strong>.
+      </div>
+      <p style="color:#64748b;font-size:0.85rem">
+        Si no pediste esto, ignora este correo: tu contraseña no cambia mientras nadie use el enlace.
+      </p>
+      <p style="color:#94a3b8;font-size:0.75rem;margin-top:24px">NomadeControl — control.nomadechile.cl</p>
+    </div>
+  `;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: [input.to], subject: "Cambiar tu contraseña de NomadeControl", html }),
+    });
+    if (!res.ok) return { ok: false, error: `Resend respondió ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error de red" };
+  }
+}
