@@ -14,9 +14,13 @@ const COMIDAS = [
 ] as const;
 type ComidaClave = typeof COMIDAS[number]["clave"];
 
+export type FilaEmpresa = { empresa: string; habitaciones: number };
+
 type CampOption = {
   id: string;
   name: string;
+  /** Empresas del último informe de este campamento, para no reescribirlas. */
+  empresasPrevias?: FilaEmpresa[] | null;
   /** Capacidades en m³, para mostrarlas junto al nivel y validar. */
   potableCapM3?: number | null;
   blackCapM3?: number | null;
@@ -61,6 +65,11 @@ type ReportFormDefaults = {
   chlorineLevel: number;
   phLevel: number;
   notes: string;
+  ocupacionEmpresas?: FilaEmpresa[] | null;
+  consumosBsale?: number | null;
+  bidonesUsados?: number | null;
+  bidonesStock?: number | null;
+  serviciosPlanificados?: string | null;
 };
 
 const initialState: ReportFormState = { error: "", success: "" };
@@ -96,6 +105,17 @@ export function ReportForm({
     setComidas(prev => ({ ...prev, [clave]: { ...prev[clave], [lado]: v } }));
   const [campIdSel, setCampIdSel] = useState<string>(defaults?.campId ?? defaultCampId ?? camps[0]?.id ?? "");
   const campSel = camps.find(c => c.id === campIdSel) ?? null;
+  const [personas, setPersonas] = useState<string>(String(defaults?.peopleCount ?? 0));
+  // Al editar, el desglose guardado. Al crear, el del último informe del
+  // campamento: las empresas cambian poco de un día a otro y reescribirlas
+  // todas las mañanas es justo la doble carga que esto viene a sacar.
+  const desgloseInicial = (campId: string): Array<{ empresa: string; habitaciones: string }> =>
+    (defaults?.ocupacionEmpresas ?? camps.find(c => c.id === campId)?.empresasPrevias ?? [])
+      .map(f => ({ empresa: f.empresa, habitaciones: String(f.habitaciones) }));
+  const [empresas, setEmpresas] = useState(() => desgloseInicial(defaults?.campId ?? defaultCampId ?? camps[0]?.id ?? ""));
+  const sumaEmpresas = empresas.reduce((s, f) => s + (f.empresa.trim() ? Number(f.habitaciones) || 0 : 0), 0);
+  const hayDesglose = empresas.some(f => f.empresa.trim());
+  const descuadre = hayDesglose && sumaEmpresas !== (Number(personas) || 0);
   const [blackWaterRemoved, setBlackWaterRemoved] = useState(defaults?.blackWaterRemoved ?? "NO");
   const [potableWaterDelivered, setPotableWaterDelivered] = useState(defaults?.potableWaterDelivered ?? "NO");
   const cubicMeterOptions = Array.from({ length: 40 }, (_, index) => index + 1);
@@ -117,7 +137,10 @@ export function ReportForm({
 
           <div>
             <label htmlFor="campId">Campamento</label>
-            <select id="campId" name="campId" value={campIdSel} onChange={e => setCampIdSel(e.target.value)} required>
+            <select id="campId" name="campId" value={campIdSel} onChange={e => {
+              setCampIdSel(e.target.value);
+              if (!defaults?.reportId) setEmpresas(desgloseInicial(e.target.value));
+            }} required>
               {camps.map((camp) => (
                 <option key={camp.id} value={camp.id}>
                   {camp.name}
@@ -128,7 +151,7 @@ export function ReportForm({
 
           <div>
             <label htmlFor="peopleCount">Personas en campamento</label>
-            <input id="peopleCount" name="peopleCount" type="number" min={0} defaultValue={defaults?.peopleCount ?? 0} required />
+            <input id="peopleCount" name="peopleCount" type="number" min={0} value={personas} onChange={e => setPersonas(e.target.value)} required />
           </div>
         </div>
       </section>
@@ -395,9 +418,61 @@ export function ReportForm({
         </div>
       </section>
 
+      <section className="report-section" style={{ border: "1px solid #bae6fd", background: "#f0f9ff", borderRadius: 10, padding: "12px 14px" }}>
+        <h3 className="section-title" style={{ marginTop: 0 }}>Informe para el cliente</h3>
+        <p style={{ margin: "0 0 10px", color: "var(--muted)", fontSize: "0.85rem" }}>
+          Esto, junto con la ocupación, el combustible, los horómetros, el agua y la basura de arriba,
+          arma el informe REG-OP-OPE-001 que se le manda al mandante. Ya no hace falta llenar el Excel.
+        </p>
+
+        <label>Ocupación por empresa (habitaciones)</label>
+        <div style={{ display: "grid", gap: 6, marginBottom: 6 }}>
+          {empresas.map((f, i) => (
+            <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input name="empresaNombre" value={f.empresa} placeholder="Empresa"
+                onChange={e => setEmpresas(prev => prev.map((x, j) => j === i ? { ...x, empresa: e.target.value } : x))}
+                style={{ flex: 1 }} />
+              <input name="empresaHabitaciones" type="number" min={0} step={1} value={f.habitaciones}
+                onChange={e => setEmpresas(prev => prev.map((x, j) => j === i ? { ...x, habitaciones: e.target.value } : x))}
+                style={{ width: 90 }} />
+              <button type="button" className="secondary" title="Quitar"
+                onClick={() => setEmpresas(prev => prev.filter((_, j) => j !== i))}>✕</button>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+          <button type="button" className="secondary"
+            onClick={() => setEmpresas(prev => [...prev, { empresa: "", habitaciones: "0" }])}>+ Agregar empresa</button>
+          {hayDesglose && (
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: descuadre ? "#b91c1c" : "#166534" }}>
+              Total {sumaEmpresas} {descuadre ? `— no cuadra con las ${Number(personas) || 0} personas en campamento` : "— cuadra con las personas en campamento"}
+            </span>
+          )}
+        </div>
+
+        <div className="grid two">
+          <div>
+            <label htmlFor="bidonesUsados">Bidones de agua 20 L usados en el día</label>
+            <input id="bidonesUsados" name="bidonesUsados" type="number" min={0} defaultValue={defaults?.bidonesUsados ?? ""} />
+          </div>
+          <div>
+            <label htmlFor="bidonesStock">Bidones de agua 20 L en stock</label>
+            <input id="bidonesStock" name="bidonesStock" type="number" min={0} defaultValue={defaults?.bidonesStock ?? ""} />
+          </div>
+          <div>
+            <label htmlFor="consumosBsale">Carga de consumos BSALE</label>
+            <input id="consumosBsale" name="consumosBsale" type="number" min={0} defaultValue={defaults?.consumosBsale ?? ""} />
+          </div>
+        </div>
+
+        <label htmlFor="serviciosPlanificados" style={{ marginTop: 10 }}>Servicios planificados para el día (lo lee el cliente)</label>
+        <textarea id="serviciosPlanificados" name="serviciosPlanificados" defaultValue={defaults?.serviciosPlanificados ?? ""}
+          placeholder={"Una línea por servicio. Ej.: Bajada camioneta cúpula 22 por revisión de frío"} />
+      </section>
+
       <div>
-        <label htmlFor="notes">Observaciones</label>
-        <textarea id="notes" name="notes" defaultValue={defaults?.notes ?? ""} placeholder="Novedades del día..." />
+        <label htmlFor="notes">Observaciones internas (no van al cliente)</label>
+        <textarea id="notes" name="notes" defaultValue={defaults?.notes ?? ""} placeholder="Novedades del día que quedan solo en Nómade..." />
       </div>
 
       <SaveButton label={submitLabel} />

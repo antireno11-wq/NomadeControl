@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { clearSession, normalizeRole, OPERATION_ROLES, requireUser } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
@@ -42,8 +43,39 @@ const reportSchema = z.object({
   wasteFillPercent: z.coerce.number().int().min(0).max(100),
   chlorineLevel: z.coerce.number().min(0),
   phLevel: z.coerce.number().min(0),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  consumosBsale: z.coerce.number().int().min(0).optional(),
+  bidonesUsados: z.coerce.number().int().min(0).optional(),
+  bidonesStock: z.coerce.number().int().min(0).optional(),
+  serviciosPlanificados: z.string().optional(),
 });
+
+/** Un número opcional del formulario: vacío es "no informado", no cero. */
+function opcional(v: FormDataEntryValue | null): string | undefined {
+  const t = String(v ?? "").trim();
+  return t === "" ? undefined : t;
+}
+
+/**
+ * El desglose de ocupación por empresa, tal como viene del formulario.
+ *
+ * Las filas sin nombre se descartan: son las que el supervisor agregó y dejó
+ * en blanco. Una empresa con 0 habitaciones sí se guarda, porque el informe
+ * del cliente la lista igual —"Seguridad 0"— y que desaparezca un día haría
+ * pensar que se fue.
+ */
+function leerDesglose(formData: FormData): Array<{ empresa: string; habitaciones: number }> | null {
+  const nombres = formData.getAll("empresaNombre").map(v => String(v).trim());
+  const cantidades = formData.getAll("empresaHabitaciones").map(v => String(v).trim());
+  const filas: Array<{ empresa: string; habitaciones: number }> = [];
+  for (let i = 0; i < nombres.length; i++) {
+    if (!nombres[i]) continue;
+    const n = Number(cantidades[i] ?? "0");
+    if (!Number.isInteger(n) || n < 0) return null;
+    filas.push({ empresa: nombres[i], habitaciones: n });
+  }
+  return filas;
+}
 
 export type ReportFormState = {
   error: string;
@@ -151,7 +183,11 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     wasteFillPercent: formData.get("wasteFillPercent"),
     chlorineLevel: formData.get("chlorineLevel"),
     phLevel: formData.get("phLevel"),
-    notes: String(formData.get("notes") ?? "")
+    notes: String(formData.get("notes") ?? ""),
+    consumosBsale: opcional(formData.get("consumosBsale")),
+    bidonesUsados: opcional(formData.get("bidonesUsados")),
+    bidonesStock: opcional(formData.get("bidonesStock")),
+    serviciosPlanificados: String(formData.get("serviciosPlanificados") ?? ""),
   });
 
   if (!parsed.success) {
@@ -159,6 +195,20 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
   }
 
   const payload = parsed.data;
+
+  const desglose = leerDesglose(formData);
+  if (desglose === null) {
+    return { error: "Las habitaciones por empresa tienen que ser números enteros.", success: "" };
+  }
+  // El desglose y el total son el mismo dato visto de dos formas, y van los
+  // dos al cliente. Si no cuadran, el informe se contradice en la misma hoja.
+  const sumaDesglose = desglose.reduce((s, f) => s + f.habitaciones, 0);
+  if (desglose.length > 0 && sumaDesglose !== payload.peopleCount) {
+    return {
+      error: `La ocupación por empresa suma ${sumaDesglose} y las personas en campamento son ${payload.peopleCount}. Tienen que coincidir.`,
+      success: "",
+    };
+  }
   const date = normalizeDateOnly(payload.date);
   const blackWaterRemovedM3 = payload.blackWaterRemoved === "SI" ? payload.blackWaterRemovedM3 : 0;
   const potableWaterDeliveredM3 = payload.potableWaterDelivered === "SI" ? payload.potableWaterDeliveredM3 : 0;
@@ -316,7 +366,12 @@ export async function saveReportAction(_: ReportFormState, formData: FormData): 
     wasteFillPercent: payload.wasteFillPercent,
     chlorineLevel: payload.chlorineLevel,
     phLevel: payload.phLevel,
-    notes: payload.notes || null
+    notes: payload.notes || null,
+    ocupacionEmpresas: desglose.length > 0 ? desglose : Prisma.DbNull,
+    consumosBsale: payload.consumosBsale ?? null,
+    bidonesUsados: payload.bidonesUsados ?? null,
+    bidonesStock: payload.bidonesStock ?? null,
+    serviciosPlanificados: payload.serviciosPlanificados?.trim() || null,
   };
 
   const savedReport = reportBeingEdited

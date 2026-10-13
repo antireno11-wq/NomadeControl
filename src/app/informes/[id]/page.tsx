@@ -18,8 +18,11 @@ export default async function InformeDetallePage({ params }: { params: { id: str
     notFound();
   }
 
-  if (!canSeeAdminSections && user.campId !== report.campId) {
-    redirect("/dashboard");
+  // Quien tiene campamento asignado ve solo el suyo; la oficina central
+  // —operativos sin campamento—, todos. Antes se rebotaba a cualquier
+  // operativo sin campamento, y encima al dashboard, que está desactivado.
+  if (!canSeeAdminSections && user.campId && user.campId !== report.campId) {
+    redirect("/carga-diaria");
   }
 
   const canEditOwnReport = !canSeeAdminSections && report.createdById === user.id;
@@ -31,7 +34,10 @@ export default async function InformeDetallePage({ params }: { params: { id: str
       activeNav={canSeeAdminSections ? "dashboard" : "carga"}
       showAdminSections={canSeeAdminSections}
       rightSlot={
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href={`/informes/${report.id}/cliente`}>
+            <button type="button">Informe para el cliente</button>
+          </Link>
           {canEditOwnReport ? (
             <Link href={`/informes/${report.id}/editar`}>
               <button type="button" className="secondary">Editar</button>

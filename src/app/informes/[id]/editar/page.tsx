@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { OPERATION_ROLES, isAdminRole, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { toInputDateValue } from "@/lib/report-utils";
-import { ReportForm } from "@/app/dashboard/report-form";
+import { ReportForm, type FilaEmpresa } from "@/app/dashboard/report-form";
 import { AppShell } from "@/components/app-shell";
 
 export default async function EditarInformePage({ params }: { params: { id: string } }) {
@@ -92,7 +92,12 @@ export default async function EditarInformePage({ params }: { params: { id: stri
             wasteFillPercent: report.wasteFillPercent,
             chlorineLevel: report.chlorineLevel,
             phLevel: report.phLevel,
-            notes: report.notes ?? ""
+            notes: report.notes ?? "",
+            ocupacionEmpresas: (report.ocupacionEmpresas as unknown as FilaEmpresa[] | null) ?? null,
+            consumosBsale: report.consumosBsale,
+            bidonesUsados: report.bidonesUsados,
+            bidonesStock: report.bidonesStock,
+            serviciosPlanificados: report.serviciosPlanificados
           }}
         />
       </div>

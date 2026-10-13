@@ -221,6 +221,21 @@ model DailyReport {
   congelamientoDetalle         String?
   phLevel                      Float    @default(7)
   extras                       String?
+  /// Lo que pide el informe del cliente (REG-OP-OPE-001) y antes solo vivía
+  /// en el Excel. Con esto el supervisor carga una vez y el informe del
+  /// cliente se exporta desde acá: la doble carga no solo costaba tiempo, el
+  /// 08-10-2026 el Excel y la plataforma diferían en cinco valores del mismo
+  /// día.
+  ///
+  /// Desglose de ocupación por empresa: [{ empresa, habitaciones }]. La
+  /// suma tiene que dar las personas en campamento.
+  ocupacionEmpresas            Json?
+  consumosBsale                Int?
+  bidonesUsados                Int?
+  bidonesStock                 Int?
+  /// Servicios planificados del día. VA AL CLIENTE; las observaciones no.
+  serviciosPlanificados        String?
+  /// Observaciones internas: no salen en el informe del cliente.
   notes                        String?
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { isAdminRole, OPERATION_ROLES, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDisplayDate, toInputDateValue } from "@/lib/report-utils";
-import { ReportForm } from "@/app/dashboard/report-form";
+import { ReportForm, type FilaEmpresa } from "@/app/dashboard/report-form";
+import { Prisma } from "@prisma/client";
 import { NotificationBell } from "@/components/notification-bell";
 import { AppShell } from "@/components/app-shell";
 import { SectionTabs } from "@/components/section-tabs";
@@ -30,6 +31,19 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
   const todosLosCamps = user.campId ? [] : await db.camp.findMany({
     where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true },
   });
+
+  // El desglose de ocupación del último informe de cada campamento: el
+  // formulario lo trae precargado para que no haya que reescribir las
+  // empresas todos los días.
+  const ultimosDesgloses = await db.dailyReport.findMany({
+    where: { ocupacionEmpresas: { not: Prisma.DbNull }, ...(campFilter ? { campId: campFilter } : {}) },
+    orderBy: { date: "desc" },
+    distinct: ["campId"],
+    select: { campId: true, ocupacionEmpresas: true },
+  });
+  const empresasPorCamp = new Map(
+    ultimosDesgloses.map(r => [r.campId, (r.ocupacionEmpresas as unknown as FilaEmpresa[]) ?? null]),
+  );
 
   const [camps, recentReports, reportsToday] = await Promise.all([
     db.camp.findMany({
@@ -194,7 +208,11 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
         </div>
 
         {canEdit && camps.length > 0 ? (
-          <ReportForm camps={camps.map((camp) => ({ id: camp.id, name: camp.name, potableCapM3: camp.potableWaterTankCapacityM3, blackCapM3: camp.blackWaterTankCapacityM3 }))} defaultDate={toInputDateValue(new Date())} />
+          <ReportForm camps={camps.map((camp) => ({
+            id: camp.id, name: camp.name,
+            potableCapM3: camp.potableWaterTankCapacityM3, blackCapM3: camp.blackWaterTankCapacityM3,
+            empresasPrevias: empresasPorCamp.get(camp.id) ?? null,
+          }))} defaultDate={toInputDateValue(new Date())} />
         ) : canEdit ? (
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Carga diaria</h2>
@@ -282,6 +300,9 @@ export default async function CargaDiariaPage({ searchParams }: { searchParams?:
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <Link href={`/informes/${report.id}`}>
                         <button type="button" className="secondary">Ver</button>
+                      </Link>
+                      <Link href={`/informes/${report.id}/cliente`}>
+                        <button type="button" className="secondary">PDF cliente</button>
                       </Link>
                       {canEdit && (puedeEditarCualquiera || report.createdById === user.id) ? (
                         <Link href={`/informes/${report.id}/editar`}>
