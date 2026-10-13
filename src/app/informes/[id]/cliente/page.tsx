@@ -115,7 +115,7 @@ export default async function InformeClientePage({ params }: { params: { id: str
   return (
     <div className="hoja-cliente" style={{ background: "#fff", color: "#000", minHeight: "100vh" }}>
       <style>{`
-        @page { size: A4; margin: 14mm; }
+        @page { size: letter; margin: 14mm; }
         @media print { .no-imprimir { display: none !important; } body { background: #fff !important; } }
         .hoja-cliente table { border-collapse: collapse; }
       `}</style>
