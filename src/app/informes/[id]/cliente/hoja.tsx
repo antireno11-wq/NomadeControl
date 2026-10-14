@@ -20,7 +20,8 @@ export type ValoresDelDia = {
   congelamiento: boolean;
   horometro1: number;
   horometro2: number;
-  bsale: number | null;
+  /** ¿Se cargaron los consumos en BSALE? null = no informado. */
+  bsale: boolean | null;
   bidonesUsados: number | null;
   bidonesStock: number | null;
 };
@@ -193,7 +194,7 @@ export function HojaCliente(d: DatosHojaCliente) {
     ["Combustible disponible (litros)", fmt(hoy.combustible)],
     ["Horómetro generador N° 1 (h)", fmt(hoy.horometro1)],
     ["Horómetro generador N° 2 (h)", fmt(hoy.horometro2)],
-    ["Carga de consumos BSALE", fmt(hoy.bsale)],
+    ["Carga de consumos BSALE", hoy.bsale == null ? "—" : hoy.bsale ? "Sí" : "No"],
     ["Estatus Starlink / internet", hoy.internet],
     ["Bidones 20 L utilizados en el día", fmt(hoy.bidonesUsados)],
     ["Bidones 20 L en stock", fmt(hoy.bidonesStock)],

@@ -67,7 +67,7 @@ type ReportFormDefaults = {
   phLevel: number;
   notes: string;
   ocupacionEmpresas?: FilaEmpresa[] | null;
-  consumosBsale?: number | null;
+  bsaleCargado?: boolean | null;
   bidonesUsados?: number | null;
   bidonesStock?: number | null;
   serviciosPlanificados?: string | null;
@@ -446,8 +446,13 @@ export function ReportForm({
             <input id="bidonesStock" name="bidonesStock" type="number" min={0} defaultValue={defaults?.bidonesStock ?? ""} />
           </div>
           <div>
-            <label htmlFor="consumosBsale">Carga de consumos BSALE</label>
-            <input id="consumosBsale" name="consumosBsale" type="number" min={0} defaultValue={defaults?.consumosBsale ?? ""} />
+            <label htmlFor="bsaleCargado">¿Se cargaron los consumos en BSALE?</label>
+            <select id="bsaleCargado" name="bsaleCargado" required
+              defaultValue={defaults?.bsaleCargado == null ? "" : defaults.bsaleCargado ? "si" : "no"}>
+              <option value="" disabled>Selecciona…</option>
+              <option value="si">Sí</option>
+              <option value="no">No</option>
+            </select>
           </div>
         </div>
 

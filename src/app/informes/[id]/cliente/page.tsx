@@ -92,7 +92,7 @@ export default async function InformeClientePage({ params }: { params: { id: str
     congelamiento: r.congelamiento,
     horometro1: r.generator1Hours,
     horometro2: r.generator2Hours,
-    bsale: r.consumosBsale,
+    bsale: r.bsaleCargado,
     bidonesUsados: r.bidonesUsados,
     bidonesStock: r.bidonesStock,
   };
@@ -101,7 +101,7 @@ export default async function InformeClientePage({ params }: { params: { id: str
   // mandarlo. En el PDF va "—": un cero inventado es peor que un hueco.
   const faltantes = [
     desglose.length === 0 ? "ocupación por empresa" : null,
-    r.consumosBsale == null ? "consumos BSALE" : null,
+    r.bsaleCargado == null ? "carga de consumos BSALE (Sí/No)" : null,
     r.bidonesUsados == null ? "bidones usados" : null,
     r.bidonesStock == null ? "stock de bidones" : null,
     servicios.length === 0 ? "servicios planificados" : null,

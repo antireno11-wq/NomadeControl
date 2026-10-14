@@ -94,7 +94,7 @@ export default async function EditarInformePage({ params }: { params: { id: stri
             phLevel: report.phLevel,
             notes: report.notes ?? "",
             ocupacionEmpresas: (report.ocupacionEmpresas as unknown as FilaEmpresa[] | null) ?? null,
-            consumosBsale: report.consumosBsale,
+            bsaleCargado: report.bsaleCargado,
             bidonesUsados: report.bidonesUsados,
             bidonesStock: report.bidonesStock,
             serviciosPlanificados: report.serviciosPlanificados

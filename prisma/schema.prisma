@@ -230,6 +230,10 @@ model DailyReport {
   /// Desglose de ocupación por empresa: [{ empresa, habitaciones }]. La
   /// suma tiene que dar las personas en campamento.
   ocupacionEmpresas            Json?
+  /// ¿Se cargaron hoy los consumos en BSALE? Sí/No. NULL = no informado.
+  bsaleCargado                 Boolean?
+  /// Obsoleto: era un número y pasó a Sí/No (bsaleCargado). Se conserva solo
+  /// para recuperar lo que se haya guardado con la versión anterior.
   consumosBsale                Int?
   bidonesUsados                Int?
   bidonesStock                 Int?
