@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { saveReportAction } from "./actions";
+import { DesgloseEmpresas } from "./desglose-empresas";
 import type { ReportFormState } from "./actions";
 
 const COMIDAS = [
@@ -426,23 +427,8 @@ export function ReportForm({
         </p>
 
         <label>Ocupación por empresa (habitaciones)</label>
-        <div style={{ display: "grid", gap: 6, marginBottom: 6 }}>
-          {empresas.map((f, i) => (
-            <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <input name="empresaNombre" value={f.empresa} placeholder="Empresa"
-                onChange={e => setEmpresas(prev => prev.map((x, j) => j === i ? { ...x, empresa: e.target.value } : x))}
-                style={{ flex: 1 }} />
-              <input name="empresaHabitaciones" type="number" min={0} step={1} value={f.habitaciones}
-                onChange={e => setEmpresas(prev => prev.map((x, j) => j === i ? { ...x, habitaciones: e.target.value } : x))}
-                style={{ width: 90 }} />
-              <button type="button" className="secondary" title="Quitar"
-                onClick={() => setEmpresas(prev => prev.filter((_, j) => j !== i))}>✕</button>
-            </div>
-          ))}
-        </div>
+        <DesgloseEmpresas filas={empresas} onChange={setEmpresas} />
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-          <button type="button" className="secondary"
-            onClick={() => setEmpresas(prev => [...prev, { empresa: "", habitaciones: "0" }])}>+ Agregar empresa</button>
           {hayDesglose && (
             <span style={{ fontSize: "0.85rem", fontWeight: 600, color: descuadre ? "#b91c1c" : "#166534" }}>
               Total {sumaEmpresas} {descuadre ? `— no cuadra con las ${Number(personas) || 0} personas en campamento` : "— cuadra con las personas en campamento"}
