@@ -1,0 +1,55 @@
+# Pruebas y lint de polymarket-radar/ (proyecto Python aparte de la app Next.js).
+#
+# Solo corre cuando cambia ese directorio. Las pruebas contra las APIs reales de
+# Polymarket (marca "live") quedan fuera: dependen de la red y del estado del
+# mercado, y se ejecutan a mano con RADAR_LIVE_TESTS=1.
+name: Polymarket Radar
+
+on:
+  pull_request:
+    paths:
+      - "polymarket-radar/**"
+      - ".github/workflows/polymarket-radar.yml"
+  push:
+    branches: [main]
+    paths:
+      - "polymarket-radar/**"
+      - ".github/workflows/polymarket-radar.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: polymarket-radar
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: radar
+          POSTGRES_PASSWORD: radar
+          POSTGRES_DB: radar_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U radar -d radar_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependencias fijadas (con hashes)
+        run: |
+          pip install --require-hashes -r requirements.lock
+          pip install --require-hashes -r requirements-dev.lock
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Pruebas (unitarias + PostgreSQL)
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://radar:radar@localhost:5432/radar_test
+        run: pytest

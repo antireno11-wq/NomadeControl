@@ -1,0 +1,211 @@
+"""Línea de comandos: ``radar <comando>``.
+
+Comandos:
+  db-upgrade         aplica las migraciones de Alembic
+  check              verifica base de datos y conectividad con Gamma y CLOB
+  ingest             ejecuta una corrida de ingesta manual
+  report             genera el reporte Markdown de una corrida
+  status             muestra la última corrida
+  scheduler          ingesta programada cada RADAR_SCHEDULE_INTERVAL_MINUTES
+  api                levanta el backend FastAPI
+  dashboard          levanta el dashboard Streamlit
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from radar.config import get_settings
+from radar.logging_setup import configure_logging, get_logger
+
+log = get_logger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _settings_with_overrides(args: argparse.Namespace):  # type: ignore[no-untyped-def]
+    settings = get_settings()
+    overrides = {}
+    if getattr(args, "max_pages", None) is not None:
+        overrides["gamma_max_pages"] = args.max_pages
+    return settings.model_copy(update=overrides) if overrides else settings
+
+
+def cmd_db_upgrade(args: argparse.Namespace) -> int:
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
+    cfg.attributes["database_url"] = get_settings().database_url
+    command.upgrade(cfg, args.revision)
+    print(f"migraciones aplicadas hasta {args.revision}")
+    return 0
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    from radar.connectivity import check_all
+
+    result = check_all(get_settings())
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0 if all(v["ok"] for v in result.values()) else 1
+
+
+def cmd_ingest(args: argparse.Namespace) -> int:
+    from radar.db.session import get_engine
+    from radar.ingestion.pipeline import RunAlreadyInProgressError, run_ingestion
+
+    settings = _settings_with_overrides(args)
+    engine = get_engine(settings.database_url)
+    try:
+        run_id = run_ingestion(engine, settings, trigger=args.trigger)
+    except RunAlreadyInProgressError as exc:
+        print(f"no se inició: {exc}", file=sys.stderr)
+        return 2
+    _print_run(run_id)
+    if args.report:
+        return cmd_report(argparse.Namespace(run_id=run_id, out=args.report_dir))
+    return 0
+
+
+def _print_run(run_id: int | None) -> int:
+    from sqlalchemy.orm import Session
+
+    from radar import queries
+    from radar.db.models import IngestionRun
+    from radar.db.session import get_engine
+
+    with Session(get_engine()) as session:
+        run = session.get(IngestionRun, run_id) if run_id else queries.latest_run(session)
+        if run is None:
+            print("Información insuficiente: no hay corridas registradas.")
+            return 1
+        data = queries.run_to_dict(run)
+    print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    return _print_run(None)
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    from sqlalchemy.orm import Session
+
+    from radar import queries
+    from radar.db.models import IngestionRun
+    from radar.db.session import get_engine
+    from radar.reports import build_run_report, default_report_name
+
+    settings = get_settings()
+    with Session(get_engine()) as session:
+        run = (
+            session.get(IngestionRun, args.run_id)
+            if args.run_id
+            else queries.latest_run(session, finished_only=True)
+        )
+        if run is None:
+            print("Información insuficiente: no hay corridas registradas.", file=sys.stderr)
+            return 1
+        text = build_run_report(session, settings, run)
+        if args.out == "-":
+            print(text)
+            return 0
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / default_report_name(run)
+    path.write_text(text, encoding="utf-8")
+    print(f"reporte escrito en {path}")
+    return 0
+
+
+def cmd_scheduler(args: argparse.Namespace) -> int:
+    from radar.scheduler import run_scheduler
+
+    run_scheduler(get_settings())
+    return 0
+
+
+def cmd_api(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    uvicorn.run("radar.api.main:app", host=args.host, port=args.port, log_level="info")
+    return 0
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    app = Path(__file__).resolve().parent / "dashboard" / "app.py"
+    cmd = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(app),
+        "--server.port",
+        str(args.port),
+        "--server.address",
+        args.host,
+        "--server.headless",
+        "true",
+        "--browser.gatherUsageStats",
+        "false",
+    ]
+    return subprocess.call(cmd, env=os.environ.copy())  # noqa: S603 - argumentos fijos
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="radar", description="Polymarket AI Radar (solo lectura)")
+    sub = p.add_subparsers(dest="command", required=True)
+
+    s = sub.add_parser("db-upgrade", help="aplica migraciones")
+    s.add_argument("revision", nargs="?", default="head")
+    s.set_defaults(func=cmd_db_upgrade)
+
+    s = sub.add_parser("check", help="verifica base de datos y APIs")
+    s.set_defaults(func=cmd_check)
+
+    s = sub.add_parser("ingest", help="corrida manual de ingesta")
+    s.add_argument("--max-pages", type=int, default=None, help="tope de páginas de Gamma")
+    s.add_argument("--trigger", default="manual", choices=["manual", "scheduled"])
+    s.add_argument("--report", action="store_true", help="escribe el reporte al terminar")
+    s.add_argument("--report-dir", default="reports")
+    s.set_defaults(func=cmd_ingest)
+
+    s = sub.add_parser("report", help="reporte Markdown de una corrida")
+    s.add_argument("--run-id", type=int, default=None)
+    s.add_argument("--out", default="reports", help="directorio de salida, o '-' para stdout")
+    s.set_defaults(func=cmd_report)
+
+    s = sub.add_parser("status", help="última corrida")
+    s.set_defaults(func=cmd_status)
+
+    s = sub.add_parser("scheduler", help="ingesta programada")
+    s.set_defaults(func=cmd_scheduler)
+
+    s = sub.add_parser("api", help="backend FastAPI")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8000)
+    s.set_defaults(func=cmd_api)
+
+    s = sub.add_parser("dashboard", help="dashboard Streamlit")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8501)
+    s.set_defaults(func=cmd_dashboard)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    settings = get_settings()  # valida la configuración (incluido el modo papel)
+    configure_logging(settings.log_level)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
