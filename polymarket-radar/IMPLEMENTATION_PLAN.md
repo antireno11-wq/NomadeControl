@@ -31,12 +31,18 @@ Limitaciones conocidas del hito 1:
 
 ## Hito 1.1 — Escala y frescura ⬜
 
-- Descubierta incremental: usar `/events/keyset` (≈3× más rápida) solo después
-  de explicar mercado por mercado la diferencia de ~30.000 mercados con el
-  listado canónico; mientras tanto, corrida completa canónica cada N horas y
-  refrescos parciales en medio.
+- Descubierta por `/events/keyset` (≈3× más rápida) filtrando `active=true`.
+  Ya se explicó la mayor parte de la diferencia con el listado canónico (los
+  ~32.000 extra son mayormente `active=false`); falta verificar los ~2.200 que
+  solo aparecieron en el canónico con dos mediciones simultáneas. Mientras tanto,
+  corrida canónica completa y refrescos parciales en medio.
 - Refresco de libros priorizado (mercados líquidos y con actividad 24h).
 - Retención/particionado de `orderbook_snapshots` por mes.
+- Índices para listar todos los analizados ordenados por volumen/fecha (hoy
+  3,8 s sobre 208k filas).
+- Opción `success` vs. `partial`: hoy unos pocos tokens sin libro (48–132 de
+  ~417.000) bastan para marcar `partial`; evaluar un umbral de cobertura
+  explícito en lugar de "0 errores".
 - WebSocket del CLOB para mercados seguidos (solo lectura).
 
 ## Hito 2 — Inteligencia de contratos ⬜
@@ -53,7 +59,9 @@ Limitaciones conocidas del hito 1:
 
 ## Hito 3 — Arbitraje ⬜
 
-- YES+NO del mismo mercado; conjuntos exhaustivos y excluyentes (`neg_risk`);
+- YES+NO del mismo mercado (dato del hito 1: los libros son espejo y la suma
+  de asks fue ≥ 1,001 en los 208.344 binarios de la corrida #2; se implementa
+  igual como control); conjuntos exhaustivos y excluyentes (`neg_risk`);
   jerarquías (umbral mayor ⇒ umbral menor).
 - Costo ejecutable recorriendo niveles (`simulate_buy`/`simulate_sell`),
   comisiones desde `fee_schedule` (verificar fórmula con documentación oficial

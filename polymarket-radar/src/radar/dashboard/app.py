@@ -317,7 +317,12 @@ def _price_chart(snaps: list[dict[str, Any]]) -> alt.Chart | None:
     df["recibido"] = pd.to_datetime(df["recibido"], utc=True)
     hover = alt.selection_point(fields=["recibido"], nearest=True, on="pointerover", empty=False)
     base = alt.Chart(df).encode(
-        x=alt.X("recibido:T", title="Recepción del snapshot (UTC)"),
+        x=alt.X(
+            "recibido:T",
+            title="Recepción del snapshot (UTC)",
+            scale=alt.Scale(type="utc"),
+            axis=alt.Axis(format="%m-%d %H:%M"),
+        ),
         y=alt.Y("precio:Q", title="Precio", scale=alt.Scale(zero=False)),
         color=alt.Color(
             "serie:N",
@@ -326,12 +331,13 @@ def _price_chart(snaps: list[dict[str, Any]]) -> alt.Chart | None:
         ),
     )
     lines = base.mark_line(strokeWidth=2, interpolate="step-after")
+    # Marcadores siempre visibles: cada punto es un snapshot real (un libro nuevo).
     points = (
-        base.mark_point(size=64, filled=True)
+        base.mark_point(filled=True)
         .encode(
-            opacity=alt.condition(hover, alt.value(1), alt.value(0)),
+            size=alt.condition(hover, alt.value(140), alt.value(64)),
             tooltip=[
-                alt.Tooltip("recibido:T", format="%Y-%m-%d %H:%M:%S"),
+                alt.Tooltip("recibido:T", format="%Y-%m-%d %H:%M:%S", formatType="utc"),
                 alt.Tooltip("serie:N"),
                 alt.Tooltip("precio:Q", format=".3f"),
             ],

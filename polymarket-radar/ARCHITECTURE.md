@@ -103,9 +103,9 @@ están diseñados aquí pero no implementados; ver `IMPLEMENTATION_PLAN.md`.
 - `markets`, `events`, `tokens`: upsert por clave natural.
 - `orderbook_snapshots`: `ON CONFLICT DO NOTHING` sobre
   (`token_id`, `source_ts`, `book_hash`) con `NULLS NOT DISTINCT`. El
-  `timestamp` del CLOB solo cambia cuando cambia el libro (verificado: dos
-  corridas seguidas sobre 300 mercados reinsertaron 198 de 302 snapshots y
-  omitieron 104 idénticos), así que reiniciar o repetir no duplica.
+  `timestamp` del CLOB solo cambia cuando cambia el libro (verificado en la
+  corrida real #2: 2.044 libros idénticos a la #1 no se reinsertaron y no hay
+  ningún snapshot repetido), así que reiniciar o repetir no duplica.
 - `raw` y `description` solo se reescriben al insertar o si cambia `rules_hash`;
   los campos volátiles tienen columnas propias. Evita reescribir ~2 GB de JSON
   por corrida con el universo actual.
@@ -122,9 +122,29 @@ están diseñados aquí pero no implementados; ver `IMPLEMENTATION_PLAN.md`.
 | User-Agent | Cloudflare devuelve 403 "error code: 1010" al UA por defecto de `urllib`; se envía un UA explícito |
 
 **Decisión:** la descubierta canónica usa `/markets/keyset`. La vía por eventos
-es ~3× más rápida pero devolvió ~30.000 mercados "no cerrados" más que el
-listado canónico (probablemente incluye mercados no activos); hasta verificar la
-diferencia mercado por mercado no se usa como fuente de verdad.
+es ~3× más rápida pero no es equivalente. Comparación de conjuntos de ids
+(listado canónico de la corrida #1 vs. medición por eventos ~10 min antes):
+
+| | Mercados |
+|---|---:|
+| En ambos | 239.445 |
+| Solo anidados en eventos | 32.085 |
+| Solo en `/markets/keyset` | 2.236 |
+
+Una muestra de 100 de los "solo en eventos" consultada por id con `closed=any`
+no devolvió ninguno, y en el payload de eventos 697 de 698 muestreados tienen
+`active=false` (marcadores como "Will A win…" aún no activados): no serían
+elegibles. Los 2.236 "solo canónicos" no se han verificado (hipótesis: creados
+entre ambas mediciones). Hasta verificarlo, la vía por eventos no se usa como
+fuente de verdad (ver hito 1.1).
+
+**Libros YES/NO espejo:** el CLOB publica libros complementarios: en la
+corrida #2, 8.737 de 8.740 pares de snapshots cumplen `bid_YES = 1 − ask_NO` y
+`ask_YES = 1 − bid_NO`, y en los 208.344 binarios analizados la suma de mejores
+asks fue siempre ≥ 1,001 (y la de bids ≤ 0,999). El motor de arbitraje (hito 3)
+debe partir de este hecho: el desajuste YES/NO dentro de un mercado no es la
+fuente esperable de oportunidades; sí lo son los conjuntos `neg_risk` y las
+relaciones entre mercados, siempre con comisiones y libros no simultáneos.
 
 **Snapshots:** con ~2,4·10⁵ mercados elegibles habría ~4,8·10⁵ libros por
 corrida. Por defecto (`RADAR_SNAPSHOT_SCOPE=liquid`) solo se guardan snapshots
