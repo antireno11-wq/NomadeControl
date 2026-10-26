@@ -95,10 +95,12 @@ export async function POST(req: NextRequest) {
       where: { estado: 0 },
       select: { responsable: true, fechaCierre: true, fecha2doCompromiso: true, estado: true },
     }),
-    db.amenaza.findMany({
-      where: { estado: 0, fechaCierre: { lt: hoy } },
-      select: { responsable: true, fechaCierre: true },
-    }),
+    // Las amenazas no cuentan. Son riesgos que se vigilan, no tareas que
+    // alguien cierra: la aplicación no tiene cómo cerrarlas —18 registradas,
+    // ninguna cerrada nunca—, así que cada una se volvía un atraso eterno a
+    // nombre de alguien que no podía hacer nada con ella. Siguen viéndose en
+    // la minuta de cada reunión.
+    Promise.resolve([] as Array<{ responsable: string; fechaCierre: Date }>),
     db.user.findMany({ where: { isActive: true }, select: { name: true } }),
   ]);
 
@@ -154,10 +156,7 @@ export async function POST(req: NextRequest) {
       where: { estado: 1, fechaCierreReal: { gte: haceUnaSemana } },
       select: { responsable: true },
     }),
-    db.amenaza.findMany({
-      where: { estado: 1, fechaCierreReal: { gte: haceUnaSemana } },
-      select: { responsable: true },
-    }),
+    Promise.resolve([] as Array<{ responsable: string }>),
   ]);
 
   let cerradosSemana = 0;
