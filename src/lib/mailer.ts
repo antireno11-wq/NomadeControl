@@ -609,7 +609,7 @@ export async function sendRankingSemanalEmail(
       </div>
 
       <p style="color:#94a3b8;font-size:0.75rem;margin-top:24px">
-        Resumen semanal de los lunes. Cuenta tareas, compromisos y amenazas cuyo plazo ya pasó.<br>
+        Resumen semanal de los lunes. Cuenta los pendientes de los tableros activos cuyo plazo ya pasó.<br>
         NomadeControl — control.nomadechile.cl
       </p>
     </div>

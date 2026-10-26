@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sendRankingSemanalEmail, type FilaRanking } from "@/lib/mailer";
 import { logAuditEvent } from "@/lib/audit";
 import { fechaEfectiva } from "@/lib/ddd";
+import { ENABLED_MODULES } from "@/lib/modules-config";
 
 const DIA_MS = 86_400_000;
 
@@ -79,12 +80,17 @@ export async function POST(req: NextRequest) {
     .map(u => u.email.toLowerCase())
     .filter(e => !e.endsWith(`@${dominioPropio}`));
 
-  // ── Los tres tableros ──────────────────────────────────────────────────
+  // ── Los tableros ───────────────────────────────────────────────────────
+  // Las tareas solo cuentan si su módulo está abierto. Gestión de Tareas está
+  // desactivado: nadie puede entrar a verlas ni a cerrarlas, y aun así el
+  // ranking le cargaba a Cristian una tarea de mayo que no veía en ningún
+  // lado. Si el módulo se reactiva, vuelven a contar solas.
+  const tareasActivas = ENABLED_MODULES.tareas;
   const [tareas, compromisos, amenazas, usuarios] = await Promise.all([
-    db.tarea.findMany({
+    tareasActivas ? db.tarea.findMany({
       where: { estado: { not: "completada" }, fechaCierre: { lt: hoy } },
       select: { responsable: true, fechaCierre: true },
-    }),
+    }) : Promise.resolve([] as Array<{ responsable: string | null; fechaCierre: Date | null }>),
     db.compromiso.findMany({
       where: { estado: 0 },
       select: { responsable: true, fechaCierre: true, fecha2doCompromiso: true, estado: true },
@@ -140,10 +146,10 @@ export async function POST(req: NextRequest) {
   // quien toma diez y cierra ocho no puede aparecer peor que quien no tomó
   // ninguna.
   const [tCerradas, cCerrados, aCerradas] = await Promise.all([
-    db.tarea.findMany({
+    tareasActivas ? db.tarea.findMany({
       where: { estado: "completada", fechaCompletada: { gte: haceUnaSemana } },
       select: { responsable: true },
-    }),
+    }) : Promise.resolve([] as Array<{ responsable: string | null }>),
     db.compromiso.findMany({
       where: { estado: 1, fechaCierreReal: { gte: haceUnaSemana } },
       select: { responsable: true },

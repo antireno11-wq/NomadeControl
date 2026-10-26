@@ -172,6 +172,13 @@ export async function publicarReunionAction(formData: FormData) {
   const yaAbierto = new Set(abiertos.map(a => `${norm(a.accion)}|${norm(a.responsable)}`));
   let omitidos = 0;
 
+  const amenazasYaAbiertas = await db.amenaza.findMany({
+    where: { estado: 0 },
+    select: { descripcion: true, responsable: true },
+  });
+  const amenazasAbiertas = new Set(amenazasYaAbiertas.map(a => `${norm(a.descripcion)}|${norm(a.responsable)}`));
+  let amenazasOmitidas = 0;
+
   await db.$transaction(async tx => {
     for (const c of p.compromisos_nuevos ?? []) {
       if (!c.accion?.trim()) continue;
@@ -196,6 +203,14 @@ export async function publicarReunionAction(formData: FormData) {
 
     for (const a of p.amenazas_nuevas ?? []) {
       if (!a.descripcion?.trim()) continue;
+      // Misma regla que los compromisos. Cuando una amenaza vuelve a salir en
+      // otra reunión, la extracción la proponía de nuevo y se creaba otra
+      // copia: "FAST podría contratar directo en Sierra" quedó dos veces a
+      // nombre de Cristian, y el costo de RRHH de Montemina tres veces a
+      // nombre de Rody. Cada copia sumaba otro atraso en el ranking.
+      const claveAmenaza = `${norm(a.descripcion)}|${norm(a.responsable || "Por definir")}`;
+      if (amenazasAbiertas.has(claveAmenaza)) { amenazasOmitidas++; continue; }
+      amenazasAbiertas.add(claveAmenaza);
       await tx.amenaza.create({
         data: {
           reunionOrigenId: id, fechaCaptura,
@@ -294,7 +309,7 @@ export async function publicarReunionAction(formData: FormData) {
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
     action: "MINUTA_PUBLICAR", entityType: "reunion", entityId: id,
-    summary: `Publicó la minuta con ${(p.compromisos_nuevos?.length ?? 0) - omitidos} compromisos nuevos y ${p.cierres?.length ?? 0} cierres${omitidos > 0 ? ` (${omitidos} omitidos por estar ya abiertos)` : ""}`,
+    summary: `Publicó la minuta con ${(p.compromisos_nuevos?.length ?? 0) - omitidos} compromisos nuevos y ${p.cierres?.length ?? 0} cierres${omitidos > 0 ? ` (${omitidos} omitidos por estar ya abiertos)` : ""}${amenazasOmitidas > 0 ? `; ${amenazasOmitidas} amenaza(s) repetida(s) no se duplicaron` : ""}`,
   }).catch(() => {});
 
   revalidatePath("/compromisos");
