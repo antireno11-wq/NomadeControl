@@ -144,3 +144,30 @@ def test_question_and_rules_must_agree_on_asset() -> None:
     bad = MarketView(**{**m.__dict__, "description": m.description.replace("BTC/USDT", "ETH/USDT")})
     t = parse_crypto_terms(bad)
     assert isinstance(t, Unsupported) and "distinto del par" in t.reason
+
+
+def test_older_daily_wording_uses_the_candle_labelled_noon() -> None:
+    t = parsed("daily_above_label")
+    assert t.rule_form == "vela_etiquetada_12:00"
+    assert t.obs_open == utc(2026, 7, 2, 16, 0)  # abre a las 12:00 ET (EDT)
+    r = parsed("daily_range_label")
+    assert (r.rule_form, r.obs_open, r.lower, r.upper) == (
+        "vela_etiquetada_12:00",
+        utc(2026, 7, 2, 16, 0),
+        50000,
+        52000,
+    )
+    assert parsed("daily_above").rule_form == "vela_que_cierra_12:00"
+
+
+def test_older_daily_updown_uses_candles_closing_at_noon() -> None:
+    t = parsed("daily_updown_closing")
+    assert t.rule_form == "vela_que_cierra_12:00"
+    assert t.ref_open == utc(2026, 10, 1, 15, 59) and t.obs_open == utc(2026, 10, 2, 15, 59)
+
+
+def test_touch_window_from_market_creation() -> None:
+    t = parsed("touch_range_from_creation")
+    assert t.rule_form == "desde_creacion" and t.variant == "touch_range"
+    assert t.window_start == view("touch_range_from_creation").start_date
+    assert t.window_end == utc(2026, 9, 7, 4, 0)

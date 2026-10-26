@@ -169,15 +169,16 @@ def build_instances(
         # contraste del resultado oficial con el recalculado desde Binance
         if c is not None:
             own = resolve_from_candles(terms, c)
-            key = terms.variant
+            key = f"{terms.variant}|{terms.rule_form}" if terms.rule_form else terms.variant
             if own is None:
                 check[key]["sin_datos"] += 1
             else:
                 check[key]["coincide" if own == y else "difiere"] += 1
             if terms.kind != "touch" and terms.candle == "1m":
-                alt = resolve_from_candles(terms, c, shift_min=1)
-                if alt is not None:
-                    check[key + "|vela_siguiente"]["coincide" if alt == y else "difiere"] += 1
+                for shift, label in ((-1, "vela_anterior"), (1, "vela_siguiente")):
+                    alt = resolve_from_candles(terms, c, shift_min=shift)
+                    if alt is not None:
+                        check[f"{key}|{label}"]["coincide" if alt == y else "difiere"] += 1
         mv = MarketView(
             market_id=rec["market_id"],
             question=rec["question"],

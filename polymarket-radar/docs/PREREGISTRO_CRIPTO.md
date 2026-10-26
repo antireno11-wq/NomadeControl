@@ -96,3 +96,37 @@ Antes de este preregistro se hicieron dos pruebas de humo:
   parámetro ni criterio: solo se agregó caché (rendimiento) y el resto del sistema (API,
   valoración, dashboard).
 - Una corrida en vivo sobre 40 mercados abiertos el 26-oct.
+
+## Enmienda 1: redacciones anteriores de las reglas
+
+Escrita el 26-oct-2026, alrededor de las 14:00 UTC, **antes** de correr la evaluación
+sobre el conjunto completo.
+
+**Qué se vio.** El primer armado del conjunto (SHA-256 `a5e0a5c4…`, 15.302 mercados) dejó
+fuera, por redacción no reconocida:
+
+- 7.469 mercados diarios "sobre un nivel" y 2.718 de rango, casi todos de meses
+  anteriores;
+- 390 toques y 24 Up/Down diarios.
+
+Hasta ese momento solo se habían visto esos conteos y los textos de las reglas. **No** se
+vieron resultados, precios ni métricas de esos mercados.
+
+**Qué se cambió en `crypto-terms-v1`.** Se agregó la lectura de esas redacciones, con una
+interpretación fijada antes de contrastar resultados:
+
+- "la vela de 1 minuto … 12:00 ET" es la vela que **abre** a las 12:00, porque Binance
+  etiqueta las velas por su apertura (`rule_form = vela_etiquetada_12:00`). La redacción
+  actual, "la vela que **cierra** a las 12:00", sigue siendo la vela que abre a las 11:59
+  (`vela_que_cierra_12:00`);
+- en el Up/Down diario antiguo, "la vela que cierra a las 12:00 ET" en ambos días abre a
+  las 11:59;
+- en los toques, "desde la creación del mercado hasta el último día del mes / del rango"
+  empieza en la creación del mercado (`desde_creacion`).
+
+**Qué se informa.** El reporte muestra la coincidencia con la resolución oficial para cada
+forma de regla y para las dos lecturas alternativas (vela anterior y vela siguiente). Si
+una lectura no coincide, se informa; no se reemplaza a posteriori.
+
+No cambian los modelos, las particiones, los criterios ni la regla de operaciones
+hipotéticas. El conjunto se reconstruye con el mismo plan de muestreo.

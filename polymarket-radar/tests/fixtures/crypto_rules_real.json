@@ -1,5 +1,5 @@
 {
- "_provenance": "Textos reales de Polymarket Gamma (/markets/keyset), capturados en la corrida de ingesta #2 del 25-oct-2026 (tabla markets). Solo se conservan los campos necesarios para leer el contrato.",
+ "_provenance": "Textos reales de Polymarket Gamma (/markets/keyset), capturados en la corrida de ingesta #2 del 25-oct-2026 (tabla markets). Solo se conservan los campos necesarios para leer el contrato. Las claves *_label, *_closing y *_from_creation son mercados resueltos de 2026 tomados de /events/keyset (redacción anterior de las reglas).",
  "markets": {
   "daily_above": {
    "id": "5929057",
@@ -216,6 +216,58 @@
    "start_date": "2026-10-19T04:00:12+00:00",
    "end_date": "2026-11-09T00:00:00+00:00",
    "received_at": "2026-10-25T22:31:41.644485+00:00"
+  },
+  "daily_updown_closing": {
+   "id": "5156992",
+   "question": "Ethereum Up or Down on October 2?",
+   "description": "This market will resolve to \"Up\" if the \"Close\" price for the Binance 1 minute candle for ETH/USDT closing at 12:00 in the ET timezone (noon) on Oct 1 '26 is lower than the final \"Close\" price for the candle closing at 12:00 ET on Oct 2 '26.\n\nThis market will resolve to \"Down\" if the \"Close\" price for the Binance 1 minute candle for ETH/USDT closing at 12:00 in the ET timezone (noon) on Oct 1 '26 is higher than the final \"Close\" price for the candle closing at 12:00 ET on Oct 2 '26.\n\nIf the final \"Close\" price for both of these candles is exactly equal on Binance, this market will resolve 50-50.\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Up",
+    "Down"
+   ],
+   "start_date": "2026-09-30T16:07:08+00:00",
+   "end_date": "2026-10-02T16:00:00+00:00",
+   "received_at": "2026-10-26T13:00:00.807537+00:00",
+   "source_url": "https://gamma-api.polymarket.com/events/keyset?slug=ethereum-up-or-down-on-october-18-2026&slug=ethereum-up-or-down-on-o"
+  },
+  "daily_range_label": {
+   "id": "2682433",
+   "question": "Will the price of Bitcoin be between $50,000 and $52,000 on July 2?",
+   "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-06-25T16:13:58.133542+00:00",
+   "end_date": "2026-07-02T16:00:00+00:00",
+   "received_at": "2026-10-26T13:00:28.227131+00:00",
+   "source_url": "https://gamma-api.polymarket.com/events/keyset?id=631823&id=631829&id=632830&id=632831&id=633585&id=633586&id=633613&id="
+  },
+  "daily_above_label": {
+   "id": "2682515",
+   "question": "Will the price of Bitcoin be above $50,000 on July 2?",
+   "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\n\nPrice precision is determined by the number of decimal places in the source.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-06-25T16:02:31.862515+00:00",
+   "end_date": "2026-07-02T16:00:00+00:00",
+   "received_at": "2026-10-26T13:00:28.227131+00:00",
+   "source_url": "https://gamma-api.polymarket.com/events/keyset?id=631823&id=631829&id=632830&id=632831&id=633585&id=633586&id=633613&id="
+  },
+  "touch_range_from_creation": {
+   "id": "4149483",
+   "question": "Will Ethereum reach $2,400 August 31-September 6?",
+   "description": "This market will resolve to \"Yes\" if any Binance 1 minute candle for ETH/USDT from the creation of this market through 11:59 PM ET on the last day of the date range specified in the title has a final High price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\". Price action before this market's creation will not be considered.\n\nThe resolution source for this market is Binance, specifically the ETH/USDT High prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" for one-minute candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-09-02T16:57:18+00:00",
+   "end_date": "2026-09-07T04:00:00+00:00",
+   "received_at": "2026-10-26T13:00:39.430338+00:00",
+   "source_url": "https://gamma-api.polymarket.com/events/keyset?id=936866&id=936871&id=936872&id=936880&id=936887&id=939675&id=939676&id="
   }
  }
 }

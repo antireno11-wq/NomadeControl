@@ -128,6 +128,7 @@ class CryptoTerms:
     window_start: datetime | None = None
     window_end: datetime | None = None  # exclusivo: la última vela abre a window_end - 1m
     notes: tuple[str, ...] = field(default_factory=tuple)
+    rule_form: str | None = None  # redacción de la regla (las reglas cambiaron con el tiempo)
 
     @property
     def resolution_time(self) -> datetime:
@@ -261,6 +262,22 @@ RE_TOUCH = re.compile(
 D_DAILY_NOON_CLOSE = re.compile(
     r"1[ -]minute candle for [A-Z0-9]+/USDT closing at 12:00 in the ET timezone", re.I
 )
+# Redacción anterior: "la vela de 1 minuto ... 12:00": Binance etiqueta por apertura → abre 12:00
+D_DAILY_NOON_LABEL = re.compile(
+    r"1[ -]minute candle for [A-Z0-9]+/USDT 12:00 in the ET timezone \(noon\)", re.I
+)
+D_DAILY_UPDOWN_CLOSING = re.compile(
+    r"1 minute candle for [A-Z0-9]+/USDT closing at 12:00 in the ET timezone \(noon\) on "
+    r"(?P<m1>[A-Za-z]{3}) (?P<d1>\d{1,2}) '(?P<y1>\d{2}) is lower than the final \"Close\" "
+    r"price for the candle closing at 12:00 ET on (?P<m2>[A-Za-z]{3}) (?P<d2>\d{1,2}) "
+    r"'(?P<y2>\d{2})",
+    re.I,
+)
+D_FROM_CREATION_PERIOD = re.compile(
+    r"from the creation of this market through 11:59 PM ET on the last day of the "
+    r"(?P<what>month|date range) specified in the title",
+    re.I,
+)
 D_HOURLY_ENDS = re.compile(r"1 hour candle that ends on the time and date", re.I)
 D_HOURLY_BEGINS = re.compile(
     r"close price is greater than or equal to the open price for the [A-Z0-9]+/USDT "
@@ -339,16 +356,26 @@ def parse_crypto_terms(market: MarketView) -> CryptoTerms | Unsupported:
     return Unsupported("tipo de contrato cripto no modelado")
 
 
+def _noon_candle(desc: str) -> tuple[int, str] | None:
+    """(desplazamiento en minutos respecto de las 12:00 ET, forma de la regla)."""
+    if D_DAILY_NOON_CLOSE.search(desc):
+        return -1, "vela_que_cierra_12:00"
+    if D_DAILY_NOON_LABEL.search(desc):
+        return 0, "vela_etiquetada_12:00"
+    return None
+
+
 def _daily_level(
     market: MarketView, m: re.Match[str], asset: str, symbol: str, desc: str
 ) -> CryptoTerms | Unsupported:
-    if not D_DAILY_NOON_CLOSE.search(desc):
+    noon = _noon_candle(desc)
+    if noon is None:
         return Unsupported("reglas diarias sin la vela de 1 minuto de las 12:00 ET")
     d = _infer_date(MONTHS.get(m.group("month").lower(), 0), int(m.group("day")), market.end_date)
     if d is None:
         return Unsupported("fecha no interpretable")
     k = parse_amount(m.group("k"), m.group("k_s"))
-    obs_open = et_to_utc(d, 12) - timedelta(minutes=1)  # vela que cierra a las 12:00 ET
+    obs_open = et_to_utc(d, 12) + timedelta(minutes=noon[0])
     if not _near_end(obs_open, market):
         return Unsupported("fecha de observación lejos del fin del mercado: ambigua")
     op = m.group("op")
@@ -369,13 +396,15 @@ def _daily_level(
         lower_inclusive=(op == "greater than"),
         upper_inclusive=False,
         notes=("año inferido del fin del mercado",),
+        rule_form=noon[1],
     )
 
 
 def _daily_range(
     market: MarketView, m: re.Match[str], asset: str, symbol: str, desc: str
 ) -> CryptoTerms | Unsupported:
-    if not D_DAILY_NOON_CLOSE.search(desc):
+    noon = _noon_candle(desc)
+    if noon is None:
         return Unsupported("reglas de rango sin la vela de 1 minuto de las 12:00 ET")
     if "higher range bracket" not in desc:
         return Unsupported("regla de empate entre tramos no encontrada")
@@ -386,7 +415,7 @@ def _daily_range(
     hi = parse_amount(m.group("u"), m.group("u_s"))
     if not hi > lo:
         return Unsupported("rango inválido")
-    obs_open = et_to_utc(d, 12) - timedelta(minutes=1)
+    obs_open = et_to_utc(d, 12) + timedelta(minutes=noon[0])
     if not _near_end(obs_open, market):
         return Unsupported("fecha de observación lejos del fin del mercado: ambigua")
     return CryptoTerms(
@@ -402,6 +431,7 @@ def _daily_range(
         lower_inclusive=True,  # el valor exacto en un borde va al tramo superior
         upper_inclusive=False,
         notes=("año inferido del fin del mercado",),
+        rule_form=noon[1],
     )
 
 
@@ -466,6 +496,10 @@ def _daily_updown(
     market: MarketView, m: re.Match[str], asset: str, symbol: str, desc: str
 ) -> CryptoTerms | Unsupported:
     dm = D_DAILY_UPDOWN.search(desc)
+    offset, form = 0, "vela_etiquetada_12:00"
+    if dm is None:
+        dm = D_DAILY_UPDOWN_CLOSING.search(desc)
+        offset, form = -1, "vela_que_cierra_12:00"
     if dm is None or "50-50" not in desc:
         return Unsupported("reglas Up or Down diarias no reconocidas")
     try:
@@ -486,11 +520,12 @@ def _daily_updown(
         yes_outcome="Up",
         variant="daily_updown",
         candle="1m",
-        obs_open=et_to_utc(d2, 12),
-        ref_open=et_to_utc(d1, 12),
+        obs_open=et_to_utc(d2, 12) + timedelta(minutes=offset),
+        ref_open=et_to_utc(d1, 12) + timedelta(minutes=offset),
         ref_candle="1m",
         ref_field="close",
         tie="half",
+        rule_form=form,
     )
 
 
@@ -515,6 +550,7 @@ def _touch(
     if isinstance(window, Unsupported):
         return window
     start, end, variant = window
+    from_creation = market.start_date is not None and start == market.start_date
     if not end > start:
         return Unsupported("ventana de toque vacía")
     if not _near_end(end, market, tol=timedelta(days=3)):
@@ -529,7 +565,8 @@ def _touch(
         barrier=barrier,
         window_start=start,
         window_end=end,
-        notes=("inicio de la ventana = creación del mercado",) if variant == "touch_until" else (),
+        notes=("inicio de la ventana = creación del mercado",) if from_creation else (),
+        rule_form="desde_creacion" if from_creation else "ventana_calendario",
     )
 
 
@@ -565,6 +602,27 @@ def _touch_window(
         except (KeyError, ValueError):
             return Unsupported("fecha final no interpretable")
         return market.start_date, et_to_utc(d2 + timedelta(days=1)), "touch_until"
+    fp = D_FROM_CREATION_PERIOD.search(desc)
+    if fp:
+        if market.start_date is None:
+            return Unsupported("ventana desde la creación sin fecha de creación")
+        if fp.group("what").lower() == "month":
+            mm = re.match(r"^in ([A-Za-z]+)$", when)
+            if not mm or ref is None or mm.group(1).lower() not in MONTHS:
+                return Unsupported("mes de la ventana no interpretable")
+            month = MONTHS[mm.group(1).lower()]
+            probe = ref - timedelta(days=2)
+            year = probe.year if probe.month >= month else probe.year - 1
+            nxt = date(year + (month == 12), month % 12 + 1, 1)
+            return market.start_date, et_to_utc(nxt), "touch_month"
+        mm = re.match(r"^([A-Za-z]+) (\d{1,2})-(?:([A-Za-z]+) )?(\d{1,2})$", when)
+        if not mm:
+            return Unsupported("rango de fechas no interpretable")
+        m2 = MONTHS.get((mm.group(3) or mm.group(1)).lower(), 0)
+        d2 = _infer_date(m2, int(mm.group(4)), ref)
+        if d2 is None:
+            return Unsupported("rango de fechas no interpretable")
+        return market.start_date, et_to_utc(d2 + timedelta(days=1)), "touch_range"
     if D_MONTH.search(desc):
         mm = re.match(r"^in ([A-Za-z]+)$", when)
         if not mm or ref is None or mm.group(1).lower() not in MONTHS:
