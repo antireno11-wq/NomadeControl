@@ -86,3 +86,11 @@ def test_bridge_crossing_probability() -> None:
     p = M.bridge_cross_prob(x0, x1, 0.1, 0.01, up=True)
     assert p[0] == pytest.approx(math.exp(-2 * 0.1 * 0.1 / 0.01))
     assert p[1] == 1.0 and p[2] == 1.0  # un extremo ya está en/más allá de la barrera
+
+
+def test_non_positive_levels() -> None:
+    """Mercados reales como "Will Solana dip to $0?": un precio positivo nunca llega a 0."""
+    assert float(M.p_touch_running(100.0, 0.0, "low", 0.5)) == 0.0
+    assert float(M.p_touch_running(100.0, 0.0, "high", 0.5)) == 1.0
+    assert M.p_touch_delayed(100.0, 0.0, "low", 0.1, 0.2) == 0.0
+    assert M.p_terminal(100.0, 0.0, None, 0.3) == 1.0

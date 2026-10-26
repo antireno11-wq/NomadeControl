@@ -414,6 +414,8 @@ class CryptoPredictor:
         # touch: se acumula la probabilidad de no cruzar (puente browniano entre pasos)
         assert terms.window_start and terms.barrier is not None and terms.direction
         up = terms.direction == "high"
+        if terms.barrier <= 0:
+            return 1.0 if up else 0.0  # un precio positivo nunca llega a un nivel <= 0
         n, frac = steps_for((terms.resolution_time - as_of).total_seconds() / 60)
         x = self._paths(c, r, n, n_paths, rng, frac, scale)
         b = math.log(terms.barrier / spot)

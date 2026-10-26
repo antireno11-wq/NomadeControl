@@ -104,7 +104,7 @@ def dvol_var(dvol_pct: float) -> VolEstimate:
 
 def p_above(spot: float | np.ndarray, k: float | None, v: float) -> float | np.ndarray:
     """P(S_T > k) con ln S_T ~ N(ln S − v²/2, v²). ``k=None`` → 1."""
-    if k is None:
+    if k is None or k <= 0:
         return np.ones_like(spot, dtype=float) if isinstance(spot, np.ndarray) else 1.0
     if v <= EPS:
         return (
@@ -131,6 +131,9 @@ def p_touch_running(spot: float | np.ndarray, k: float, direction: str, v: float
     """
     s = np.asarray(spot, dtype=float)
     out = np.ones_like(s)
+    if k <= 0:
+        # un precio positivo nunca llega a un nivel <= 0: el máximo siempre lo supera
+        return out if direction == "high" else np.zeros_like(s)
     if direction == "high":
         live = s < k
         if v > EPS and np.any(live):
