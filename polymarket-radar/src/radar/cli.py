@@ -158,6 +158,51 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return subprocess.call(cmd, env=os.environ.copy())  # noqa: S603 - argumentos fijos
 
 
+def cmd_elections(args: argparse.Namespace) -> int:
+    from radar.db.session import get_engine
+    from radar.elections import service
+
+    settings = get_settings()
+    engine = get_engine(settings.database_url)
+    out_dir = Path(args.out)
+    if args.elections_command == "discover":
+        run_id, summary = service.run_discovery(engine)
+        print(json.dumps({"run_id": run_id, **summary}, indent=2, ensure_ascii=False))
+    elif args.elections_command == "calibrate":
+        build = service.build_calibration(settings)
+        from dataclasses import asdict
+
+        from radar.elections.models import validate_loo
+
+        out = {
+            "contiendas": [c.key for c in build.contests],
+            "problemas": build.issues,
+            "validacion_ponderado": asdict(validate_loo(build.contests, "weighted")),
+        }
+        out["validacion_ponderado"].pop("forecasts")
+        print(json.dumps(out, indent=2, ensure_ascii=False, default=str))
+    elif args.elections_command == "backtest":
+        result = service.run_br2026_backtest(engine, settings, out_dir)
+        print(json.dumps(service.summarize_backtest(result), indent=2, ensure_ascii=False))
+    elif args.elections_command == "evaluate":
+        out = service.run_world_evaluation(engine, settings, out_dir)
+        print(json.dumps(out["agregado"], indent=2, ensure_ascii=False, default=str))
+    elif args.elections_command == "scan":
+        print(
+            json.dumps(
+                service.run_live_scan(engine, settings), indent=2, ensure_ascii=False, default=str
+            )
+        )
+    elif args.elections_command == "verify-ledger":
+        from radar.elections.alerts import AlertLedger, verify_chain
+
+        recs = AlertLedger(Path(args.path)).records()
+        problems = verify_chain(recs)
+        print(json.dumps({"registros": len(recs), "problemas": problems}, ensure_ascii=False))
+        return 1 if problems else 0
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="radar", description="Polymarket AI Radar (solo lectura)")
     sub = p.add_subparsers(dest="command", required=True)
@@ -191,6 +236,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
     s.set_defaults(func=cmd_api)
+
+    s = sub.add_parser("elections", help="motor de discrepancias electorales")
+    esub = s.add_subparsers(dest="elections_command", required=True)
+    esub.add_parser("discover", help="clasifica los mercados electorales abiertos")
+    esub.add_parser("calibrate", help="calibración y validación con contiendas históricas")
+    esub.add_parser("backtest", help="backtest retrospectivo de Brasil 2026 (2.ª vuelta)")
+    esub.add_parser("evaluate", help="evaluación sobre múltiples elecciones")
+    esub.add_parser("scan", help="escaneo en vivo de contiendas configuradas")
+    v = esub.add_parser("verify-ledger", help="verifica la cadena de hashes de un ledger")
+    v.add_argument("path")
+    s.add_argument("--out", default="reports")
+    s.set_defaults(func=cmd_elections)
 
     s = sub.add_parser("dashboard", help="dashboard Streamlit")
     s.add_argument("--host", default="127.0.0.1")

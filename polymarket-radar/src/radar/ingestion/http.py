@@ -152,14 +152,15 @@ class ApiClient:
         base = min(self.backoff_max_s, self.backoff_base_s * (2**attempt))
         return base * (0.5 + self._rng.random() / 2)
 
-    def request_json(
+    def _send(
         self,
         method: str,
         path: str,
         *,
         params: Any = None,
         json: Any = None,
-    ) -> ApiResponse:
+    ) -> tuple[httpx.Response, str, float, int]:
+        """Envía con rate limit y reintentos. Devuelve (respuesta, url, segundos, intentos)."""
         url = str(self._client.build_request(method, path, params=params).url)
         attempt = 0
         while True:
@@ -222,23 +223,45 @@ class ApiClient:
                     attempts=attempt,
                     body=body,
                 )
+            return response, url, elapsed, attempt
 
-            try:
-                data = response.json()
-            except ValueError as exc:
-                raise ApiError(
-                    f"{self.name}: respuesta no es JSON válido",
-                    url=url,
-                    status=response.status_code,
-                    attempts=attempt,
-                    error_type="invalid_json",
-                    body=response.text[:500],
-                ) from exc
-            return ApiResponse(
-                data=data,
+    def request_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Any = None,
+        json: Any = None,
+    ) -> ApiResponse:
+        response, url, elapsed, attempt = self._send(method, path, params=params, json=json)
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise ApiError(
+                f"{self.name}: respuesta no es JSON válido",
                 url=url,
                 status=response.status_code,
-                received_at=utcnow(),
-                elapsed_s=elapsed,
                 attempts=attempt,
-            )
+                error_type="invalid_json",
+                body=response.text[:500],
+            ) from exc
+        return ApiResponse(
+            data=data,
+            url=url,
+            status=response.status_code,
+            received_at=utcnow(),
+            elapsed_s=elapsed,
+            attempts=attempt,
+        )
+
+    def request_text(self, method: str, path: str, *, params: Any = None) -> ApiResponse:
+        """Como ``request_json`` pero devuelve el cuerpo como texto (p. ej. HTML)."""
+        response, url, elapsed, attempt = self._send(method, path, params=params)
+        return ApiResponse(
+            data=response.text,
+            url=url,
+            status=response.status_code,
+            received_at=utcnow(),
+            elapsed_s=elapsed,
+            attempts=attempt,
+        )

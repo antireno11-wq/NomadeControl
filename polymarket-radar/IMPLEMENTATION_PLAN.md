@@ -29,6 +29,25 @@ Limitaciones conocidas del hito 1:
 - Los libros se piden secuencialmente por lotes: no son una foto simultánea.
 - Categorías por etiquetas con una regla simple (`tags-v1`).
 
+## Hito E — Motor de discrepancias electorales ✅ (con limitaciones)
+
+| Entregable | Estado | Evidencia |
+|---|---|---|
+| Descubrimiento de mercados electorales activos | ✅ | 10.824 mercados / 1.847 eventos (`radar elections discover`) |
+| Encuestas y agregadores con fecha, por revisión | ✅ | 28 revisiones para 46 instantes (`data/manifests/`) |
+| Probabilidades con error histórico (Monte Carlo) | ✅ | 9 segundas vueltas reales de calibración |
+| Estimaciones múltiples y desacuerdo registrados | ✅ | `election_estimates`, reporte |
+| Comparación con ask ejecutable (en vivo) | ✅ | `scan_contest` + pruebas; sin contienda abierta hoy |
+| Alerta ≥ 5 p.p. / señal operable solo con todas las condiciones | ✅ | `tests/test_elections_engine.py` |
+| Snapshot verificable (ledger encadenado) | ✅ | `verify-ledger`: 111 registros, cadena íntegra |
+| Backtest Brasil oct-2026 sin información futura | ✅ | `reports/backtest_br-2026-presidente-2t.md` |
+| Evaluación sobre varias elecciones | 🟡 | 9 contiendas de calibración y 5 contra el mercado: insuficiente para validar |
+
+Pendiente para validar el modelo: ≥ 15 contiendas con resultado (fuentes de
+resultados fuera de la página de encuestas, p. ej. TSE/órganos electorales),
+modelo de primera vuelta multicandidato, márgenes por tramos y publicación
+externa del ledger en vivo antes de cada cierre.
+
 ## Hito 1.1 — Escala y frescura ⬜
 
 - Descubierta por `/events/keyset` (≈3× más rápida) filtrando `active=true`.
@@ -71,7 +90,7 @@ Limitaciones conocidas del hito 1:
   escenarios y las reglas están verificadas (hito 2).
 - Pruebas: rentable, no rentable, ilíquido, ambiguo.
 
-## Hito 4 — Modelos predictivos ⬜
+## Hito 4 — Modelos predictivos 🟡 (electoral de 2.ª vuelta hecho, resto ⬜)
 
 - Interfaz `predict(market, evidence, as_of_time)` → probabilidad, intervalo,
   versión, datos usados, fecha, estado de calibración, motivo de abstención.

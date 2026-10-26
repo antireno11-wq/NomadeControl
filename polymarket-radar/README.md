@@ -9,12 +9,33 @@ backtesting.
 > contiene autenticación de trading ni envío de órdenes, y `RADAR_TRADING_MODE`
 > solo admite `paper` (cualquier otro valor aborta el arranque).
 
-**Estado: hito 1 completo** (ingesta real, almacenamiento, liquidez, API,
-dashboard, pruebas). Los módulos de arbitraje, modelos, valoración, cartera,
-backtesting y alertas **no están implementados**; el dashboard lo indica y no
-muestra cifras para ellos. Plan completo en [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md),
+**Estado:** hito 1 completo (ingesta real, almacenamiento, liquidez, API,
+dashboard, pruebas) y **motor electoral** implementado (segundas vueltas de dos
+candidatos). Arbitraje, valoración general, cartera virtual y backtesting
+general **no están implementados**; el dashboard lo indica y no muestra cifras
+para ellos. Plan completo en [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md),
 diseño en [`ARCHITECTURE.md`](ARCHITECTURE.md), reglas para colaboradores en
 [`AGENTS.md`](AGENTS.md).
+
+## Motor de discrepancias electorales (nuevo)
+
+Detecta mercados electorales, estima probabilidades a partir de encuestas
+calibradas con errores históricos y las compara con precios de Polymarket.
+Documentación completa, reglas preregistradas y resultados en
+[`docs/ELECTORAL_ENGINE.md`](docs/ELECTORAL_ENGINE.md).
+
+Resultado del backtest retrospectivo de la segunda vuelta de Brasil 2026
+(46 instantes, solo información disponible en cada momento): **no habría
+generado ninguna señal operable**, porque el modelo no está validado (9 contiendas
+de calibración, mínimo 15) y no existe ask ejecutable histórico. Sí habría
+emitido **alertas de investigación** desde el 5-oct 12:00 UTC (Lula YES a 0,165,
+precio de referencia). Es una sola elección: no prueba calibración ni rentabilidad.
+
+```bash
+radar elections discover
+radar elections --out reports backtest
+radar elections --out reports evaluate
+```
 
 ## Qué hace hoy (verificado)
 
@@ -127,6 +148,9 @@ export RADAR_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5433/radar
 - **Detalle**: reglas exactas, fuente, timestamps, libros con gráfico de
   profundidad, evolución de precios, motivos de aceptación/rechazo.
 - **Ingesta**: historial de corridas, motivos, tiempos y errores.
+- **Electoral**: estado de validación, mercados electorales clasificados,
+  respuesta directa del backtest de Brasil 2026, gráfico modelo vs. mercado,
+  alertas congeladas con su hash y evaluación sobre varias elecciones.
 - **Oportunidades / Cartera virtual / Calidad predictiva**: marcadas como no
   implementadas; no muestran datos.
 

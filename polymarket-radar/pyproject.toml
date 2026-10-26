@@ -20,6 +20,7 @@ dependencies = [
   "streamlit==1.66.1",
   "pandas==3.1.0",
   "numpy==2.5.4",
+  "lxml==6.0.2",
 ]
 
 [project.scripts]
@@ -55,6 +56,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "B"]
 "migrations/**" = ["E501"]
+"src/radar/elections/report.py" = ["E501"]  # plantillas de texto Markdown
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

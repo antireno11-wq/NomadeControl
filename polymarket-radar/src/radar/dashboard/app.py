@@ -507,6 +507,264 @@ def page_ingestion() -> None:
         st.dataframe(pd.DataFrame(errors), hide_index=True, width="stretch")
 
 
+SERIES_3 = "#1baf7a"  # compras reales observadas
+
+
+def _election_chart(timeline: list[dict[str, Any]], a_label: str) -> alt.Chart | None:
+    rows = []
+    band = []
+    for p in timeline:
+        cons = p.get("consenso") or {}
+        t = pd.to_datetime(p["t"], utc=True)
+        if cons.get("reference_prob_a") is not None:
+            rows.append(
+                {"t": t, "valor": cons["reference_prob_a"], "serie": "Modelo: P(A) referencia"}
+            )
+            band.append({"t": t, "min": cons["min_prob_a"], "max": cons["max_prob_a"]})
+        for d in p.get("decisiones") or []:
+            q = d["quote"]
+            if q["label"] != f"{a_label} YES" or q["price"] is None:
+                continue
+            if q["basis"] == "precio_referencia_no_ejecutable":
+                rows.append(
+                    {"t": t, "valor": q["price"], "serie": "Mercado: precio ref. (no ejecutable)"}
+                )
+            elif q["basis"] == "precio_ejecutado_observado":
+                rows.append(
+                    {"t": t, "valor": q["price"], "serie": "Mercado: máx. compra real (60 min)"}
+                )
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    domain = [
+        "Modelo: P(A) referencia",
+        "Mercado: precio ref. (no ejecutable)",
+        "Mercado: máx. compra real (60 min)",
+    ]
+    color = alt.Color(
+        "serie:N",
+        scale=alt.Scale(domain=domain, range=[SERIES_1, SERIES_2, SERIES_3]),
+        legend=alt.Legend(title=None, orient="top", labelLimit=320),
+    )
+    x = alt.X(
+        "t:T",
+        title="Instante de evaluación (UTC)",
+        scale=alt.Scale(type="utc"),
+        axis=alt.Axis(format="%d-%b %H:%M"),
+    )
+    y = alt.Y("valor:Q", title="Probabilidad / precio", scale=alt.Scale(domain=[0, 1]))
+    layers = []
+    if band:
+        layers.append(
+            alt.Chart(pd.DataFrame(band))
+            .mark_area(opacity=0.15, color=SERIES_1)
+            .encode(
+                x=x.title("Instante de evaluación (UTC)"),
+                y="min:Q",
+                y2="max:Q",
+                tooltip=[
+                    alt.Tooltip("min:Q", format=".1%", title="mín. estimaciones"),
+                    alt.Tooltip("max:Q", format=".1%", title="máx. estimaciones"),
+                ],
+            )
+        )
+    lines = (
+        alt.Chart(df[df["serie"] != domain[2]])
+        .mark_line(strokeWidth=2)
+        .encode(
+            x=x,
+            y=y,
+            color=color,
+            tooltip=[
+                alt.Tooltip("t:T", format="%Y-%m-%d %H:%M", formatType="utc"),
+                alt.Tooltip("serie:N"),
+                alt.Tooltip("valor:Q", format=".3f"),
+            ],
+        )
+    )
+    pts = (
+        alt.Chart(df[df["serie"] == domain[2]])
+        .mark_point(filled=True, size=64)
+        .encode(
+            x=x,
+            y=y,
+            color=color,
+            tooltip=[
+                alt.Tooltip("t:T", format="%Y-%m-%d %H:%M", formatType="utc"),
+                alt.Tooltip("serie:N"),
+                alt.Tooltip("valor:Q", format=".3f"),
+            ],
+        )
+    )
+    layers += [lines, pts]
+    return alt.layer(*layers).properties(height=320)
+
+
+def page_elections() -> None:
+    st.header("Motor de discrepancias electorales")
+    summary = api_get("/api/elections/summary") or {}
+    bt = summary.get("backtest") or {}
+    val = (bt.get("summary") or {}).get("validacion")
+    if val != "validado":
+        st.error(
+            "**Modelo NO validado.** Solo se emiten alertas de investigación; ninguna señal "
+            "operable es posible hasta cumplir los criterios de validación fijados de antemano."
+        )
+    disc = (summary.get("discover") or {}).get("summary") or {}
+    if disc:
+        st.subheader("Mercados electorales activos")
+        c = st.columns(4)
+        c[0].metric("Mercados electorales", f"{disc.get('mercados_electorales', 0):,}")
+        c[1].metric("Eventos", f"{disc.get('eventos_electorales', 0):,}")
+        c[2].metric("Vinculados a una contienda", f"{disc.get('vinculados_a_contienda', 0):,}")
+        c[3].metric("Modelados", f"{disc.get('modelados', 0):,}")
+        cols = st.columns(2)
+        cols[0].dataframe(
+            pd.DataFrame(list((disc.get("por_tipo") or {}).items()), columns=["tipo", "mercados"]),
+            hide_index=True,
+            width="stretch",
+        )
+        cols[1].dataframe(
+            pd.DataFrame(
+                list((disc.get("motivos_abstencion") or {}).items()),
+                columns=["motivo de abstención", "mercados"],
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    else:
+        st.info("Información insuficiente: ejecute `radar elections discover`.")
+
+    st.subheader("Backtest retrospectivo: Brasil 2026, segunda vuelta")
+    data = api_get("/api/elections/backtest")
+    if not data:
+        st.info("Información insuficiente: ejecute `radar elections backtest`.")
+        return
+    st.warning(
+        f"Generado el {fmt_ts(data['creado'])}, **después** del resultado. Las alertas de este "
+        "backtest son retrospectivas: no son evidencia previa al resultado."
+    )
+    tl = data["timeline"]
+    signals = [p for p in tl if p.get("senal_operable")]
+    first = data.get("primera_alerta")
+    st.markdown(
+        f"**¿Habría detectado una señal operable antes del resultado?** "
+        f"{'Sí' if signals else 'No'}."
+    )
+    if first:
+        d = first["decision"]
+        q = d["quote"]
+        st.markdown(
+            f"**Primera alerta de investigación:** {fmt_ts(first['as_of'])} · token "
+            f"**{q['label']}** · precio {q['price']:.3f} (`{q['basis']}`) · discrepancia "
+            f"{d['discrepancy_pp']:+.1f} p.p. · ventaja conservadora "
+            f"{d['conservative_edge_pp']:+.1f} p.p. · revisión Wikipedia "
+            f"`{first['revision_wikipedia']['revid']}`"
+        )
+        with st.expander("Motivos por los que no fue señal operable"):
+            for g in d["gating"]:
+                st.write(f"- {g}")
+    chart = _election_chart(tl, "Lula")
+    if chart is not None:
+        st.altair_chart(chart, width="stretch")
+        st.caption(
+            "A = Lula. Banda: rango entre todas las estimaciones registradas. El precio de "
+            "referencia no es ejecutable; los puntos son compras reales (precio máximo pagado "
+            "en la hora previa)."
+        )
+    rows = []
+    for p in tl:
+        cons = p.get("consenso") or {}
+        rows.append(
+            {
+                "T (UTC)": p["t"][:16],
+                "revisión": (p.get("revision") or {}).get("revision_ts", "")[:16],
+                "encuestas": p.get("encuestas_en_revision"),
+                "P(Lula) ref.": cons.get("reference_prob_a"),
+                "mín": cons.get("min_prob_a"),
+                "máx": cons.get("max_prob_a"),
+                "alerta": p.get("alerta"),
+                "señal": p.get("senal_operable"),
+                "estado": p.get("estado", ""),
+            }
+        )
+    st.dataframe(
+        pd.DataFrame(rows),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "P(Lula) ref.": st.column_config.NumberColumn(format="%.3f"),
+            "mín": st.column_config.NumberColumn(format="%.3f"),
+            "máx": st.column_config.NumberColumn(format="%.3f"),
+        },
+    )
+    res = data.get("resultado") or {}
+    m = data.get("metricas_resultado") or {}
+    if m:
+        st.markdown(
+            f"**Resultado:** ganador "
+            f"**{(data.get('candidatos') or {}).get(res.get('ganador'), res.get('ganador'))}** "
+            f"(Wikipedia y Polymarket concordantes: "
+            f"{'sí' if res.get('concordancia_fuentes') else 'no'}). Brier medio: modelo "
+            f"{m['brier_medio_modelo']:.3f} vs mercado {m['brier_medio_mercado']:.3f}."
+        )
+        st.caption(m["advertencia"])
+    alerts = api_get("/api/elections/alerts", mode="backtest_retrospectivo", limit=500) or []
+    if alerts:
+        st.subheader("Alertas congeladas (ledger encadenado)")
+        st.dataframe(
+            pd.DataFrame(alerts)[
+                [
+                    "ledger_seq",
+                    "as_of",
+                    "label",
+                    "price_basis",
+                    "price",
+                    "discrepancy_pp",
+                    "conservative_edge_pp",
+                    "signal",
+                    "sha256",
+                ]
+            ],
+            hide_index=True,
+            width="stretch",
+        )
+    ev = api_get("/api/elections/evaluation")
+    if ev:
+        st.subheader("Evaluación sobre múltiples elecciones")
+        agg = ev["agregado"]
+        st.caption(agg["advertencia"])
+        vrows = []
+        for k in ("validacion_loo_ponderado", "validacion_loo_mediana"):
+            v = ev[k]
+            vrows.append(
+                {
+                    "modelo": v["method"],
+                    "estado": v["status"],
+                    "contiendas": v["n_contests"],
+                    "Brier": v["brier"],
+                    "cobertura 90 %": v["coverage90"],
+                }
+            )
+        st.dataframe(pd.DataFrame(vrows), hide_index=True, width="stretch")
+        mrows = []
+        for r in ev["comparacion_mercado"]:
+            met = r.get("metricas") or {}
+            op = r.get("operacion_hipotetica") or {}
+            mrows.append(
+                {
+                    "contienda": r["contest"],
+                    "ganador": (r.get("candidatos") or {}).get(r.get("ganador_segun_mercado"), ""),
+                    "abstención": r.get("abstencion", ""),
+                    "Brier modelo": met.get("brier_modelo"),
+                    "Brier mercado": met.get("brier_mercado"),
+                    "operación hipotética": op.get("token", ""),
+                    "P&L hipotético US$": op.get("pnl_hipotetico_usd"),
+                }
+            )
+        st.dataframe(pd.DataFrame(mrows), hide_index=True, width="stretch")
+
+
 def page_pending(title: str, milestone: str, needs: list[str]) -> None:
     st.header(title)
     st.info(f"No implementado todavía ({milestone}). No se muestran datos ficticios ni de ejemplo.")
@@ -520,6 +778,7 @@ PAGES = [
     "Mercados",
     "Detalle",
     "Ingesta",
+    "Electoral",
     "Oportunidades",
     "Cartera virtual",
     "Calidad predictiva",
@@ -546,6 +805,8 @@ def main() -> None:
         page_detail()
     elif page == "Ingesta":
         page_ingestion()
+    elif page == "Electoral":
+        page_elections()
     elif page == "Oportunidades":
         page_pending(
             "Oportunidades",

@@ -183,7 +183,28 @@ precio. Pasar el filtro **no** es una señal de trading.
   base fijadas por digest.
 - La API valida parámetros (patrones, rangos); no ejecuta SQL dinámico.
 
-## 9. Diseño de módulos posteriores (no implementados)
+## 9. Motor electoral (implementado)
+
+Ver [`docs/ELECTORAL_ENGINE.md`](docs/ELECTORAL_ENGINE.md). Paquete `radar.elections`:
+
+| Módulo | Rol |
+|---|---|
+| `contests.py` | Registro versionado de contiendas (candidatos, cierre de urnas UTC, página de encuestas, eventos de Polymarket) |
+| `sources/wikimedia.py` | Revisiones de Wikipedia por instante, con caché gzip + SHA-256 y respeto de `Retry-After` |
+| `polls.py` | Parser puro de tablas (rowspan/colspan, cruces A-vs-B, filas de resultado, sondeos a pie de urna excluidos) |
+| `models.py` | Promedios, modelo de error por horizonte, Monte Carlo, validación dejando una contienda fuera |
+| `engine.py` | Estimaciones múltiples, referencia preregistrada, discrepancias, condiciones para una señal operable |
+| `alerts.py` | Ledger JSONL encadenado por SHA-256 |
+| `market_history.py` | `prices-history` (referencia, no ejecutable) y operaciones reales (`data-api`) |
+| `backtest.py` / `evaluation.py` | Backtest cronológico y evaluación walk-forward multi-elección |
+| `discovery.py` | Clasificación de mercados electorales |
+| `service.py` / `report.py` | Orquestación (CLI/API) y reportes |
+
+Tablas (migración `0002`): `election_markets`, `election_runs`,
+`election_estimates`, `election_alerts`. La fuente de verdad de las alertas es
+el ledger JSONL; la tabla es una copia consultable.
+
+## 10. Diseño de módulos posteriores (no implementados)
 
 - **B. Contratos:** estructura normalizada (`contract_terms`) derivada de reglas;
   relaciones propuestas (IA o heurística) con estado `proposed` y solo

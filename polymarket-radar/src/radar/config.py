@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # --- Dashboard ---------------------------------------------------------------
     api_base_url: str = "http://localhost:8000"
 
+    # Directorio de datos del motor electoral (caché cruda, manifiestos, ledgers).
+    data_dir: str | None = None
+
     log_level: str = "INFO"
 
     @field_validator("trading_mode", mode="before")

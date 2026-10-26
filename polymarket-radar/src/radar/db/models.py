@@ -275,3 +275,92 @@ class MarketState(Base):
     yes_buy_slippage_ref: Mapped[float | None] = mapped_column(Float)
     yes_buy_fully_filled_ref: Mapped[bool | None] = mapped_column(Boolean)
     outcomes_metrics: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+
+
+# --------------------------------------------------------------------------- electoral
+class ElectionMarket(Base):
+    """Clasificación determinista de cada mercado electoral abierto."""
+
+    __tablename__ = "election_markets"
+
+    market_id: Mapped[str] = mapped_column(ForeignKey("markets.id"), primary_key=True)
+    event_id: Mapped[str | None] = mapped_column(String(64))
+    market_type: Mapped[str] = mapped_column(String(32), index=True)
+    office: Mapped[str] = mapped_column(String(32))
+    country: Mapped[str] = mapped_column(String(16), index=True)
+    year: Mapped[int | None] = mapped_column(Integer)
+    round: Mapped[int | None] = mapped_column(Integer)
+    candidate: Mapped[str | None] = mapped_column(Text)
+    contest_key: Mapped[str | None] = mapped_column(String(64), index=True)
+    coverage: Mapped[str] = mapped_column(String(16))
+    abstain_reason: Mapped[str | None] = mapped_column(Text)
+    rules_version: Mapped[str] = mapped_column(String(32))
+    classified_at: Mapped[datetime] = mapped_column(TS)
+    run_id: Mapped[int | None] = mapped_column(Integer)
+
+
+class ElectionRun(Base):
+    __tablename__ = "election_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(24))  # discover | scan | backtest | evaluate
+    mode: Mapped[str] = mapped_column(String(32))  # live | backtest_retrospectivo
+    contest_key: Mapped[str | None] = mapped_column(String(64))
+    started_at: Mapped[datetime] = mapped_column(TS)
+    finished_at: Mapped[datetime | None] = mapped_column(TS)
+    status: Mapped[str] = mapped_column(String(16))
+    summary: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    report_path: Mapped[str | None] = mapped_column(Text)
+
+
+class ElectionEstimate(Base):
+    __tablename__ = "election_estimates"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("election_runs.id", ondelete="CASCADE"))
+    mode: Mapped[str] = mapped_column(String(32))
+    contest_key: Mapped[str] = mapped_column(String(64))
+    as_of: Mapped[datetime] = mapped_column(TS)
+    name: Mapped[str] = mapped_column(String(80))
+    family: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    prob_a: Mapped[float | None] = mapped_column(Float)
+    prob_a_low: Mapped[float | None] = mapped_column(Float)
+    prob_a_high: Mapped[float | None] = mapped_column(Float)
+    vote_share_a: Mapped[float | None] = mapped_column(Float)
+    sigma: Mapped[float | None] = mapped_column(Float)
+    horizon_days: Mapped[float] = mapped_column(Float)
+    model_version: Mapped[str] = mapped_column(String(32))
+    calibration: Mapped[str] = mapped_column(Text)
+    inputs: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    abstain_reason: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (Index("ix_election_estimates_run_asof", "run_id", "as_of"),)
+
+
+class ElectionAlert(Base):
+    """Copia consultable de una alerta; la fuente de verdad es el ledger JSONL encadenado."""
+
+    __tablename__ = "election_alerts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("election_runs.id", ondelete="CASCADE"))
+    mode: Mapped[str] = mapped_column(String(32))
+    kind: Mapped[str] = mapped_column(String(24))  # investigacion | senal_operable
+    contest_key: Mapped[str] = mapped_column(String(64), index=True)
+    market_id: Mapped[str] = mapped_column(String(64))
+    token_id: Mapped[str] = mapped_column(String(100))
+    label: Mapped[str] = mapped_column(Text)
+    as_of: Mapped[datetime] = mapped_column(TS)
+    created_at: Mapped[datetime] = mapped_column(TS)
+    price: Mapped[float | None] = mapped_column(Float)
+    price_basis: Mapped[str] = mapped_column(String(40))
+    reference_prob: Mapped[float | None] = mapped_column(Float)
+    discrepancy_pp: Mapped[float | None] = mapped_column(Float)
+    conservative_edge_pp: Mapped[float | None] = mapped_column(Float)
+    signal: Mapped[bool] = mapped_column(Boolean)
+    gating: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+    ledger_path: Mapped[str] = mapped_column(Text)
+    ledger_seq: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), unique=True)
+    prev_sha256: Mapped[str] = mapped_column(String(64))

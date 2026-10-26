@@ -1,4 +1,6 @@
-# Evidencia de funcionamiento — hito 1
+# Evidencia de funcionamiento
+
+Secciones 1–7: hito 1 (ingesta). Sección 8: motor electoral (hito E).
 
 Todo lo de esta página se ejecutó el **25-oct-2026 (UTC)** en un contenedor
 Linux con acceso a internet, contra las APIs públicas reales de Polymarket.
@@ -112,6 +114,7 @@ Notas honestas sobre esta verificación:
 | Detalle (reglas, libros, profundidad, historial) | ![Detalle](screenshots/03_detalle.png) |
 | Ingesta (corridas, motivos, errores) | ![Ingesta](screenshots/04_ingesta.png) |
 | Pantallas no implementadas | ![Pendiente](screenshots/05_oportunidades_no_implementado.png) |
+| Electoral (hito E, ver §8) | ![Electoral](screenshots/06_electoral.png) |
 
 Las capturas se tomaron con Playwright/Chromium; ninguna pantalla lanzó
 excepciones de Streamlit ni errores de JavaScript.
@@ -150,3 +153,78 @@ volumen 3,8 s (mejora pendiente: índices).
   `http_transport_error_retry` en los logs), así que el backoff solo está probado
   con pruebas sintéticas.
 - El build Docker en una red sin inspección TLS (se usó el secreto de CA).
+
+## 8. Motor electoral (hito E) — 26-oct-2026 UTC
+
+Detalle de reglas y resultados en [`ELECTORAL_ENGINE.md`](ELECTORAL_ENGINE.md).
+
+### 8.1 Pruebas
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+# All checks passed! / 74 files already formatted
+
+TEST_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5432/radar_test \
+RADAR_LIVE_TESTS=1 .venv/bin/pytest -q
+# 104 passed, 1 warning
+```
+
+- 33 pruebas nuevas en `tests/test_elections_*.py`: lectura de números y fechas
+  (incluido "4,050" como miles), filas de resultado y de boca de urna nunca
+  tratadas como encuestas, un extracto real de Wikipedia (revisión `1379945237`),
+  Monte Carlo y validación, puertas de la señal operable, cadena de hashes,
+  clasificación de mercados y un backtest sintético que verifica que una
+  encuesta publicada después de T no entra en T.
+- `test_election_endpoints` (PostgreSQL) cubre las 5 rutas `/api/elections/*`.
+- La migración `0002_elections` coincide con los modelos (`test_migrations_db`).
+- Pasos de CI en un entorno virtual limpio, instalando solo desde
+  `requirements*.lock` con `--require-hashes` (incluye la nueva dependencia
+  `lxml==6.0.2`): `102 passed, 2 skipped` (las 2 en vivo).
+- Imagen Docker reconstruida con `lxml`; dentro de ella,
+  `python -m radar.cli elections verify-ledger …` devuelve 111 registros y 0
+  problemas.
+
+### 8.2 Corridas reales
+
+| Paso | Comando | Resultado |
+|---|---|---|
+| Descubrimiento | `radar elections discover` | 208.368 mercados revisados → 10.824 electorales en 1.847 eventos; 90 vinculados a Brasil 2026; 2 modelados |
+| Calibración | `radar elections calibrate` | 9 segundas vueltas con resultado; Brier fuera de muestra 0,158; **no validado** (mínimo 15) |
+| Backtest Brasil | `radar elections --out reports backtest` | 46 instantes, 28 revisiones, 44 con alerta, **0 señales operables** |
+| Multi-elección | `radar elections --out reports evaluate` | 5 contiendas con mercado; Brier medio 0,339 (modelo) vs 0,347 (mercado) |
+| Escaneo en vivo | `radar elections scan` | Se abstiene: "urnas cerradas: no se generan alertas" |
+
+El backtest se ejecutó dos veces con la caché llena y dio los mismos instantes,
+alertas, precios y probabilidades. Los hashes del ledger cambian entre corridas
+porque incluyen la hora de creación de cada registro.
+
+### 8.3 Ledger de alertas
+
+```bash
+radar elections verify-ledger data/alerts/backtest_br-2026-presidente-2t.jsonl
+# {"registros": 111, "problemas": []}
+```
+
+Sobre una **copia** del ledger se cambió el precio del registro 1 y se borró el
+registro 6; `verify-ledger` informó "alerta 1: contenido alterado (hash no
+coincide)", "alerta 7: prev_sha256 no coincide" y los saltos de secuencia.
+
+Ese ledger es **retrospectivo** (modo `backtest_retrospectivo`, generado el
+26-oct, después del resultado). Prueba que el contenido no cambió desde que se
+generó, pero no que existiera antes de la elección. Para eso, el ledger en vivo
+tiene que publicarse fuera del sistema antes de cada cierre.
+
+### 8.4 Dashboard
+
+La pantalla **Electoral** (captura en §5) se renderizó con Playwright con 0
+excepciones de Streamlit, 0 errores de JavaScript y 1 gráfico.
+
+### 8.5 Lo que NO se verificó
+
+- El escaneo en vivo con una contienda abierta: hoy no hay ninguna con fuente de
+  encuestas configurada. Su lógica (VWAP del ask, spread, antigüedad del libro,
+  congelado antes del cierre) solo está probada con libros sintéticos.
+- Las horas de publicación fuera de Wikipedia: la revisión es una cota superior
+  (`web.archive.org` no fue accesible desde este entorno).
+- Libros de órdenes históricos: no existen en las APIs públicas, así que ningún
+  precio del pasado es un ask ejecutable.

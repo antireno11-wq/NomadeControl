@@ -131,3 +131,65 @@ def test_status_reports_run_in_progress_separately(client, engine):
     assert body["run_in_progress"]["markets_discovered"] == 700
     assert body["last_run"]["status"] == "partial"
     assert body["last_run"]["markets_discovered"] == 6
+
+
+def test_election_endpoints(client, engine, tmp_path):
+    import json
+    from datetime import UTC, datetime
+
+    from sqlalchemy import insert
+
+    from radar.db.models import ElectionAlert, ElectionRun
+
+    c, _ = client
+    assert c.get("/api/elections/backtest").status_code == 404
+    report = tmp_path / "backtest_x.md"
+    report.write_text("# x")
+    (tmp_path / "backtest_x.json").write_text(json.dumps({"timeline": [], "creado": "SINTÉTICO"}))
+    now = datetime(2026, 10, 26, tzinfo=UTC)
+    with engine.begin() as conn:
+        run_id = conn.execute(
+            insert(ElectionRun)
+            .values(
+                kind="backtest",
+                mode="backtest_retrospectivo",
+                contest_key="x",
+                started_at=now,
+                finished_at=now,
+                status="success",
+                summary={"validacion": "no_validado"},
+                report_path=str(report),
+            )
+            .returning(ElectionRun.id)
+        ).scalar_one()
+        conn.execute(
+            insert(ElectionAlert).values(
+                run_id=run_id,
+                mode="backtest_retrospectivo",
+                kind="investigacion",
+                contest_key="x",
+                market_id="m",
+                token_id="t",
+                label="SINTÉTICO YES",
+                as_of=now,
+                created_at=now,
+                price=0.2,
+                price_basis="precio_referencia_no_ejecutable",
+                reference_prob=0.3,
+                discrepancy_pp=10.0,
+                conservative_edge_pp=-1.0,
+                signal=False,
+                gating=["modelo no validado"],
+                ledger_path="x",
+                ledger_seq=1,
+                sha256="a" * 64,
+                prev_sha256="0" * 64,
+            )
+        )
+    summary = c.get("/api/elections/summary").json()
+    assert summary["backtest"]["summary"]["validacion"] == "no_validado"
+    assert summary["discover"] is None
+    assert c.get("/api/elections/backtest").json()["creado"] == "SINTÉTICO"
+    alerts = c.get("/api/elections/alerts", params={"mode": "backtest_retrospectivo"}).json()
+    assert len(alerts) == 1 and alerts[0]["signal"] is False and alerts[0]["sha256"] == "a" * 64
+    assert c.get("/api/elections/evaluation").status_code == 404

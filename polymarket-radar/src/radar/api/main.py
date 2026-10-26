@@ -120,7 +120,7 @@ def status(session: SessionDep, settings: SettingsDep) -> dict[str, Any]:
             "ingesta": "implementado",
             "inteligencia_contratos": "pendiente (hito 2)",
             "arbitraje": "pendiente (hito 3)",
-            "modelos_predictivos": "pendiente (hito 4)",
+            "modelos_predictivos": "electoral (2.ª vuelta) implementado; resto pendiente",
             "valoracion": "pendiente (hito 5)",
             "cartera_virtual": "pendiente (hito 6)",
             "backtesting": "pendiente (hito 7)",
@@ -202,3 +202,146 @@ def market_snapshots(
 @app.get("/api/categories")
 def categories(session: SessionDep) -> list[dict[str, Any]]:
     return queries.category_counts(session)
+
+
+# --------------------------------------------------------------------------- electoral
+def _latest_election_run(session: Session, kind: str) -> Any:
+    from sqlalchemy import desc, select
+
+    from radar.db.models import ElectionRun
+
+    return session.execute(
+        select(ElectionRun)
+        .where(ElectionRun.kind == kind, ElectionRun.status == "success")
+        .order_by(desc(ElectionRun.id))
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def _report_json(run: Any) -> dict[str, Any] | None:
+    import json
+    from pathlib import Path
+
+    if run is None or not run.report_path:
+        return None
+    path = Path(run.report_path).with_suffix(".json")
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parents[3] / path
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/elections/summary")
+def elections_summary(session: SessionDep) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for kind in ("discover", "backtest", "evaluate", "scan"):
+        run = _latest_election_run(session, kind)
+        out[kind] = (
+            {
+                "run_id": run.id,
+                "mode": run.mode,
+                "contest_key": run.contest_key,
+                "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                "summary": run.summary,
+                "report_path": run.report_path,
+            }
+            if run
+            else None
+        )
+    return out
+
+
+@app.get("/api/elections/markets")
+def elections_markets(
+    session: SessionDep,
+    coverage: str | None = None,
+    country: str | None = None,
+    market_type: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=2000)] = 200,
+) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+
+    from radar.db.models import ElectionMarket, Market
+
+    stmt = select(ElectionMarket, Market.question).join(
+        Market, Market.id == ElectionMarket.market_id
+    )
+    if coverage:
+        stmt = stmt.where(ElectionMarket.coverage == coverage)
+    if country:
+        stmt = stmt.where(ElectionMarket.country == country)
+    if market_type:
+        stmt = stmt.where(ElectionMarket.market_type == market_type)
+    rows = session.execute(stmt.order_by(ElectionMarket.market_id).limit(limit)).all()
+    return [
+        {
+            "market_id": em.market_id,
+            "question": q,
+            "market_type": em.market_type,
+            "office": em.office,
+            "country": em.country,
+            "round": em.round,
+            "candidate": em.candidate,
+            "contest_key": em.contest_key,
+            "coverage": em.coverage,
+            "abstain_reason": em.abstain_reason,
+        }
+        for em, q in rows
+    ]
+
+
+@app.get("/api/elections/backtest")
+def elections_backtest(session: SessionDep) -> dict[str, Any]:
+    data = _report_json(_latest_election_run(session, "backtest"))
+    if data is None:
+        raise HTTPException(404, "no hay backtest electoral: ejecute 'radar elections backtest'")
+    return data
+
+
+@app.get("/api/elections/evaluation")
+def elections_evaluation(session: SessionDep) -> dict[str, Any]:
+    data = _report_json(_latest_election_run(session, "evaluate"))
+    if data is None:
+        raise HTTPException(404, "no hay evaluación: ejecute 'radar elections evaluate'")
+    return data
+
+
+@app.get("/api/elections/alerts")
+def elections_alerts(
+    session: SessionDep,
+    mode: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+
+    from radar.db.models import ElectionAlert
+
+    stmt = select(ElectionAlert)
+    if mode:
+        stmt = stmt.where(ElectionAlert.mode == mode)
+    rows = session.execute(
+        stmt.order_by(ElectionAlert.as_of, ElectionAlert.id).limit(limit)
+    ).scalars()
+    return [
+        {
+            "id": a.id,
+            "mode": a.mode,
+            "kind": a.kind,
+            "contest_key": a.contest_key,
+            "label": a.label,
+            "as_of": a.as_of.isoformat(),
+            "created_at": a.created_at.isoformat(),
+            "price": a.price,
+            "price_basis": a.price_basis,
+            "reference_prob": a.reference_prob,
+            "discrepancy_pp": a.discrepancy_pp,
+            "conservative_edge_pp": a.conservative_edge_pp,
+            "signal": a.signal,
+            "gating": a.gating,
+            "ledger_seq": a.ledger_seq,
+            "sha256": a.sha256,
+            "prev_sha256": a.prev_sha256,
+        }
+        for a in rows
+    ]

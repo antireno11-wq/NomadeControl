@@ -1,0 +1,420 @@
+{
+ "contest": "br-2026-presidente-2t",
+ "source": "Opinion polling for the 2026 Brazilian presidential election",
+ "points": [
+  {
+   "t": "2026-10-05T12:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-06T00:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-06T12:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-07T00:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-07T12:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-08T00:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-08T12:00:00+00:00",
+   "revid": 1378586366,
+   "revision_ts": "2026-10-05T02:58:29+00:00",
+   "sha256": "8d92b24a5e4d53f4010d4efafa320bc230c534fa230320f459026c5d9b893573",
+   "retrieved_at": "2026-10-26T02:28:00.489268+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1378586366",
+   "error": null
+  },
+  {
+   "t": "2026-10-09T00:00:00+00:00",
+   "revid": 1379252951,
+   "revision_ts": "2026-10-08T21:48:27+00:00",
+   "sha256": "b52f26da76c9d8260a3900ac15151fecc8a5130abc53f081df4298075437ef56",
+   "retrieved_at": "2026-10-26T02:29:15.053870+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379252951",
+   "error": null
+  },
+  {
+   "t": "2026-10-09T12:00:00+00:00",
+   "revid": 1379304597,
+   "revision_ts": "2026-10-09T03:29:27+00:00",
+   "sha256": "713335026557e4f042c29d4bc142bae5a9379b52b35b139d08ade47db40d3701",
+   "retrieved_at": "2026-10-26T02:30:13.022175+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379304597",
+   "error": null
+  },
+  {
+   "t": "2026-10-10T00:00:00+00:00",
+   "revid": 1379403428,
+   "revision_ts": "2026-10-09T20:13:26+00:00",
+   "sha256": "08250db9347fd6129bcd9723884d854731c79fb7b66a038d69997556efda59d4",
+   "retrieved_at": "2026-10-26T02:30:36.077304+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379403428",
+   "error": null
+  },
+  {
+   "t": "2026-10-10T12:00:00+00:00",
+   "revid": 1379475211,
+   "revision_ts": "2026-10-10T05:36:15+00:00",
+   "sha256": "efb0c54e16d996b43a209374bca00e5ee0dd3ade42dad5d15d1d9ced5d07805c",
+   "retrieved_at": "2026-10-26T02:31:05.890669+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379475211",
+   "error": null
+  },
+  {
+   "t": "2026-10-11T00:00:00+00:00",
+   "revid": 1379579927,
+   "revision_ts": "2026-10-10T20:53:15+00:00",
+   "sha256": "d2d6c25b4864d948669bbb3b5df7b02aed875e64b9710b8307de299d480e2dbc",
+   "retrieved_at": "2026-10-26T02:33:01.162014+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379579927",
+   "error": null
+  },
+  {
+   "t": "2026-10-11T12:00:00+00:00",
+   "revid": 1379579927,
+   "revision_ts": "2026-10-10T20:53:15+00:00",
+   "sha256": "d2d6c25b4864d948669bbb3b5df7b02aed875e64b9710b8307de299d480e2dbc",
+   "retrieved_at": "2026-10-26T02:33:01.162014+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379579927",
+   "error": null
+  },
+  {
+   "t": "2026-10-12T00:00:00+00:00",
+   "revid": 1379579927,
+   "revision_ts": "2026-10-10T20:53:15+00:00",
+   "sha256": "d2d6c25b4864d948669bbb3b5df7b02aed875e64b9710b8307de299d480e2dbc",
+   "retrieved_at": "2026-10-26T02:33:01.162014+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379579927",
+   "error": null
+  },
+  {
+   "t": "2026-10-12T12:00:00+00:00",
+   "revid": 1379793184,
+   "revision_ts": "2026-10-12T00:07:25+00:00",
+   "sha256": "592d58769929da72767a2fe86d0b3af742409e4176b9c807062989d40276685f",
+   "retrieved_at": "2026-10-26T02:34:01.397482+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379793184",
+   "error": null
+  },
+  {
+   "t": "2026-10-13T00:00:00+00:00",
+   "revid": 1379945237,
+   "revision_ts": "2026-10-12T21:20:23+00:00",
+   "sha256": "891fb8f78f906b3d9fa0be092fca74d149dc0f8f8822396bdd7747379fb2bb92",
+   "retrieved_at": "2026-10-26T02:35:01.125149+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379945237",
+   "error": null
+  },
+  {
+   "t": "2026-10-13T12:00:00+00:00",
+   "revid": 1379945237,
+   "revision_ts": "2026-10-12T21:20:23+00:00",
+   "sha256": "891fb8f78f906b3d9fa0be092fca74d149dc0f8f8822396bdd7747379fb2bb92",
+   "retrieved_at": "2026-10-26T02:35:01.125149+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1379945237",
+   "error": null
+  },
+  {
+   "t": "2026-10-14T00:00:00+00:00",
+   "revid": 1380090096,
+   "revision_ts": "2026-10-13T18:45:15+00:00",
+   "sha256": "1e5ae7557db4b5e988c0cca9de6aa3d41d1f9359f559ae472926a8f3c1663b8b",
+   "retrieved_at": "2026-10-26T02:36:00.911125+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380090096",
+   "error": null
+  },
+  {
+   "t": "2026-10-14T12:00:00+00:00",
+   "revid": 1380160420,
+   "revision_ts": "2026-10-14T03:43:06+00:00",
+   "sha256": "4d1209e1ba5c6889e37e8a24b82d5de5b387847ceccceecb48e82ae72487b838",
+   "retrieved_at": "2026-10-26T02:37:00.477271+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380160420",
+   "error": null
+  },
+  {
+   "t": "2026-10-15T00:00:00+00:00",
+   "revid": 1380160420,
+   "revision_ts": "2026-10-14T03:43:06+00:00",
+   "sha256": "4d1209e1ba5c6889e37e8a24b82d5de5b387847ceccceecb48e82ae72487b838",
+   "retrieved_at": "2026-10-26T02:37:00.477271+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380160420",
+   "error": null
+  },
+  {
+   "t": "2026-10-15T12:00:00+00:00",
+   "revid": 1380374804,
+   "revision_ts": "2026-10-15T10:41:43+00:00",
+   "sha256": "a91c61cfa389cf33d1eb4107d4f928d775463a83b6ce625061b4d5f4ff04237f",
+   "retrieved_at": "2026-10-26T02:38:00.709077+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380374804",
+   "error": null
+  },
+  {
+   "t": "2026-10-16T00:00:00+00:00",
+   "revid": 1380473530,
+   "revision_ts": "2026-10-15T22:45:25+00:00",
+   "sha256": "b80bccdc3a5eaf559232938a370ffc4c37ed8c390676dca10b8d7bfe2911caae",
+   "retrieved_at": "2026-10-26T02:38:28.994808+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380473530",
+   "error": null
+  },
+  {
+   "t": "2026-10-16T12:00:00+00:00",
+   "revid": 1380473530,
+   "revision_ts": "2026-10-15T22:45:25+00:00",
+   "sha256": "b80bccdc3a5eaf559232938a370ffc4c37ed8c390676dca10b8d7bfe2911caae",
+   "retrieved_at": "2026-10-26T02:38:28.994808+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380473530",
+   "error": null
+  },
+  {
+   "t": "2026-10-17T00:00:00+00:00",
+   "revid": 1380615043,
+   "revision_ts": "2026-10-16T21:15:23+00:00",
+   "sha256": "e57395f8b821f5ca7916e7995a026c57700faef631692829f42d88587bd387ae",
+   "retrieved_at": "2026-10-26T02:40:01.301151+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380615043",
+   "error": null
+  },
+  {
+   "t": "2026-10-17T12:00:00+00:00",
+   "revid": 1380712874,
+   "revision_ts": "2026-10-17T11:30:09+00:00",
+   "sha256": "5a48ac6a113ea944275554abdd510681b25fd2f6988a9f56941085a338641434",
+   "retrieved_at": "2026-10-26T02:40:20.793007+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380712874",
+   "error": null
+  },
+  {
+   "t": "2026-10-18T00:00:00+00:00",
+   "revid": 1380773720,
+   "revision_ts": "2026-10-17T20:05:20+00:00",
+   "sha256": "6be313f908425bb847efbefa3b9949206b42e2d0e9031e9297b7f4471f6e1bfd",
+   "retrieved_at": "2026-10-26T02:41:14.592232+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380773720",
+   "error": null
+  },
+  {
+   "t": "2026-10-18T12:00:00+00:00",
+   "revid": 1380801855,
+   "revision_ts": "2026-10-18T00:26:04+00:00",
+   "sha256": "b3ccbf385b36da455503bd256c2be2a8ef4a8454b52ce86e13885f5785b47a3f",
+   "retrieved_at": "2026-10-26T02:42:00.792447+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380801855",
+   "error": null
+  },
+  {
+   "t": "2026-10-19T00:00:00+00:00",
+   "revid": 1380940871,
+   "revision_ts": "2026-10-18T23:04:06+00:00",
+   "sha256": "662c149c205a0afb3737f262627da8687a2de1e67a7b341464e930bd09457882",
+   "retrieved_at": "2026-10-26T02:43:14.197068+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380940871",
+   "error": null
+  },
+  {
+   "t": "2026-10-19T12:00:00+00:00",
+   "revid": 1380968837,
+   "revision_ts": "2026-10-19T03:42:56+00:00",
+   "sha256": "c879dde02bc57c087660f1476a51ed12e0db86ae06726e28422cfec54d3e56db",
+   "retrieved_at": "2026-10-26T02:45:00.567754+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1380968837",
+   "error": null
+  },
+  {
+   "t": "2026-10-20T00:00:00+00:00",
+   "revid": 1381077743,
+   "revision_ts": "2026-10-19T21:44:52+00:00",
+   "sha256": "f81bd33ff5438b6aeb41e5e3419c0a009ffddde137511efa4d10c5e7ae55e9c6",
+   "retrieved_at": "2026-10-26T02:46:01.376569+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381077743",
+   "error": null
+  },
+  {
+   "t": "2026-10-20T12:00:00+00:00",
+   "revid": 1381077743,
+   "revision_ts": "2026-10-19T21:44:52+00:00",
+   "sha256": "f81bd33ff5438b6aeb41e5e3419c0a009ffddde137511efa4d10c5e7ae55e9c6",
+   "retrieved_at": "2026-10-26T02:46:01.376569+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381077743",
+   "error": null
+  },
+  {
+   "t": "2026-10-21T00:00:00+00:00",
+   "revid": 1381241444,
+   "revision_ts": "2026-10-20T23:00:03+00:00",
+   "sha256": "c82b48c836c88592de90c9a02b92ba7c75faf141c45f9522357bcc8b1961ace5",
+   "retrieved_at": "2026-10-26T02:47:15.747905+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381241444",
+   "error": null
+  },
+  {
+   "t": "2026-10-21T12:00:00+00:00",
+   "revid": 1381262408,
+   "revision_ts": "2026-10-21T03:13:22+00:00",
+   "sha256": "49a7e6f0fed00007a5b0786ebcf9656c0bfcecf5ead120f99bac1300de8ac466",
+   "retrieved_at": "2026-10-26T02:49:01.183958+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381262408",
+   "error": null
+  },
+  {
+   "t": "2026-10-22T00:00:00+00:00",
+   "revid": 1381362399,
+   "revision_ts": "2026-10-21T22:34:55+00:00",
+   "sha256": "38e2eb91d5d628e63b7b0084bebc510aef424e138b0f6488f870c56a6f638d98",
+   "retrieved_at": "2026-10-26T02:49:19.618781+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381362399",
+   "error": null
+  },
+  {
+   "t": "2026-10-22T12:00:00+00:00",
+   "revid": 1381362399,
+   "revision_ts": "2026-10-21T22:34:55+00:00",
+   "sha256": "38e2eb91d5d628e63b7b0084bebc510aef424e138b0f6488f870c56a6f638d98",
+   "retrieved_at": "2026-10-26T02:49:19.618781+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381362399",
+   "error": null
+  },
+  {
+   "t": "2026-10-23T00:00:00+00:00",
+   "revid": 1381496003,
+   "revision_ts": "2026-10-22T22:14:58+00:00",
+   "sha256": "c518c5c71c620686317140057a6c36debca0b6eab6fe1841d2cb0203351684a1",
+   "retrieved_at": "2026-10-26T02:50:15.495884+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381496003",
+   "error": null
+  },
+  {
+   "t": "2026-10-23T12:00:00+00:00",
+   "revid": 1381532828,
+   "revision_ts": "2026-10-23T03:40:56+00:00",
+   "sha256": "19d1a5519e03b1d48f612084904b6dd8b26a9497478957c2cca0f4c37b892210",
+   "retrieved_at": "2026-10-26T02:51:13.501401+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381532828",
+   "error": null
+  },
+  {
+   "t": "2026-10-24T00:00:00+00:00",
+   "revid": 1381653657,
+   "revision_ts": "2026-10-23T22:35:49+00:00",
+   "sha256": "c76a70b01d64bbbe6c35b26cb57467b0c7493ba634d40dbfe4d773663a31ab24",
+   "retrieved_at": "2026-10-26T02:53:00.947714+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381653657",
+   "error": null
+  },
+  {
+   "t": "2026-10-24T12:00:00+00:00",
+   "revid": 1381653657,
+   "revision_ts": "2026-10-23T22:35:49+00:00",
+   "sha256": "c76a70b01d64bbbe6c35b26cb57467b0c7493ba634d40dbfe4d773663a31ab24",
+   "retrieved_at": "2026-10-26T02:53:00.947714+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381653657",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T00:00:00+00:00",
+   "revid": 1381815471,
+   "revision_ts": "2026-10-24T23:54:45+00:00",
+   "sha256": "3f5e95d3510784161d9aee30c21717a4a46c70a806a30d9794918b320bbdcb9f",
+   "retrieved_at": "2026-10-26T02:53:20.463929+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381815471",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T06:00:00+00:00",
+   "revid": 1381855233,
+   "revision_ts": "2026-10-25T05:56:07+00:00",
+   "sha256": "c29cecd67b47425c9df18674d32659240b83de470d217e313cc832e6fda6cdfe",
+   "retrieved_at": "2026-10-26T02:54:16.038785+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381855233",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T12:00:00+00:00",
+   "revid": 1381856038,
+   "revision_ts": "2026-10-25T06:06:14+00:00",
+   "sha256": "341652adf40de665cf759d8139b76586a11bcfec2fc88fc037b612cfbdd231bc",
+   "retrieved_at": "2026-10-26T02:56:01.381855+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381856038",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T15:00:00+00:00",
+   "revid": 1381856038,
+   "revision_ts": "2026-10-25T06:06:14+00:00",
+   "sha256": "341652adf40de665cf759d8139b76586a11bcfec2fc88fc037b612cfbdd231bc",
+   "retrieved_at": "2026-10-26T02:56:01.381855+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381856038",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T18:00:00+00:00",
+   "revid": 1381856038,
+   "revision_ts": "2026-10-25T06:06:14+00:00",
+   "sha256": "341652adf40de665cf759d8139b76586a11bcfec2fc88fc037b612cfbdd231bc",
+   "retrieved_at": "2026-10-26T02:56:01.381855+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381856038",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T19:00:00+00:00",
+   "revid": 1381856038,
+   "revision_ts": "2026-10-25T06:06:14+00:00",
+   "sha256": "341652adf40de665cf759d8139b76586a11bcfec2fc88fc037b612cfbdd231bc",
+   "retrieved_at": "2026-10-26T02:56:01.381855+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381856038",
+   "error": null
+  },
+  {
+   "t": "2026-10-25T19:59:00+00:00",
+   "revid": 1381856038,
+   "revision_ts": "2026-10-25T06:06:14+00:00",
+   "sha256": "341652adf40de665cf759d8139b76586a11bcfec2fc88fc037b612cfbdd231bc",
+   "retrieved_at": "2026-10-26T02:56:01.381855+00:00",
+   "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1381856038",
+   "error": null
+  }
+ ]
+}
