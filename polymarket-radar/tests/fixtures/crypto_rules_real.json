@@ -1,0 +1,221 @@
+{
+ "_provenance": "Textos reales de Polymarket Gamma (/markets/keyset), capturados en la corrida de ingesta #2 del 25-oct-2026 (tabla markets). Solo se conservan los campos necesarios para leer el contrato.",
+ "markets": {
+  "daily_above": {
+   "id": "5929057",
+   "question": "Will the price of Bitcoin be above $72,000 on October 26?",
+   "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT closing at 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\n\nPrice precision is determined by the number of decimal places in the source.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-19T16:00:12+00:00",
+   "end_date": "2026-10-26T16:00:00+00:00",
+   "received_at": "2026-10-25T22:32:10.781222+00:00"
+  },
+  "daily_range": {
+   "id": "5929032",
+   "question": "Will the price of Bitcoin be between $72,000 and $74,000 on October 26?",
+   "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT closing at 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-19T16:00:14+00:00",
+   "end_date": "2026-10-26T16:00:00+00:00",
+   "received_at": "2026-10-25T22:32:10.781222+00:00"
+  },
+  "daily_below": {
+   "id": "5929028",
+   "question": "Will the price of Bitcoin be less than $72,000 on October 26?",
+   "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT closing at 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-19T16:00:14+00:00",
+   "end_date": "2026-10-26T16:00:00+00:00",
+   "received_at": "2026-10-25T22:32:10.781222+00:00"
+  },
+  "daily_top": {
+   "id": "5929053",
+   "question": "Will the price of Bitcoin be greater than $90,000 on October 26?",
+   "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT closing at 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-19T16:00:14+00:00",
+   "end_date": "2026-10-26T16:00:00+00:00",
+   "received_at": "2026-10-25T22:32:10.781222+00:00"
+  },
+  "hourly_above": {
+   "id": "6225665",
+   "question": "Bitcoin above 82,400 on October 25, 7PM ET?",
+   "description": "This market will resolve to \"Yes\" if the \"Close\" price for the BTC/USDT 1 hour candle that ends on the time and date specified in the title is higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1h\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\n\nPrice precision is determined by the number of decimal places in the source.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-25T21:40:12+00:00",
+   "end_date": "2026-10-25T23:00:00+00:00",
+   "received_at": "2026-10-25T22:40:49.041189+00:00"
+  },
+  "hourly_updown": {
+   "id": "6096819",
+   "question": "Bitcoin Up or Down - October 25, 6PM ET",
+   "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the BTC/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".\n\nThe resolution source for this market is information from Binance, specifically the BTC/USDT pair (https://www.binance.com/en/trade/BTC_USDT). The close « C » and open « O » displayed at the top of the graph for the relevant \"1H\" candle will be used once the data for that candle is finalized.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Up",
+    "Down"
+   ],
+   "start_date": "2026-10-23T22:00:09+00:00",
+   "end_date": "2026-10-25T23:00:00+00:00",
+   "received_at": "2026-10-25T22:35:35.855249+00:00"
+  },
+  "daily_updown": {
+   "id": "6138697",
+   "question": "Bitcoin Up or Down on October 26?",
+   "description": "This market will resolve to \"Up\" if the \"Close\" price for the Binance 1 minute candle for BTC/USDT Oct 25 '26 12:00 in the ET timezone (noon) is lower than the final \"Close\" price for the Oct 26 '26 12:00 ET candle.\n\nThis market will resolve to \"Down\" if the \"Close\" price for the Binance 1 minute candle for BTC/USDT Oct 25 '26 12:00 in the ET timezone (noon) is higher than the final \"Close\" price for the Oct 26 '26 12:00 ET candle.\n\nIf the final \"Close\" price for both of these candles is exactly equal on Binance, this market will resolve 50-50.\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.",
+   "outcomes": [
+    "Up",
+    "Down"
+   ],
+   "start_date": "2026-10-24T16:07:09+00:00",
+   "end_date": "2026-10-26T16:00:00+00:00",
+   "received_at": "2026-10-25T22:36:06.843232+00:00"
+  },
+  "touch_month": {
+   "id": "5170727",
+   "question": "Will Bitcoin reach $150,000 in October?",
+   "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for BTC/USDT during the month specified in the title (from 00:00 AM ET on the first day to 11:59 PM ET on the last), has a final High price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the BTC/USDT High prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" for one-minute candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-01T05:07:13+00:00",
+   "end_date": "2026-11-01T04:00:00+00:00",
+   "received_at": "2026-10-25T22:26:30.187906+00:00"
+  },
+  "touch_range": {
+   "id": "5912695",
+   "question": "Will Bitcoin dip to $78,000 October 19-25?",
+   "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Bitcoin (BTC/USDT) during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"Low\" price equal to or lower than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Low\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-19T04:00:10+00:00",
+   "end_date": "2026-10-26T04:00:00+00:00",
+   "received_at": "2026-10-25T22:31:41.644485+00:00"
+  },
+  "touch_day": {
+   "id": "6171140",
+   "question": "Will Bitcoin reach $88,000 on October 25?",
+   "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for Bitcoin (BTC/USDT) on the date specified in the title, between 12:00 AM ET and 11:59 PM ET has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-25T04:00:10+00:00",
+   "end_date": "2026-10-26T04:00:00+00:00",
+   "received_at": "2026-10-25T22:37:22.287486+00:00"
+  },
+  "touch_explicit": {
+   "id": "701486",
+   "question": "Will Bitcoin reach $200,000 by December 31, 2026?",
+   "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Bitcoin (BTC/USDT) between November 24, 2025, 14:00 and December 31, 2026, 23:59 in the ET timezone has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" for one-minute candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2025-11-24T19:07:20.933000+00:00",
+   "end_date": "2027-01-01T05:00:00+00:00",
+   "received_at": "2026-10-25T22:21:29.020825+00:00"
+  },
+  "touch_either": {
+   "id": "3867973",
+   "question": "Will Ethena dip to $0.12 by December 31, 2026?",
+   "description": "This market will immediately resolve to “Yes” if any Binance 1-minute candle for Ethena (ENA/USDT) between the creation of this market and December 31, 2026, 23:59 ET has a final \"High\" or \"Low\" price equal to or beyond (above for ↑ High Prices, below for ↓ Low Prices) the listed price. Otherwise, the market will resolve to “No”.\n\nThe resolution source for this market is Binance, specifically the ENA/USDT “High” and \"Low\" prices available at:\nhttps://www.binance.com/en/trade/ENA_USDT\nwith the chart set to “1m” (one-minute candles) on the top bar.\n\nOnly the Binance ENA/USDT price feed will be used.\nPrices from other exchanges, trading pairs, or spot markets will not be considered.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-08-25T05:03:28+00:00",
+   "end_date": "2027-01-01T05:00:00+00:00",
+   "received_at": "2026-10-25T22:24:12.810767+00:00"
+  },
+  "touch_until_implicit": {
+   "id": "3747576",
+   "question": "Will Bitcoin hit $150k by June 30, 2027?",
+   "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Bitcoin (BTC/USDT) has a final \"High\" price equal to or greater than the price specified in the title by 11:59PM ET on the date specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" for one-minute candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-08-20T17:32:24+00:00",
+   "end_date": "2027-07-01T04:00:00+00:00",
+   "received_at": "2026-10-25T22:23:52.655904+00:00"
+  },
+  "chainlink_5m": {
+   "id": "964335",
+   "question": "Bitcoin Up or Down - December 19, 11:35AM-11:40AM ET",
+   "description": "This market will resolve to \"Up\" if the Bitcoin price at the end of the time range specified in the title is greater than or equal to the price at the beginning of that range. Otherwise, it will resolve to \"Down\".\nThe resolution source for this market is information from Chainlink, specifically the BTC/USD data stream available at https://data.chain.link/streams/btc-usd.\nPlease note that this market is about the price according to Chainlink data stream BTC/USD, not according to other sources or spot markets.",
+   "outcomes": [
+    "Up",
+    "Down"
+   ],
+   "start_date": "2025-12-18T16:43:11+00:00",
+   "end_date": "2025-12-19T16:40:00+00:00",
+   "received_at": "2026-10-25T22:21:31.518691+00:00"
+  },
+  "futures_hype": {
+   "id": "5171300",
+   "question": "Will Hyperliquid reach $112 in October?",
+   "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for HYPEUSDT during the month specified in the title (from 00:00 AM ET on the first day to 11:59 PM ET on the last) has a final High price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the HYPEUSDT High prices available at https://www.binance.com/en/futures/HYPEUSDT, with the chart settings on \"1m\" for one-minute candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance HYPEUSDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-01T06:23:10+00:00",
+   "end_date": "2026-11-01T04:00:00+00:00",
+   "received_at": "2026-10-25T22:26:30.644669+00:00"
+  },
+  "bybit": {
+   "id": "2262300",
+   "question": "Will Sui reach $1.40 before 2027?",
+   "description": "This market will immediately resolve to “Yes” if any Bybit 1-minute candle for Sui (SUI/USDT) between the creation of this market and December 31, 2026, 23:59 ET has a final “High” price equal to or greater than the price specified in the title. Otherwise, the market will resolve to “No.”\n\nThe resolution source for this market is Bybit, specifically the SUI/USDT “High” prices available at:\nhttps://www.bybit.com/en/trade/spot/SUI/USDT\nwith the chart set to “1m” (one-minute candles) on the top bar.\n\nOnly the Bybit SUI/USDT price feed will be used.\nPrices from other exchanges, trading pairs, or spot markets will not be considered.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-05-14T20:19:49.131861+00:00",
+   "end_date": "2027-01-01T05:00:00+00:00",
+   "received_at": "2026-10-25T22:21:52.432085+00:00"
+  },
+  "asset_chainlink": {
+   "id": "3868012",
+   "question": "Will Chainlink dip to $10 by December 31, 2026?",
+   "description": "This market will immediately resolve to “Yes” if any Binance 1-minute candle for Chainlink (LINK/USDT) between the creation of this market and December 31, 2026, 23:59 ET has a final \"High\" or \"Low\" price equal to or beyond (above for ↑ High Prices, below for ↓ Low Prices) the listed price. Otherwise, the market will resolve to “No”.\n\nThe resolution source for this market is Binance, specifically the LINK/USDT “High” and \"Low\" prices available at:\nhttps://www.binance.com/en/trade/LINK_USDT\nwith the chart set to “1m” (one-minute candles) on the top bar.\n\nOnly the Binance LINK/USDT price feed will be used.\nPrices from other exchanges, trading pairs, or spot markets will not be considered.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-08-25T05:06:47+00:00",
+   "end_date": "2027-01-01T05:00:00+00:00",
+   "received_at": "2026-10-25T22:24:12.810767+00:00"
+  },
+  "not_modeled": {
+   "id": "5912662",
+   "question": "Will Bitcoin have 0 green days the week of November 2?",
+   "description": "This market will resolve to the number of green days for Bitcoin (BTC/USDT) during the specified week.\n\nExactly one outcome in this market will resolve to “Yes”.\n\nThe week consists of the seven Binance 1-day candles beginning at 12:00 AM UTC on the specified date (Monday - Sunday). A day is a green day if the finalized \"CHANGE\" value displayed for its candle is equal to or greater than 0.00%.\n\nA 1-day candle must be finalized before it is considered for this market (namely, once the next 1-day candle is published, the previous one is finalized).\n\nThis market will resolve once the first 1-day candle of the following week is published, finalizing the last candle of the specified week. If a candle is unavailable, this market will resolve according to the value as first displayed once data is again available, no later than the end of the second calendar day (ET) after the end of the specified week.\n\nThe resolution source for this market is Binance, specifically the BTC/USDT trading pair, with the chart settings on \"1D\" and \"Candles\" selected on the top bar: https://www.binance.com/en/trade/BTC_USDT\n\nPlease note that this market is about the price according to the Binance BTC/USDT trading pair, not according to any other sources, exchanges, or trading pairs.",
+   "outcomes": [
+    "Yes",
+    "No"
+   ],
+   "start_date": "2026-10-19T04:00:12+00:00",
+   "end_date": "2026-11-09T00:00:00+00:00",
+   "received_at": "2026-10-25T22:31:41.644485+00:00"
+  }
+ }
+}

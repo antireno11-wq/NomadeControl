@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     # Una corrida completa tarda ~25-35 min con el universo actual (~2,4·10^5 mercados).
     schedule_interval_minutes: int = Field(default=60, ge=5)
     schedule_run_on_start: bool = True
+    # Predicciones en vivo (cripto) con libros pedidos en el momento; 0 = desactivado
+    predict_interval_minutes: int = Field(default=30, ge=0)
 
     # --- Dashboard ---------------------------------------------------------------
     api_base_url: str = "http://localhost:8000"

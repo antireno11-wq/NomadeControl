@@ -21,6 +21,7 @@ dependencies = [
   "pandas==3.1.0",
   "numpy==2.5.4",
   "lxml==6.0.2",
+  "scipy==1.18.1",
 ]
 
 [project.scripts]
@@ -57,6 +58,7 @@ ignore = [
 "tests/**" = ["S", "B"]
 "migrations/**" = ["E501"]
 "src/radar/elections/report.py" = ["E501"]  # plantillas de texto Markdown
+"src/radar/predict/report.py" = ["E501"]  # plantillas de texto Markdown
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

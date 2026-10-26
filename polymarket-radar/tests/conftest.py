@@ -88,6 +88,10 @@ def migrated_engine() -> Iterator[Engine]:
 
 
 TABLES = [
+    "valuations",
+    "predictions",
+    "model_evaluations",
+    "prediction_runs",
     "election_alerts",
     "election_estimates",
     "election_runs",

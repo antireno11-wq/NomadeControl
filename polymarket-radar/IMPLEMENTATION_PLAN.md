@@ -90,22 +90,27 @@ externa del ledger en vivo antes de cada cierre.
   escenarios y las reglas están verificadas (hito 2).
 - Pruebas: rentable, no rentable, ilíquido, ambiguo.
 
-## Hito 4 — Modelos predictivos 🟡 (electoral de 2.ª vuelta hecho, resto ⬜)
+## Hito 4 — Modelos predictivos ✅ (cripto y electoral; otras familias se abstienen)
 
-- Interfaz `predict(market, evidence, as_of_time)` → probabilidad, intervalo,
-  versión, datos usados, fecha, estado de calibración, motivo de abstención.
-- Cripto: precio al vencimiento (cierre > K) vs. toque de barrera antes del
-  vencimiento; simulación de trayectorias con volatilidad histórica; modelos
-  alternativos (GBM, bootstrap de retornos, volatilidad implícita si hay fuente
-  verificable). Fuente de precios histórica a definir y documentar.
-- Macro, corporativo, elecciones, otros: interfaces que se abstienen hasta
-  contar con datasets adecuados.
+| Entregable | Estado | Evidencia |
+|---|---|---|
+| Interfaz `predict(market, evidence, as_of_time)` con salida completa | ✅ | `radar/predict/base.py`, `tests/test_predict_crypto.py` |
+| Enrutamiento por familia y abstención con motivo | ✅ | `radar/predict/registry.py`, `tests/test_predict_registry.py` |
+| Contratos cripto: precio final, rango, Up/Down y toque | ✅ | `crypto-terms-v1` sobre reglas reales, `tests/test_predict_terms.py` |
+| Datos con procedencia: Binance (checksum oficial), DVOL de Deribit | ✅ | `data/raw/` (no versionado), SHA-256 en cada predicción |
+| Modelos alternativos `rv`, `ewma`, `dvol`, `bootstrap` | ✅ | fórmulas contrastadas con simulación (`tests/test_predict_models.py`) |
+| Evaluación preregistrada fuera de muestra | ✅ | `docs/PREREGISTRO_CRIPTO.md`, `reports/backtest_cripto.md` |
+| Elecciones vía la misma interfaz | ✅ | adaptador `elecciones-2t` |
+| Macro, corporativo, deportes, clima | ⬜ | se abstienen; candidatos: clima (pronósticos por conjuntos) y Tesoro (motor de toque) |
 
-## Hito 5 — Valoración ⬜
+## Hito 5 — Valoración ✅ (`valuation-v1`)
 
-- Probabilidad del modelo vs. precio ejecutable; ventaja en p.p.; EV bruto y
-  neto; incertidumbre; riesgo de liquidez; umbrales configurables.
-- Sin señal si el modelo no está calibrado o los datos son insuficientes.
+| Entregable | Estado | Evidencia |
+|---|---|---|
+| Probabilidad vs. ask ejecutable (VWAP), diferencia en p.p., VE bruto/neto/conservador, costos, incertidumbre, riesgo de liquidez | ✅ | `radar/predict/valuation.py`, `tests/test_predict_valuation.py` |
+| Umbrales configurables y puertas de señal | ✅ | `ValuationConfig`, `gate_reasons` |
+| Sin señal si el modelo no está validado o no supera al mercado | ✅ | pruebas de puertas |
+| Corrida en vivo manual y programada | ✅ | `radar predict live`, `RADAR_PREDICT_INTERVAL_MINUTES` |
 
 ## Hito 6 — Cartera virtual ⬜
 
@@ -115,7 +120,16 @@ externa del ledger en vivo antes de cada cierre.
   ledger auditable (append-only), P&L realizado/no realizado, resolución solo con
   resultados verificados, exposición correlacionada por evento/categoría.
 
-## Hito 7 — Backtesting ⬜
+## Hito 7 — Backtesting 🟡 (cripto hecho; general pendiente)
+
+Hecho para cripto: motor cronológico con partición entrenamiento/validación/prueba,
+mercados resueltos sin filtrar por resultado, precios históricos reales (referencia
+no ejecutable), Brier, log loss, ECE, calibración, comparación con el mercado y
+operaciones hipotéticas con caída máxima. Pendiente: generalizarlo a otras familias y
+a la cartera virtual (hito 6).
+
+### Diseño original
+
 
 - Motor cronológico con `as_of_time`; train/validación/test temporal; incluye
   mercados cerrados y desaparecidos (sin survivorship bias); solo precios

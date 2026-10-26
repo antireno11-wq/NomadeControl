@@ -120,10 +120,13 @@ def status(session: SessionDep, settings: SettingsDep) -> dict[str, Any]:
             "ingesta": "implementado",
             "inteligencia_contratos": "pendiente (hito 2)",
             "arbitraje": "pendiente (hito 3)",
-            "modelos_predictivos": "electoral (2.ª vuelta) implementado; resto pendiente",
-            "valoracion": "pendiente (hito 5)",
+            "modelos_predictivos": (
+                "interfaz común predict(); cripto (4 modelos) y electoral implementados; "
+                "macro, corporativo, deportes, clima y otros se abstienen con motivo"
+            ),
+            "valoracion": "implementada (valuation-v1) contra libros pedidos en el momento",
             "cartera_virtual": "pendiente (hito 6)",
-            "backtesting": "pendiente (hito 7)",
+            "backtesting": "cripto: cronológico con entrenamiento/validación/prueba",
             "alertas": "pendiente (hito 8)",
         },
     }
@@ -345,3 +348,132 @@ def elections_alerts(
         }
         for a in rows
     ]
+
+
+# ----------------------------------------------------------- modelos predictivos
+
+
+def _latest_prediction_run(session: Session, kind: str) -> Any:
+    from sqlalchemy import select
+
+    from radar.db.models import PredictionRun
+
+    return session.execute(
+        select(PredictionRun)
+        .where(PredictionRun.kind == kind, PredictionRun.status == "success")
+        .order_by(PredictionRun.id.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+
+def _run_dict(run: Any) -> dict[str, Any] | None:
+    if run is None:
+        return None
+    return {
+        "run_id": run.id,
+        "kind": run.kind,
+        "started_at": run.started_at.isoformat(),
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "params_version": run.params_version,
+        "summary": run.summary,
+        "report_path": run.report_path,
+    }
+
+
+@app.get("/api/predict/summary")
+def predict_summary(session: SessionDep) -> dict[str, Any]:
+    return {
+        "live": _run_dict(_latest_prediction_run(session, "live")),
+        "backtest": _run_dict(_latest_prediction_run(session, "backtest")),
+    }
+
+
+@app.get("/api/opportunities")
+def opportunities(
+    session: SessionDep,
+    recommendation: str | None = None,
+    min_edge_pp: float | None = None,
+    limit: Annotated[int, Query(ge=1, le=5000)] = 500,
+) -> dict[str, Any]:
+    """Valoraciones de la última corrida en vivo, ordenadas por diferencia en p.p."""
+    from sqlalchemy import select
+
+    from radar.db.models import ValuationRecord
+
+    run = _latest_prediction_run(session, "live")
+    if run is None:
+        return {"run": None, "items": [], "nota": "Información insuficiente: sin corrida en vivo"}
+    stmt = select(ValuationRecord).where(ValuationRecord.run_id == run.id)
+    if recommendation:
+        stmt = stmt.where(ValuationRecord.recommendation == recommendation)
+    if min_edge_pp is not None:
+        stmt = stmt.where(ValuationRecord.edge_pp >= min_edge_pp)
+    rows = session.execute(
+        stmt.order_by(ValuationRecord.edge_pp.desc().nulls_last()).limit(limit)
+    ).scalars()
+    items = []
+    for v in rows:
+        d = {c.name: getattr(v, c.name) for c in v.__table__.columns}
+        for k in ("as_of", "end_date", "book_received_at"):
+            if d.get(k) is not None:
+                d[k] = d[k].isoformat()
+        items.append(d)
+    from radar.db.models import Event, Market
+
+    ids = {d["market_id"] for d in items}
+    slugs = dict(
+        session.execute(
+            select(Market.id, Event.slug)
+            .join(Event, Event.id == Market.event_id)
+            .where(Market.id.in_(ids))
+        ).all()
+    ) if ids else {}  # fmt: skip
+    for d in items:
+        slug = slugs.get(d["market_id"])
+        d["url"] = f"https://polymarket.com/event/{slug}" if slug else None
+    return {"run": _run_dict(run), "items": items}
+
+
+@app.get("/api/predict/quality")
+def predict_quality(session: SessionDep) -> dict[str, Any]:
+    """Métricas fuera de muestra del último backtest (por modelo y variante)."""
+    from sqlalchemy import select
+
+    from radar.db.models import ModelEvaluation
+
+    run = _latest_prediction_run(session, "backtest")
+    if run is None:
+        return {"run": None, "items": [], "nota": "Información insuficiente: sin backtest"}
+    rows = session.execute(
+        select(ModelEvaluation)
+        .where(ModelEvaluation.run_id == run.id)
+        .order_by(ModelEvaluation.variant, ModelEvaluation.model)
+    ).scalars()
+    items = [
+        {c.name: getattr(r, c.name) for c in r.__table__.columns if c.name != "created_at"}
+        for r in rows
+    ]
+    return {"run": _run_dict(run), "items": items}
+
+
+@app.get("/api/markets/{market_id}/predictions")
+def market_predictions(
+    market_id: str, session: SessionDep, limit: Annotated[int, Query(ge=1, le=500)] = 50
+) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+
+    from radar.db.models import PredictionRecord
+
+    rows = session.execute(
+        select(PredictionRecord)
+        .where(PredictionRecord.market_id == market_id)
+        .order_by(PredictionRecord.as_of.desc(), PredictionRecord.model)
+        .limit(limit)
+    ).scalars()
+    out = []
+    for r in rows:
+        d = {c.name: getattr(r, c.name) for c in r.__table__.columns}
+        d["as_of"] = r.as_of.isoformat()
+        d["created_at"] = r.created_at.isoformat()
+        out.append(d)
+    return out

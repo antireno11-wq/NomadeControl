@@ -23,6 +23,12 @@ dependencias ni configuración entre ambos.
 7. **Fallos y cobertura incompleta se registran y se muestran**, nunca se ocultan.
 8. **No afirmar que algo funciona sin haberlo ejecutado.** Documentar comandos y
    resultados reales.
+9. **Modelos predictivos:** todo modelo implementa `predict(market, evidence,
+   as_of_time)` y solo lee datos con timestamp `<= as_of`. El estado de calibración
+   lo decide la evaluación fuera de muestra, nunca el propio modelo. Las reglas de
+   evaluación se fijan en un preregistro **antes** de mirar la partición de prueba;
+   cambiarlas exige nueva versión y declararlo. Una familia sin datos adecuados se
+   abstiene con su motivo.
 
 ## Convenciones
 

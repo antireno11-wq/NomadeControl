@@ -193,3 +193,79 @@ def test_election_endpoints(client, engine, tmp_path):
     alerts = c.get("/api/elections/alerts", params={"mode": "backtest_retrospectivo"}).json()
     assert len(alerts) == 1 and alerts[0]["signal"] is False and alerts[0]["sha256"] == "a" * 64
     assert c.get("/api/elections/evaluation").status_code == 404
+
+
+def test_prediction_endpoints(client, engine):
+    """Corridas de predicción y evaluación SINTÉTICAS: la API las expone tal cual."""
+    from datetime import UTC, datetime
+
+    import numpy as np
+    from sqlalchemy import insert
+
+    from radar.db.models import PredictionRecord, ValuationRecord
+    from radar.predict import metrics as MX
+    from radar.predict import service
+
+    c, _ = client
+    assert c.get("/api/opportunities").json()["items"] == []
+    assert c.get("/api/predict/quality").json()["run"] is None
+
+    now = datetime(2026, 10, 26, 12, tzinfo=UTC)
+    live = service.start_run(engine, "live")
+    with engine.begin() as conn:
+        pid = conn.execute(
+            insert(PredictionRecord)
+            .values(run_id=live, market_id="m1", outcome="Yes", model="cripto-rv",
+                    model_version="t", family="cripto", as_of=now, created_at=now,
+                    probability=0.7, p_low=0.6, p_high=0.8, calibration_status="sin_evaluar",
+                    data_used=[], details={"origen": "SINTÉTICO"}, inputs_sha256="0" * 64)
+            .returning(PredictionRecord.id)
+        ).scalar_one()  # fmt: skip
+        for outcome, edge, rec in (
+            ("Yes", 20.0, "alerta_investigacion"),
+            ("No", -20.0, "sin_ventaja"),
+        ):
+            conn.execute(
+                insert(ValuationRecord).values(
+                    run_id=live, prediction_id=pid, market_id="m1", token_id=f"t-{outcome}",
+                    outcome=outcome, question="¿SINTÉTICO?", category="crypto",
+                    variant="daily_above", as_of=now, model="cripto-rv",
+                    calibration_status="sin_evaluar", edge_pp=edge, recommendation=rec,
+                    reasons=["modelo no validado"], version="valuation-v1",
+                )
+            )  # fmt: skip
+    service.finish_run(engine, live, "success", {"crypto": {"recomendaciones": {}}})
+
+    rng = np.random.default_rng(0)
+    p = rng.uniform(0, 1, 300)
+    y = (rng.uniform(0, 1, 300) < p).astype(float)
+    cl = [f"d{i % 30}" for i in range(300)]
+    summ = MX.summarize(p, y, cl, n_boot=50) | {
+        "status": "no_validado",
+        "validation_failures": ["SINTÉTICO"],
+        "supera_mercado": False,
+        "vs_market": {"log_loss_diff": {"value": 0.01, "lo": -0.01, "hi": 0.03}},
+    }
+    report = {
+        "version": "crypto-backtest-v1",
+        "reference_by_variant": {"daily_above": {"reference": "rv"}},
+        "test": {"by_variant": {"daily_above": {"market": MX.summarize(p, y, cl, n_boot=50),
+                                                "models": {"rv": summ}}}},
+    }  # fmt: skip
+    bt = service.start_run(engine, "backtest")
+    assert service.persist_evaluations(engine, bt, report) == 2
+    service.finish_run(engine, bt, "success", {"validados": []})
+
+    s = c.get("/api/predict/summary").json()
+    assert s["live"]["run_id"] == live and s["backtest"]["run_id"] == bt
+    opp = c.get("/api/opportunities").json()
+    assert [i["outcome"] for i in opp["items"]] == ["Yes", "No"]  # ordenado por diferencia
+    only = c.get("/api/opportunities", params={"recommendation": "alerta_investigacion"}).json()
+    assert len(only["items"]) == 1 and only["items"][0]["url"] is None
+    q = c.get("/api/predict/quality").json()
+    models = {i["model"]: i for i in q["items"]}
+    assert set(models) == {"cripto-rv", service.MARKET_MODEL}
+    assert models["cripto-rv"]["is_reference"] and models["cripto-rv"]["n"] == 300
+    assert len(models["cripto-rv"]["bins"]) == 10
+    preds = c.get("/api/markets/m1/predictions").json()
+    assert preds[0]["probability"] == 0.7 and preds[0]["details"]["origen"] == "SINTÉTICO"

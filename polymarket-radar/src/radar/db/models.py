@@ -364,3 +364,131 @@ class ElectionAlert(Base):
     ledger_seq: Mapped[int] = mapped_column(Integer)
     sha256: Mapped[str] = mapped_column(String(64), unique=True)
     prev_sha256: Mapped[str] = mapped_column(String(64))
+
+
+# ------------------------------------------------------------- modelos predictivos
+
+
+class PredictionRun(Base):
+    """Una corrida de predicción (en vivo) o de evaluación (backtest)."""
+
+    __tablename__ = "prediction_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(24))  # live | backtest
+    started_at: Mapped[datetime] = mapped_column(TS)
+    finished_at: Mapped[datetime | None] = mapped_column(TS)
+    status: Mapped[str] = mapped_column(String(16))
+    params_version: Mapped[str | None] = mapped_column(String(64))
+    params_sha256: Mapped[str | None] = mapped_column(String(64))
+    summary: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    report_path: Mapped[str | None] = mapped_column(Text)
+
+
+class PredictionRecord(Base):
+    """Salida de ``predict(market, evidence, as_of_time)``, incluidas las abstenciones."""
+
+    __tablename__ = "predictions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("prediction_runs.id", ondelete="CASCADE"))
+    market_id: Mapped[str] = mapped_column(String(64), index=True)
+    outcome: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(String(48))
+    model_version: Mapped[str] = mapped_column(String(32))
+    family: Mapped[str] = mapped_column(String(24))
+    as_of: Mapped[datetime] = mapped_column(TS)
+    created_at: Mapped[datetime] = mapped_column(TS)
+    probability: Mapped[float | None] = mapped_column(Float)
+    p_low: Mapped[float | None] = mapped_column(Float)
+    p_high: Mapped[float | None] = mapped_column(Float)
+    calibration_status: Mapped[str] = mapped_column(String(24))
+    abstain_reason: Mapped[str | None] = mapped_column(Text)
+    data_used: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+    details: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    inputs_sha256: Mapped[str] = mapped_column(String(64))
+
+    __table_args__ = (Index("ix_predictions_run_market", "run_id", "market_id"),)
+
+
+class ValuationRecord(Base):
+    """Valoración de un token contra el libro ejecutable (módulo E)."""
+
+    __tablename__ = "valuations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("prediction_runs.id", ondelete="CASCADE"))
+    prediction_id: Mapped[int] = mapped_column(ForeignKey("predictions.id", ondelete="CASCADE"))
+    market_id: Mapped[str] = mapped_column(String(64), index=True)
+    token_id: Mapped[str] = mapped_column(String(100))
+    outcome: Mapped[str] = mapped_column(Text)
+    question: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(32))
+    variant: Mapped[str | None] = mapped_column(String(32))
+    end_date: Mapped[datetime | None] = mapped_column(TS)
+    as_of: Mapped[datetime] = mapped_column(TS)
+    model: Mapped[str] = mapped_column(String(48))
+    calibration_status: Mapped[str] = mapped_column(String(24))
+    supera_mercado: Mapped[bool | None] = mapped_column(Boolean)
+    p_model: Mapped[float | None] = mapped_column(Float)
+    p_low: Mapped[float | None] = mapped_column(Float)
+    p_high: Mapped[float | None] = mapped_column(Float)
+    best_bid: Mapped[float | None] = mapped_column(Float)
+    best_ask: Mapped[float | None] = mapped_column(Float)
+    spread: Mapped[float | None] = mapped_column(Float)
+    p_market_mid: Mapped[float | None] = mapped_column(Float)
+    book_received_at: Mapped[datetime | None] = mapped_column(TS)
+    book_age_s: Mapped[float | None] = mapped_column(Float)
+    ask_vwap: Mapped[float | None] = mapped_column(Float)
+    fill_shares: Mapped[float | None] = mapped_column(Float)
+    fill_complete: Mapped[bool | None] = mapped_column(Boolean)
+    depth_ask_usd: Mapped[float | None] = mapped_column(Float)
+    fee_per_share: Mapped[float | None] = mapped_column(Float)
+    edge_pp: Mapped[float | None] = mapped_column(Float)
+    ev_gross_per_share: Mapped[float | None] = mapped_column(Float)
+    costs_per_share: Mapped[float | None] = mapped_column(Float)
+    ev_net_per_share: Mapped[float | None] = mapped_column(Float)
+    ev_net_usd: Mapped[float | None] = mapped_column(Float)
+    ev_conservative_per_share: Mapped[float | None] = mapped_column(Float)
+    uncertainty: Mapped[float | None] = mapped_column(Float)
+    liquidity_risk: Mapped[str | None] = mapped_column(String(8))
+    recommendation: Mapped[str] = mapped_column(String(32))
+    reasons: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+    version: Mapped[str] = mapped_column(String(24))
+
+    __table_args__ = (Index("ix_valuations_run_rec", "run_id", "recommendation"),)
+
+
+class ModelEvaluation(Base):
+    """Métricas fuera de muestra de un (modelo, variante) en un backtest."""
+
+    __tablename__ = "model_evaluations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("prediction_runs.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(TS)
+    backtest_version: Mapped[str] = mapped_column(String(32))
+    family: Mapped[str] = mapped_column(String(24))
+    model: Mapped[str] = mapped_column(String(48))
+    variant: Mapped[str] = mapped_column(String(32))
+    split: Mapped[str] = mapped_column(String(8))
+    n: Mapped[int] = mapped_column(Integer)
+    n_clusters: Mapped[int] = mapped_column(Integer)
+    brier: Mapped[float] = mapped_column(Float)
+    brier_lo: Mapped[float | None] = mapped_column(Float)
+    brier_hi: Mapped[float | None] = mapped_column(Float)
+    log_loss: Mapped[float] = mapped_column(Float)
+    log_loss_lo: Mapped[float | None] = mapped_column(Float)
+    log_loss_hi: Mapped[float | None] = mapped_column(Float)
+    ece: Mapped[float] = mapped_column(Float)
+    calib_in_large: Mapped[float] = mapped_column(Float)
+    market_brier: Mapped[float | None] = mapped_column(Float)
+    market_log_loss: Mapped[float | None] = mapped_column(Float)
+    vs_market_ll_diff: Mapped[float | None] = mapped_column(Float)
+    vs_market_ll_lo: Mapped[float | None] = mapped_column(Float)
+    vs_market_ll_hi: Mapped[float | None] = mapped_column(Float)
+    supera_mercado: Mapped[bool | None] = mapped_column(Boolean)
+    is_reference: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(24))
+    failures: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+    bins: Mapped[list[Any]] = mapped_column(JSONType, default=list)

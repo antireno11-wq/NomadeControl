@@ -125,6 +125,10 @@ export RADAR_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5433/radar
 | `radar status` | Última corrida en JSON |
 | `radar scheduler` | Ingesta periódica |
 | `radar api` / `radar dashboard` | Servidores |
+| `radar elections …` | Motor electoral (ver arriba) |
+| `radar predict collect [--start --end]` | Conjunto de mercados cripto resueltos (Gamma + `/prices-history`) |
+| `radar predict --out reports backtest` | Ajuste (entrenamiento), elección (validación) y medición (prueba) de los modelos cripto |
+| `radar predict live [--max-markets N]` | Predice los mercados abiertos y los valora contra libros pedidos en el momento |
 
 ## API
 
@@ -138,6 +142,11 @@ export RADAR_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5433/radar
 | `GET /api/markets/{id}` | Reglas exactas, estado, fechas, parámetros, evaluación de liquidez, último libro por token, valores indicativos de Gamma separados |
 | `GET /api/markets/{id}/snapshots` | Historial de snapshots |
 | `GET /api/categories` | Analizados y líquidos por categoría |
+| `GET /api/elections/*` | Motor electoral: resumen, mercados, backtest, evaluación, alertas |
+| `GET /api/predict/summary` | Última corrida en vivo (cobertura por familia, abstenciones) y último backtest |
+| `GET /api/opportunities` | Valoraciones de la última corrida en vivo; filtros `recommendation`, `min_edge_pp` |
+| `GET /api/predict/quality` | Métricas fuera de muestra por modelo y tipo de contrato, con la referencia del mercado |
+| `GET /api/markets/{id}/predictions` | Predicciones registradas de un mercado (con datos usados) |
 
 ## Dashboard
 
@@ -151,8 +160,14 @@ export RADAR_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5433/radar
 - **Electoral**: estado de validación, mercados electorales clasificados,
   respuesta directa del backtest de Brasil 2026, gráfico modelo vs. mercado,
   alertas congeladas con su hash y evaluación sobre varias elecciones.
-- **Oportunidades / Cartera virtual / Calidad predictiva**: marcadas como no
-  implementadas; no muestran datos.
+- **Oportunidades**: tabla ordenable con mercado, categoría, precio ejecutable,
+  probabilidad estimada e intervalo, diferencia en p.p., valor esperado neto y
+  conservador, liquidez, confianza del modelo, recomendación, motivo y enlace;
+  cobertura por familia con los motivos de abstención.
+- **Calidad predictiva**: Brier, log loss, ECE y calibración global con IC por
+  conglomerados; curva de calibración frente al mercado; desempeño por modelo;
+  resultado hipotético; abstenciones y contraste del resultado oficial con Binance.
+- **Cartera virtual**: marcada como no implementada; no muestra datos.
 
 Un banner indica siempre si hay datos reales, datos sintéticos o ningún dato.
 

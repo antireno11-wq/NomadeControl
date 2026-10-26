@@ -204,7 +204,29 @@ Tablas (migración `0002`): `election_markets`, `election_runs`,
 `election_estimates`, `election_alerts`. La fuente de verdad de las alertas es
 el ledger JSONL; la tabla es una copia consultable.
 
-## 10. Diseño de módulos posteriores (no implementados)
+## 10. Modelos predictivos y valoración (implementado)
+
+Ver [`docs/PREDICTIVE_MODELS.md`](docs/PREDICTIVE_MODELS.md) y el preregistro
+[`docs/PREREGISTRO_CRIPTO.md`](docs/PREREGISTRO_CRIPTO.md). Paquete `radar.predict`:
+
+| Módulo | Rol |
+|---|---|
+| `base.py` | Interfaz común `predict(market, evidence, as_of_time)` → `Prediction` (probabilidad, intervalo, modelo y versión, datos usados con hash, `as_of`, estado de calibración, motivo de abstención) |
+| `registry.py` | Enruta cada mercado a su familia: cripto (4 modelos), elecciones (adaptador de `radar.elections`) y modelos que siempre se abstienen con motivo (macro, corporativo, deportes, clima, otros) |
+| `crypto/terms.py` | Lectura determinista de reglas cripto (`crypto-terms-v1`): vela, nivel, rango, ventana de toque, Up/Down; lo no interpretable se rechaza con motivo |
+| `crypto/binance.py` / `crypto/deribit.py` | Velas de 1 min de Binance (archivos con checksum oficial + REST del día) y DVOL; corte estricto en `as_of` |
+| `crypto/models.py` | Fórmulas log-normales, principio de reflexión para toques, bootstrap estacionario de bloques |
+| `crypto/predictor.py` | Predictores `rv`, `ewma`, `dvol`, `bootstrap`; parámetros ajustados solo con entrenamiento |
+| `crypto/dataset.py` / `schedule.py` / `backtest.py` | Mercados resueltos, momentos preregistrados, partición temporal, ajuste, validación y prueba |
+| `metrics.py` | Brier, log loss, ECE, tramos de calibración, IC por bootstrap de conglomerados |
+| `valuation.py` | Módulo E: precio ejecutable (VWAP del ask), comisión, VE bruto/neto/conservador, riesgo de liquidez, puertas de señal |
+| `service.py` / `report.py` | Orquestación (CLI/API), persistencia y reportes |
+
+Tablas (migración `0003`): `prediction_runs`, `predictions`, `valuations`,
+`model_evaluations`. Parámetros ajustados y estado de calibración en
+`data/models/` (versionados).
+
+## 11. Diseño de módulos posteriores (no implementados)
 
 - **B. Contratos:** estructura normalizada (`contract_terms`) derivada de reglas;
   relaciones propuestas (IA o heurística) con estado `proposed` y solo
@@ -216,7 +238,8 @@ el ledger JSONL; la tabla es una copia consultable.
   verificar contra la documentación oficial), y solo marca "verificado" si la
   ganancia mínima neta es > 0 en todos los escenarios y las reglas están
   verificadas.
-- **D. Modelos:** interfaz `predict(market, evidence, as_of_time)` → estimación
-  con intervalo, versión, datos usados, estado de calibración o abstención.
-- **E–H.** Valoración, cartera virtual con ledger, backtesting cronológico,
-  alertas deduplicadas: ver `IMPLEMENTATION_PLAN.md`.
+- **D. Modelos (siguientes familias):** clima con pronósticos por conjuntos y la
+  estación de resolución; rendimientos del Tesoro reutilizando el motor de toque
+  con una serie diaria verificable. Hoy se abstienen con motivo.
+- **F–H.** Cartera virtual con ledger, backtesting general y alertas
+  deduplicadas: ver `IMPLEMENTATION_PLAN.md`.

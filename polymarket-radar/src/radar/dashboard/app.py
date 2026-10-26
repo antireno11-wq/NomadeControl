@@ -765,6 +765,245 @@ def page_elections() -> None:
         st.dataframe(pd.DataFrame(mrows), hide_index=True, width="stretch")
 
 
+REC_LABELS = {
+    "señal_operable": "Señal operable (solo papel)",
+    "alerta_investigacion": "Alerta de investigación",
+    "sin_ventaja": "Sin ventaja",
+    "informacion_insuficiente": "Información insuficiente",
+    "abstencion": "Abstención",
+}
+
+
+def page_opportunities() -> None:
+    st.header("Oportunidades")
+    summ = (api_get("/api/predict/summary") or {}).get("live")
+    if not summ:
+        st.info(
+            "Información insuficiente: no hay corridas de predicción en vivo "
+            "(`radar predict live`)."
+        )
+        return
+    s = summ.get("summary") or {}
+    crypto = s.get("crypto") or {}
+    st.caption(
+        f"Corrida en vivo #{summ['run_id']} · as_of {fmt_ts(s.get('as_of'))} · parámetros "
+        f"`{summ.get('params_version')}`. Precio ejecutable = VWAP del ask para US$25 en libros "
+        "pedidos al CLOB en el momento."
+    )
+    recs = crypto.get("recomendaciones") or {}
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Mercados cripto modelados", crypto.get("interpretables", 0))
+    c2.metric("Señales operables", recs.get("señal_operable", 0))
+    c3.metric("Alertas de investigación", recs.get("alerta_investigacion", 0))
+    c4.metric("Información insuficiente", recs.get("informacion_insuficiente", 0))
+    if not recs.get("señal_operable"):
+        st.warning(
+            "Ninguna señal operable: una señal exige un modelo **validado** fuera de muestra "
+            "para ese tipo de contrato, que además **supere al mercado**, con ventaja "
+            "conservadora positiva tras costos y liquidez suficiente."
+        )
+    with st.expander("Cobertura por familia de mercados (abstenciones con motivo)"):
+        fams = s.get("families") or {}
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "familia": f,
+                        "mercados abiertos": v.get("mercados"),
+                        "motivo de abstención": v.get("motivo", "modelado (ver abajo)"),
+                    }
+                    for f, v in sorted(fams.items(), key=lambda kv: -kv[1].get("mercados", 0))
+                ]
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.write("Contratos cripto no interpretables:", crypto.get("no_interpretables"))
+    options = [
+        "alerta_investigacion",
+        "señal_operable",
+        "sin_ventaja",
+        "informacion_insuficiente",
+        "todas",
+    ]
+    col_a, col_b = st.columns([2, 1])
+    choice = col_a.selectbox(
+        "Recomendación", options, format_func=lambda x: REC_LABELS.get(x, "Todas")
+    )
+    min_edge = col_b.number_input("Diferencia mínima (p.p.)", value=-100.0, step=1.0)
+    params: dict[str, Any] = {"limit": 2000}
+    if choice != "todas":
+        params["recommendation"] = choice
+    if min_edge > -100:
+        params["min_edge_pp"] = min_edge
+    data = api_get("/api/opportunities", **params) or {}
+    items = data.get("items") or []
+    if not items:
+        st.info("Sin filas para este filtro.")
+        return
+    df = pd.DataFrame(
+        [
+            {
+                "Mercado": it["question"],
+                "Resultado": it["outcome"],
+                "Categoría": f"cripto · {it.get('variant')}",
+                "Precio ejecutable": it.get("ask_vwap"),
+                "Prob. estimada": it.get("p_model"),
+                "Intervalo": (
+                    f"{it['p_low']:.3f}–{it['p_high']:.3f}" if it.get("p_low") is not None else "—"
+                ),
+                "Diferencia (p.p.)": it.get("edge_pp"),
+                "VE neto / acción": it.get("ev_net_per_share"),
+                "VE conservador / acción": it.get("ev_conservative_per_share"),
+                "Liquidez": f"{it.get('liquidity_risk') or '—'} · spread {it.get('spread')}",
+                "Confianza del modelo": f"{it.get('model')} · {it.get('calibration_status')}"
+                + (" · supera mercado" if it.get("supera_mercado") else ""),
+                "Recomendación": REC_LABELS.get(it["recommendation"], it["recommendation"]),
+                "Motivo principal": (it.get("reasons") or ["—"])[0],
+                "Enlace": it.get("url"),
+            }
+            for it in items
+        ]
+    )
+    st.dataframe(
+        df,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
+            "Precio ejecutable": st.column_config.NumberColumn(format="%.3f"),
+            "Prob. estimada": st.column_config.NumberColumn(format="%.3f"),
+            "Diferencia (p.p.)": st.column_config.NumberColumn(format="%.1f"),
+            "VE neto / acción": st.column_config.NumberColumn(format="%.3f"),
+            "VE conservador / acción": st.column_config.NumberColumn(format="%.3f"),
+        },
+    )
+    st.caption(
+        "VE = valor esperado por acción comprada: probabilidad − precio ejecutable − comisión "
+        "del mercado − holgura de 0,005. Conservador = con la cota desfavorable del intervalo."
+    )
+
+
+def _calibration_chart(rows: list[dict[str, Any]]) -> alt.Chart | None:
+    pts = []
+    for r in rows:
+        for b in r.get("bins") or []:
+            if b.get("n") and b.get("mean_p") is not None and b["mean_p"] == b["mean_p"]:
+                pts.append(
+                    {
+                        "modelo": r["model"],
+                        "prob": b["mean_p"],
+                        "frecuencia": b["mean_y"],
+                        "n": b["n"],
+                    }
+                )
+    if not pts:
+        return None
+    df = pd.DataFrame(pts)
+    models = sorted(df["modelo"].unique())
+    palette = [SERIES_1, SERIES_2, SERIES_3, "#8a5cd1", "#7a7a7a"]
+    color = alt.Color(
+        "modelo:N",
+        scale=alt.Scale(domain=models, range=palette[: len(models)]),
+        legend=alt.Legend(title=None, orient="top"),
+    )
+    diag = (
+        alt.Chart(pd.DataFrame({"x": [0, 1], "y": [0, 1]}))
+        .mark_line(strokeDash=[4, 4], color="#999999")
+        .encode(x="x:Q", y="y:Q")
+    )
+    base = alt.Chart(df).encode(
+        x=alt.X(
+            "prob:Q",
+            title="Probabilidad predicha (promedio del tramo)",
+            scale=alt.Scale(domain=[0, 1]),
+        ),
+        y=alt.Y("frecuencia:Q", title="Frecuencia observada", scale=alt.Scale(domain=[0, 1])),
+        color=color,
+        tooltip=[
+            "modelo:N",
+            alt.Tooltip("prob:Q", format=".3f"),
+            alt.Tooltip("frecuencia:Q", format=".3f"),
+            "n:Q",
+        ],
+    )
+    return (diag + base.mark_line(strokeWidth=2) + base.mark_circle(size=60)).properties(height=360)
+
+
+def page_quality() -> None:
+    st.header("Calidad predictiva")
+    data = api_get("/api/predict/quality") or {}
+    run = data.get("run")
+    items = data.get("items") or []
+    if not run or not items:
+        st.info("Información insuficiente: no hay backtest de modelos (`radar predict backtest`).")
+        return
+    summ = run.get("summary") or {}
+    st.caption(
+        f"Backtest #{run['run_id']} · {fmt_ts(run.get('finished_at'))} · métricas **fuera de "
+        "muestra** (partición de prueba). IC del 95 % por bootstrap de conglomerados "
+        "(activo × día). Precio de mercado = referencia no ejecutable."
+    )
+    validated = summ.get("validados") or []
+    beats = summ.get("superan_mercado") or []
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Pares validados", len(validated))
+    c2.metric("Pares que superan al mercado", len(beats))
+    hyp = summ.get("operaciones_hipoteticas") or {}
+    c3.metric("Resultado hipotético (US$)", f"{hyp.get('resultado_usd', 0):+.2f}",
+              help=hyp.get("etiqueta"))  # fmt: skip
+    st.caption(f"Operaciones hipotéticas: {hyp.get('n', 0)} · {hyp.get('etiqueta', '')}")
+    df = pd.DataFrame(items)
+    variants = sorted(df["variant"].unique())
+    v = st.selectbox("Tipo de contrato", variants)
+    sub = df[df["variant"] == v]
+    table = sub[[
+        "model", "n", "n_clusters", "brier", "brier_lo", "brier_hi", "log_loss", "ece",
+        "calib_in_large", "vs_market_ll_diff", "vs_market_ll_lo", "vs_market_ll_hi",
+        "supera_mercado", "is_reference", "status",
+    ]].rename(columns={
+        "model": "modelo", "n_clusters": "conglomerados",
+        "brier_lo": "Brier IC−", "brier_hi": "Brier IC+",
+        "log_loss": "log loss", "calib_in_large": "calibración global",
+        "vs_market_ll_diff": "Δ log loss vs mercado",
+        "vs_market_ll_lo": "Δ IC−", "vs_market_ll_hi": "Δ IC+",
+        "supera_mercado": "supera mercado", "is_reference": "referencia", "status": "estado",
+    })  # fmt: skip
+    st.dataframe(table, hide_index=True, use_container_width=True)
+    chart = _calibration_chart(sub.to_dict("records"))
+    if chart is not None:
+        st.subheader("Curva de calibración (prueba)")
+        st.altair_chart(chart, use_container_width=True)
+        st.caption(
+            "Un modelo calibrado sigue la diagonal: lo que predice con 30 % ocurre "
+            "~30 % de las veces."
+        )
+    fails = sub[sub["failures"].map(bool)][["model", "failures"]]
+    if len(fails):
+        with st.expander("Motivos de no validación"):
+            for _, r in fails.iterrows():
+                st.write(f"**{r['model']}**: " + "; ".join(r["failures"]))
+    st.subheader("Desempeño por modelo (todas las variantes de prueba)")
+    agg = (
+        df.assign(w=df["n"])
+        .groupby("model")
+        .apply(lambda g: pd.Series({
+            "instancias": int(g["n"].sum()),
+            "Brier ponderado": float((g["brier"] * g["n"]).sum() / g["n"].sum()),
+            "log loss ponderado": float((g["log_loss"] * g["n"]).sum() / g["n"].sum()),
+            "variantes validadas": int((g["status"] == "validado").sum()),
+        }), include_groups=False)
+        .reset_index()
+    )  # fmt: skip
+    st.dataframe(agg, hide_index=True, use_container_width=True)
+    with st.expander("Errores y abstenciones del backtest"):
+        st.write(summ.get("abstenciones") or "—")
+        st.write("Excluidas:", summ.get("excluidas") or "—")
+        st.write(
+            "Contraste del resultado oficial con Binance:", summ.get("contraste_resolucion") or "—"
+        )
+
+
 def page_pending(title: str, milestone: str, needs: list[str]) -> None:
     st.header(title)
     st.info(f"No implementado todavía ({milestone}). No se muestran datos ficticios ni de ejemplo.")
@@ -808,15 +1047,7 @@ def main() -> None:
     elif page == "Electoral":
         page_elections()
     elif page == "Oportunidades":
-        page_pending(
-            "Oportunidades",
-            "hitos 3 y 5",
-            [
-                "Normalización de contratos y validación determinista de relaciones (hito 2).",
-                "Motor de arbitraje con pagos por escenario y costos ejecutables (hito 3).",
-                "Modelos predictivos calibrados; sin calibración no hay señal (hitos 4-5).",
-            ],
-        )
+        page_opportunities()
     elif page == "Cartera virtual":
         page_pending(
             "Cartera virtual",
@@ -827,14 +1058,7 @@ def main() -> None:
             ],
         )
     else:
-        page_pending(
-            "Calidad predictiva",
-            "hito 7",
-            [
-                "Predicciones registradas con timestamp y resultados verificados.",
-                "Brier score, log loss y curvas de calibración fuera de muestra.",
-            ],
-        )
+        page_quality()
 
 
 main()

@@ -265,3 +265,15 @@ class ApiClient:
             elapsed_s=elapsed,
             attempts=attempt,
         )
+
+    def request_bytes(self, method: str, path: str, *, params: Any = None) -> ApiResponse:
+        """Como ``request_json`` pero devuelve el cuerpo binario (p. ej. un ZIP)."""
+        response, url, elapsed, attempt = self._send(method, path, params=params)
+        return ApiResponse(
+            data=response.content,
+            url=url,
+            status=response.status_code,
+            received_at=utcnow(),
+            elapsed_s=elapsed,
+            attempts=attempt,
+        )

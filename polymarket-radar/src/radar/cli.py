@@ -203,6 +203,39 @@ def cmd_elections(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_predict(args: argparse.Namespace) -> int:
+    from datetime import UTC, datetime
+
+    from radar.db.session import get_engine
+    from radar.predict import service
+
+    settings = get_settings()
+    if args.predict_command == "collect":
+        start = datetime.fromisoformat(args.start).replace(tzinfo=UTC)
+        end = datetime.fromisoformat(args.end).replace(tzinfo=UTC)
+        meta = service.collect_crypto_dataset(settings, start, end)
+        print(json.dumps(meta, indent=2, ensure_ascii=False, default=str))
+        return 0
+    engine = get_engine(settings.database_url)
+    if args.predict_command == "backtest":
+        run_id = service.start_run(engine, "backtest")
+        try:
+            report = service.run_crypto_backtest(settings, out_dir=Path(args.out))
+        except Exception as exc:
+            service.finish_run(engine, run_id, "failed", {"error": repr(exc)})
+            raise
+        n = service.persist_evaluations(engine, run_id, report)
+        summary = service.backtest_summary(report) | {"evaluaciones_guardadas": n}
+        service.finish_run(
+            engine, run_id, "success", summary, str(Path(args.out) / "backtest_cripto.md")
+        )
+        print(json.dumps(summary, indent=2, ensure_ascii=False, default=str))
+    elif args.predict_command == "live":
+        out = service.predict_live(settings, engine, max_markets=args.max_markets)
+        print(json.dumps(out, indent=2, ensure_ascii=False, default=str))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="radar", description="Polymarket AI Radar (solo lectura)")
     sub = p.add_subparsers(dest="command", required=True)
@@ -248,6 +281,17 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("path")
     s.add_argument("--out", default="reports")
     s.set_defaults(func=cmd_elections)
+
+    s = sub.add_parser("predict", help="modelos predictivos (cripto, elecciones, abstenciones)")
+    s.add_argument("--out", default="reports", help="carpeta de reportes")
+    psub = s.add_subparsers(dest="predict_command", required=True)
+    c = psub.add_parser("collect", help="conjunto de mercados cripto resueltos")
+    c.add_argument("--start", default="2026-05-01")
+    c.add_argument("--end", default="2026-10-26")
+    psub.add_parser("backtest", help="ajuste, validación y prueba de los modelos cripto")
+    lv = psub.add_parser("live", help="predice y valora los mercados abiertos")
+    lv.add_argument("--max-markets", type=int, default=None)
+    s.set_defaults(func=cmd_predict)
 
     s = sub.add_parser("dashboard", help="dashboard Streamlit")
     s.add_argument("--host", default="127.0.0.1")
