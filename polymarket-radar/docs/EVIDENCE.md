@@ -1,6 +1,7 @@
 # Evidencia de funcionamiento
 
-Secciones 1–7: hito 1 (ingesta). Sección 8: motor electoral (hito E).
+Secciones 1–7: hito 1 (ingesta). Sección 8: motor electoral (hito E). Sección 9: modelos
+cripto y valoración (módulos D y E), en un Mac con la base en Railway.
 
 Todo lo de esta página se ejecutó el **25-oct-2026 (UTC)** en un contenedor
 Linux con acceso a internet, contra las APIs públicas reales de Polymarket.
@@ -228,3 +229,185 @@ excepciones de Streamlit, 0 errores de JavaScript y 1 gráfico.
   (`web.archive.org` no fue accesible desde este entorno).
 - Libros de órdenes históricos: no existen en las APIs públicas, así que ningún
   precio del pasado es un ask ejecutable.
+
+## 9. Modelos cripto y valoración (módulos D y E) — 26-oct-2026 UTC
+
+Esta sección se ejecutó en un Mac (Apple Silicon, Python 3.12 con `uv`), con internet
+desde Chile. La base de datos es PostgreSQL 18.6 en Railway: un proyecto aparte con dos
+bases, una principal y otra solo para pruebas. Docker no se usó. Detalle de los modelos
+y lectura de los resultados en [`PREDICTIVE_MODELS.md`](PREDICTIVE_MODELS.md) §5.
+
+### 9.1 Pruebas
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+# All checks passed! / 101 files already formatted
+
+TEST_DATABASE_URL=<base de pruebas en Railway> .venv/bin/pytest -q
+# 159 passed, 2 skipped, 1 warning in 263.22s
+```
+
+- Las pruebas de base de datos hacen `DROP SCHEMA`. Por eso apuntan a una base de pruebas
+  distinta, y antes de cada corrida se comprueba que su URL no sea la de la base
+  principal.
+- Las 2 omitidas son las pruebas en vivo (`RADAR_LIVE_TESTS` no estaba activo).
+- Antes de los cambios de esta sección, la misma suite daba `158 passed, 2 skipped`. La
+  diferencia es la prueba nueva del SHA-256 del conjunto.
+
+### 9.2 Conjunto de mercados resueltos
+
+```bash
+radar predict collect --start 2026-05-01 --end 2026-10-26
+```
+
+- Duración: 2 h 47 min (16:42 a 19:29 UTC). El cliente usa tasas fijas de 4 req/s
+  (Gamma) y 6 req/s (CLOB).
+- 25.895 mercados, con 0 errores. Hay 56 eventos sin resolver y 12 contratos no
+  interpretables.
+- Por variante:
+
+  | Variante | Mercados |
+  |---|---:|
+  | `daily_above` | 8.041 |
+  | `daily_below` | 340 |
+  | `daily_range` | 3.060 |
+  | `hourly_above` | 5.616 |
+  | `hourly_updown` | 712 |
+  | `daily_updown` | 700 |
+  | `touch_day` | 5.202 |
+  | `touch_range` | 1.596 |
+  | `touch_month` | 628 |
+
+  Son **idénticos** a los de la corrida anterior en la nube.
+- SHA-256 del conjunto: `7e45cb27dd8da77a101ed401233cd6a3ddba40df56c4e87aee17fff66b01c76a`.
+  Coincide con el contenido descomprimido de `data/datasets/crypto_resolved_v1.json.gz`.
+
+### 9.3 Backtest
+
+```bash
+radar predict --out reports backtest
+```
+
+| Corrida | Inicio (UTC) | Duración | Estado |
+|---|---|---|---|
+| #1 | 19:30 | ~10 min | Falló al guardar las métricas (ver abajo). Quedó `running` y se marcó `failed` a mano, con el error |
+| #2 | 19:44 | 9 min 15 s | `success`, 45 evaluaciones guardadas |
+| #4 | 20:54 | 9 min 9 s | `success`. Es la que queda en `reports/backtest_cripto.md` |
+
+- **Por qué falló #1.** Un tramo de calibración vacío tiene `mean_p = NaN`, y PostgreSQL
+  rechaza `NaN` dentro de JSON.
+  - La corrección está solo en la persistencia: `_jsonable` convierte NaN e infinitos a
+    `null`. El dashboard ya ignoraba esos tramos.
+  - La corrida además queda marcada `failed` si falla al guardar; antes quedaba
+    `running`.
+  - La prueba `test_prediction_endpoints` ahora deja un tramo vacío a propósito.
+  - No cambió ningún modelo, partición ni criterio.
+- **Corrección del reporte.** El reporte mostraba el SHA-256 del conjunto vacío. Ahora lo
+  calcula desde el archivo. La corrida #4 se repitió para eso.
+- **Determinismo.** #2 y #4 dieron métricas, instancias y operaciones idénticas. Solo
+  cambió el conteo de velas DVOL (5.756 → 5.757), porque pasó una hora más; esa vela es
+  posterior a todos los momentos de predicción.
+- Evidencia: 342.000 velas de 1 minuto por activo, con 0 huecos y 33 archivos de
+  `data.binance.vision` con checksum verificado.
+
+### 9.4 Ingesta en Railway
+
+```bash
+radar ingest
+```
+
+| | Corrida #1 (Railway) |
+|---|---:|
+| Inicio / fin (UTC) | 16:53 / 19:21 |
+| Duración | 8.909 s |
+| Descubierta completa | sí |
+| Páginas de Gamma / eventos | 2.468 / 21.958 |
+| Mercados abiertos descubiertos | **246.700** |
+| Elegibles | 218.144 |
+| Tokens pedidos / libros OK | 436.288 / 435.532 (99,83 %) |
+| Libros faltantes | 756 |
+| Analizados / pasan filtro de liquidez | 217.759 / **11.952** |
+| Snapshots insertados | 23.904 |
+| Estado | `partial` (por los 756 libros faltantes) |
+
+- Tiempos por etapa: descubierta 5.992 s, eventos 273 s, libros 2.633 s, cierres 6 s.
+- La corrida fue ~5 veces más lenta que la del 25-oct en la nube (§2). No se midió la
+  causa; hay más latencia de red hasta Gamma y hasta la base en Railway.
+- Tamaño de la base después de la ingesta, el backtest y la corrida en vivo: 1,8 GB.
+
+### 9.5 Corrida en vivo
+
+```bash
+radar predict live
+```
+
+Datos de la corrida:
+
+- Corrida #3, con `as_of` 19:54:00 UTC. Duró 59 min.
+- Familias:
+
+  | Familia | Mercados abiertos |
+  |---|---:|
+  | Deportes | 186.406 |
+  | Elecciones | 9.754 |
+  | Otros | 5.908 |
+  | Cripto | 5.473 |
+  | Macro | 4.134 |
+  | Clima | 2.429 |
+  | Corporativo | 2.201 |
+
+  Las que no tienen modelo se abstienen con su motivo.
+- Cripto:
+  - 1.329 mercados interpretables.
+  - 4.144 no interpretables. Los motivos principales son la resolución por Chainlink
+    (2.752) y tipos de contrato no modelados (1.233).
+  - Libros: 2.656 recibidos de 2.658.
+- Recomendaciones:
+
+  | Recomendación | Tokens |
+  |---|---:|
+  | Señal operable | **0** |
+  | Alerta de investigación | 81 |
+  | Sin ventaja | 2.463 |
+  | Información insuficiente | 86 |
+  | Abstención | 28 |
+
+- Motivos más comunes de las alertas para no ser señal: el modelo no superó al mercado
+  (78), modelo sin evaluar (61), ventaja conservadora no positiva (25) y no validado (12).
+
+Hallazgos, pendientes de corregir:
+
+- **Libros pedidos después del cierre del mercado.** Las velas se cargan hasta las 20:05
+  y los libros llegan entre 20:06:17 y 20:06:30. Es decir, 12 min después del `as_of`.
+  - 6 alertas (`hourly_updown` de las 3PM ET, que cerraron a las 20:00 UTC) comparan la
+    predicción de las 19:54 con libros que ya reflejan el resultado.
+  - Ejemplo: BTC estaba 12 US$ bajo la apertura de la vela, así que el modelo da 54,6 %
+    a "Down". El ask de "Down" ya era 0,001.
+  - No son discrepancias reales.
+- **Libros viejos al valorar.** Al valorar, 2.417 de 2.544 libros tenían más de 3 min; la
+  mediana fue 24 min. La puerta de antigüedad bloquea la señal, como corresponde, pero con
+  este flujo casi ningún mercado puede llegar a ser señal.
+- **Ningún mercado `hourly_above` abierto.** No se valoró ninguno, así que la liquidez real
+  de esos mercados (§9.3, `PREDICTIVE_MODELS.md` §5) no se pudo observar.
+
+### 9.6 Dashboard
+
+La API (`:8001`) y el dashboard (`:8502`) corrieron contra la base de Railway. Se
+tomaron capturas con Playwright y Chromium (1.500 px): ninguna pantalla mostró
+excepciones de Streamlit ni errores de JavaScript.
+
+| Pantalla | Captura |
+|---|---|
+| Oportunidades (corrida en vivo #3, filtro de alertas) | ![Oportunidades](screenshots/07_oportunidades.png) |
+| Calidad predictiva (backtest #4, `daily_above`) | ![Calidad predictiva](screenshots/08_calidad_predictiva.png) |
+
+La pantalla **Radar** todavía dice que la valoración "aún no está implementada (hitos 3 y
+5)". Es texto anterior al módulo E y queda pendiente.
+
+### 9.7 Lo que NO se verificó
+
+- Si los precios de referencia de `hourly_above` eran ejecutables. Polymarket no publica
+  libros históricos.
+- La corrección de la sincronización de la corrida en vivo (§9.5).
+- El scheduler contra Railway. Los servicios `launchd` del Mac siguen usando la base local.
+- Las pruebas en vivo contra Gamma y CLOB (`RADAR_LIVE_TESTS=1`).

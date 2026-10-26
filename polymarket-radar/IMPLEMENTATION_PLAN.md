@@ -99,7 +99,7 @@ externa del ledger en vivo antes de cada cierre.
 | Contratos cripto: precio final, rango, Up/Down y toque | ✅ | `crypto-terms-v1` sobre reglas reales, `tests/test_predict_terms.py` |
 | Datos con procedencia: Binance (checksum oficial), DVOL de Deribit | ✅ | `data/raw/` (no versionado), SHA-256 en cada predicción |
 | Modelos alternativos `rv`, `ewma`, `dvol`, `bootstrap` | ✅ | fórmulas contrastadas con simulación (`tests/test_predict_models.py`) |
-| Evaluación preregistrada fuera de muestra | ✅ | `docs/PREREGISTRO_CRIPTO.md`, `reports/backtest_cripto.md` |
+| Evaluación preregistrada fuera de muestra | ✅ | `docs/PREREGISTRO_CRIPTO.md`, `reports/backtest_cripto.md`. 26-oct: 25.895 mercados, 22 de 36 pares validados y 13 que superan al mercado; repetida con métricas idénticas (`docs/EVIDENCE.md` §9.3) |
 | Elecciones vía la misma interfaz | ✅ | adaptador `elecciones-2t` |
 | Macro, corporativo, deportes, clima | ⬜ | se abstienen; candidatos: clima (pronósticos por conjuntos) y Tesoro (motor de toque) |
 
@@ -110,7 +110,16 @@ externa del ledger en vivo antes de cada cierre.
 | Probabilidad vs. ask ejecutable (VWAP), diferencia en p.p., VE bruto/neto/conservador, costos, incertidumbre, riesgo de liquidez | ✅ | `radar/predict/valuation.py`, `tests/test_predict_valuation.py` |
 | Umbrales configurables y puertas de señal | ✅ | `ValuationConfig`, `gate_reasons` |
 | Sin señal si el modelo no está validado o no supera al mercado | ✅ | pruebas de puertas |
-| Corrida en vivo manual y programada | ✅ | `radar predict live`, `RADAR_PREDICT_INTERVAL_MINUTES` |
+| Corrida en vivo manual y programada | 🟡 | `radar predict live`, `RADAR_PREDICT_INTERVAL_MINUTES`. La corrida real del 26-oct funcionó (1.329 mercados, 0 señales), pero no está sincronizada (ver abajo) |
+
+Pendiente, encontrado en la primera corrida real (`docs/EVIDENCE.md` §9.5):
+
+- **Libros fuera de tiempo.** Hoy los libros se piden ~12 min después del `as_of` y se
+  valoran hasta 1 h después.
+  - Hay que pedir cada libro justo antes de valorar su mercado.
+  - Hay que descartar los mercados que cerraron antes de recibir el libro.
+  - Hay que fijar el `as_of` en el momento de predecir.
+- **Texto de la pantalla Radar.** Todavía dice que la valoración no está implementada.
 
 ## Hito 6 — Cartera virtual ⬜
 
@@ -125,8 +134,9 @@ externa del ledger en vivo antes de cada cierre.
 Hecho para cripto: motor cronológico con partición entrenamiento/validación/prueba,
 mercados resueltos sin filtrar por resultado, precios históricos reales (referencia
 no ejecutable), Brier, log loss, ECE, calibración, comparación con el mercado y
-operaciones hipotéticas con caída máxima. Pendiente: generalizarlo a otras familias y
-a la cartera virtual (hito 6).
+operaciones hipotéticas con caída máxima. Resultados del 26-oct-2026 en
+`docs/PREDICTIVE_MODELS.md` §5. Pendiente: generalizarlo a otras familias y a la cartera
+virtual (hito 6).
 
 ### Diseño original
 

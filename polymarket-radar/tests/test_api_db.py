@@ -237,7 +237,9 @@ def test_prediction_endpoints(client, engine):
     service.finish_run(engine, live, "success", {"crypto": {"recomendaciones": {}}})
 
     rng = np.random.default_rng(0)
-    p = rng.uniform(0, 1, 300)
+    # Sin probabilidades ≥ 0,9: el último tramo de calibración queda vacío (mean_p = NaN),
+    # como pasa con datos reales; PostgreSQL no acepta NaN en JSON.
+    p = rng.uniform(0, 0.9, 300)
     y = (rng.uniform(0, 1, 300) < p).astype(float)
     cl = [f"d{i % 30}" for i in range(300)]
     summ = MX.summarize(p, y, cl, n_boot=50) | {
@@ -267,5 +269,7 @@ def test_prediction_endpoints(client, engine):
     assert set(models) == {"cripto-rv", service.MARKET_MODEL}
     assert models["cripto-rv"]["is_reference"] and models["cripto-rv"]["n"] == 300
     assert len(models["cripto-rv"]["bins"]) == 10
+    assert models["cripto-rv"]["bins"][-1] == {"lo": 0.9, "hi": 1.0, "n": 0, "mean_p": None,
+                                               "mean_y": None}  # fmt: skip
     preds = c.get("/api/markets/m1/predictions").json()
     assert preds[0]["probability"] == 0.7 and preds[0]["details"]["origen"] == "SINTÉTICO"

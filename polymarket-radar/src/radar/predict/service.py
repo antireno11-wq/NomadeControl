@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from radar.predict.crypto.dataset import (
     DatasetPlan,
     GzCache,
     build_dataset,
+    dataset_sha256,
     load_dataset,
 )
 from radar.predict.crypto.deribit import SUPPORTED as DVOL_SUPPORTED
@@ -115,7 +117,8 @@ def load_evidence(
 def run_crypto_backtest(
     settings: Settings, *, out_dir: Path | None = None, path: Path | None = None
 ) -> dict[str, Any]:
-    ds = load_dataset(path or dataset_path(settings))
+    ds_path = path or dataset_path(settings)
+    ds = load_dataset(ds_path)
     records = ds["markets"]
     symbols = {r["terms"]["symbol"] for r in records}
     first = min(datetime.fromisoformat(a) for r in records for a in r.get("as_of") or [])
@@ -134,8 +137,10 @@ def run_crypto_backtest(
             "path": "docs/PREREGISTRO_CRIPTO.md",
             "sha256": hashlib.sha256(prereg.read_bytes()).hexdigest(),
         }
+    # El SHA-256 no está dentro de ``meta`` (se calcula sobre el archivo ya armado).
     report["dataset"] = {k: v for k, v in ds["meta"].items() if k != "plan"} | {
-        "plan": ds["meta"].get("plan")
+        "plan": ds["meta"].get("plan"),
+        "sha256": dataset_sha256(ds_path),
     }
     report["evidence"] = {
         sym: {"rows": len(c), "gaps": c.coverage_gaps(), "files": len(c.refs)}
@@ -183,7 +188,21 @@ def utc_date(s: str) -> datetime:
 
 
 def _jsonable(x: Any) -> Any:
-    return json.loads(json.dumps(x, default=str))
+    """Copia apta para columnas JSON de PostgreSQL, que rechaza ``NaN`` e infinitos.
+
+    Un tramo de calibración vacío tiene ``mean_p = NaN``; se guarda como ``null``.
+    """
+    return _finite(json.loads(json.dumps(x, default=str)))
+
+
+def _finite(x: Any) -> Any:
+    if isinstance(x, float) and not math.isfinite(x):
+        return None
+    if isinstance(x, dict):
+        return {k: _finite(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_finite(v) for v in x]
+    return x
 
 
 def start_run(engine: Any, kind: str, params: CryptoParams | None = None) -> int:

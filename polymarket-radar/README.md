@@ -9,11 +9,15 @@ backtesting.
 > contiene autenticación de trading ni envío de órdenes, y `RADAR_TRADING_MODE`
 > solo admite `paper` (cualquier otro valor aborta el arranque).
 
-**Estado:** hito 1 completo (ingesta real, almacenamiento, liquidez, API,
-dashboard, pruebas) y **motor electoral** implementado (segundas vueltas de dos
-candidatos). Arbitraje, valoración general, cartera virtual y backtesting
-general **no están implementados**; el dashboard lo indica y no muestra cifras
-para ellos. Plan completo en [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md),
+**Estado:**
+
+- Hito 1 completo: ingesta real, almacenamiento, liquidez, API, dashboard y pruebas.
+- **Motor electoral** implementado, para segundas vueltas de dos candidatos.
+- **Modelos predictivos cripto** (módulo D) evaluados fuera de muestra.
+- **Valoración en papel** (módulo E) contra libros del CLOB.
+- Las demás familias de mercados se abstienen con su motivo.
+- Arbitraje, cartera virtual y backtesting general **no están implementados**. El
+  dashboard lo indica y no muestra cifras para ellos. Plan completo en [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md),
 diseño en [`ARCHITECTURE.md`](ARCHITECTURE.md), reglas para colaboradores en
 [`AGENTS.md`](AGENTS.md).
 
@@ -35,6 +39,43 @@ precio de referencia). Es una sola elección: no prueba calibración ni rentabil
 radar elections discover
 radar elections --out reports backtest
 radar elections --out reports evaluate
+```
+
+## Modelos predictivos cripto y valoración (nuevo)
+
+Estiman la probabilidad de contratos cripto de Polymarket con velas de Binance y DVOL de
+Deribit:
+
+- tipos de contrato: precio final, rango, Up/Down y toque;
+- datos de entrada: velas de 1 minuto de Binance spot y el índice DVOL de Deribit;
+- comparación: contra el ask ejecutable del CLOB.
+
+Las reglas de evaluación se fijaron antes de mirar la prueba. Documentación y resultados:
+
+- [`docs/PREDICTIVE_MODELS.md`](docs/PREDICTIVE_MODELS.md)
+- [`docs/PREREGISTRO_CRIPTO.md`](docs/PREREGISTRO_CRIPTO.md)
+- [`reports/backtest_cripto.md`](reports/backtest_cripto.md)
+
+Resultado fuera de muestra (26-oct-2026: 25.895 mercados resueltos, 30.928 instancias de
+prueba entre el 15-sep y el 26-oct):
+
+- **22 de 36** pares (modelo, tipo de contrato) quedan **validados**, es decir, bien
+  calibrados.
+- En la mayoría de los contratos el modelo **empata con el precio del mercado**.
+- La gran diferencia está en los contratos horarios "sobre un nivel". Ahí el precio de
+  referencia histórico parece no ser ejecutable, y no se puede verificar porque no hay
+  libros históricos.
+- Las 1.896 operaciones **hipotéticas** dan +US$29.860 sobre US$47.400. Salen casi
+  todas de ese tipo de contrato y **no son evidencia de rentabilidad**.
+
+La primera corrida en vivo dio **0 señales operables**. Mostró un problema de
+sincronización, pendiente de corregir: los libros se piden unos 12 min después de la
+predicción y se valoran hasta 1 h después (`docs/EVIDENCE.md` §9.5).
+
+```bash
+radar predict collect --start 2026-05-01 --end 2026-10-26   # ~3 h
+radar predict --out reports backtest                        # ~10 min
+radar predict live                                          # ~1 h con ~1.300 mercados
 ```
 
 ## Qué hace hoy (verificado)
@@ -113,6 +154,17 @@ export RADAR_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5433/radar
 .venv/bin/radar api &                            # http://127.0.0.1:8000
 .venv/bin/radar dashboard                        # http://127.0.0.1:8501
 ```
+
+### Base de datos externa (p. ej. Railway)
+
+Con un PostgreSQL administrado, use la URL **pública** del servicio (en Railway,
+`DATABASE_PUBLIC_URL`, que requiere un proxy TCP). Cambie el prefijo `postgresql://`
+por `postgresql+psycopg://` y guárdela como `RADAR_DATABASE_URL` en `.env`, que no se
+versiona.
+
+Las pruebas de base de datos hacen `DROP SCHEMA`. `TEST_DATABASE_URL` debe apuntar a
+**otra** base, nunca a la principal. Después de la primera ingesta completa, más un
+backtest y una corrida en vivo, la base ocupaba 1,8 GB (`docs/EVIDENCE.md` §9.4).
 
 ## CLI
 

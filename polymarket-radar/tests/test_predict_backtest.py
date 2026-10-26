@@ -146,3 +146,13 @@ def test_validation_criteria_report_each_failure() -> None:
     }
     fails = BT._criteria_failures(summ, base_brier=0.25)
     assert len(fails) == 5
+
+
+def test_dataset_sha256_matches_saved_hash(tmp_path) -> None:
+    """El reporte informa el mismo SHA-256 que devolvió el armado del conjunto."""
+    from radar.predict.crypto.dataset import dataset_sha256, load_dataset, save_dataset
+
+    path = tmp_path / "ds.json.gz"
+    sha = save_dataset(path, [{"market_id": "m1", "price_history": [[1, 0.5]]}], {"v": "t"})
+    assert dataset_sha256(path) == sha
+    assert load_dataset(path)["meta"] == {"v": "t"}

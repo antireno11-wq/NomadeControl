@@ -221,10 +221,10 @@ def cmd_predict(args: argparse.Namespace) -> int:
         run_id = service.start_run(engine, "backtest")
         try:
             report = service.run_crypto_backtest(settings, out_dir=Path(args.out))
+            n = service.persist_evaluations(engine, run_id, report)
         except Exception as exc:
             service.finish_run(engine, run_id, "failed", {"error": repr(exc)})
             raise
-        n = service.persist_evaluations(engine, run_id, report)
         summary = service.backtest_summary(report) | {"evaluaciones_guardadas": n}
         service.finish_run(
             engine, run_id, "success", summary, str(Path(args.out) / "backtest_cripto.md")

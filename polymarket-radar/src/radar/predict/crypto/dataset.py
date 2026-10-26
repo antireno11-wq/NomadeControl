@@ -545,6 +545,15 @@ def build_dataset(
     return meta
 
 
+def dataset_sha256(path: Path) -> str:
+    """SHA-256 del contenido descomprimido: el mismo valor que devuelve ``save_dataset``."""
+    h = hashlib.sha256()
+    with gzip.open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def load_dataset(path: Path) -> dict[str, Any]:
     with gzip.open(path, "rt", encoding="utf-8") as fh:
         return json.load(fh)
