@@ -21,8 +21,17 @@ log = get_logger(__name__)
 
 def scheduled_job(settings: Settings) -> None:
     try:
-        run_id = run_ingestion(get_engine(settings.database_url), settings, trigger="scheduled")
+        engine = get_engine(settings.database_url)
+        run_id = run_ingestion(engine, settings, trigger="scheduled")
         log.info("scheduled_run_done", run_id=run_id)
+        from radar.retention import prune
+
+        pruned = prune(
+            engine,
+            live_days=settings.retention_live_days,
+            snapshot_days=settings.retention_snapshot_days,
+        )
+        log.info("retention_done", **pruned)
     except RunAlreadyInProgressError:
         log.warning("scheduled_run_skipped", reason="ingesta en curso")
     except Exception:

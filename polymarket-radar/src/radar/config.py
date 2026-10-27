@@ -86,13 +86,28 @@ class Settings(BaseSettings):
     # Predicciones en vivo (cripto) con libros pedidos en el momento; 0 = desactivado
     predict_interval_minutes: int = Field(default=30, ge=0)
 
+    # --- Retención (ver radar.retention) -------------------------------------------
+    retention_live_days: int = Field(default=2, ge=1)
+    retention_snapshot_days: int = Field(default=2, ge=1)
+
     # --- Dashboard ---------------------------------------------------------------
     api_base_url: str = "http://localhost:8000"
+    # Si se define, el dashboard pide esta contraseña (necesario si queda en internet).
+    dashboard_password: str | None = None
 
     # Directorio de datos del motor electoral (caché cruda, manifiestos, ledgers).
     data_dir: str | None = None
 
     log_level: str = "INFO"
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _psycopg_driver(cls, value: str) -> str:
+        """Railway y otros servicios entregan ``postgresql://``; se usa el driver psycopg 3."""
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix) :]
+        return value
 
     @field_validator("trading_mode", mode="before")
     @classmethod
@@ -110,6 +125,7 @@ class Settings(BaseSettings):
         """Configuración apta para registrar en la base de datos o en logs."""
         data = self.model_dump()
         data["database_url"] = _redact_url(self.database_url)
+        data["dashboard_password"] = "***" if self.dashboard_password else None
         return data
 
 

@@ -48,6 +48,20 @@ def cmd_db_upgrade(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_prune(args: argparse.Namespace) -> int:
+    from radar.db.session import get_engine
+    from radar.retention import prune
+
+    settings = get_settings()
+    out = prune(
+        get_engine(settings.database_url),
+        live_days=settings.retention_live_days,
+        snapshot_days=settings.retention_snapshot_days,
+    )
+    print(json.dumps(out, ensure_ascii=False))
+    return 0
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     from radar.connectivity import check_all
 
@@ -158,6 +172,26 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return subprocess.call(cmd, env=os.environ.copy())  # noqa: S603 - argumentos fijos
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Arranque en contenedor según RADAR_ROLE (api | dashboard | scheduler) y PORT.
+
+    El scheduler aplica las migraciones antes de empezar: es el único que las corre."""
+    role = os.environ.get("RADAR_ROLE", "api")
+    port = os.environ.get("PORT")
+    if role == "scheduler":
+        code = cmd_db_upgrade(argparse.Namespace(revision="head"))
+        return code or cmd_scheduler(args)
+    if role == "dashboard":
+        # En el contenedor el dashboard es lo único expuesto, detrás de la contraseña.
+        dash = argparse.Namespace(host="0.0.0.0", port=int(port or 8501))  # noqa: S104
+        return cmd_dashboard(dash)
+    if role == "api":
+        # "::" escucha también en IPv6 (red privada de Railway).
+        return cmd_api(argparse.Namespace(host="::", port=int(port or 8000)))
+    print(f"RADAR_ROLE desconocido: {role}", file=sys.stderr)
+    return 2
+
+
 def cmd_elections(args: argparse.Namespace) -> int:
     from radar.db.session import get_engine
     from radar.elections import service
@@ -247,6 +281,12 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("db-upgrade", help="aplica migraciones")
     s.add_argument("revision", nargs="?", default="head")
     s.set_defaults(func=cmd_db_upgrade)
+
+    s = sub.add_parser("serve", help="arranque en contenedor según RADAR_ROLE y PORT")
+    s.set_defaults(func=cmd_serve)
+
+    s = sub.add_parser("prune", help="borra datos voluminosos viejos (ver radar.retention)")
+    s.set_defaults(func=cmd_prune)
 
     s = sub.add_parser("check", help="verifica base de datos y APIs")
     s.set_defaults(func=cmd_check)

@@ -21,6 +21,10 @@ FROM base AS runtime
 COPY alembic.ini pyproject.toml README.md ./
 COPY migrations ./migrations
 COPY src ./src
+# Parámetros ajustados y calibración (versionados). data/ debe ser escribible: ahí va la
+# caché de velas de Binance.
+COPY data/models ./data/models
+RUN mkdir -p data/raw && chown -R radar:radar data
 USER radar
 EXPOSE 8000 8501
 CMD ["python", "-m", "radar.cli", "api", "--host", "0.0.0.0", "--port", "8000"]
@@ -34,3 +38,8 @@ RUN --mount=type=secret,id=extra_ca,required=false \
 COPY tests ./tests
 USER radar
 CMD ["python", "-m", "pytest", "-q"]
+
+# Etapa final por defecto (Railway construye la última etapa): la misma imagen de runtime,
+# que arranca como api, dashboard o scheduler según RADAR_ROLE.
+FROM runtime AS deploy
+CMD ["python", "-m", "radar.cli", "serve"]

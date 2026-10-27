@@ -6,6 +6,7 @@ datos: si el backend no responde o no hay corridas, lo dice.
 
 from __future__ import annotations
 
+import hmac
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -1235,7 +1236,24 @@ MAIN_PAGES = ["Resumen", "Señales y alertas"]
 TECH_PAGES = ["Radar", "Mercados", "Detalle", "Ingesta", "Electoral", "Calidad predictiva"]
 
 
+def password_ok() -> bool:
+    """Con RADAR_DASHBOARD_PASSWORD definida (dashboard en internet), pide la contraseña."""
+    expected = os.environ.get("RADAR_DASHBOARD_PASSWORD")
+    if not expected or st.session_state.get("auth_ok"):
+        return True
+    st.title("Polymarket AI Radar")
+    typed = st.text_input("Contraseña", type="password")
+    if typed:
+        if hmac.compare_digest(typed.encode(), expected.encode()):
+            st.session_state["auth_ok"] = True
+            st.rerun()
+        st.error("Contraseña incorrecta.")
+    return False
+
+
 def main() -> None:
+    if not password_ok():
+        return
     st.sidebar.title("Polymarket AI Radar")
     tech = st.sidebar.toggle("Pantallas técnicas", value=False)
     page = st.sidebar.radio("Pantalla", MAIN_PAGES + (TECH_PAGES if tech else []))

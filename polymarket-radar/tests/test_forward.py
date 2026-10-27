@@ -175,3 +175,31 @@ def test_suspended_pairs_come_from_the_last_live_evaluation(engine: Engine) -> N
     with engine.begin() as conn:
         conn.execute(insert(ModelEvaluation), [ev(second, 0.01, 150)])  # n insuficiente
     assert forward.suspended_pairs(engine) == set()
+
+
+@pytest.mark.db
+def test_prune_only_removes_old_live_runs_already_captured(engine: Engine) -> None:
+    from radar.retention import prune
+
+    now = R + timedelta(days=5)
+    with Session(engine) as s:
+        old = add_run(s, R - timedelta(days=3))
+        old_pending = add_run(s, R - timedelta(days=3))  # todavía sin capturar
+        recent = add_run(s, now - timedelta(hours=1))
+        for run in (old, old_pending, recent):
+            add_prediction(s, run, "m1", R - timedelta(hours=1), 0.5)
+        s.commit()
+    with engine.begin() as conn:
+        conn.execute(
+            insert(ForwardInstance),
+            [{"market_id": "m1", "model": "cripto-rv", "family": "cripto",
+              "variant": "hourly_above", "moment_min": 60, "gap_min": 0.0, "prediction_id": 1,
+              "run_id": old_pending, "outcome": "Yes", "as_of": R, "resolution_time": R,
+              "cluster": "BTC|2026-10-27", "p_model": 0.5}],
+        )  # fmt: skip
+    out = prune(engine, live_days=2, snapshot_days=2, now=now)
+    assert out["corridas_en_vivo_borradas"] == 1
+    with Session(engine) as s:
+        left = set(s.scalars(select(PredictionRun.id)))
+        assert left == {old_pending, recent}
+        assert s.scalars(select(PredictionRecord.run_id).distinct()).all()  # cascada parcial

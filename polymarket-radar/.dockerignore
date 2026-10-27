@@ -7,3 +7,6 @@
 reports
 *.md
 !README.md
+data/raw
+data/datasets
+data/alerts
