@@ -31,7 +31,7 @@ from radar.predict.crypto.dataset import (
 from radar.predict.crypto.deribit import SUPPORTED as DVOL_SUPPORTED
 from radar.predict.crypto.deribit import DvolSeries, make_deribit
 from radar.predict.crypto.predictor import CalibrationRegistry, CryptoEvidence, CryptoParams
-from radar.timeutil import utcnow
+from radar.timeutil import parse_iso, utcnow
 
 log = get_logger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -384,19 +384,25 @@ def _jsonable_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def open_markets(engine: Any, now: datetime) -> list[tuple[Any, Any]]:
     from sqlalchemy import select
-    from sqlalchemy.orm import Session
+    from sqlalchemy.orm import Session, defer
 
     from radar.db.models import Event, Market
 
+    # Sin el JSON crudo (~60 % de lo que se leía): solo se usan dos campos suyos.
     with Session(engine) as session:
         return list(
             session.execute(
-                select(Market, Event.title, Event.slug, Event.category)
+                select(
+                    Market, Event.title, Event.slug, Event.category,
+                    Market.raw["gameStartTime"].as_string(),
+                    Market.raw["sportsMarketType"].as_string(),
+                )
+                .options(defer(Market.raw))
                 .join(Event, Event.id == Market.event_id)
                 .where(Market.closed.is_(False), Market.active.is_(True))
                 .where((Market.end_date.is_(None)) | (Market.end_date > now))
             ).all()
-        )
+        )  # fmt: skip
 
 
 def view_from_row(m: Any, title: str | None, slug: str | None, category: str) -> Any:
@@ -426,6 +432,8 @@ def view_from_row(m: Any, title: str | None, slug: str | None, category: str) ->
 
 
 LIVE_BATCH_MARKETS = 50  # mercados por tanda: sus libros se piden y valoran en segundos
+EXTERNAL_CATEGORIES = {"sports", "economy", "politics"}  # candidatas a referencia en Kalshi
+CATEGORY_BY_FAMILY = {"deportes": "sports", "economia": "economy"}
 
 
 def predict_live(
@@ -462,9 +470,10 @@ def predict_live(
     beats = calib_doc.get("supera_mercado") or {}
     reference = calib_doc.get("reference_by_variant") or {}
     registry = default_registry(params, calib)
-    from radar.predict.forward import suspended_pairs
+    from radar.predict.forward import enabled_pairs, suspended_pairs
 
     suspended = suspended_pairs(engine)  # forward-v1: solo puede quitar señales
+    enabled = enabled_pairs(engine)  # familias con referencia externa validadas en vivo
     run_id = start_run(engine, "live", params)
     summary: dict[str, Any] = {"as_of": started.isoformat(), "families": {}, "crypto": {}}
     try:
@@ -472,11 +481,14 @@ def predict_live(
         fam_count: Counter[str] = Counter()
         crypto: list[tuple[Any, CryptoTerms]] = []
         unsupported: Counter[str] = Counter()
-        for m, title, slug, category in rows:
+        others: list[tuple[Any, Any, Any]] = []
+        for m, title, slug, category, game_start, sports_type in rows:
             mv = view_from_row(m, title, slug, category)
             family = registry.family_of(mv)
             fam_count[family] += 1
             if family != "cripto":
+                if category in EXTERNAL_CATEGORIES:
+                    others.append((mv, parse_iso(game_start), sports_type))
                 continue
             t = parse_crypto_terms(mv)
             if isinstance(t, CryptoTerms):
@@ -558,12 +570,15 @@ def predict_live(
                         if val.book_age_s is not None:
                             ages.append(val.book_age_s)
                         vals.append(val)
-                    done.append((mv, t, preds, ref_pred, vals))
+                    done.append((mv, t.variant, "crypto", preds, ref_pred, vals))
                 _persist_live_batch(engine, run_id, done)
                 log.info("live_batch", run_id=run_id, as_of=as_of.isoformat(),
                          mercados=len(done), libros=len(books),
                          cerrados=dict(closed), s_desde_libros=round(
                              (utcnow() - received_by).total_seconds(), 2))  # fmt: skip
+            summary["externos"] = _run_external(
+                settings, engine, run_id, others, clob, batch_markets, enabled
+            )
         finally:
             close()
         summary["crypto"]["libros"] = dict(books_n)
@@ -591,6 +606,98 @@ def predict_live(
     return summary
 
 
+def _run_external(
+    settings: Settings,
+    engine: Any,
+    run_id: int,
+    others: list[tuple[Any, Any, Any]],
+    clob: Any,
+    batch_markets: int,
+    enabled: set[str],
+) -> dict[str, Any]:
+    """Deportes y Fed contra la referencia de Kalshi (``ref-kalshi-v1``), por tandas como los
+    cripto. Sin habilitación en vivo (``enabled``) no hay señales: solo observación."""
+    from collections import Counter
+
+    from radar.market.orderbook import normalize_book
+    from radar.predict import external as X
+    from radar.predict.base import CALIB_NOT_EVALUATED, CALIB_VALIDATED
+    from radar.predict.valuation import BookView, value_token
+
+    out: dict[str, Any] = {"version": X.EXTERNAL_VERSION, "candidatos": len(others)}
+    if not others:
+        return out
+    api = ApiClient(
+        settings.kalshi_base_url,
+        name="kalshi",
+        rate_per_s=settings.kalshi_rate_per_s,
+        timeout_s=settings.http_timeout_s,
+        max_retries=settings.http_max_retries,
+        backoff_base_s=settings.http_backoff_base_s,
+        backoff_max_s=settings.http_backoff_max_s,
+        user_agent=settings.user_agent,
+    )
+    try:
+        quotes = X.fetch_quotes(api)
+    except Exception as exc:  # sin Kalshi, estas familias se abstienen en esta corrida
+        log.warning("kalshi_failed", error=repr(exc))
+        out["error_kalshi"] = repr(exc)
+        return out
+    finally:
+        api.close()
+    idx = X.QuoteIndex.build(quotes)
+    matched: list[tuple[Any, Any]] = []
+    no_pair: Counter[str] = Counter()
+    for mv, start, stype in others:
+        m = X.match_market(mv, start, stype, idx)
+        if isinstance(m, X.Match):
+            matched.append((mv, m))
+        else:
+            no_pair[m] += 1
+    matched.sort(key=lambda x: x[1].reference_time)
+    recs: Counter[str] = Counter()
+    abst: Counter[str] = Counter()
+    for i in range(0, len(matched), batch_markets):
+        as_of = utcnow()
+        batch = [(mv, m) for mv, m in matched[i : i + batch_markets]
+                 if m.reference_time > as_of]  # fmt: skip
+        if not batch:
+            continue
+        tokens = sorted({tok for mv, _ in batch for tok in mv.token_ids})
+        fetched = clob.fetch_books(tokens)
+        books: dict[str, Any] = {}
+        for tok, (book, received) in fetched.books.items():
+            bids, asks = normalize_book(book.bids, book.asks)
+            books[tok] = BookView(tok, bids, asks, received, book.source_ts)
+        done: list[tuple[Any, ...]] = []
+        for mv, m in batch:
+            pr = X.predict(mv, m, quotes, as_of)
+            ok = f"{pr.model}|{m.variant}" in enabled
+            if pr.probability is None:
+                abst[pr.abstain_reason or "—"] += 1
+            else:
+                pr.calibration_status = CALIB_VALIDATED if ok else CALIB_NOT_EVALUATED
+            vals = []
+            for k, outcome in enumerate(mv.outcomes):
+                tok = mv.token_ids[k] if k < len(mv.token_ids) else None
+                val = value_token(mv, outcome, pr, books.get(tok) if tok else None, utcnow(),
+                                  supera_mercado=True if ok else None)  # fmt: skip
+                recs[val.recommendation] += 1
+                vals.append(val)
+            category = CATEGORY_BY_FAMILY.get(m.family, "sports")
+            done.append((mv, m.variant, category, {pr.model: pr}, pr, vals))
+        _persist_live_batch(engine, run_id, done)
+    out |= {
+        "cotizaciones_kalshi": len(quotes),
+        "emparejados": dict(Counter(m.variant for _, m in matched).most_common()),
+        "sin_par": dict(no_pair.most_common(8)),
+        "abstenciones": dict(abst.most_common(10)),
+        "recomendaciones": dict(recs),
+        "habilitados_en_vivo": sorted(enabled),
+    }
+    return out
+
+
 def _persist_live_batch(engine: Any, run_id: int, done: list[tuple[Any, ...]]) -> None:
     """Guarda una tanda en una transacción: una sentencia para predicciones y otra para
     valoraciones (y no varias por mercado, que con una base remota tardaban ~2 s cada uno)."""
@@ -602,7 +709,7 @@ def _persist_live_batch(engine: Any, run_id: int, done: list[tuple[Any, ...]]) -
 
     keys: list[tuple[str, str]] = []
     pred_rows: list[dict[str, Any]] = []
-    for mv, _t, preds, _ref, _vals in done:
+    for mv, _variant, _category, preds, _ref, _vals in done:
         for pr in preds.values():
             keys.append((mv.market_id, pr.model))
             pred_rows.append(
@@ -630,7 +737,7 @@ def _persist_live_batch(engine: Any, run_id: int, done: list[tuple[Any, ...]]) -
         new_ids = conn.execute(stmt, pred_rows).scalars().all()
         ids = dict(zip(keys, new_ids, strict=True))
         val_rows: list[dict[str, Any]] = []
-        for mv, t, _preds, ref_pred, vals in done:
+        for mv, variant, category, _preds, ref_pred, vals in done:
             for val in vals:
                 d = val.to_dict()
                 d.pop("version")
@@ -640,8 +747,8 @@ def _persist_live_batch(engine: Any, run_id: int, done: list[tuple[Any, ...]]) -
                         "run_id": run_id,
                         "prediction_id": ids[(mv.market_id, ref_pred.model)],
                         "question": mv.question,
-                        "category": "crypto",
-                        "variant": t.variant,
+                        "category": category,
+                        "variant": variant,
                         "end_date": mv.end_date,
                         "version": val.version,
                     }

@@ -83,3 +83,44 @@ evaluaciones separadas y la suspensión solo puede quitar señales.
 
 `forward-v1` no re-ajusta parámetros. Un re-ajuste periódico con datos nuevos
 (`crypto-refit-v1`) se preregistrará aparte, antes de ejecutarse.
+
+## Familias con referencia externa (`ref-kalshi-v1`)
+
+Agregado el 27-oct-2026, alrededor de las 22:30 UTC, **antes** de la primera corrida de estas
+familias. Hasta ahora solo se miraron listados de mercados abiertos de Kalshi y de Polymarket
+para comprobar que se pueden emparejar; no se compararon precios ni resultados.
+
+**Idea.** Para deportes y economía no hay un modelo propio. La "predicción" es el precio de un
+mercado equivalente en Kalshi (API pública de solo lectura), sin margen. La evaluación en vivo
+dirá si esa referencia le gana al libro de Polymarket; mientras no lo demuestre, estas familias
+quedan en *observación* y no dan señales.
+
+**Mercados emparejados (todo lo demás se abstiene con su motivo):**
+
+| Variante | Polymarket | Kalshi | Cómo se empareja |
+|---|---|---|---|
+| `nba_partido`, `nfl_partido`, `nhl_partido`, `mlb_partido` | ganador del partido (2 resultados) | `KX{LIGA}GAME` | fecha ET del inicio + códigos de equipo del slug (con tabla de equivalencias) |
+| `futbol_partido` (Premier, Serie A, LaLiga, Bundesliga, Ligue 1, Champions) | gana un equipo / empate (Sí/No) | `KX{LIGA}GAME` | fecha ET + nombres de los dos equipos (similitud ≥ 0,6, sin ambigüedad); empate = `TIE` |
+| `fed_decision` | decisión de tasas de una reunión (sin cambio, ±25, ±50+) | `KXFEDDECISION` | mes y año de la reunión + tipo de decisión |
+
+**Probabilidad.** Punto medio (bid+ask)/2 del resultado en Kalshi, dividido por la suma de los
+puntos medios de todos los resultados del mismo evento (quita el margen). Intervalo = bid y ask
+divididos por la misma suma. Abstención si:
+
+- falta bid o ask en algún resultado del evento, o el spread del resultado es > 0,10;
+- la suma de puntos medios no está entre 0,90 y 1,15;
+- el precio de Kalshi tiene más de 10 min al momento de la predicción;
+- el partido ya empezó (en vivo no se compara: los dos precios no son del mismo instante).
+
+**Momentos** (antes del inicio del partido o de la hora de la decisión de la Fed):
+
+| Variante | Momentos |
+|---|---|
+| partidos | 24 h, 6 h, 2 h y 30 min |
+| `fed_decision` | 14 d, 7 d, 3 d, 1 d y 2 h |
+
+**Conglomerado:** liga × día ET del partido; para la Fed, la reunión.
+
+Se aplican los mismos criterios y la misma regla de habilitación de "Familias nuevas" (dos
+evaluaciones que pasan, separadas por al menos 7 días). No se agregan reglas de política en esta
+versión: los mercados políticos de Polymarket casi nunca tienen un equivalente exacto.

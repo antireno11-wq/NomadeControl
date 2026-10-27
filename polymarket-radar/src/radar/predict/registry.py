@@ -52,7 +52,10 @@ ABSTAIN_REASONS = {
         "fuente de resolución (p. ej. rendimientos del Tesoro) y un conjunto de calibración"
     ),
     "corporativo": "eventos corporativos: sin conjunto de datos verificable para estimar",
-    "deportes": "deportes: sin fuente de datos deportivos verificable ni modelo validado",
+    "deportes": (
+        "deportes: sin modelo propio; los partidos con par en Kalshi se comparan con esa "
+        "referencia (ref-kalshi-v1, en observación) y el resto se abstiene"
+    ),
     "clima": (
         "clima: requiere pronósticos por conjuntos con historial y la estación de resolución; "
         "no implementado"

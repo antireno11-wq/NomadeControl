@@ -785,7 +785,14 @@ VARIANT_LABELS = {
     "touch_month": "Cripto: toca un nivel en el mes",
     "touch_until": "Cripto: toca un nivel antes de una fecha",
     "touch_explicit": "Cripto: toca un nivel antes de una fecha",
+    "nba_partido": "NBA: ganador del partido",
+    "nfl_partido": "NFL: ganador del partido",
+    "nhl_partido": "NHL: ganador del partido",
+    "mlb_partido": "MLB: ganador del partido",
+    "futbol_partido": "Fútbol: gana un equipo o empate",
+    "fed_decision": "Fed: decisión de tasas",
 }
+CATEGORY_LABELS = {"crypto": "cripto", "sports": "deportes", "economy": "economía"}
 
 
 def _money(x: float | None) -> str:
@@ -814,9 +821,11 @@ def page_summary() -> None:
         age = None
         if live.get("finished_at"):
             age = (datetime.now(UTC) - datetime.fromisoformat(live["finished_at"])).total_seconds()
+        ext = (live.get("summary") or {}).get("externos") or {}
+        n_ext = sum((ext.get("emparejados") or {}).values())
         msg = (
             f"Última revisión de precios {fmt_age(age)} · {crypto.get('interpretables', 0):,} "
-            "mercados cripto revisados · se repite cada 30 min."
+            f"mercados cripto y {n_ext:,} de deportes y la Fed · se repite cada 30 min."
         )
         (st.warning if age is not None and age > 3600 else st.caption)(msg)
     else:
@@ -1000,9 +1009,17 @@ def page_opportunities() -> None:
         f"`{summ.get('params_version')}`. Precio ejecutable = VWAP del ask para US$25 en libros "
         "pedidos al CLOB justo antes de valorar cada tanda."
     )
-    recs = crypto.get("recomendaciones") or {}
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Mercados cripto modelados", crypto.get("interpretables", 0))
+    ext = s.get("externos") or {}
+    recs: dict[str, int] = dict(crypto.get("recomendaciones") or {})
+    for k, n in (ext.get("recomendaciones") or {}).items():
+        recs[k] = recs.get(k, 0) + n
+    c1, c2 = st.columns(2)
+    c3, c4 = st.columns(2)
+    c1.metric(
+        "Mercados revisados",
+        crypto.get("interpretables", 0) + sum((ext.get("emparejados") or {}).values()),
+        help="Cripto con modelo propio; deportes y Fed comparados con Kalshi (en observación).",
+    )
     c2.metric("Señales operables", recs.get("señal_operable", 0))
     c3.metric("Alertas de investigación", recs.get("alerta_investigacion", 0))
     c4.metric("Información insuficiente", recs.get("informacion_insuficiente", 0))
@@ -1056,7 +1073,7 @@ def page_opportunities() -> None:
             {
                 "Mercado": it["question"],
                 "Resultado": it["outcome"],
-                "Categoría": f"cripto · {it.get('variant')}",
+                "Categoría": VARIANT_LABELS.get(it.get("variant") or "", it.get("variant")),
                 "Precio ejecutable": it.get("ask_vwap"),
                 "Prob. estimada": it.get("p_model"),
                 "Intervalo": (

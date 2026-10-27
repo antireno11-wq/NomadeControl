@@ -30,7 +30,8 @@ from radar.logging_setup import get_logger
 from radar.predict import metrics as MX
 from radar.predict.base import CALIB_NOT_VALIDATED, CALIB_VALIDATED
 from radar.predict.crypto.backtest import CRITERIA
-from radar.predict.crypto.schedule import OFFSETS
+from radar.predict.crypto.schedule import OFFSETS as CRYPTO_OFFSETS
+from radar.predict.external import OFFSETS_EXTERNAL
 from radar.timeutil import utcnow
 
 log = get_logger(__name__)
@@ -43,6 +44,8 @@ ET = ZoneInfo("America/New_York")
 RESOLVE_GRACE = timedelta(minutes=5)
 GAMMA_BATCH = 50
 GAMMA_MAX_BATCHES = 20
+OFFSETS = {**CRYPTO_OFFSETS, **OFFSETS_EXTERNAL}
+ENABLE_GAP = timedelta(days=7)  # familias nuevas: dos evaluaciones que pasan, separadas 7 días
 
 
 @dataclass(frozen=True)
@@ -485,6 +488,46 @@ def suspended_pairs(engine: Any) -> set[str]:
             )
         ).all()
     return {f"{m}|{v}" for m, v in rows}
+
+
+def enabled_pairs(engine: Any) -> set[str]:
+    """Pares de familias nuevas (no cripto) habilitados para señales: validados y mejores que
+    el mercado en la última evaluación y también en una al menos 7 días anterior."""
+    from sqlalchemy import func, select
+
+    from radar.db.models import ModelEvaluation, PredictionRun
+
+    def passing(run_id: int) -> set[str]:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                select(ModelEvaluation.model, ModelEvaluation.variant).where(
+                    ModelEvaluation.run_id == run_id,
+                    ModelEvaluation.family != "cripto",
+                    ModelEvaluation.status == CALIB_VALIDATED,
+                    ModelEvaluation.supera_mercado.is_(True),
+                )
+            ).all()
+        return {f"{m}|{v}" for m, v in rows}
+
+    with engine.connect() as conn:
+        last = conn.execute(
+            select(PredictionRun.id, PredictionRun.started_at)
+            .where(PredictionRun.kind == "forward", PredictionRun.status == "success")
+            .order_by(PredictionRun.id.desc())
+            .limit(1)
+        ).first()
+        if last is None:
+            return set()
+        older = conn.execute(
+            select(func.max(PredictionRun.id)).where(
+                PredictionRun.kind == "forward",
+                PredictionRun.status == "success",
+                PredictionRun.started_at <= last.started_at - ENABLE_GAP,
+            )
+        ).scalar()
+    if older is None:
+        return set()
+    return passing(last.id) & passing(older)
 
 
 # ---------------------------------------------------------------------- todo junto

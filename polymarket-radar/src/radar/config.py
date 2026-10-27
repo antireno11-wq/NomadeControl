@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     http_backoff_max_s: float = 30.0
     gamma_rate_per_s: float = Field(default=8.0, gt=0)
     clob_rate_per_s: float = Field(default=8.0, gt=0)
+    # Kalshi (solo lectura, datos públicos): referencia externa de deportes y de la Fed.
+    kalshi_base_url: str = "https://api.elections.kalshi.com/trade-api/v2"
+    kalshi_rate_per_s: float = Field(default=5.0, gt=0)
 
     # Gamma /markets/keyset entrega como máximo 100 mercados por página.
     gamma_page_size: int = Field(default=100, ge=1, le=100)

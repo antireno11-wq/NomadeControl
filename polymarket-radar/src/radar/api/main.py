@@ -527,7 +527,9 @@ def forward_eval(session: SessionDep, settings: SettingsDep) -> dict[str, Any]:
     items = []
     for r in rows:
         d = {c.name: getattr(r, c.name) for c in r.__table__.columns if c.name != "created_at"}
-        d["is_reference"] = r.model == f"cripto-{reference.get(r.variant) or 'rv'}"
+        d["is_reference"] = r.model.startswith("ref-") or (
+            r.model == f"cripto-{reference.get(r.variant) or 'rv'}"
+        )
         items.append(d)
     return {"run": _run_dict(run), "items": items}
 
