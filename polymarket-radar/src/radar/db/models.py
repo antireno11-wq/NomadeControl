@@ -492,3 +492,72 @@ class ModelEvaluation(Base):
     status: Mapped[str] = mapped_column(String(24))
     failures: Mapped[list[Any]] = mapped_column(JSONType, default=list)
     bins: Mapped[list[Any]] = mapped_column(JSONType, default=list)
+
+
+# ------------------------------------------------- evaluación en vivo y cartera de papel
+
+
+class ForwardInstance(Base):
+    """Predicción en vivo elegida como instancia de ``forward-v1`` (un momento preregistrado
+    antes de la resolución). Se copia lo necesario para no depender de ``predictions``,
+    que se puede podar. ``y`` queda vacío hasta la resolución oficial."""
+
+    __tablename__ = "forward_instances"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    market_id: Mapped[str] = mapped_column(String(64), index=True)
+    model: Mapped[str] = mapped_column(String(48))
+    family: Mapped[str] = mapped_column(String(24))
+    variant: Mapped[str] = mapped_column(String(32))
+    moment_min: Mapped[int] = mapped_column(Integer)  # d: minutos antes de la resolución
+    gap_min: Mapped[float] = mapped_column(Float)  # (R − d) − as_of, entre 0 y 40
+    prediction_id: Mapped[int] = mapped_column(BigInteger)
+    run_id: Mapped[int] = mapped_column(Integer)
+    outcome: Mapped[str] = mapped_column(Text)
+    as_of: Mapped[datetime] = mapped_column(TS)
+    resolution_time: Mapped[datetime] = mapped_column(TS)
+    cluster: Mapped[str] = mapped_column(String(64))
+    p_model: Mapped[float] = mapped_column(Float)
+    p_market: Mapped[float | None] = mapped_column(Float)  # punto medio del libro (CLOB)
+    y: Mapped[float | None] = mapped_column(Float)
+    resolved_at: Mapped[datetime | None] = mapped_column(TS)
+
+    __table_args__ = (
+        UniqueConstraint("market_id", "model", "moment_min", name="uq_forward_market_model_moment"),
+        Index("ix_forward_pending", "y", "resolution_time"),
+    )
+
+
+class PaperTrade(Base):
+    """Posición simulada (``paper-v1``): la primera señal operable de cada mercado y
+    resultado. No hay órdenes reales."""
+
+    __tablename__ = "paper_trades"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version: Mapped[str] = mapped_column(String(16))
+    valuation_id: Mapped[int] = mapped_column(BigInteger)
+    run_id: Mapped[int] = mapped_column(Integer)
+    market_id: Mapped[str] = mapped_column(String(64), index=True)
+    token_id: Mapped[str] = mapped_column(String(100))
+    outcome: Mapped[str] = mapped_column(Text)
+    question: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(32))
+    variant: Mapped[str | None] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(48))
+    opened_at: Mapped[datetime] = mapped_column(TS)
+    end_date: Mapped[datetime | None] = mapped_column(TS)
+    p_model: Mapped[float | None] = mapped_column(Float)
+    entry_price: Mapped[float] = mapped_column(Float)  # VWAP del ask (CLOB)
+    fee_per_share: Mapped[float] = mapped_column(Float)
+    shares: Mapped[float] = mapped_column(Float)
+    cost_usd: Mapped[float] = mapped_column(Float)
+    ev_net_usd: Mapped[float | None] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(16), index=True)  # abierta|ganada|perdida|empate
+    final_price: Mapped[float | None] = mapped_column(Float)
+    payout_usd: Mapped[float | None] = mapped_column(Float)
+    pnl_usd: Mapped[float | None] = mapped_column(Float)
+    resolved_at: Mapped[datetime | None] = mapped_column(TS)
+    created_at: Mapped[datetime] = mapped_column(TS)
+
+    __table_args__ = (UniqueConstraint("market_id", "token_id", name="uq_paper_market_token"),)

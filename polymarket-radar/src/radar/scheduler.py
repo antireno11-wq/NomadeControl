@@ -41,6 +41,12 @@ def predict_job(settings: Settings) -> None:
     except Exception:
         # La corrida queda registrada como 'failed' en prediction_runs.
         log.exception("scheduled_predict_failed")
+    try:
+        from radar.predict.forward import update
+
+        log.info("scheduled_forward_done", **update(settings, get_engine(settings.database_url)))
+    except Exception:
+        log.exception("scheduled_forward_failed")
 
 
 def run_scheduler(settings: Settings) -> None:

@@ -96,15 +96,14 @@ def page_radar(status: dict[str, Any] | None) -> None:
         st.info("Información insuficiente: no hay corridas de ingesta registradas.")
         return
     run = status["last_run"]
-    c = st.columns(5)
+    c = st.columns(4)
     c[0].metric("Mercados encontrados", f"{run['markets_discovered']:,}")
     c[1].metric("Mercados filtrados (elegibles)", f"{run['markets_eligible']:,}")
     c[2].metric("Mercados analizados", f"{run['markets_analyzed']:,}")
     c[3].metric("Pasan filtro de liquidez", f"{run['markets_liquid']:,}")
-    c[4].metric("Oportunidades detectadas", "—")
     st.caption(
-        "Oportunidades: el motor de arbitraje y valoración aún no está implementado "
-        "(hitos 3 y 5). No se muestran oportunidades hasta que exista un cálculo verificable."
+        "Esta pantalla muestra la ingesta de todo Polymarket. Las señales, la cartera de papel "
+        "y los aciertos del radar están en **Resumen** y **Señales y alertas**."
     )
 
     left, right = st.columns(2)
@@ -774,8 +773,213 @@ REC_LABELS = {
 }
 
 
+VARIANT_LABELS = {
+    "hourly_above": "Cripto: precio sobre un nivel (por hora)",
+    "hourly_updown": "Cripto: sube o baja (por hora)",
+    "daily_above": "Cripto: precio sobre un nivel (diario)",
+    "daily_below": "Cripto: precio bajo un nivel (diario)",
+    "daily_range": "Cripto: precio en un rango (diario)",
+    "daily_updown": "Cripto: sube o baja (diario)",
+    "touch_day": "Cripto: toca un nivel en el día",
+    "touch_range": "Cripto: toca un nivel en la semana",
+    "touch_month": "Cripto: toca un nivel en el mes",
+    "touch_until": "Cripto: toca un nivel antes de una fecha",
+    "touch_explicit": "Cripto: toca un nivel antes de una fecha",
+}
+
+
+def _money(x: float | None) -> str:
+    return "—" if x is None else f"{'+' if x > 0 else ''}US${x:,.2f}"
+
+
+def _verdict(row: dict[str, Any]) -> str:
+    """Comparación con el mercado en palabras simples (forward-v1)."""
+    lo, hi = row.get("vs_market_ll_lo"), row.get("vs_market_ll_hi")
+    if lo is None or hi is None:
+        return "faltan datos"
+    if hi < 0:
+        return "mejor que el mercado"
+    if lo > 0:
+        return "peor que el mercado"
+    return "igual al mercado"
+
+
+def page_summary() -> None:
+    st.header("Resumen")
+    live = (api_get("/api/predict/summary") or {}).get("live")
+    paper = api_get("/api/paper") or {}
+    fwd = api_get("/api/forward") or {}
+    if live:
+        crypto = (live.get("summary") or {}).get("crypto") or {}
+        age = None
+        if live.get("finished_at"):
+            age = (datetime.now(UTC) - datetime.fromisoformat(live["finished_at"])).total_seconds()
+        msg = (
+            f"Última revisión de precios {fmt_age(age)} · {crypto.get('interpretables', 0):,} "
+            "mercados cripto revisados · se repite cada 30 min."
+        )
+        (st.warning if age is not None and age > 3600 else st.caption)(msg)
+    else:
+        st.info("Todavía no hay corridas en vivo.")
+    signals = (api_get("/api/opportunities", recommendation="señal_operable") or {}).get(
+        "items"
+    ) or []
+
+    c1, c2 = st.columns(2)
+    c3, c4 = st.columns(2)
+    c1.metric("Señales ahora", len(signals))
+    c2.metric(
+        "Posiciones abiertas",
+        paper.get("abiertas", 0),
+        help=f"Exposición {_money(paper.get('exposicion_usd'))} de un máximo de "
+        f"US${paper.get('exposicion_maxima_usd', 300):,.0f}",
+    )
+    closed = paper.get("cerradas", 0)
+    c3.metric(
+        "Resultado de la cartera",
+        _money(paper.get("resultado_usd", 0.0)),
+        help=f"{paper.get('ganadas', 0)} ganadas, {paper.get('perdidas', 0)} perdidas y "
+        f"{paper.get('empates', 0)} empates sobre {closed} cerradas.",
+    )
+    c4.metric("Capital simulado", f"US${paper.get('capital_actual_usd', 1000):,.2f}",
+              help="Parte de US$1.000. Todo es papel: no hay dinero real.")  # fmt: skip
+
+    st.subheader("Señales de ahora")
+    if signals:
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Mercado": it["question"],
+                        "Comprar": it["outcome"],
+                        "Precio": it.get("ask_vwap"),
+                        "Prob. del radar": it.get("p_model"),
+                        "Ganancia esperada con US$25": it.get("ev_net_usd"),
+                        "Cierra": fmt_ts(it.get("end_date")),
+                        "Enlace": it.get("url"),
+                    }
+                    for it in signals
+                ]
+            ),
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
+                "Precio": st.column_config.NumberColumn(format="%.3f"),
+                "Prob. del radar": st.column_config.NumberColumn(format="%.3f"),
+                "Ganancia esperada con US$25": st.column_config.NumberColumn(format="US$%.2f"),
+            },
+        )
+    else:
+        st.info(
+            "Ahora no hay señales. El radar propone una solo cuando su modelo está validado, "
+            "le gana al mercado y la diferencia cubre los costos."
+        )
+
+    st.subheader("Cartera de papel")
+    items = paper.get("items") or []
+    if not items:
+        st.info("Todavía no hay posiciones: se abren solas con cada señal nueva.")
+    else:
+        df = pd.DataFrame(
+            [
+                {
+                    "Abierta": fmt_ts(t["opened_at"]),
+                    "Mercado": t["question"],
+                    "Compra": t["outcome"],
+                    "Precio": t["entry_price"],
+                    "Costo": t["cost_usd"],
+                    "Estado": t["status"],
+                    "Resultado": t.get("pnl_usd"),
+                    "Enlace": t.get("url"),
+                }
+                for t in items
+            ]
+        )
+        st.dataframe(
+            df,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
+                "Precio": st.column_config.NumberColumn(format="%.3f"),
+                "Costo": st.column_config.NumberColumn(format="US$%.2f"),
+                "Resultado": st.column_config.NumberColumn(format="US$%.2f"),
+            },
+        )
+        st.caption(
+            "Una compra simulada de US$25 por señal, al precio real del libro en ese momento. "
+            "Se cierra sola con el resultado oficial."
+        )
+
+    st.subheader("¿Acierta el radar?")
+    rows = [r for r in fwd.get("items") or [] if r.get("is_reference")]
+    if not rows:
+        st.info("Todavía no hay predicciones resueltas para medir.")
+    else:
+        days = {r["variant"]: r["n_clusters"] for r in rows}
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Tipo de mercado": VARIANT_LABELS.get(r["variant"], r["variant"]),
+                        "Predicciones medidas": r["n"],
+                        "Frente al mercado": _verdict(r),
+                        "Estado": (
+                            "validado en vivo"
+                            if r["status"] == "validado"
+                            else "en observación"
+                            if r["n"] < 200 or r["n_clusters"] < 20
+                            else "no validado"
+                        ),
+                    }
+                    for r in sorted(rows, key=lambda r: -r["n"])
+                ]
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.caption(
+            "Compara lo que el radar predijo en el momento con el resultado oficial y con el "
+            "precio del mercado en ese mismo momento. Para validar hacen falta al menos 200 "
+            f"predicciones y 20 días-activo (hoy el máximo es {max(days.values())}). Si un "
+            "modelo resulta peor que el mercado, sus señales se suspenden solas."
+        )
+
+    st.subheader("Alertas para mirar")
+    alerts = (
+        api_get("/api/opportunities", recommendation="alerta_investigacion", limit=5) or {}
+    ).get("items") or []
+    if not alerts:
+        st.caption("Sin alertas en la última revisión.")
+    else:
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Mercado": it["question"],
+                        "Resultado": it["outcome"],
+                        "Precio": it.get("ask_vwap"),
+                        "Prob. del radar": it.get("p_model"),
+                        "Por qué no es señal": (it.get("reasons") or ["—"])[0],
+                        "Enlace": it.get("url"),
+                    }
+                    for it in alerts
+                ]
+            ),
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
+                "Precio": st.column_config.NumberColumn(format="%.3f"),
+                "Prob. del radar": st.column_config.NumberColumn(format="%.3f"),
+            },
+        )
+        st.caption("Diferencias grandes con el mercado que no cumplen todo. No son compras.")
+
+
 def page_opportunities() -> None:
-    st.header("Oportunidades")
+    st.header("Señales y alertas")
     summ = (api_get("/api/predict/summary") or {}).get("live")
     if not summ:
         st.info(
@@ -1010,61 +1214,42 @@ def page_quality() -> None:
         )
 
 
-def page_pending(title: str, milestone: str, needs: list[str]) -> None:
-    st.header(title)
-    st.info(f"No implementado todavía ({milestone}). No se muestran datos ficticios ni de ejemplo.")
-    st.markdown("Requisitos antes de habilitar esta pantalla:")
-    for n in needs:
-        st.markdown(f"- {n}")
-
-
-PAGES = [
-    "Radar",
-    "Mercados",
-    "Detalle",
-    "Ingesta",
-    "Electoral",
-    "Oportunidades",
-    "Cartera virtual",
-    "Calidad predictiva",
-]
+MAIN_PAGES = ["Resumen", "Señales y alertas"]
+TECH_PAGES = ["Radar", "Mercados", "Detalle", "Ingesta", "Electoral", "Calidad predictiva"]
 
 
 def main() -> None:
     st.sidebar.title("Polymarket AI Radar")
-    page = st.sidebar.radio("Pantalla", PAGES)
-    st.sidebar.caption(f"Backend: {API}")
-    health = api_get("/api/health")
-    if health:
-        st.sidebar.caption(
-            f"API {health['version']} · base: {health['database']} · trading: "
-            f"{health['trading_mode']}"
-        )
-    status = api_get("/api/status")
-    banner(status)
-    if page == "Radar":
-        page_radar(status)
-    elif page == "Mercados":
-        page_markets()
-    elif page == "Detalle":
-        page_detail()
-    elif page == "Ingesta":
-        page_ingestion()
-    elif page == "Electoral":
-        page_elections()
-    elif page == "Oportunidades":
+    tech = st.sidebar.toggle("Pantallas técnicas", value=False)
+    page = st.sidebar.radio("Pantalla", MAIN_PAGES + (TECH_PAGES if tech else []))
+    st.sidebar.caption("Solo simulación: no opera con dinero real.")
+    if tech:
+        st.sidebar.caption(f"Backend: {API}")
+        health = api_get("/api/health")
+        if health:
+            st.sidebar.caption(
+                f"API {health['version']} · base: {health['database']} · trading: "
+                f"{health['trading_mode']}"
+            )
+    if page == "Resumen":
+        page_summary()
+    elif page == "Señales y alertas":
         page_opportunities()
-    elif page == "Cartera virtual":
-        page_pending(
-            "Cartera virtual",
-            "hito 6",
-            [
-                "Simulador de ejecución sobre order books con llenados parciales.",
-                "Ledger auditable; capital US$1.000, reserva US$700, exposición máx. US$300.",
-            ],
-        )
     else:
-        page_quality()
+        status = api_get("/api/status")
+        banner(status)
+        if page == "Radar":
+            page_radar(status)
+        elif page == "Mercados":
+            page_markets()
+        elif page == "Detalle":
+            page_detail()
+        elif page == "Ingesta":
+            page_ingestion()
+        elif page == "Electoral":
+            page_elections()
+        else:
+            page_quality()
 
 
 main()

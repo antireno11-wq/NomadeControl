@@ -233,6 +233,10 @@ def cmd_predict(args: argparse.Namespace) -> int:
     elif args.predict_command == "live":
         out = service.predict_live(settings, engine, max_markets=args.max_markets)
         print(json.dumps(out, indent=2, ensure_ascii=False, default=str))
+    elif args.predict_command == "forward":
+        from radar.predict import forward
+
+        print(json.dumps(forward.update(settings, engine), indent=2, ensure_ascii=False))
     return 0
 
 
@@ -291,6 +295,9 @@ def build_parser() -> argparse.ArgumentParser:
     psub.add_parser("backtest", help="ajuste, validación y prueba de los modelos cripto")
     lv = psub.add_parser("live", help="predice y valora los mercados abiertos")
     lv.add_argument("--max-markets", type=int, default=None)
+    psub.add_parser(
+        "forward", help="evaluación en vivo y cartera de papel (docs/PREREGISTRO_VIVO.md)"
+    )
     s.set_defaults(func=cmd_predict)
 
     s = sub.add_parser("dashboard", help="dashboard Streamlit")

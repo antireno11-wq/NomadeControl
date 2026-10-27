@@ -456,6 +456,82 @@ def predict_quality(session: SessionDep) -> dict[str, Any]:
     return {"run": _run_dict(run), "items": items}
 
 
+@app.get("/api/paper")
+def paper(session: SessionDep, limit: Annotated[int, Query(ge=1, le=2000)] = 500) -> dict[str, Any]:
+    """Cartera de papel (``paper-v1``): posiciones simuladas abiertas por las señales."""
+    from sqlalchemy import select
+
+    from radar.db.models import Event, Market, PaperTrade
+    from radar.predict.forward import PaperConfig
+
+    cfg = PaperConfig()
+    rows = session.execute(
+        select(PaperTrade, Event.slug)
+        .join(Market, Market.id == PaperTrade.market_id, isouter=True)
+        .join(Event, Event.id == Market.event_id, isouter=True)
+        .order_by(PaperTrade.opened_at.desc())
+        .limit(limit)
+    ).all()
+    items = []
+    for t, slug in rows:
+        d = {c.name: getattr(t, c.name) for c in t.__table__.columns}
+        for k in ("opened_at", "end_date", "resolved_at", "created_at"):
+            if d.get(k) is not None:
+                d[k] = d[k].isoformat()
+        d["url"] = f"https://polymarket.com/event/{slug}" if slug else None
+        items.append(d)
+    closed = [d for d in items if d["status"] != "abierta"]
+    open_ = [d for d in items if d["status"] == "abierta"]
+    pnl = sum(d["pnl_usd"] or 0.0 for d in closed)
+    cost_closed = sum(d["cost_usd"] for d in closed)
+    exposure = sum(d["cost_usd"] for d in open_)
+    return {
+        "version": "paper-v1",
+        "capital_inicial_usd": cfg.capital_usd,
+        "exposicion_maxima_usd": cfg.max_exposure_usd,
+        "abiertas": len(open_),
+        "exposicion_usd": exposure,
+        "cerradas": len(closed),
+        "ganadas": sum(d["status"] == "ganada" for d in closed),
+        "perdidas": sum(d["status"] == "perdida" for d in closed),
+        "empates": sum(d["status"] == "empate" for d in closed),
+        "resultado_usd": pnl,
+        "invertido_cerradas_usd": cost_closed,
+        "capital_actual_usd": cfg.capital_usd + pnl,
+        "items": items,
+    }
+
+
+@app.get("/api/forward")
+def forward_eval(session: SessionDep, settings: SettingsDep) -> dict[str, Any]:
+    """Última evaluación en vivo (``forward-v1``) por modelo y tipo de contrato."""
+    import json
+
+    from sqlalchemy import select
+
+    from radar.db.models import ModelEvaluation
+    from radar.predict.service import calibration_path
+
+    run = _latest_prediction_run(session, "forward")
+    if run is None:
+        return {"run": None, "items": [], "nota": "Información insuficiente: sin evaluación"}
+    path = calibration_path(settings)
+    reference = (json.loads(path.read_text()) if path.exists() else {}).get(
+        "reference_by_variant"
+    ) or {}
+    rows = session.execute(
+        select(ModelEvaluation)
+        .where(ModelEvaluation.run_id == run.id)
+        .order_by(ModelEvaluation.variant, ModelEvaluation.model)
+    ).scalars()
+    items = []
+    for r in rows:
+        d = {c.name: getattr(r, c.name) for c in r.__table__.columns if c.name != "created_at"}
+        d["is_reference"] = r.model == f"cripto-{reference.get(r.variant) or 'rv'}"
+        items.append(d)
+    return {"run": _run_dict(run), "items": items}
+
+
 @app.get("/api/markets/{market_id}/predictions")
 def market_predictions(
     market_id: str, session: SessionDep, limit: Annotated[int, Query(ge=1, le=500)] = 50

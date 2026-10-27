@@ -33,6 +33,8 @@ REC_ALERT = "alerta_investigacion"
 REC_NONE = "sin_ventaja"
 REC_INSUFFICIENT = "informacion_insuficiente"
 REC_ABSTAIN = "abstencion"
+# forward-v1 (docs/PREREGISTRO_VIVO.md): solo puede quitar señales, nunca agregarlas.
+SUSPENDED_REASON = "suspendido por la evaluación en vivo: peor que el mercado (forward-v1)"
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,7 @@ def value_token(
     now: datetime,
     *,
     supera_mercado: bool | None,
+    suspendido: bool = False,
     cfg: ValuationConfig | None = None,
 ) -> Valuation:
     cfg = cfg or ValuationConfig()
@@ -178,6 +181,8 @@ def value_token(
     if v.p_low is not None:
         v.ev_conservative_per_share = v.p_low - v.ask_vwap - v.costs_per_share
     reasons = gate_reasons(v, cfg)
+    if suspendido:
+        reasons.append(SUSPENDED_REASON)
     alert = v.edge_pp >= cfg.alert_threshold_pp
     if not reasons:
         v.recommendation = REC_SIGNAL

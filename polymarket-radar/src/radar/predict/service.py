@@ -462,6 +462,9 @@ def predict_live(
     beats = calib_doc.get("supera_mercado") or {}
     reference = calib_doc.get("reference_by_variant") or {}
     registry = default_registry(params, calib)
+    from radar.predict.forward import suspended_pairs
+
+    suspended = suspended_pairs(engine)  # forward-v1: solo puede quitar señales
     run_id = start_run(engine, "live", params)
     summary: dict[str, Any] = {"as_of": started.isoformat(), "families": {}, "crypto": {}}
     try:
@@ -549,6 +552,7 @@ def predict_live(
                             books.get(tok) if tok else None,
                             utcnow(),
                             supera_mercado=beats.get(f"{ref_pred.model}|{t.variant}"),
+                            suspendido=f"{ref_pred.model}|{t.variant}" in suspended,
                         )
                         recs[val.recommendation] += 1
                         if val.book_age_s is not None:
@@ -577,6 +581,7 @@ def predict_live(
         summary["crypto"]["abstenciones"] = dict(abst.most_common(20))
         summary["crypto"]["recomendaciones"] = dict(recs)
         summary["crypto"]["referencia_por_variante"] = reference or "rv (sin calibración)"
+        summary["crypto"]["suspendidos_en_vivo"] = sorted(suspended)
         finish_run(engine, run_id, "success", summary)
     except Exception as exc:
         summary["error"] = repr(exc)

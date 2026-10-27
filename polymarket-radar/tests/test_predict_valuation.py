@@ -14,6 +14,7 @@ from radar.predict.valuation import (
     REC_INSUFFICIENT,
     REC_NONE,
     REC_SIGNAL,
+    SUSPENDED_REASON,
     BookView,
     value_token,
 )
@@ -84,6 +85,15 @@ def test_failing_gate_downgrades_to_research_alert(kwargs: dict, fragment: str) 
     v = value_token(MARKET, "Yes", p, DEEP, NOW, supera_mercado=kwargs.get("supera", True))
     assert v.recommendation == REC_ALERT
     assert any(fragment in r for r in v.reasons)
+
+
+def test_live_suspension_only_removes_the_signal() -> None:
+    p = pred(0.70, 0.62, 0.78)
+    v = value_token(MARKET, "Yes", p, DEEP, NOW, supera_mercado=True, suspendido=True)
+    assert v.recommendation == REC_ALERT and v.reasons == [SUSPENDED_REASON]
+    weak = value_token(MARKET, "Yes", pred(0.52, 0.45, 0.6), DEEP, NOW, supera_mercado=True,
+                       suspendido=True)  # fmt: skip
+    assert weak.recommendation == REC_NONE
 
 
 def test_thin_book_and_stale_book_block_the_signal() -> None:
