@@ -110,15 +110,11 @@ externa del ledger en vivo antes de cada cierre.
 | Probabilidad vs. ask ejecutable (VWAP), diferencia en p.p., VE bruto/neto/conservador, costos, incertidumbre, riesgo de liquidez | ✅ | `radar/predict/valuation.py`, `tests/test_predict_valuation.py` |
 | Umbrales configurables y puertas de señal | ✅ | `ValuationConfig`, `gate_reasons` |
 | Sin señal si el modelo no está validado o no supera al mercado | ✅ | pruebas de puertas |
-| Corrida en vivo manual y programada | 🟡 | `radar predict live`, `RADAR_PREDICT_INTERVAL_MINUTES`. La corrida real del 26-oct funcionó (1.329 mercados, 0 señales), pero no está sincronizada (ver abajo) |
+| Corrida en vivo manual y programada | ✅ | `radar predict live`, `RADAR_PREDICT_INTERVAL_MINUTES`. Va por tandas de 50 mercados y pide los libros justo antes de valorar. 27-oct, base local: antigüedad del libro con mediana 0,09 s y máxima 39,8 s (`docs/EVIDENCE.md` §10) |
 
-Pendiente, encontrado en la primera corrida real (`docs/EVIDENCE.md` §9.5):
+Pendiente:
 
-- **Libros fuera de tiempo.** Hoy los libros se piden ~12 min después del `as_of` y se
-  valoran hasta 1 h después.
-  - Hay que pedir cada libro justo antes de valorar su mercado.
-  - Hay que descartar los mercados que cerraron antes de recibir el libro.
-  - Hay que fijar el `as_of` en el momento de predecir.
+- **Corrida nueva contra Railway.** Solo se midió contra la base local.
 - **Texto de la pantalla Radar.** Todavía dice que la valoración no está implementada.
 
 ## Hito 6 — Cartera virtual ⬜

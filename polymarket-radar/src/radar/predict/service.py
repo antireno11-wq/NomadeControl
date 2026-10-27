@@ -4,7 +4,7 @@
 - ``run_crypto_backtest``: ajuste (entrenamiento), elección (validación) y medición
   (prueba); guarda parámetros, estado de calibración y reportes.
 - ``predict_live``: predice mercados abiertos con datos al instante y valora contra
-  libros del CLOB pedidos en el momento.
+  libros del CLOB pedidos en el momento, por tandas (ver la función).
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import json
 import math
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from statistics import median
 from typing import Any
 
 from radar.config import Settings
@@ -86,6 +87,61 @@ def collect_crypto_dataset(
     return build_dataset(gamma, clob, cache, plan, dataset_path(settings), with_prices=with_prices)
 
 
+class EvidenceLoader:
+    """Velas de Binance y DVOL de Deribit (caché en ``data/raw``).
+
+    ``load`` arma la evidencia para [start, end). En la corrida en vivo, ``refresh`` la
+    pone al día antes de cada tanda: pide solo las velas cerradas desde la última carga
+    y vuelve a pedir el DVOL cuando cerró una hora nueva.
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        self.binance = make_binance(data_dir(settings) / "raw" / "binance", user_agent=RESEARCH_UA)
+        self.deribit = make_deribit(data_dir(settings) / "raw" / "deribit", user_agent=RESEARCH_UA)
+        self._start: datetime | None = None
+        self._dvol_hour: datetime | None = None
+
+    def load(
+        self, symbols: set[str], start: datetime, end: datetime, *, now: datetime | None = None
+    ) -> CryptoEvidence:
+        self.binance.now = now
+        candles: dict[str, Candles] = {}
+        for sym in sorted(symbols):
+            candles[sym] = self.binance.load(sym, start, end)
+            log.info("evidence_candles", symbol=sym, rows=len(candles[sym]),
+                     gaps=candles[sym].coverage_gaps())  # fmt: skip
+        self._start = start
+        self._dvol_hour = _hour(min(end, now or utcnow()))
+        return CryptoEvidence(candles=candles, dvol=self._load_dvol(symbols, start, end, now))
+
+    def _load_dvol(
+        self, symbols: set[str], start: datetime, end: datetime, now: datetime | None
+    ) -> dict[str, DvolSeries]:
+        self.deribit.now = now
+        dvol: dict[str, DvolSeries] = {}
+        for sym in symbols:
+            asset = sym.removesuffix("USDT")
+            if asset in DVOL_SUPPORTED and asset not in dvol:
+                series = self.deribit.load(asset, start, end)
+                if series is not None:
+                    dvol[asset] = series
+        return dvol
+
+    def refresh(self, evidence: CryptoEvidence, now: datetime) -> CryptoEvidence:
+        """Agrega lo publicado hasta ``now``; nunca datos posteriores a ``now``."""
+        self.binance.now = now
+        candles = {sym: self.binance.extend(c, now) for sym, c in evidence.candles.items()}
+        dvol = evidence.dvol
+        if self._start is not None and (self._dvol_hour is None or _hour(now) > self._dvol_hour):
+            dvol = self._load_dvol(set(candles), self._start, now, now)
+            self._dvol_hour = _hour(now)
+        return CryptoEvidence(candles=candles, dvol=dvol)
+
+
+def _hour(t: datetime) -> datetime:
+    return t.replace(minute=0, second=0, microsecond=0)
+
+
 def load_evidence(
     settings: Settings,
     symbols: set[str],
@@ -95,23 +151,7 @@ def load_evidence(
     now: datetime | None = None,
 ) -> CryptoEvidence:
     """Velas de Binance y DVOL de Deribit para [start, end) (caché en ``data/raw``)."""
-    binance = make_binance(data_dir(settings) / "raw" / "binance", user_agent=RESEARCH_UA)
-    binance.now = now
-    candles: dict[str, Candles] = {}
-    for sym in sorted(symbols):
-        candles[sym] = binance.load(sym, start, end)
-        log.info("evidence_candles", symbol=sym, rows=len(candles[sym]),
-                 gaps=candles[sym].coverage_gaps())  # fmt: skip
-    deribit = make_deribit(data_dir(settings) / "raw" / "deribit", user_agent=RESEARCH_UA)
-    deribit.now = now
-    dvol: dict[str, DvolSeries] = {}
-    for sym in symbols:
-        asset = sym.removesuffix("USDT")
-        if asset in DVOL_SUPPORTED and asset not in dvol:
-            series = deribit.load(asset, start, end)
-            if series is not None:
-                dvol[asset] = series
-    return CryptoEvidence(candles=candles, dvol=dvol)
+    return EvidenceLoader(settings).load(symbols, start, end, now=now)
 
 
 def run_crypto_backtest(
@@ -385,26 +425,35 @@ def view_from_row(m: Any, title: str | None, slug: str | None, category: str) ->
     )
 
 
+LIVE_BATCH_MARKETS = 50  # mercados por tanda: sus libros se piden y valoran en segundos
+
+
 def predict_live(
     settings: Settings,
     engine: Any,
     *,
-    now: datetime | None = None,
     max_markets: int | None = None,
+    batch_markets: int = LIVE_BATCH_MARKETS,
 ) -> dict[str, Any]:
-    """Predice los mercados abiertos y valora los cripto contra libros pedidos en el momento."""
+    """Predice los mercados abiertos y valora los cripto contra libros pedidos en el momento.
+
+    Los cripto van por tandas, en orden de cierre. En cada tanda:
+
+    1. se ponen al día las velas y se fija el ``as_of`` de la tanda;
+    2. se descartan los mercados ya cerrados y se piden los libros del resto;
+    3. se descartan los que cerraron antes de recibir el libro;
+    4. se predice en ``as_of`` y se valora enseguida contra esos libros;
+    5. recién después se guarda la tanda (con una base remota, es la parte lenta).
+    """
     from collections import Counter
 
-    from sqlalchemy import insert
-
-    from radar.db.models import PredictionRecord, ValuationRecord
     from radar.ingestion.pipeline import build_clients
     from radar.market.orderbook import normalize_book
     from radar.predict.crypto.terms import CryptoTerms, parse_crypto_terms
     from radar.predict.registry import default_registry
     from radar.predict.valuation import BookView, value_token
 
-    now = now or utcnow()
+    started = utcnow()
     params = load_params(settings)
     calib = load_calibration(settings)
     calib_doc = json.loads(calibration_path(settings).read_text()) if calibration_path(
@@ -414,9 +463,9 @@ def predict_live(
     reference = calib_doc.get("reference_by_variant") or {}
     registry = default_registry(params, calib)
     run_id = start_run(engine, "live", params)
-    summary: dict[str, Any] = {"as_of": now.isoformat(), "families": {}, "crypto": {}}
+    summary: dict[str, Any] = {"as_of": started.isoformat(), "families": {}, "crypto": {}}
     try:
-        rows = open_markets(engine, now)
+        rows = open_markets(engine, started)
         fam_count: Counter[str] = Counter()
         crypto: list[tuple[Any, CryptoTerms]] = []
         unsupported: Counter[str] = Counter()
@@ -428,7 +477,7 @@ def predict_live(
                 continue
             t = parse_crypto_terms(mv)
             if isinstance(t, CryptoTerms):
-                if t.resolution_time > now:
+                if t.resolution_time > started:
                     crypto.append((mv, t))
             else:
                 unsupported[t.reason] += 1
@@ -444,85 +493,86 @@ def predict_live(
         summary["crypto"]["no_interpretables"] = dict(unsupported.most_common())
         summary["crypto"]["interpretables"] = len(crypto)
         symbols = {t.symbol for _, t in crypto}
-        evidence = load_evidence(settings, symbols, now - timedelta(days=31), now, now=now)
-        _gamma, clob, close = build_clients(settings)
-        try:
-            tokens = sorted({tok for mv, _ in crypto for tok in mv.token_ids})
-            fetched = clob.fetch_books(tokens)
-        finally:
-            close()
-        books: dict[str, BookView] = {}
-        for tok, (book, received) in fetched.books.items():
-            bids, asks = normalize_book(book.bids, book.asks)
-            books[tok] = BookView(tok, bids, asks, received, book.source_ts)
-        summary["crypto"]["libros"] = {
-            "pedidos": len(tokens),
-            "recibidos": len(books),
-            "faltantes": len(fetched.missing),
-            "fallidos": sum(len(b) for b, _ in fetched.failed),
-        }
+        loader = EvidenceLoader(settings)
+        evidence = loader.load(symbols, started - timedelta(days=31), started, now=started)
+        books_n: Counter[str] = Counter(pedidos=0, recibidos=0, faltantes=0, fallidos=0)
+        closed: Counter[str] = Counter(antes_de_pedir_libro=0, antes_de_recibir_libro=0)
         recs: Counter[str] = Counter()
         abst: Counter[str] = Counter()
+        as_ofs: list[datetime] = []
+        ages: list[float] = []
         n_pred = 0
-        for mv, t in crypto:
-            preds = {p.name: p.predict_terms(mv, t, evidence, now) for p in registry.crypto}
-            ref_name = f"cripto-{reference.get(t.variant) or 'rv'}"
-            with engine.begin() as conn:
-                ids: dict[str, int] = {}
-                for name, pr in preds.items():
-                    n_pred += 1
-                    if pr.probability is None:
-                        abst[f"{name}: {pr.abstain_reason}"] += 1
-                    ids[name] = conn.execute(
-                        insert(PredictionRecord)
-                        .values(
-                            run_id=run_id,
-                            market_id=mv.market_id,
-                            outcome=pr.outcome,
-                            model=pr.model,
-                            model_version=pr.model_version,
-                            family=pr.family,
-                            as_of=pr.as_of,
-                            created_at=pr.created_at,
-                            probability=pr.probability,
-                            p_low=pr.interval[0] if pr.interval else None,
-                            p_high=pr.interval[1] if pr.interval else None,
-                            calibration_status=pr.calibration_status,
-                            abstain_reason=pr.abstain_reason,
-                            data_used=_jsonable([r.__dict__ for r in pr.data_used]),
-                            details=_jsonable(pr.details),
-                            inputs_sha256=pr.inputs_sha256(),
+        _gamma, clob, close = build_clients(settings)
+        try:
+            for i in range(0, len(crypto), batch_markets):
+                evidence = loader.refresh(evidence, utcnow())
+                as_of = utcnow()
+                batch = [(mv, t) for mv, t in crypto[i : i + batch_markets]
+                         if t.resolution_time > as_of]  # fmt: skip
+                closed["antes_de_pedir_libro"] += min(batch_markets, len(crypto) - i) - len(batch)
+                if not batch:
+                    continue
+                tokens = sorted({tok for mv, _ in batch for tok in mv.token_ids})
+                fetched = clob.fetch_books(tokens)
+                received_by = utcnow()
+                books: dict[str, BookView] = {}
+                for tok, (book, received) in fetched.books.items():
+                    bids, asks = normalize_book(book.bids, book.asks)
+                    books[tok] = BookView(tok, bids, asks, received, book.source_ts)
+                books_n["pedidos"] += len(tokens)
+                books_n["recibidos"] += len(books)
+                books_n["faltantes"] += len(fetched.missing)
+                books_n["fallidos"] += sum(len(b) for b, _ in fetched.failed)
+                as_ofs.append(as_of)
+                done: list[tuple[Any, ...]] = []
+                for mv, t in batch:
+                    if t.resolution_time <= received_by:
+                        # El libro ya puede reflejar el resultado: no hay nada que valorar.
+                        closed["antes_de_recibir_libro"] += 1
+                        continue
+                    preds = {
+                        p.name: p.predict_terms(mv, t, evidence, as_of) for p in registry.crypto
+                    }
+                    n_pred += len(preds)
+                    for name, pr in preds.items():
+                        if pr.probability is None:
+                            abst[f"{name}: {pr.abstain_reason}"] += 1
+                    ref_name = f"cripto-{reference.get(t.variant) or 'rv'}"
+                    ref_pred = preds.get(ref_name) or preds["cripto-rv"]
+                    vals = []
+                    for idx, outcome in enumerate(mv.outcomes):
+                        tok = mv.token_ids[idx] if idx < len(mv.token_ids) else None
+                        val = value_token(
+                            mv,
+                            outcome,
+                            ref_pred,
+                            books.get(tok) if tok else None,
+                            utcnow(),
+                            supera_mercado=beats.get(f"{ref_pred.model}|{t.variant}"),
                         )
-                        .returning(PredictionRecord.id)
-                    ).scalar_one()
-                ref_pred = preds.get(ref_name) or preds["cripto-rv"]
-                for outcome in mv.outcomes:
-                    idx = mv.outcomes.index(outcome)
-                    tok = mv.token_ids[idx] if idx < len(mv.token_ids) else None
-                    val = value_token(
-                        mv,
-                        outcome,
-                        ref_pred,
-                        books.get(tok) if tok else None,
-                        utcnow(),
-                        supera_mercado=beats.get(f"{ref_pred.model}|{t.variant}"),
-                    )
-                    recs[val.recommendation] += 1
-                    d = val.to_dict()
-                    d.pop("version")
-                    conn.execute(
-                        insert(ValuationRecord).values(
-                            run_id=run_id,
-                            prediction_id=ids[ref_pred.model],
-                            question=mv.question,
-                            category="crypto",
-                            variant=t.variant,
-                            end_date=mv.end_date,
-                            version=val.version,
-                            **{k: v for k, v in d.items() if k not in ("model_version",)}
-                            | {"as_of": val.as_of, "book_received_at": val.book_received_at},
-                        )
-                    )
+                        recs[val.recommendation] += 1
+                        if val.book_age_s is not None:
+                            ages.append(val.book_age_s)
+                        vals.append(val)
+                    done.append((mv, t, preds, ref_pred, vals))
+                _persist_live_batch(engine, run_id, done)
+                log.info("live_batch", run_id=run_id, as_of=as_of.isoformat(),
+                         mercados=len(done), libros=len(books),
+                         cerrados=dict(closed), s_desde_libros=round(
+                             (utcnow() - received_by).total_seconds(), 2))  # fmt: skip
+        finally:
+            close()
+        summary["crypto"]["libros"] = dict(books_n)
+        summary["crypto"]["cerrados_antes_de_valorar"] = dict(closed)
+        summary["crypto"]["tandas"] = {
+            "mercados_por_tanda": batch_markets,
+            "con_libros": len(as_ofs),
+            "primer_as_of": as_ofs[0].isoformat() if as_ofs else None,
+            "ultimo_as_of": as_ofs[-1].isoformat() if as_ofs else None,
+        }
+        summary["crypto"]["antiguedad_libro_s"] = (
+            {"mediana": round(median(ages), 3), "maxima": round(max(ages), 3)} if ages else None
+        )
         summary["crypto"]["predicciones"] = n_pred
         summary["crypto"]["abstenciones"] = dict(abst.most_common(20))
         summary["crypto"]["recomendaciones"] = dict(recs)
@@ -534,6 +584,67 @@ def predict_live(
         raise
     summary["run_id"] = run_id
     return summary
+
+
+def _persist_live_batch(engine: Any, run_id: int, done: list[tuple[Any, ...]]) -> None:
+    """Guarda una tanda en una transacción: una sentencia para predicciones y otra para
+    valoraciones (y no varias por mercado, que con una base remota tardaban ~2 s cada uno)."""
+    if not done:
+        return
+    from sqlalchemy import insert
+
+    from radar.db.models import PredictionRecord, ValuationRecord
+
+    keys: list[tuple[str, str]] = []
+    pred_rows: list[dict[str, Any]] = []
+    for mv, _t, preds, _ref, _vals in done:
+        for pr in preds.values():
+            keys.append((mv.market_id, pr.model))
+            pred_rows.append(
+                {
+                    "run_id": run_id,
+                    "market_id": mv.market_id,
+                    "outcome": pr.outcome,
+                    "model": pr.model,
+                    "model_version": pr.model_version,
+                    "family": pr.family,
+                    "as_of": pr.as_of,
+                    "created_at": pr.created_at,
+                    "probability": pr.probability,
+                    "p_low": pr.interval[0] if pr.interval else None,
+                    "p_high": pr.interval[1] if pr.interval else None,
+                    "calibration_status": pr.calibration_status,
+                    "abstain_reason": pr.abstain_reason,
+                    "data_used": _jsonable([r.__dict__ for r in pr.data_used]),
+                    "details": _jsonable(pr.details),
+                    "inputs_sha256": pr.inputs_sha256(),
+                }
+            )
+    stmt = insert(PredictionRecord).returning(PredictionRecord.id, sort_by_parameter_order=True)
+    with engine.begin() as conn:
+        new_ids = conn.execute(stmt, pred_rows).scalars().all()
+        ids = dict(zip(keys, new_ids, strict=True))
+        val_rows: list[dict[str, Any]] = []
+        for mv, t, _preds, ref_pred, vals in done:
+            for val in vals:
+                d = val.to_dict()
+                d.pop("version")
+                d.pop("model_version")
+                val_rows.append(
+                    {
+                        "run_id": run_id,
+                        "prediction_id": ids[(mv.market_id, ref_pred.model)],
+                        "question": mv.question,
+                        "category": "crypto",
+                        "variant": t.variant,
+                        "end_date": mv.end_date,
+                        "version": val.version,
+                    }
+                    | d
+                    | {"as_of": val.as_of, "book_received_at": val.book_received_at}
+                )
+        if val_rows:
+            conn.execute(insert(ValuationRecord), val_rows)
 
 
 def backtest_summary(report: dict[str, Any]) -> dict[str, Any]:

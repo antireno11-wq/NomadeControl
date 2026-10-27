@@ -785,10 +785,16 @@ def page_opportunities() -> None:
         return
     s = summ.get("summary") or {}
     crypto = s.get("crypto") or {}
+    tandas = crypto.get("tandas") or {}
+    as_of = (
+        f"as_of por tanda de {fmt_ts(tandas['primer_as_of'])} a {fmt_ts(tandas['ultimo_as_of'])}"
+        if tandas.get("primer_as_of")
+        else f"as_of {fmt_ts(s.get('as_of'))}"
+    )
     st.caption(
-        f"Corrida en vivo #{summ['run_id']} · as_of {fmt_ts(s.get('as_of'))} · parámetros "
+        f"Corrida en vivo #{summ['run_id']} · {as_of} · parámetros "
         f"`{summ.get('params_version')}`. Precio ejecutable = VWAP del ask para US$25 en libros "
-        "pedidos al CLOB en el momento."
+        "pedidos al CLOB justo antes de valorar cada tanda."
     )
     recs = crypto.get("recomendaciones") or {}
     c1, c2, c3, c4 = st.columns(4)

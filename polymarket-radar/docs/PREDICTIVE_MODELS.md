@@ -117,6 +117,22 @@ Recomendaciones:
 - **`informacion_insuficiente`**: falta libro, ask o comisión verificable.
 - **`abstencion`**: el modelo no estimó.
 
+### Corrida en vivo por tandas
+
+`radar predict live` va por tandas de 50 mercados, en orden de cierre. En cada tanda:
+
+1. Pone al día las velas de Binance (solo las cerradas desde la última carga) y el DVOL
+   si cerró una hora nueva. Luego fija el `as_of` de la tanda.
+2. Descarta los mercados que ya cerraron y pide al CLOB los libros del resto.
+3. Descarta los que cerraron mientras llegaba el libro, porque ese libro ya puede reflejar
+   el resultado.
+4. Predice en el `as_of` de la tanda y valora enseguida contra esos libros.
+5. Recién después guarda la tanda: una sentencia para las predicciones y otra para las
+   valoraciones. Con una base remota, guardar es la parte lenta.
+
+El resumen de la corrida informa los mercados descartados por cierre, la antigüedad de
+los libros al valorar (mediana y máxima) y el primer y el último `as_of`.
+
 ## 5. Evaluación
 
 Reglas fijadas antes de mirar la prueba: [`PREREGISTRO_CRIPTO.md`](PREREGISTRO_CRIPTO.md)
@@ -212,8 +228,8 @@ más dudosa. **No es evidencia de rentabilidad.**
 ### Corrida en vivo
 
 La primera corrida completa (26-oct, `radar predict live`, ver `EVIDENCE.md` §9.5) dio
-**0 señales operables**. Mostró dos problemas de sincronización de la corrida en vivo, que
-siguen pendientes:
+**0 señales operables**. Mostró dos problemas de sincronización, corregidos el 27-oct con
+la corrida por tandas (§4 y `EVIDENCE.md` §10):
 
 - **Libros pedidos después de cerrar el mercado.** Los libros se piden ~12 min después
   del `as_of`. Para los mercados que cerraron en ese lapso, el libro ya refleja el
@@ -221,3 +237,7 @@ siguen pendientes:
 - **Libros viejos al valorar.** La valoración de 1.329 mercados tarda ~1 h. Al valorar,
   el 95 % de los libros tenía más de 3 min. La puerta de antigüedad bloquea cualquier
   señal con esos libros, pero eso también impide detectar las válidas.
+
+Con la corrida por tandas, en la base local, la antigüedad mediana del libro al valorar
+bajó de 13,3 s a 0,09 s y la máxima de 108,9 s a 39,8 s. La corrida contra Railway con el
+código nuevo todavía no se midió.

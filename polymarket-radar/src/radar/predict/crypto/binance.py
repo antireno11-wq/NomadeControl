@@ -248,6 +248,30 @@ class BinanceKlines:
 
     # --- API pública ---------------------------------------------------------------------
 
+    def extend(self, c: Candles, end: datetime) -> Candles:
+        """``c`` más las velas cerradas después de su última y antes de ``end`` (por REST).
+
+        Para corridas largas: el historial se carga una vez con ``load`` y antes de cada
+        tanda solo se pide la cola (una solicitud por activo si son menos de 1.000 min).
+        """
+        end = min(end, self.now or utcnow())
+        if not len(c) or int(c.open_ms[-1]) + 2 * MINUTE_MS > to_ms(end):
+            return c  # sin historial, o ninguna vela nueva pudo cerrar todavía
+        arr, ref = self._fetch_rest(c.symbol, from_ms(int(c.open_ms[-1]) + MINUTE_MS), end)
+        if arr.shape[0]:  # solo velas nuevas y ya cerradas en ``end``
+            arr = arr[(arr[:, 0] > c.open_ms[-1]) & (arr[:, 0] + MINUTE_MS <= to_ms(end))]
+        if not arr.shape[0]:
+            return c
+        return Candles(
+            c.symbol,
+            np.concatenate([c.open_ms, arr[:, 0].astype(np.int64)]),
+            np.concatenate([c.open, arr[:, 1]]),
+            np.concatenate([c.high, arr[:, 2]]),
+            np.concatenate([c.low, arr[:, 3]]),
+            np.concatenate([c.close, arr[:, 4]]),
+            [*c.refs, ref],
+        )
+
     def load(self, symbol: str, start: datetime, end: datetime) -> Candles:
         """Velas con apertura en [start, end), de archivos (pasado) o REST (hoy)."""
         now = self.now or utcnow()

@@ -69,13 +69,15 @@ prueba entre el 15-sep y el 26-oct):
   todas de ese tipo de contrato y **no son evidencia de rentabilidad**.
 
 La primera corrida en vivo dio **0 señales operables**. Mostró un problema de
-sincronización, pendiente de corregir: los libros se piden unos 12 min después de la
-predicción y se valoran hasta 1 h después (`docs/EVIDENCE.md` §9.5).
+sincronización: los libros se pedían unos 12 min después de la predicción y se valoraban
+hasta 1 h después (`docs/EVIDENCE.md` §9.5). Se corrigió el 27-oct: ahora la corrida va
+por tandas de 50 mercados y pide los libros de cada tanda justo antes de valorarla
+(`docs/EVIDENCE.md` §10).
 
 ```bash
 radar predict collect --start 2026-05-01 --end 2026-10-26   # ~3 h
 radar predict --out reports backtest                        # ~10 min
-radar predict live                                          # ~1 h con ~1.300 mercados
+radar predict live                                          # ~3 min con base local
 ```
 
 ## Qué hace hoy (verificado)

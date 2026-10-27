@@ -1,7 +1,8 @@
 # Evidencia de funcionamiento
 
 Secciones 1–7: hito 1 (ingesta). Sección 8: motor electoral (hito E). Sección 9: modelos
-cripto y valoración (módulos D y E), en un Mac con la base en Railway.
+cripto y valoración (módulos D y E), en un Mac con la base en Railway. Sección 10:
+corrección de la sincronización de la corrida en vivo.
 
 Todo lo de esta página se ejecutó el **25-oct-2026 (UTC)** en un contenedor
 Linux con acceso a internet, contra las APIs públicas reales de Polymarket.
@@ -408,6 +409,103 @@ La pantalla **Radar** todavía dice que la valoración "aún no está implementa
 
 - Si los precios de referencia de `hourly_above` eran ejecutables. Polymarket no publica
   libros históricos.
-- La corrección de la sincronización de la corrida en vivo (§9.5).
+- La corrección de la sincronización de la corrida en vivo (§9.5). Se hizo después: §10.
 - El scheduler contra Railway. Los servicios `launchd` del Mac siguen usando la base local.
 - Las pruebas en vivo contra Gamma y CLOB (`RADAR_LIVE_TESTS=1`).
+
+## 10. Sincronización de la corrida en vivo — 27-oct-2026 UTC
+
+Corrige los dos problemas de §9.5. El flujo nuevo está descrito en
+[`PREDICTIVE_MODELS.md`](PREDICTIVE_MODELS.md) §4 ("Corrida en vivo por tandas"). No
+cambian los modelos, los parámetros, las particiones ni los criterios del preregistro.
+
+### 10.1 Causa medida
+
+Se midió con los registros de la corrida #3 en Railway: `predictions.created_at` y la
+hora de cada valoración (`book_received_at + book_age_s`).
+
+| Etapa, sumada sobre 1.329 mercados | Tiempo |
+|---|---:|
+| Cálculo de los 4 modelos | 78 s |
+| Guardar las 4 predicciones de cada mercado (una sentencia y un viaje a Railway por fila) | 2.082 s |
+| Guardar las valoraciones y pasar al mercado siguiente | 652 s |
+
+El cálculo no era el problema. Lo lento era guardar fila por fila en una base remota,
+con todos los libros ya pedidos al comienzo.
+
+### 10.2 Cambio
+
+- Los libros se piden por tandas de 50 mercados, en orden de cierre, justo antes de
+  valorar cada tanda.
+- Cada tanda tiene su propio `as_of`. Antes de fijarlo se ponen al día las velas: solo se
+  piden las cerradas desde la última carga (`BinanceKlines.extend`). El DVOL se vuelve a
+  pedir cuando cierra una hora nueva.
+- Se descartan los mercados que cerraron antes de pedir su libro y los que cerraron
+  mientras llegaba.
+- La tanda se guarda después de valorarla, con una sentencia para las predicciones y otra
+  para las valoraciones.
+- El resumen de la corrida agrega `cerrados_antes_de_valorar`, `tandas` y
+  `antiguedad_libro_s`. La pantalla Oportunidades muestra el primer y el último `as_of`.
+
+### 10.3 Pruebas
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+# All checks passed! / 102 files already formatted
+
+TEST_DATABASE_URL=<base local de pruebas> .venv/bin/pytest -q
+# 161 passed, 2 skipped, 1 warning in 4.53s
+```
+
+- La suite corrió contra la base local de pruebas (PostgreSQL 15 en el Mac), no contra
+  Railway.
+- Son 2 pruebas más que en §9.1, ambas en `tests/test_predict_live.py`:
+  - `test_extend_adds_only_new_closed_candles`: pide solo la cola de velas y nunca usa
+    una vela que sigue abierta.
+  - `test_live_run_values_each_batch_against_fresh_books`: usa un reloj simulado. La base
+    tarda tanto que la segunda tanda empieza 5,5 h después, y un libro llega después del
+    cierre de su mercado. La prueba comprueba cuatro cosas:
+    - cada tanda pide solo sus libros;
+    - se descartan los 4 mercados cerrados, sin pedir los libros de los que ya habían
+      cerrado;
+    - los libros tienen menos de 1 s al valorarse;
+    - cada tanda predice en su propio `as_of`.
+- Con el descarte desactivado a mano, la segunda prueba falla, como se esperaba.
+
+### 10.4 Corrida real
+
+La corrida se hizo contra la **base local**, la que el scheduler del Mac actualiza cada
+hora, y no contra Railway. Cada corrida en vivo lee unos 1,5 GB de mercados abiertos
+(medido con `octet_length` sobre las filas), y en Railway la salida de datos se cobra.
+
+```bash
+RADAR_DATABASE_URL=<base local> radar predict live
+```
+
+La corrida #43 es la última corrida automática del scheduler con el código anterior.
+
+| | #43 (código anterior) | #44 (código nuevo) |
+|---|---:|---:|
+| Mercados cripto interpretables | 1.371 | 1.335 |
+| Libros recibidos / pedidos | 2.742 / 2.742 | 2.670 / 2.670 |
+| `as_of` | uno solo, 13:42:21 UTC | 27 tandas, de 14:01:56 a 14:02:45 UTC |
+| Antigüedad del libro al valorar, mediana | 13,3 s | 0,09 s |
+| Antigüedad del libro al valorar, máxima | 108,9 s | 39,8 s |
+| Duración | 2 min 50 s | 2 min 37 s |
+| Señales operables | 1 | 0 |
+| Alertas de investigación | 88 | 77 |
+
+- La máxima de 39,8 s es de la última tanda: 35 contratos de toque de largo plazo, en los
+  que el modelo `bootstrap` tarda más. Queda bajo el límite de 180 s.
+- Ningún mercado cerró durante la corrida (los dos descartes dieron 0). Ese caso solo lo
+  cubre la prueba de §10.3.
+- Las velas se pusieron al día durante la corrida: el último cierre usado pasó de 14:01 a
+  14:02 UTC. Ninguna predicción usó una vela cerrada hace más de 60 s.
+- En la base local el código anterior no fallaba tanto como en Railway, porque guardar
+  es rápido. En Railway, la corrida #3 duró 59 min.
+
+### 10.5 Lo que NO se verificó
+
+- La corrida nueva contra Railway. Guardar debería ser mucho más rápido (dos sentencias
+  por tanda en vez de seis por mercado), pero no se midió.
+- Un mercado que cierre durante una corrida real.
