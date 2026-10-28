@@ -39,6 +39,7 @@ def make_settings(**overrides: Any) -> Settings:
         "liq_max_spread": 0.05,
         "liq_depth_band": 0.02,
         "liq_min_depth_usd": 100.0,
+        "ingest_scope": "all",  # la ingesta completa; el alcance se prueba aparte
     }
     base.update(overrides)
     return Settings(_env_file=None, **base)

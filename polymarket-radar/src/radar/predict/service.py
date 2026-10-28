@@ -387,8 +387,9 @@ def open_markets(engine: Any, now: datetime) -> list[tuple[Any, Any]]:
     from sqlalchemy.orm import Session, defer
 
     from radar.db.models import Event, Market
+    from radar.market.scope import sql_clause
 
-    # Sin el JSON crudo (~60 % de lo que se leía): solo se usan dos campos suyos.
+    # Solo el alcance del radar y sin el JSON crudo (solo se usan dos campos suyos).
     with Session(engine) as session:
         return list(
             session.execute(
@@ -401,6 +402,7 @@ def open_markets(engine: Any, now: datetime) -> list[tuple[Any, Any]]:
                 .join(Event, Event.id == Market.event_id)
                 .where(Market.closed.is_(False), Market.active.is_(True))
                 .where((Market.end_date.is_(None)) | (Market.end_date > now))
+                .where(sql_clause(Event, Market))
             ).all()
         )  # fmt: skip
 

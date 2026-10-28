@@ -66,6 +66,9 @@ from radar.market.orderbook import (
     simulate_buy,
     truncate_levels,
 )
+from radar.market.scope import GAMMA_TAGS as SCOPE_GAMMA_TAGS
+from radar.market.scope import SCOPE_VERSION, in_scope
+from radar.market.scope import sql_clause as scope_sql
 from radar.timeutil import utcnow
 
 log = get_logger(__name__)
@@ -73,6 +76,8 @@ log = get_logger(__name__)
 ADVISORY_LOCK_KEY = 7_420_133_701  # identifica el lock de "ingesta en curso"
 MAX_ERRORS_STORED_PER_TYPE = 200
 MARKETS_PER_BOOK_CHUNK = 100
+EVENT_REF_KEYS = ("id", "slug", "title", "description", "negRisk", "startDate", "endDate",
+                  "active", "closed")  # fmt: skip
 
 
 class RunAlreadyInProgressError(RuntimeError):
@@ -174,6 +179,7 @@ class IngestionPipeline:
         self._errors_by_type: Counter[tuple[str, str]] = Counter()
         self._eligible: list[EligibleMarket] = []
         self._seen_ids: set[str] = set()
+        self.scoped = settings.ingest_scope == "radar"
         self.liq_cfg = LiquidityConfig(
             max_spread=settings.liq_max_spread,
             depth_band=settings.liq_depth_band,
@@ -286,9 +292,13 @@ class IngestionPipeline:
 
         status = "failed"
         try:
-            if self.settings.gamma_fetch_events:
-                self._timed("events", self._stage_events)
-            self._timed("discovery", self._stage_discovery)
+            if self.scoped:
+                self.notes.append(f"alcance {SCOPE_VERSION}: solo las categorías del radar")
+                self._timed("discovery", self._stage_scoped)
+            else:
+                if self.settings.gamma_fetch_events:
+                    self._timed("events", self._stage_events)
+                self._timed("discovery", self._stage_discovery)
             if self.discovery_complete:
                 self._timed("closures", self._stage_closures)
             else:
@@ -539,6 +549,89 @@ class IngestionPipeline:
             )
         self.discovery_complete = not truncated
 
+    def _stage_scoped(self) -> None:
+        """Descubierta del alcance (``alcance-v1``): eventos abiertos de cada etiqueta del
+        alcance, con sus mercados adentro. Se guardan solo los mercados del alcance."""
+        events_seen: set[str] = set()
+        out_of_scope = 0
+        try:
+            for tag in SCOPE_GAMMA_TAGS:
+                pages = self.gamma.iter_event_pages(
+                    max_pages=self.settings.gamma_max_pages, tag_slug=tag, include_markets=True
+                )
+                for page in pages:
+                    self.c.gamma_pages += 1
+                    rows: dict[str, dict[str, Any]] = {}
+                    raws: list[Any] = []
+                    for raw in page.events:
+                        try:
+                            ev = GammaEvent.model_validate(raw)
+                        except Exception as exc:
+                            self._error(
+                                "gamma_events",
+                                gamma_mod.SOURCE,
+                                "invalid_event",
+                                str(exc)[:500],
+                                entity_id=str(raw.get("id")) if isinstance(raw, dict) else None,
+                                endpoint=page.url,
+                            )
+                            continue
+                        if ev.id in events_seen:
+                            continue
+                        events_seen.add(ev.id)
+                        row = self._event_row(ev, page.received_at, with_tags=True, tags=ev.tags)
+                        rows[ev.id] = row
+                        slugs = [t.get("slug") for t in row["tags"]]
+                        # Los mercados embebidos no traen su evento: se agrega la referencia.
+                        ref = {k: raw.get(k) for k in EVENT_REF_KEYS}
+                        for m in raw.get("markets") or []:
+                            if not isinstance(m, dict):
+                                continue
+                            stype = m.get("sportsMarketType")
+                            if in_scope(row["category"], ev.slug, slugs, stype):
+                                raws.append({**m, "events": [ref]})
+                            else:
+                                out_of_scope += 1
+                    if rows:
+                        with self.engine.begin() as conn:
+                            self._upsert_events(conn, list(rows.values()), with_tags=True)
+                    self._persist_scoped(raws, page.url, page.received_at)
+        except ApiError as exc:
+            self._api_error("gamma_events", gamma_mod.SOURCE, exc)
+            self.discovery_complete = False
+            return
+        finally:
+            self.c.events_discovered = len(events_seen)
+            if out_of_scope:
+                self.notes.append(f"{out_of_scope} mercados de esos eventos fuera del alcance")
+        truncated = self.settings.gamma_max_pages is not None
+        if truncated:
+            self.notes.append(
+                f"descubierta truncada por RADAR_GAMMA_MAX_PAGES={self.settings.gamma_max_pages}"
+            )
+        self.discovery_complete = not truncated
+
+    def _persist_scoped(self, raws: list[Any], url: str, received_at: datetime) -> None:
+        parsed = gamma_mod.parse_markets(raws)
+        for entity, msg in parsed.invalid:
+            self.c.markets_invalid += 1
+            self._error("gamma_markets", gamma_mod.SOURCE, "invalid_market", msg,
+                        entity_id=entity, endpoint=url)  # fmt: skip
+        fresh: list[tuple[GammaMarket, dict[str, Any]]] = []
+        for market, raw in parsed.valid:
+            if market.id in self._seen_ids:
+                self.c.markets_duplicated += 1
+                continue
+            self._seen_ids.add(market.id)
+            fresh.append((market, raw))
+        self.c.markets_discovered += len(fresh)
+        with self.engine.begin() as conn:
+            if fresh:
+                self._persist_markets(conn, fresh, received_at, collect_eligible=True)
+            self._flush_errors(conn)
+            if self.c.gamma_pages % 50 == 0:
+                self._checkpoint(conn)
+
     def _persist_markets(
         self,
         conn: Connection,
@@ -695,18 +788,15 @@ class IngestionPipeline:
 
     # ------------------------------------------------------------------ cierres
     def _stage_closures(self) -> None:
+        query = select(Market.id).where(
+            Market.closed.is_(False),
+            Market.data_origin == self.data_origin,
+            (Market.last_seen_run_id.is_(None)) | (Market.last_seen_run_id != self.run_id),
+        )
+        if self.scoped:  # los de fuera del alcance ya no se descargan: no se infiere nada
+            query = query.join(Event, Event.id == Market.event_id).where(scope_sql(Event, Market))
         with self.engine.connect() as conn:
-            candidates = [
-                r[0]
-                for r in conn.execute(
-                    select(Market.id).where(
-                        Market.closed.is_(False),
-                        Market.data_origin == self.data_origin,
-                        (Market.last_seen_run_id.is_(None))
-                        | (Market.last_seen_run_id != self.run_id),
-                    )
-                )
-            ]
+            candidates = [r[0] for r in conn.execute(query)]
         if not candidates:
             return
         log.info("closure_check", run_id=self.run_id, candidates=len(candidates))

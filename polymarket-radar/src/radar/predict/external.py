@@ -31,7 +31,8 @@ SUM_RANGE = (0.90, 1.15)
 MAX_QUOTE_AGE = timedelta(minutes=10)
 MIN_NAME_SCORE = 0.6
 
-US_LEAGUES = {"nba": "KXNBAGAME", "nfl": "KXNFLGAME", "nhl": "KXNHLGAME", "mlb": "KXMLBGAME"}
+# Ligas de EE.UU. dentro del alcance del radar (alcance-v1): solo la NBA.
+US_LEAGUES = {"nba": "KXNBAGAME"}
 SOCCER_LEAGUES = {
     "epl": "KXEPLGAME",
     "sea": "KXSERIEAGAME",
@@ -44,12 +45,7 @@ FED_SERIES = "KXFEDDECISION"
 ALL_SERIES = (*US_LEAGUES.values(), *SOCCER_LEAGUES.values(), FED_SERIES)
 
 # Códigos de equipo que difieren entre el slug de Polymarket y el ticker de Kalshi.
-CODE_ALIASES: dict[str, dict[str, str]] = {
-    "nfl": {"jax": "JAC", "la": "LAR"},
-    "nhl": {"lak": "LA", "utah": "UTA", "mon": "MTL", "las": "VGK", "cal": "CGY"},
-    "nba": {},
-    "mlb": {},
-}
+CODE_ALIASES: dict[str, dict[str, str]] = {"nba": {}}
 
 OFFSETS_EXTERNAL: dict[str, tuple[timedelta, ...]] = {
     **{

@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     # descubierta queda marcada como incompleta y no se infieren cierres.
     gamma_max_pages: int | None = None
     gamma_fetch_events: bool = True
+    # radar = solo el alcance del radar (radar.market.scope, ~15 % de los mercados);
+    # all = todos los mercados abiertos de Polymarket (la ingesta original, ~30 min).
+    ingest_scope: Literal["radar", "all"] = "radar"
     clob_books_batch_size: int = Field(default=200, ge=1, le=500)
     # Solicitudes concurrentes a /books (comparten el mismo rate limiter).
     clob_concurrency: int = Field(default=4, ge=1, le=16)

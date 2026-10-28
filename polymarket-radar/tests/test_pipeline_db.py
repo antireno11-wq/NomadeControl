@@ -299,3 +299,70 @@ def test_raw_payload_is_kept_until_rules_change(engine):
         m = s.get(Market, "a")
         assert m.raw["volume24hr"] == 3.0 and m.raw_received_at > raw_ts
         assert m.description == "SINTÉTICO: nueva"
+
+
+def scoped_scenario() -> FakePolymarket:
+    """Alcance del radar: cripto y ganador de fútbol entran; marcador exacto, NFL y clima no."""
+
+    def sm(mid: str, ev: str, stype: str | None = None) -> dict:
+        m = synthetic_market(mid, event_id=ev)
+        if stype:
+            m["sportsMarketType"] = stype
+        return m
+
+    atp = synthetic_event("e4", ["sports", "tennis"])
+    atp["slug"] = "atp-sinner-alcaraz-2026-10-28"
+    markets = [
+        sm("c1", "e1"),
+        sm("f_win", "e2", "moneyline"),
+        sm("f_exact", "e2", "soccer_exact_score"),
+        sm("nfl1", "e3", "moneyline"),
+        sm("t1", "e4", "moneyline"),
+        sm("w1", "e5"),
+    ]
+    books = {
+        f"{m['id']}-{s}": liquid_book(f"{m['id']}-{s}") for m in markets for s in ("yes", "no")
+    }
+    return FakePolymarket(
+        markets=markets,
+        events=[
+            synthetic_event("e1", ["crypto"]),
+            synthetic_event("e2", ["sports", "soccer"]),
+            synthetic_event("e3", ["sports", "nfl"]),
+            atp,
+            synthetic_event("e5", ["weather"]),
+        ],
+        books=books,
+    )
+
+
+def test_scoped_run_keeps_only_radar_markets(engine):
+    fake = scoped_scenario()
+    r = run(engine, fake, ingest_scope="radar")
+    assert r.status == "success" and r.discovery_complete
+    with Session(engine) as s:
+        stored = set(s.scalars(select(Market.id)))
+        cats = dict(s.execute(select(Event.id, Event.category)).all())
+    assert stored == {"c1", "f_win", "t1"}
+    assert cats == {"e1": "crypto", "e2": "sports", "e4": "sports"}
+    assert any("1 mercados de esos eventos fuera del alcance" in n for n in r.notes)
+    assert not any(q.url.path == "/markets/keyset" for q in fake.requests)
+    tagged = {q.url.params.get("tag_slug") for q in fake.requests if q.url.path == "/events/keyset"}
+    assert {"crypto", "soccer", "tennis", "nba"} <= tagged and "nfl" not in tagged
+
+
+def test_scoped_closures_only_check_markets_in_scope(engine):
+    fake = scoped_scenario()
+    run(engine, fake, ingest_scope="all")  # una corrida completa previa guarda todo
+    closed_c1 = synthetic_market("c1", event_id="e1", closed=True)
+    fake.markets = [m for m in fake.markets if m["id"] != "c1"]
+    fake.by_id_extra = {"c1": closed_c1}
+    fake.requests.clear()
+    r = run(engine, fake, ingest_scope="radar")
+    asked = {i for q in fake.requests if q.url.params.get("closed") == "any"
+             for i in q.url.params.get_list("id")}  # fmt: skip
+    assert asked == {"c1"}  # ni NFL, ni clima, ni marcador exacto
+    assert r.markets_closed_detected == 1
+    with Session(engine) as s:
+        assert s.get(Market, "c1").closed is True
+        assert s.get(Market, "nfl1").closed is False  # fuera del alcance: no se infiere nada

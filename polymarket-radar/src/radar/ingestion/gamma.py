@@ -306,15 +306,25 @@ class GammaClient:
             if not cursor or not markets:
                 return
 
-    def iter_event_pages(self, *, max_pages: int | None = None) -> Iterator[EventPage]:
+    def iter_event_pages(
+        self,
+        *,
+        max_pages: int | None = None,
+        tag_slug: str | None = None,
+        include_markets: bool = False,
+    ) -> Iterator[EventPage]:
+        """Eventos abiertos. Con ``tag_slug``, solo los de esa etiqueta; con
+        ``include_markets``, cada evento trae sus mercados (sin el campo ``events``)."""
         cursor: str | None = None
         page = 0
         while max_pages is None or page < max_pages:
             params: dict[str, Any] = {
                 "limit": self.page_size,
                 "closed": "false",
-                "include_markets": "false",
+                "include_markets": "true" if include_markets else "false",
             }
+            if tag_slug:
+                params["tag_slug"] = tag_slug
             if cursor:
                 params["after_cursor"] = cursor
             resp = self.api.request_json("GET", "/events/keyset", params=params)

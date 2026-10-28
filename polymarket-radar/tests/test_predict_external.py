@@ -65,7 +65,7 @@ def test_event_ticker_parsing() -> None:
     assert X.parse_event_ticker("KXFEDDECISION-26OCT") is None
 
 
-def test_us_game_matches_by_et_date_and_codes_with_aliases() -> None:
+def test_nba_game_matches_by_et_date_and_codes() -> None:
     game = mv(slug="nba-det-nyk-2026-10-28", outcomes=("Pistons", "Knicks"))
     m = X.match_market(game, START, "moneyline", IDX)  # slug con fecha UTC, Kalshi con ET
     assert isinstance(m, X.Match)
@@ -73,8 +73,7 @@ def test_us_game_matches_by_et_date_and_codes_with_aliases() -> None:
                                                     "KXNBAGAME-26OCT27DETNYK-DET")  # fmt: skip
     assert m.cluster == "nba|2026-10-27"
     hockey = mv(slug="nhl-lak-chi-2026-10-28", outcomes=("Kings", "Blackhawks"))
-    m2 = X.match_market(hockey, START, "moneyline", IDX)
-    assert isinstance(m2, X.Match) and m2.yes_ticker.endswith("-LA")
+    assert "liga nhl no cubierta" in str(X.match_market(hockey, START, "moneyline", IDX))
 
 
 def test_soccer_matches_by_team_names_and_draw() -> None:

@@ -124,3 +124,8 @@ def categorize(tag_slugs: Iterable[str | None]) -> str:
         if slugs & keys:
             return category
     return "other"
+
+
+def tags_of(category: str) -> frozenset[str]:
+    """Etiquetas que asignan ``category`` (si no la gana antes otra regla)."""
+    return frozenset().union(*(tags for cat, tags in _RULES if cat == category))

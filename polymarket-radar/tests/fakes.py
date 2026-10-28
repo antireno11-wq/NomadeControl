@@ -179,7 +179,21 @@ class FakePolymarket:
         return httpx.Response(200, json=body)
 
     def _events(self, request: httpx.Request) -> httpx.Response:
-        chunk, nxt = self._paginate(self.events, request)
+        params = request.url.params
+        events = self.events
+        if tag := params.get("tag_slug"):
+            events = [e for e in events if any(t["slug"] == tag for t in e.get("tags") or [])]
+        if params.get("include_markets") == "true":
+            # Como la API real: los mercados embebidos no traen el campo "events".
+            events = [
+                e | {"markets": [
+                    {k: v for k, v in m.items() if k != "events"}
+                    for m in self.markets
+                    if (m.get("events") or [{}])[0].get("id") == e["id"]
+                ]}
+                for e in events
+            ]  # fmt: skip
+        chunk, nxt = self._paginate(events, request)
         body: dict[str, Any] = {"events": chunk}
         if nxt:
             body["next_cursor"] = nxt
