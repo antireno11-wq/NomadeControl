@@ -509,3 +509,85 @@ La corrida #43 es la última corrida automática del scheduler con el código an
 - La corrida nueva contra Railway. Guardar debería ser mucho más rápido (dos sentencias
   por tanda en vez de seis por mercado), pero no se midió.
 - Un mercado que cierre durante una corrida real.
+
+## 11. Cartera de papel, evaluación en vivo y deportes/Fed — 27 y 28-oct-2026 UTC
+
+Reglas en [`PREREGISTRO_VIVO.md`](PREREGISTRO_VIVO.md), escritas antes de calcular las
+métricas en vivo (`forward-v1`, `paper-v1`) y antes de la primera corrida de deportes y Fed
+(`ref-kalshi-v1`). Todo se ejecutó contra la base local. No cambian los modelos, parámetros
+ni criterios cripto.
+
+### 11.1 Primera evaluación en vivo (27-oct, ~19:50 UTC)
+
+`radar predict forward` sobre las corridas en vivo guardadas (desde el 26-oct):
+
+- 10.832 predicciones distintas usadas como instancias, de 1.285 mercados ya resueltos. Hubo
+  42 mercados consultados a Gamma porque la base todavía no tenía su resolución.
+- La cartera de papel abrió y cerró las 4 señales de las corridas #20, #42 y #43. Las 4
+  ganaron: +US$53,73 sobre US$101,78. Coincide con la revisión a mano.
+- Ningún par cumple todavía los criterios. El motivo principal es que hay pocos
+  conglomerados (activo × día ET): el máximo era 12, y hacen falta 20.
+
+### 11.2 Primera corrida con Kalshi (corrida #61, 27-oct)
+
+- 640 cotizaciones de Kalshi y 211.277 mercados candidatos de deportes, política y economía.
+- Emparejados: 330 de fútbol, 48 de NHL, 30 de NBA, 29 de NFL, 20 de la Fed y 1 de MLB.
+- El resto queda sin par, con su motivo. Los más comunes son:
+  - no es un partido ni una decisión de la Fed;
+  - tipo de mercado no cubierto (por ejemplo "ambos marcan" o hándicap);
+  - liga no cubierta (tenis ITF, fútbol universitario, básquetbol universitario).
+- Revisión a mano de 40 pares al azar: en todos coincidían los equipos, el empate o la
+  reunión de la Fed. Las probabilidades de Kalshi quedaron casi siempre a 1–2 p.p. del
+  punto medio del libro de Polymarket.
+- Las abstenciones fueron casi todas por spread de Kalshi > 0,10, sobre todo en partidos
+  lejanos.
+
+### 11.3 Funcionamiento sin supervisión (27-oct 21:48 → 28-oct 13:50 UTC)
+
+El scheduler local se reinició con el código nuevo a las 21:48 UTC.
+
+- **Corridas en vivo:** 30 exitosas y 2 fallidas, a las 12:21 y 12:51 UTC. Las dos fallaron
+  porque el Mac no podía resolver nombres de dominio (sin internet) al pedir las velas de
+  Binance. Quedaron registradas como `failed` y la siguiente corrida funcionó.
+- **Cartera de papel:** 7 posiciones nuevas, todas de toque en la semana
+  (`touch_range`, del 26-oct al 1-nov), por US$176,76. Siguen abiertas.
+- **Corrida #125 (13:48 UTC):**
+
+  | | Valoraciones |
+  |---|---:|
+  | Cripto | 2.680 |
+  | Deportes | 862 |
+  | Fed | 40 |
+
+  En deportes y Fed hubo 0 señales, porque esas familias siguen en observación, y 3 alertas.
+- **Evaluación en vivo #126:**
+  - `hourly_updown` (ewma, el modelo que se usa) es **peor que el mercado** en vivo:
+    - diferencia de log loss con IC [+0,010; +0,022];
+    - n = 791 y 18 conglomerados.
+
+    Todavía no se suspende, porque la regla exige 20 conglomerados. Igual ya no daba
+    señales: no superó al mercado en el backtest.
+  - `hourly_above`, `daily_above`, `daily_range` y `touch_day` son mejores que el punto medio
+    del libro, pero tienen 4 a 8 conglomerados. Faltan días para validarlos.
+- **Base local:** 6,5 GB. La poda empieza a borrar cuando hay datos de más de 2 días.
+
+### 11.4 Pruebas
+
+173 correctas y 2 omitidas (las 2 en vivo), contra PostgreSQL 15 local, en la base de pruebas
+separada. Ruff sin avisos. Las pruebas nuevas cubren:
+
+- la elección de instancias y el reemplazo por la predicción más cercana;
+- la resolución oficial y el cierre de posiciones;
+- la exposición máxima;
+- la suspensión y la habilitación;
+- el emparejamiento con Kalshi en EE.UU., fútbol y Fed, y las abstenciones;
+- la poda.
+
+### 11.5 Lo que NO se verificó
+
+- La imagen Docker nueva (etapa `deploy`, `radar serve`) no se construyó: Docker no estaba
+  corriendo. El despliegue en Railway no se hizo, porque espera la aprobación del costo.
+- No se revisaron los términos de uso de la API de Kalshi para un uso que no sea personal.
+- Política: no hay emparejamiento. Fútbol universitario, básquetbol universitario y tenis
+  tampoco tienen, porque sus códigos no coinciden con Kalshi.
+- Ningún par habilitado o suspendido en vivo todavía: faltan días.

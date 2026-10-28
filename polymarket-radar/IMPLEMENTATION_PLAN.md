@@ -101,7 +101,8 @@ externa del ledger en vivo antes de cada cierre.
 | Modelos alternativos `rv`, `ewma`, `dvol`, `bootstrap` | ✅ | fórmulas contrastadas con simulación (`tests/test_predict_models.py`) |
 | Evaluación preregistrada fuera de muestra | ✅ | `docs/PREREGISTRO_CRIPTO.md`, `reports/backtest_cripto.md`. 26-oct: 25.895 mercados, 22 de 36 pares validados y 13 que superan al mercado; repetida con métricas idénticas (`docs/EVIDENCE.md` §9.3) |
 | Elecciones vía la misma interfaz | ✅ | adaptador `elecciones-2t` |
-| Macro, corporativo, deportes, clima | ⬜ | se abstienen; candidatos: clima (pronósticos por conjuntos) y Tesoro (motor de toque) |
+| Deportes (NBA, NFL, NHL, MLB, fútbol) y Fed | 🟡 | referencia de Kalshi sin margen (`ref-kalshi-v1`), en observación hasta pasar la evaluación en vivo (`docs/EVIDENCE.md` §11.2) |
+| Corporativo, clima, política, otras ligas | ⬜ | se abstienen; candidatos: clima (pronósticos por conjuntos) y Tesoro (motor de toque) |
 
 ## Hito 5 — Valoración ✅ (`valuation-v1`)
 
@@ -112,18 +113,21 @@ externa del ledger en vivo antes de cada cierre.
 | Sin señal si el modelo no está validado o no supera al mercado | ✅ | pruebas de puertas |
 | Corrida en vivo manual y programada | ✅ | `radar predict live`, `RADAR_PREDICT_INTERVAL_MINUTES`. Va por tandas de 50 mercados y pide los libros justo antes de valorar. 27-oct, base local: antigüedad del libro con mediana 0,09 s y máxima 39,8 s (`docs/EVIDENCE.md` §10) |
 
+| Evaluación en vivo (`forward-v1`) con suspensión automática | ✅ | `radar/predict/forward.py`, `tests/test_forward.py`, `docs/EVIDENCE.md` §11 |
+
 Pendiente:
 
-- **Corrida nueva contra Railway.** Solo se midió contra la base local.
-- **Texto de la pantalla Radar.** Todavía dice que la valoración no está implementada.
+- **Despliegue en Railway.** Preparado (`radar serve`, etapa `deploy`), no ejecutado: espera
+  la aprobación del costo.
+- **Re-ajuste periódico de parámetros** (`crypto-refit-v1`): preregistrarlo antes de correrlo.
 
-## Hito 6 — Cartera virtual ⬜
+## Hito 6 — Cartera virtual 🟡 (`paper-v1`)
 
-- US$1.000, reserva mínima US$700, exposición máx. US$300, pérdida máx. por
-  operación direccional US$25, sin apalancamiento.
-- Ejecución simulada contra libros guardados, llenados parciales, comisiones,
-  ledger auditable (append-only), P&L realizado/no realizado, resolución solo con
-  resultados verificados, exposición correlacionada por evento/categoría.
+| Entregable | Estado | Evidencia |
+|---|---|---|
+| US$1.000, reserva US$700, exposición máx. US$300, US$25 por señal | ✅ | `open_paper`, `test_paper_respects_max_exposure` |
+| Compra al VWAP del ask del libro real + comisión; cierre solo con resolución oficial | ✅ | `resolve`, `docs/EVIDENCE.md` §11.1 |
+| Ledger encadenado (append-only), P&L no realizado, exposición por evento | ⬜ | hoy es una tabla normal (`paper_trades`) |
 
 ## Hito 7 — Backtesting 🟡 (cripto hecho; general pendiente)
 

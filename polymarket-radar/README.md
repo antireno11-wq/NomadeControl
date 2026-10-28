@@ -80,6 +80,23 @@ radar predict --out reports backtest                        # ~10 min
 radar predict live                                          # ~3 min con base local
 ```
 
+## Cartera de papel, aciertos en vivo y deportes/Fed (nuevo, 27-oct)
+
+- **Cartera de papel** (`paper-v1`): cada señal operable abre sola una compra simulada de
+  US$25 al precio real del libro; se cierra con el resultado oficial. Capital US$1.000,
+  exposición máxima US$300. No hay órdenes reales.
+- **Aciertos en vivo** (`forward-v1`): cada predicción en vivo se compara con el resultado
+  oficial y con el precio del mercado en ese mismo momento. Si un modelo resulta peor que el
+  mercado, sus señales se suspenden solas. Reglas fijadas antes de mirar los datos:
+  [`docs/PREREGISTRO_VIVO.md`](docs/PREREGISTRO_VIVO.md).
+- **Deportes y Fed** (`ref-kalshi-v1`): los partidos de NBA, NFL, NHL, MLB y de las ligas
+  grandes de fútbol, y las decisiones de tasas de la Fed, se comparan con el precio sin margen
+  del mismo mercado en Kalshi (API pública). Quedan **en observación**: no dan señales hasta
+  pasar la evaluación en vivo dos veces, con 7 días de diferencia. Política: sin cobertura.
+
+El scheduler hace todo esto después de cada corrida en vivo y borra los datos voluminosos de
+más de 2 días (`radar prune`).
+
 ## Qué hace hoy (verificado)
 
 - Recorre **todos** los mercados abiertos de Gamma (`/markets/keyset`, cursor,
@@ -159,10 +176,20 @@ export RADAR_DATABASE_URL=postgresql+psycopg://radar:radar@localhost:5433/radar
 
 ### Base de datos externa (p. ej. Railway)
 
-Con un PostgreSQL administrado, use la URL **pública** del servicio (en Railway,
-`DATABASE_PUBLIC_URL`, que requiere un proxy TCP). Cambie el prefijo `postgresql://`
-por `postgresql+psycopg://` y guárdela como `RADAR_DATABASE_URL` en `.env`, que no se
-versiona.
+Desde fuera de Railway, use la URL **pública** del servicio (`DATABASE_PUBLIC_URL`, que
+requiere un proxy TCP) y guárdela como `RADAR_DATABASE_URL` en `.env`, que no se versiona.
+El prefijo `postgresql://` se convierte solo a `postgresql+psycopg://`. Ojo: Railway cobra
+la salida de datos por la URL pública, y cada `radar predict live` lee ~1,5 GB.
+
+**Todo en Railway (preparado, todavía no desplegado).** Tres servicios con la misma imagen
+(`Dockerfile`, etapa final `deploy`, que corre `radar serve`), en el mismo proyecto que la
+base y por la red privada (sin cobro de salida):
+
+| Servicio | `RADAR_ROLE` | Variables | Acceso |
+|---|---|---|---|
+| scheduler | `scheduler` (aplica migraciones al arrancar) | `RADAR_DATABASE_URL=${{Postgres.DATABASE_URL}}` | ninguno |
+| api | `api`, `PORT=8000` | `RADAR_DATABASE_URL=${{Postgres.DATABASE_URL}}` | solo red privada |
+| dashboard | `dashboard` | `RADAR_API_BASE_URL=http://${{api.RAILWAY_PRIVATE_DOMAIN}}:8000`, `RADAR_DASHBOARD_PASSWORD` | dominio público |
 
 Las pruebas de base de datos hacen `DROP SCHEMA`. `TEST_DATABASE_URL` debe apuntar a
 **otra** base, nunca a la principal. Después de la primera ingesta completa, más un
@@ -182,7 +209,10 @@ backtest y una corrida en vivo, la base ocupaba 1,8 GB (`docs/EVIDENCE.md` §9.4
 | `radar elections …` | Motor electoral (ver arriba) |
 | `radar predict collect [--start --end]` | Conjunto de mercados cripto resueltos (Gamma + `/prices-history`) |
 | `radar predict --out reports backtest` | Ajuste (entrenamiento), elección (validación) y medición (prueba) de los modelos cripto |
-| `radar predict live [--max-markets N]` | Predice los mercados abiertos y los valora contra libros pedidos en el momento |
+| `radar predict live [--max-markets N]` | Predice los mercados abiertos (cripto, deportes y Fed) y los valora contra libros pedidos en el momento |
+| `radar predict forward` | Cartera de papel y evaluación en vivo (lo corre el scheduler después de cada predicción) |
+| `radar prune` | Borra corridas en vivo y snapshots de más de 2 días (ya copiados donde hace falta) |
+| `radar serve` | Arranque en contenedor según `RADAR_ROLE` (`api`, `dashboard` o `scheduler`) y `PORT` |
 
 ## API
 
@@ -201,8 +231,19 @@ backtest y una corrida en vivo, la base ocupaba 1,8 GB (`docs/EVIDENCE.md` §9.4
 | `GET /api/opportunities` | Valoraciones de la última corrida en vivo; filtros `recommendation`, `min_edge_pp` |
 | `GET /api/predict/quality` | Métricas fuera de muestra por modelo y tipo de contrato, con la referencia del mercado |
 | `GET /api/markets/{id}/predictions` | Predicciones registradas de un mercado (con datos usados) |
+| `GET /api/paper` | Cartera de papel: posiciones abiertas y cerradas, resultado |
+| `GET /api/forward` | Última evaluación en vivo por modelo y tipo de contrato |
 
 ## Dashboard
+
+Por defecto muestra solo dos pantallas:
+
+- **Resumen**: señales de ahora, cartera de papel, si el radar acierta frente al mercado y
+  las 5 alertas más grandes.
+- **Señales y alertas**: todas las valoraciones de la última corrida en vivo (cripto,
+  deportes y Fed), con filtros, motivos y enlace.
+
+El interruptor **Pantallas técnicas** agrega:
 
 - **Radar**: mercados encontrados / filtrados / analizados / líquidos, última
   actualización, estado de conexiones (y prueba en vivo), embudo, categorías.
@@ -214,16 +255,12 @@ backtest y una corrida en vivo, la base ocupaba 1,8 GB (`docs/EVIDENCE.md` §9.4
 - **Electoral**: estado de validación, mercados electorales clasificados,
   respuesta directa del backtest de Brasil 2026, gráfico modelo vs. mercado,
   alertas congeladas con su hash y evaluación sobre varias elecciones.
-- **Oportunidades**: tabla ordenable con mercado, categoría, precio ejecutable,
-  probabilidad estimada e intervalo, diferencia en p.p., valor esperado neto y
-  conservador, liquidez, confianza del modelo, recomendación, motivo y enlace;
-  cobertura por familia con los motivos de abstención.
-- **Calidad predictiva**: Brier, log loss, ECE y calibración global con IC por
-  conglomerados; curva de calibración frente al mercado; desempeño por modelo;
-  resultado hipotético; abstenciones y contraste del resultado oficial con Binance.
-- **Cartera virtual**: marcada como no implementada; no muestra datos.
+- **Calidad predictiva**: métricas del backtest con IC por conglomerados, curva de
+  calibración, desempeño por modelo y resultado hipotético.
 
-Un banner indica siempre si hay datos reales, datos sintéticos o ningún dato.
+Con `RADAR_DASHBOARD_PASSWORD` definida, el dashboard pide esa contraseña antes de mostrar
+nada (necesario si queda en internet). En las pantallas técnicas, un banner indica si hay
+datos reales, datos sintéticos o ningún dato.
 
 ## Configuración principal
 
@@ -242,6 +279,9 @@ Todas las variables usan el prefijo `RADAR_` (ver `.env.example` y `src/radar/co
 | `RADAR_REFERENCE_NOTIONAL_USD` | 100 | Monto para el VWAP de referencia |
 | `RADAR_SNAPSHOT_SCOPE` | `liquid` | `liquid` o `analyzed` |
 | `RADAR_SNAPSHOT_STORE_LEVELS` / `RADAR_SNAPSHOT_MAX_LEVELS` | `liquid` / 50 | Niveles guardados por lado |
+| `RADAR_RETENTION_LIVE_DAYS` / `RADAR_RETENTION_SNAPSHOT_DAYS` | 2 / 2 | Días que se guardan las corridas en vivo y los snapshots |
+| `RADAR_DASHBOARD_PASSWORD` | vacío | Contraseña del dashboard (obligatoria si está en internet) |
+| `RADAR_KALSHI_BASE_URL` / `RADAR_KALSHI_RATE_PER_S` | API pública / 5 | Referencia externa de deportes y Fed |
 
 ## Pruebas
 
