@@ -135,3 +135,40 @@ El usuario definió el alcance: cripto, economía, política, elecciones, NBA, t
 - No cambia ninguna regla de instancias, métricas, criterios ni habilitación.
 - Se decidió sin mirar métricas de esas variantes: en la última evaluación tenían menos de
   30 instancias resueltas.
+
+## Cartera con venta anticipada (`paper-v2`) — 28-oct-2026
+
+Escrita alrededor de las 20:00 UTC, **antes** de simularla. Lo único que se miró antes: los
+precios de venta de las 7 posiciones abiertas en la corrida de las 19:35 UTC, usados para
+explicar la idea al usuario. No se calculó el resultado de ninguna regla sobre datos pasados.
+
+**Qué se compara.** Las mismas posiciones de `paper-v1` (misma señal, mismo precio de compra,
+mismas acciones). Solo cambia la salida: `paper-v1` siempre espera al resultado; `paper-v2`
+puede vender antes. La plata que `paper-v2` libera al vender **no** se usa para abrir otras
+posiciones, para que la diferencia mida solo la regla de salida.
+
+**Precio de venta.** En cada corrida en vivo (cada 30 min), para cada token con una posición
+abierta en `paper-v2`, se recorren los bids del libro recién pedido para vender **todas** las
+acciones de la posición (VWAP de venta). Comisión de venta = la misma fórmula de la compra
+(`tasa × p × (1 − p)` al precio de venta).
+
+**Regla de venta.** Se vende en la primera corrida, posterior a la compra, en la que se cumplen
+todas estas condiciones:
+
+1. el libro alcanza para vender todas las acciones;
+2. el libro tiene 180 s o menos;
+3. el radar calculó una probabilidad para ese resultado en esa corrida;
+4. el precio de venta menos la comisión es **mayor o igual** que esa probabilidad. Es decir,
+   alguien paga por la posición lo mismo o más de lo que el radar cree que vale.
+
+Si el radar no puede calcular, o el libro no alcanza, la posición se mantiene. No hay otras
+salidas (ni pérdida máxima ni plazo). Si nunca se vende, termina igual que en `paper-v1`, con
+la resolución oficial.
+
+**Desde cuándo.** Solo se pueden usar los libros pedidos desde esta versión. Las posiciones ya
+cerradas quedan igual que en `paper-v1`. Las 7 abiertas empiezan a revisarse desde la primera
+corrida con precios de venta.
+
+**Comparación.** Resultado total en US$ de cada cartera sobre las mismas posiciones cerradas
+en ambas, y plata inmovilizada promedio. Con pocas posiciones la diferencia no prueba nada;
+se informa igual, con el número de posiciones.

@@ -916,6 +916,41 @@ def page_summary() -> None:
     if len(items) > 30:
         st.caption(f"Se muestran las 30 más recientes de {len(items)}.")
 
+    # ------------------------------------------------- esperar o vender antes
+    st.subheader("¿Conviene esperar o vender antes?")
+    v2 = paper.get("venta_anticipada") or {}
+    st.caption(md(
+        "Las mismas apuestas de práctica, con dos formas de salir: **esperar** siempre al "
+        "resultado, o **vender antes** apenas alguien pague lo que el radar cree que vale. "
+        "La regla se escribió antes de simularla y empezó el 28-oct."
+    ))  # fmt: skip
+    n_cmp = v2.get("comparables", 0)
+    if not n_cmp:
+        st.write(
+            f"Todavía no hay apuestas terminadas con las dos reglas. Ventas anticipadas hasta "
+            f"ahora: {v2.get('vendidas', 0)}."
+        )
+    else:
+        a, b = st.columns(2)
+        a.metric(
+            "Esperando al resultado",
+            usd(v2.get("resultado_v1_comparables_usd"), sign=True),
+            help=f"Plata inmovilizada en promedio {v2.get('dias_v1_comparables', 0):.1f} días.",
+        )
+        days_v2 = v2.get("dias_v2_comparables", 0)
+        b.metric(
+            "Vendiendo antes",
+            usd(v2.get("resultado_v2_comparables_usd"), sign=True),
+            help=f"Plata inmovilizada en promedio {days_v2:.1f} días.",
+        )
+        waiting = v2.get("vendidas", 0) - v2.get("vendidas_comparables", 0)
+        st.caption(
+            f"Sobre las mismas {n_cmp} apuestas terminadas con las dos reglas, de las que "
+            f"{v2.get('vendidas_comparables', 0)} se vendieron antes. Otras {waiting} ya se "
+            "vendieron, pero se comparan recién cuando su mercado se resuelva. Con pocas "
+            "apuestas, la diferencia todavía no prueba nada."
+        )
+
     # ------------------------------------------------- las que casi entraron
     st.subheader("Las que casi entraron")
     alerts = (

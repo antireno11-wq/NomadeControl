@@ -127,6 +127,8 @@ def test_capture_resolve_paper_and_evaluate(engine: Engine) -> None:
         assert {i.y for i in s.scalars(select(ForwardInstance))} == {0.0}
     assert trade.status == "ganada"
     assert trade.pnl_usd == pytest.approx(31.25 - 25.0)
+    assert trade.v2_status == "ganada"  # paper-v2 no la vendió: termina igual que paper-v1
+    assert trade.v2_pnl_usd == pytest.approx(trade.pnl_usd)
 
     ev = forward.evaluate(engine, n_boot=20)
     assert ev["instancias"] == 1  # una predicción que sirve a varios momentos cuenta una vez
@@ -203,3 +205,41 @@ def test_prune_only_removes_old_live_runs_already_captured(engine: Engine) -> No
         left = set(s.scalars(select(PredictionRun.id)))
         assert left == {old_pending, recent}
         assert s.scalars(select(PredictionRecord.run_id).distinct()).all()  # cascada parcial
+
+
+@pytest.mark.db
+def test_paper_v2_sells_when_the_bid_reaches_the_radar_value(engine: Engine) -> None:
+    t0 = R - timedelta(hours=3)
+    with Session(engine) as s:
+        add_market(s, "m1", resolved=True)  # resolvió "No"
+        runs = [add_run(s, t0 + timedelta(minutes=30 * k)) for k in range(4)]
+        pids = [add_prediction(s, r, "m1", t0 + timedelta(minutes=30 * k), 0.5)
+                for k, r in enumerate(runs)]  # fmt: skip
+
+        def quote(k: int, bid: float, p: float, **kw: Any) -> dict[str, Any]:
+            return valuation(runs[k], pids[k], "m1", "No", as_of=t0 + timedelta(minutes=30 * k),
+                             p_model=p, sell_vwap=bid, sell_fee_per_share=0.01,
+                             sell_complete=True, book_age_s=1.0) | kw  # fmt: skip
+
+        s.execute(
+            insert(ValuationRecord),
+            [
+                valuation(runs[0], pids[0], "m1", "No", as_of=t0, recommendation=REC_SIGNAL,
+                          ask_vwap=0.6, fill_shares=40.0, fee_per_share=0.0, p_model=0.8),
+                quote(1, 0.70, 0.80),  # pagan menos de lo que vale: se mantiene
+                quote(2, 0.84, 0.82, sell_complete=False),  # el libro no alcanza
+                quote(3, 0.84, 0.82),  # 0,84 − 0,01 ≥ 0,82: vende
+            ],
+        )  # fmt: skip
+        s.commit()
+    forward.open_paper(engine)
+    assert forward.sell_early(engine) == {"vendidas": 1, "precios_revisados": 3}
+    with Session(engine) as s:
+        t = s.scalars(select(PaperTrade)).one()
+    assert (t.status, t.v2_status, t.v2_exit_price) == ("abierta", "vendida", 0.84)
+    assert t.v2_pnl_usd == pytest.approx(40 * (0.84 - 0.01) - 24.0)
+    forward.resolve(engine, None, now=R + timedelta(minutes=10))
+    with Session(engine) as s:
+        t = s.scalars(select(PaperTrade)).one()
+    assert (t.status, t.v2_status) == ("ganada", "vendida")  # la venta no se pisa
+    assert t.pnl_usd == pytest.approx(40 - 24.0)

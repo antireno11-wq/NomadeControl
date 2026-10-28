@@ -92,6 +92,10 @@ class Valuation:
     recommendation: str = REC_INSUFFICIENT
     reasons: list[str] = field(default_factory=list)
     version: str = VALUATION_VERSION
+    # paper-v2: precio de venta de una posición de papel abierta en este token (si la hay).
+    sell_vwap: float | None = None
+    sell_fee_per_share: float | None = None
+    sell_complete: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -214,3 +218,18 @@ def gate_reasons(v: Valuation, cfg: ValuationConfig) -> list[str]:
     if v.book_age_s is None or v.book_age_s > cfg.max_book_age_s:
         out.append(f"libro con antigüedad {v.book_age_s}s > {cfg.max_book_age_s}s")
     return out
+
+
+def attach_sell_quote(v: Valuation, book: BookView | None, shares: float | None,
+                      market: MarketView) -> None:  # fmt: skip
+    """Para ``paper-v2``: VWAP de venta de ``shares`` acciones en los bids del mismo libro con
+    que se valoró, y su comisión. No cambia la recomendación."""
+    if not shares or book is None or not book.bids:
+        return
+    from radar.market.orderbook import simulate_sell
+
+    fill = simulate_sell(book.bids, shares=shares)
+    v.sell_complete = fill.fully_filled
+    v.sell_vwap = fill.avg_price
+    if fill.avg_price is not None:
+        v.sell_fee_per_share = fee_per_share(fill.avg_price, market.fee_rate, market.fee_exponent)

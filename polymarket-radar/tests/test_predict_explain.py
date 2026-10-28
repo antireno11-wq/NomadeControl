@@ -46,3 +46,5 @@ def test_trade_story_and_formats() -> None:
     assert "Acertó: +US$43,32" in story
     assert E.usd(1053.73) == "US$1.053,73" and E.usd(-2.5, sign=True) == "−US$2,50"
     assert "Sigue abierta" in E.trade_story(t | {"status": "abierta"})
+    sold = E.trade_story(t | {"v2_status": "vendida", "v2_exit_price": 0.78, "v2_pnl_usd": 2.72})
+    assert "se vendió a 78¢" in sold and "+US$2,72" in sold

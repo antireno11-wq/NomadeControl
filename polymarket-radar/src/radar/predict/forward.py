@@ -153,7 +153,7 @@ def capture(engine: Any, run_ids: list[int] | None = None) -> dict[str, int]:
 def open_paper(engine: Any, cfg: PaperConfig | None = None) -> dict[str, int]:
     """Abre una posición por cada señal operable nueva (mercado y resultado), en orden
     cronológico, si cabe en la exposición y en el capital disponible."""
-    from sqlalchemy import select
+    from sqlalchemy import select, update
     from sqlalchemy.dialects.postgresql import insert
 
     from radar.db.models import PaperTrade, ValuationRecord
@@ -220,13 +220,101 @@ def open_paper(engine: Any, cfg: PaperConfig | None = None) -> dict[str, int]:
                 "pnl_usd": None,
                 "resolved_at": None,
                 "created_at": utcnow(),
+                "v2_status": "abierta",
             }
         )
         opened += 1
-    if new_rows:
-        with engine.begin() as conn:
+    with engine.begin() as conn:
+        if new_rows:
             conn.execute(insert(PaperTrade).values(new_rows).on_conflict_do_nothing())
+        # Posiciones creadas sin paper-v2 (p. ej. por un proceso con código anterior):
+        # parten igual que en paper-v1.
+        conn.execute(
+            update(PaperTrade)
+            .where(PaperTrade.v2_status.is_(None))
+            .values(
+                v2_status=PaperTrade.status,
+                v2_exit_at=PaperTrade.resolved_at,
+                v2_exit_price=PaperTrade.final_price,
+                v2_payout_usd=PaperTrade.payout_usd,
+                v2_pnl_usd=PaperTrade.pnl_usd,
+            )
+        )
     return {"abiertas": opened, "omitidas_por_exposicion": omitted}
+
+
+# --------------------------------------------------------- 2b. venta anticipada
+
+
+def open_positions(engine: Any) -> dict[str, float]:
+    """Tokens con una posición abierta en ``paper-v2`` → acciones (para cotizar su venta)."""
+    from sqlalchemy import select
+
+    from radar.db.models import PaperTrade
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(PaperTrade.token_id, PaperTrade.shares).where(PaperTrade.v2_status == "abierta")
+        ).all()
+    return {tok: float(sh) for tok, sh in rows}
+
+
+def should_sell(q: Any, max_book_age_s: float) -> bool:
+    """Regla de ``paper-v2``: alguien paga por la posición (VWAP de venta menos comisión) lo
+    mismo o más de lo que el radar cree que vale, con el libro fresco y completo."""
+    return (
+        bool(q.sell_complete)
+        and q.sell_vwap is not None
+        and q.sell_fee_per_share is not None
+        and q.p_model is not None
+        and q.book_age_s is not None
+        and q.book_age_s <= max_book_age_s
+        and q.sell_vwap - q.sell_fee_per_share >= q.p_model
+    )
+
+
+def sell_early(engine: Any) -> dict[str, int]:
+    """Revisa en orden los precios de venta guardados desde la última revisión de cada
+    posición abierta de ``paper-v2`` y la vende en el primero que cumple la regla."""
+    from sqlalchemy import select, update
+
+    from radar.db.models import PaperTrade, ValuationRecord
+    from radar.predict.valuation import ValuationConfig
+
+    max_age = ValuationConfig().max_book_age_s
+    v = ValuationRecord
+    sold = checked = 0
+    with engine.begin() as conn:
+        trades = conn.execute(
+            select(PaperTrade.__table__).where(PaperTrade.v2_status == "abierta")
+        ).all()
+        for t in trades:
+            since = t.v2_checked_until or t.opened_at
+            quotes = conn.execute(
+                select(v.as_of, v.p_model, v.sell_vwap, v.sell_fee_per_share, v.sell_complete,
+                       v.book_age_s)
+                .where(v.token_id == t.token_id, v.as_of > since, v.sell_vwap.is_not(None))
+                .order_by(v.as_of)
+            ).all()  # fmt: skip
+            values: dict[str, Any] = {}
+            for q in quotes:
+                checked += 1
+                values["v2_checked_until"] = q.as_of
+                if should_sell(q, max_age):
+                    payout = t.shares * (q.sell_vwap - q.sell_fee_per_share)
+                    values |= {
+                        "v2_status": "vendida",
+                        "v2_exit_at": q.as_of,
+                        "v2_exit_price": q.sell_vwap,
+                        "v2_exit_fee": q.sell_fee_per_share,
+                        "v2_payout_usd": payout,
+                        "v2_pnl_usd": payout - t.cost_usd,
+                    }
+                    sold += 1
+                    break
+            if values:
+                conn.execute(update(PaperTrade).where(PaperTrade.id == t.id).values(**values))
+    return {"vendidas": sold, "precios_revisados": checked}
 
 
 # ------------------------------------------------------------------ 3. resolución
@@ -325,17 +413,22 @@ def resolve(engine: Any, settings: Settings | None = None, now: datetime | None 
                 ).all():
                     payout = tr.shares * fp[i]
                     status = "ganada" if fp[i] == 1.0 else "perdida" if fp[i] == 0.0 else "empate"
-                    conn.execute(
-                        update(PaperTrade)
-                        .where(PaperTrade.id == tr.id)
-                        .values(
-                            status=status,
-                            final_price=fp[i],
-                            payout_usd=payout,
-                            pnl_usd=payout - tr.cost_usd,
-                            resolved_at=now,
-                        )
-                    )
+                    values: dict[str, Any] = {
+                        "status": status,
+                        "final_price": fp[i],
+                        "payout_usd": payout,
+                        "pnl_usd": payout - tr.cost_usd,
+                        "resolved_at": now,
+                    }
+                    if tr.v2_status == "abierta":  # paper-v2 no la vendió: termina igual
+                        values |= {
+                            "v2_status": status,
+                            "v2_exit_at": now,
+                            "v2_exit_price": fp[i],
+                            "v2_payout_usd": payout,
+                            "v2_pnl_usd": payout - tr.cost_usd,
+                        }
+                    conn.execute(update(PaperTrade).where(PaperTrade.id == tr.id).values(**values))
                     n_paper += 1
     return {
         "mercados_pendientes": len(pending),
@@ -538,6 +631,7 @@ def update(settings: Settings, engine: Any, *, n_boot: int = 500) -> dict[str, A
     started = datetime.now(UTC)
     out: dict[str, Any] = {"capturadas": capture(engine)}
     out["cartera"] = open_paper(engine)
+    out["venta_anticipada"] = sell_early(engine)
     out["resolucion"] = resolve(engine, settings)
     ev = evaluate(engine, n_boot=n_boot)
     out["evaluacion"] = {"run_id": ev["run_id"], "instancias": ev["instancias"]}

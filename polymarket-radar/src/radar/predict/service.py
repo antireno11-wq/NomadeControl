@@ -461,7 +461,7 @@ def predict_live(
     from radar.market.orderbook import normalize_book
     from radar.predict.crypto.terms import CryptoTerms, parse_crypto_terms
     from radar.predict.registry import default_registry
-    from radar.predict.valuation import BookView, value_token
+    from radar.predict.valuation import BookView, attach_sell_quote, value_token
 
     started = utcnow()
     params = load_params(settings)
@@ -472,9 +472,10 @@ def predict_live(
     beats = calib_doc.get("supera_mercado") or {}
     reference = calib_doc.get("reference_by_variant") or {}
     registry = default_registry(params, calib)
-    from radar.predict.forward import enabled_pairs, suspended_pairs
+    from radar.predict.forward import enabled_pairs, open_positions, suspended_pairs
 
     suspended = suspended_pairs(engine)  # forward-v1: solo puede quitar señales
+    held = open_positions(engine)  # paper-v2: tokens con posición abierta → acciones
     enabled = enabled_pairs(engine)  # familias con referencia externa validadas en vivo
     run_id = start_run(engine, "live", params)
     summary: dict[str, Any] = {"as_of": started.isoformat(), "families": {}, "crypto": {}}
@@ -568,6 +569,8 @@ def predict_live(
                             supera_mercado=beats.get(f"{ref_pred.model}|{t.variant}"),
                             suspendido=f"{ref_pred.model}|{t.variant}" in suspended,
                         )
+                        attach_sell_quote(val, books.get(tok) if tok else None,
+                                          held.get(tok or ""), mv)  # fmt: skip
                         recs[val.recommendation] += 1
                         if val.book_age_s is not None:
                             ages.append(val.book_age_s)
@@ -579,7 +582,7 @@ def predict_live(
                          cerrados=dict(closed), s_desde_libros=round(
                              (utcnow() - received_by).total_seconds(), 2))  # fmt: skip
             summary["externos"] = _run_external(
-                settings, engine, run_id, others, clob, batch_markets, enabled
+                settings, engine, run_id, others, clob, batch_markets, enabled, held
             )
         finally:
             close()
@@ -616,6 +619,7 @@ def _run_external(
     clob: Any,
     batch_markets: int,
     enabled: set[str],
+    held: dict[str, float],
 ) -> dict[str, Any]:
     """Deportes y Fed contra la referencia de Kalshi (``ref-kalshi-v1``), por tandas como los
     cripto. Sin habilitación en vivo (``enabled``) no hay señales: solo observación."""
@@ -624,7 +628,7 @@ def _run_external(
     from radar.market.orderbook import normalize_book
     from radar.predict import external as X
     from radar.predict.base import CALIB_NOT_EVALUATED, CALIB_VALIDATED
-    from radar.predict.valuation import BookView, value_token
+    from radar.predict.valuation import BookView, attach_sell_quote, value_token
 
     out: dict[str, Any] = {"version": X.EXTERNAL_VERSION, "candidatos": len(others)}
     if not others:
@@ -684,6 +688,7 @@ def _run_external(
                 tok = mv.token_ids[k] if k < len(mv.token_ids) else None
                 val = value_token(mv, outcome, pr, books.get(tok) if tok else None, utcnow(),
                                   supera_mercado=True if ok else None)  # fmt: skip
+                attach_sell_quote(val, books.get(tok) if tok else None, held.get(tok or ""), mv)
                 recs[val.recommendation] += 1
                 vals.append(val)
             category = CATEGORY_BY_FAMILY.get(m.family, "sports")

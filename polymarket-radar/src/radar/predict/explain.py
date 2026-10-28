@@ -148,7 +148,20 @@ def trade_story(t: dict[str, Any]) -> str:
     money = f"Puso {usd(t.get('cost_usd'))}; si acierta cobra {usd(t.get('shares'))}."
     status = t.get("status")
     if status == "abierta":
-        return f"{why} {money} Sigue abierta."
-    result = usd(t.get("pnl_usd"), sign=True)
-    verb = {"ganada": "Acertó", "perdida": "No acertó", "empate": "Empate"}.get(status, status)
-    return f"{why} {money} **{verb}: {result}.**"
+        text = f"{why} {money} Sigue abierta."
+    else:
+        result = usd(t.get("pnl_usd"), sign=True)
+        verb = {"ganada": "Acertó", "perdida": "No acertó", "empate": "Empate"}.get(status, status)
+        text = f"{why} {money} **{verb}: {result}.**"
+    v2 = t.get("v2_status")
+    if v2 == "vendida":
+        text += (
+            f"\n\n*Vendiendo antes:* se vendió a {cents(t.get('v2_exit_price'))}, porque ya "
+            f"pagaban lo que el radar creía que valía → **{usd(t.get('v2_pnl_usd'), sign=True)}**."
+        )
+    elif v2 == "abierta":
+        text += (
+            "\n\n*Vendiendo antes:* todavía no conviene vender; el radar cree que vale más de lo "
+            "que pagan hoy."
+        )
+    return text

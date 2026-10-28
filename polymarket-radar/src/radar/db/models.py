@@ -455,8 +455,15 @@ class ValuationRecord(Base):
     recommendation: Mapped[str] = mapped_column(String(32))
     reasons: Mapped[list[Any]] = mapped_column(JSONType, default=list)
     version: Mapped[str] = mapped_column(String(24))
+    # paper-v2: precio de venta de la posición de papel abierta en este token (si la hay)
+    sell_vwap: Mapped[float | None] = mapped_column(Float)
+    sell_fee_per_share: Mapped[float | None] = mapped_column(Float)
+    sell_complete: Mapped[bool | None] = mapped_column(Boolean)
 
-    __table_args__ = (Index("ix_valuations_run_rec", "run_id", "recommendation"),)
+    __table_args__ = (
+        Index("ix_valuations_run_rec", "run_id", "recommendation"),
+        Index("ix_valuations_token_asof", "token_id", "as_of"),
+    )
 
 
 class ModelEvaluation(Base):
@@ -559,5 +566,13 @@ class PaperTrade(Base):
     pnl_usd: Mapped[float | None] = mapped_column(Float)
     resolved_at: Mapped[datetime | None] = mapped_column(TS)
     created_at: Mapped[datetime] = mapped_column(TS)
+    # paper-v2: la misma posición, pero puede venderse antes (docs/PREREGISTRO_VIVO.md)
+    v2_status: Mapped[str | None] = mapped_column(String(16))  # abierta|vendida|ganada|...
+    v2_exit_at: Mapped[datetime | None] = mapped_column(TS)
+    v2_exit_price: Mapped[float | None] = mapped_column(Float)
+    v2_exit_fee: Mapped[float | None] = mapped_column(Float)
+    v2_payout_usd: Mapped[float | None] = mapped_column(Float)
+    v2_pnl_usd: Mapped[float | None] = mapped_column(Float)
+    v2_checked_until: Mapped[datetime | None] = mapped_column(TS)
 
     __table_args__ = (UniqueConstraint("market_id", "token_id", name="uq_paper_market_token"),)

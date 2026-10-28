@@ -512,13 +512,42 @@ def paper(session: SessionDep, limit: Annotated[int, Query(ge=1, le=2000)] = 500
     items = []
     for t, slug in rows:
         d = {c.name: getattr(t, c.name) for c in t.__table__.columns}
-        for k in ("opened_at", "end_date", "resolved_at", "created_at"):
+        for k in ("opened_at", "end_date", "resolved_at", "created_at", "v2_exit_at",
+                  "v2_checked_until"):  # fmt: skip
             if d.get(k) is not None:
                 d[k] = d[k].isoformat()
         d["url"] = f"https://polymarket.com/event/{slug}" if slug else None
         items.append(d)
     closed = [d for d in items if d["status"] != "abierta"]
     open_ = [d for d in items if d["status"] == "abierta"]
+    both = [
+        d for d in items if d["status"] != "abierta" and d.get("v2_status") not in (None, "abierta")
+    ]
+
+    def days(d: dict[str, Any], key: str) -> float:
+        return (
+            datetime.fromisoformat(d[key]) - datetime.fromisoformat(d["opened_at"])
+        ).total_seconds() / 86400
+
+    v2 = {
+        "version": "paper-v2",
+        "vendidas": sum(d.get("v2_status") == "vendida" for d in items),
+        "cerradas": sum(d.get("v2_status") not in (None, "abierta") for d in items),
+        "resultado_usd": sum(
+            d.get("v2_pnl_usd") or 0.0 for d in items if d.get("v2_status") not in (None, "abierta")
+        ),
+        # comparación justa: solo posiciones cerradas en las dos carteras
+        "comparables": len(both),
+        "vendidas_comparables": sum(d.get("v2_status") == "vendida" for d in both),
+        "resultado_v1_comparables_usd": sum(d["pnl_usd"] or 0.0 for d in both),
+        "resultado_v2_comparables_usd": sum(d["v2_pnl_usd"] or 0.0 for d in both),
+        "dias_v1_comparables": (sum(days(d, "resolved_at") for d in both) / len(both))
+        if both
+        else None,
+        "dias_v2_comparables": (sum(days(d, "v2_exit_at") for d in both) / len(both))
+        if both
+        else None,
+    }
     pnl = sum(d["pnl_usd"] or 0.0 for d in closed)
     cost_closed = sum(d["cost_usd"] for d in closed)
     exposure = sum(d["cost_usd"] for d in open_)
@@ -535,6 +564,7 @@ def paper(session: SessionDep, limit: Annotated[int, Query(ge=1, le=2000)] = 500
         "resultado_usd": pnl,
         "invertido_cerradas_usd": cost_closed,
         "capital_actual_usd": cfg.capital_usd + pnl,
+        "venta_anticipada": v2,
         "items": items,
     }
 

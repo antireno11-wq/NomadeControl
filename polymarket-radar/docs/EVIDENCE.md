@@ -591,3 +591,51 @@ separada. Ruff sin avisos. Las pruebas nuevas cubren:
 - Política: no hay emparejamiento. Fútbol universitario, básquetbol universitario y tenis
   tampoco tienen, porque sus códigos no coinciden con Kalshi.
 - Ningún par habilitado o suspendido en vivo todavía: faltan días.
+
+## 12. Alcance del radar y venta anticipada — 28-oct-2026 UTC
+
+### 12.1 Alcance (`alcance-v1`)
+
+El alcance lo eligió el usuario: cripto, economía, política, elecciones, NBA, tenis ATP y
+fútbol (ganador o empate, y mercados que no son de un partido).
+
+- **Primera ingesta real con el alcance (#55): falló al minuto.** Una página de 100 eventos de
+  la NBA trae miles de mercados, y un único INSERT pasaba el límite de 65.535 parámetros de
+  PostgreSQL. Se corrigió guardando de a 500 (prueba con un evento de 1.600 mercados).
+- **Ingesta manual después de la corrección (#56) y primera del scheduler (#57):**
+
+  | | Antes (#51–#54, todo Polymarket) | Ahora (#56–#57) |
+  |---|---:|---:|
+  | Duración | 1.651–2.144 s | 478–500 s |
+  | Páginas de Gamma | ~2.700 | 305 |
+  | Mercados guardados | 262.000–268.000 | 70.318–70.360 |
+  | Libros pedidos | 474.000–478.000 | ~88.000 |
+  | Estado | partial (errores de libros) | partial (26–28 libros sin respuesta) |
+
+- **Scheduler medido 40 min:**
+  - memoria máxima 2,4 GB, durante la predicción;
+  - 189 s de CPU, con una ingesta y una predicción;
+  - antes: 0,17 procesadores en promedio en 18 h, y picos de ~4 GB.
+
+  Las dos mediciones no tienen la misma duración ni la misma carga. Son una estimación, no
+  una comparación exacta.
+- La predicción ahora lee 1.745–1.782 mercados del alcance, en vez de filtrar los 268.000.
+
+### 12.2 Venta anticipada (`paper-v2`)
+
+Regla en [`PREREGISTRO_VIVO.md`](PREREGISTRO_VIVO.md), escrita antes de simularla.
+
+Primera corrida con precios de venta (#149) y `radar predict forward`:
+
+- se revisaron 7 precios, uno por cada posición abierta;
+- la regla vendió 4 posiciones:
+  - Bitcoin baja a US$78.000: vendida a 80¢, +US$3,04;
+  - Ethereum baja a US$2.200: +US$2,25;
+  - Ethereum llega a US$2.600: +US$0,15;
+  - Bitcoin llega a US$86.000: +US$0,12.
+- Las otras 3 se mantienen, porque el radar cree que valen más de lo que pagan.
+- La comparación con `paper-v1` se hará sobre las mismas posiciones cuando se resuelvan
+  (1-nov). Por ahora, las 4 comparables son las ya cerradas antes de `paper-v2` y tienen el
+  mismo resultado en las dos carteras.
+
+Pruebas: 181 correctas y 2 omitidas (las en vivo).

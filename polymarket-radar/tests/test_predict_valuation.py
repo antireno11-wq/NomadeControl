@@ -16,6 +16,7 @@ from radar.predict.valuation import (
     REC_SIGNAL,
     SUSPENDED_REASON,
     BookView,
+    attach_sell_quote,
     value_token,
 )
 
@@ -125,3 +126,15 @@ def test_insufficient_information_and_abstention() -> None:
     assert v.recommendation == REC_INSUFFICIENT and "comisión" in v.reasons[0]
     v = value_token(MARKET, "Yes", pred(None, 0, 0), DEEP, NOW, supera_mercado=True)
     assert v.recommendation == REC_ABSTAIN and v.reasons == ["sin datos"]
+
+
+def test_sell_quote_walks_the_bids_for_open_positions_only() -> None:
+    book_ = book([(0.50, 1000)], [(0.49, 30), (0.47, 100)])
+    v = value_token(MARKET, "Yes", pred(0.70, 0.62, 0.78), book_, NOW, supera_mercado=True)
+    attach_sell_quote(v, book_, None, MARKET)
+    assert v.sell_vwap is None  # sin posición abierta no se cotiza la venta
+    attach_sell_quote(v, book_, 50.0, MARKET)
+    assert v.sell_complete is True
+    assert v.sell_vwap == pytest.approx((30 * 0.49 + 20 * 0.47) / 50)
+    assert v.sell_fee_per_share == pytest.approx(0.07 * v.sell_vwap * (1 - v.sell_vwap))
+    assert v.recommendation == REC_SIGNAL  # no cambia la recomendación
