@@ -31,24 +31,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // `filename*` en UTF-8, que es el que conserva "Cédula" o "Muñoz". Sin él,
   // el archivo bajaba con el nombre mutilado o como "archivo".
   const ascii = archivo.originalFilename.normalize("NFD").replace(/[^\x20-\x7e]/g, "").replace(/["\\]/g, "") || "documento";
-  const disposicion = `${descargar ? "attachment" : "inline"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(archivo.originalFilename)}`;
+  const disposicion = `${descargar ? "attachment" : "inline"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(archivo.originalFilename).replace(/['()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
 
-  // Fase C: si ya está en R2, redirigimos en vez de servir bytes. Para
-  // descargar no sirve: la redirección pierde el Content-Disposition y el
-  // navegador lo abre en vez de bajarlo, así que en ese caso se pasa por acá.
+  // Con `url` el archivo vive afuera; hoy son las fotos de checklist que
+  // llegan por Google Forms y quedan en Drive. Para descargar se intenta
+  // pasarlo por acá, porque la redirección pierde el Content-Disposition.
+  // Drive no se lo entrega a un servidor sin sesión de Google (responde 401
+  // o una página de login): en ese caso se redirige, que es lo que siempre
+  // funcionó para quien tiene acceso desde su navegador.
   if (archivo.url) {
-    if (!descargar) return NextResponse.redirect(archivo.url);
-    const remoto = await fetch(archivo.url);
-    if (!remoto.ok || !remoto.body) {
-      return NextResponse.json({ error: "No se pudo leer el archivo" }, { status: 502 });
+    if (descargar) {
+      const remoto = await fetch(archivo.url).catch(() => null);
+      const esPaginaDeLogin = remoto?.headers.get("content-type")?.startsWith("text/html") ?? false;
+      if (remoto?.ok && remoto.body && !esPaginaDeLogin) {
+        return new NextResponse(remoto.body, {
+          headers: {
+            "Content-Type": archivo.mimeType || "application/octet-stream",
+            "Content-Disposition": disposicion,
+            "Cache-Control": "private, max-age=3600",
+          },
+        });
+      }
     }
-    return new NextResponse(remoto.body, {
-      headers: {
-        "Content-Type": archivo.mimeType || "application/octet-stream",
-        "Content-Disposition": disposicion,
-        "Cache-Control": "private, max-age=3600",
-      },
-    });
+    return NextResponse.redirect(archivo.url);
   }
 
   if (!archivo.contenido) {
