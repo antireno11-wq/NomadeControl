@@ -17,6 +17,7 @@ import argparse
 import json
 import logging
 import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -145,11 +146,46 @@ def cmd_scheduler(args: argparse.Namespace) -> int:
     return 0
 
 
+def dual_stack_socket(port: int) -> socket.socket:
+    """Socket en "::" que acepta IPv4 e IPv6.
+
+    Con host="::", asyncio deja IPV6_V6ONLY activo y el servidor no responde por IPv4."""
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+    sock.bind(("::", port))
+    return sock
+
+
 def cmd_api(args: argparse.Namespace) -> int:
     import uvicorn
 
+    if args.host == "::":
+        server = uvicorn.Server(uvicorn.Config("radar.api.main:app", log_level="info"))
+        server.run(sockets=[dual_stack_socket(args.port)])
+        return 0
     uvicorn.run("radar.api.main:app", host=args.host, port=args.port, log_level="info")
     return 0
+
+
+def check_api(base_url: str, attempts: int = 10, wait_s: float = 3.0) -> bool:
+    """Registra si el backend responde; el dashboard arranca igual si no responde."""
+    import time
+
+    import httpx
+
+    url = f"{base_url.rstrip('/')}/api/health"
+    error = ""
+    for _ in range(attempts):
+        try:
+            r = httpx.get(url, timeout=5)
+            log.info("api_check", url=url, status=r.status_code)
+            return r.status_code == 200
+        except httpx.HTTPError as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            time.sleep(wait_s)
+    log.error("api_check_failed", url=url, error=error)
+    return False
 
 
 def cmd_dashboard(args: argparse.Namespace) -> int:
@@ -184,9 +220,10 @@ def cmd_serve(args: argparse.Namespace) -> int:
     if role == "dashboard":
         # En el contenedor el dashboard es lo único expuesto, detrás de la contraseña.
         dash = argparse.Namespace(host="0.0.0.0", port=int(port or 8501))  # noqa: S104
+        check_api(os.environ.get("RADAR_API_BASE_URL", "http://localhost:8000"))
         return cmd_dashboard(dash)
     if role == "api":
-        # "::" escucha también en IPv6 (red privada de Railway).
+        # "::" con socket doble: IPv4 e IPv6 (red privada de Railway).
         return cmd_api(argparse.Namespace(host="::", port=int(port or 8000)))
     print(f"RADAR_ROLE desconocido: {role}", file=sys.stderr)
     return 2
