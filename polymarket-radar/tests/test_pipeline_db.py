@@ -366,3 +366,12 @@ def test_scoped_closures_only_check_markets_in_scope(engine):
     with Session(engine) as s:
         assert s.get(Market, "c1").closed is True
         assert s.get(Market, "nfl1").closed is False  # fuera del alcance: no se infiere nada
+
+
+def test_scoped_run_saves_huge_event_pages_in_parts(engine):
+    # Un solo evento con 1.600 mercados: ~72.000 parámetros en un INSERT único.
+    markets = [synthetic_market(f"n{i}", event_id="nba1") for i in range(1600)]
+    fake = FakePolymarket(markets=markets, events=[synthetic_event("nba1", ["sports", "nba"])])
+    r = run(engine, fake, ingest_scope="radar")
+    assert r.status != "failed" and r.markets_discovered == 1600
+    assert count(engine, Market) == 1600

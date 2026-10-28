@@ -76,6 +76,7 @@ log = get_logger(__name__)
 ADVISORY_LOCK_KEY = 7_420_133_701  # identifica el lock de "ingesta en curso"
 MAX_ERRORS_STORED_PER_TYPE = 200
 MARKETS_PER_BOOK_CHUNK = 100
+SCOPED_PERSIST_CHUNK = 500  # mercados por INSERT (~45 parámetros cada uno)
 EVENT_REF_KEYS = ("id", "slug", "title", "description", "negRisk", "startDate", "endDate",
                   "active", "closed")  # fmt: skip
 
@@ -626,8 +627,10 @@ class IngestionPipeline:
             fresh.append((market, raw))
         self.c.markets_discovered += len(fresh)
         with self.engine.begin() as conn:
-            if fresh:
-                self._persist_markets(conn, fresh, received_at, collect_eligible=True)
+            # Una página de 100 eventos puede traer miles de mercados (la NBA, ~80 por
+            # evento): se guardan por partes para no pasar el límite de 65.535 parámetros.
+            for part in _chunks(fresh, SCOPED_PERSIST_CHUNK):
+                self._persist_markets(conn, list(part), received_at, collect_eligible=True)
             self._flush_errors(conn)
             if self.c.gamma_pages % 50 == 0:
                 self._checkpoint(conn)
