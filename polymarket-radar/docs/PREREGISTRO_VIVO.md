@@ -124,3 +124,14 @@ divididos por la misma suma. Abstención si:
 Se aplican los mismos criterios y la misma regla de habilitación de "Familias nuevas" (dos
 evaluaciones que pasan, separadas por al menos 7 días). No se agregan reglas de política en esta
 versión: los mercados políticos de Polymarket casi nunca tienen un equivalente exacto.
+
+## Enmienda 1: alcance del radar (`alcance-v1`) — 28-oct-2026
+
+El usuario definió el alcance: cripto, economía, política, elecciones, NBA, tenis ATP y fútbol
+(ganador y empate, y mercados que no son de un partido). Desde esta fecha:
+
+- NFL, NHL y MLB dejan de emparejarse con Kalshi. Sus instancias ya capturadas se conservan
+  y se siguen evaluando cuando se resuelvan, pero no se agregan nuevas.
+- No cambia ninguna regla de instancias, métricas, criterios ni habilitación.
+- Se decidió sin mirar métricas de esas variantes: en la última evaluación tenían menos de
+  30 instancias resueltas.

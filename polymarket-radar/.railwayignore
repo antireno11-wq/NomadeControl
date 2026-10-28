@@ -1,0 +1,10 @@
+# Lo que `railway up` no sube (además de .gitignore). Nunca subir .env.
+.env
+.venv/
+data/raw/
+data/datasets/
+data/alerts/
+reports/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/

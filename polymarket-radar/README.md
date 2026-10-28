@@ -97,6 +97,12 @@ radar predict live                                          # ~3 min con base lo
 El scheduler hace todo esto después de cada corrida en vivo y borra los datos voluminosos de
 más de 2 días (`radar prune`).
 
+**Alcance (`alcance-v1`, 28-oct).** El radar solo descarga y analiza cripto, economía,
+política, elecciones, NBA, tenis ATP y fútbol (ganador o empate, y mercados que no son de un
+partido). Los pide a Gamma por etiqueta (`/events/keyset?tag_slug=…`), en vez de recorrer los
+~268.000 mercados abiertos. La regla está en `src/radar/market/scope.py`.
+`RADAR_INGEST_SCOPE=all` vuelve a la ingesta completa.
+
 ## Qué hace hoy (verificado)
 
 - Recorre **todos** los mercados abiertos de Gamma (`/markets/keyset`, cursor,
@@ -270,6 +276,7 @@ Todas las variables usan el prefijo `RADAR_` (ver `.env.example` y `src/radar/co
 |---|---|---|
 | `RADAR_DATABASE_URL` | `postgresql+psycopg://radar:radar@localhost:5432/radar` | Base de datos |
 | `RADAR_SCHEDULE_INTERVAL_MINUTES` | 60 | Intervalo del scheduler |
+| `RADAR_INGEST_SCOPE` | `radar` | `radar` = solo el alcance del radar; `all` = todos los mercados abiertos |
 | `RADAR_GAMMA_MAX_PAGES` | vacío (todas) | Tope de páginas (marca la corrida incompleta) |
 | `RADAR_CLOB_CONCURRENCY` | 4 | Solicitudes concurrentes a `/books` |
 | `RADAR_GAMMA_RATE_PER_S` / `RADAR_CLOB_RATE_PER_S` | 8 / 8 | Rate limit por API |
