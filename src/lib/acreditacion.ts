@@ -471,6 +471,28 @@ export function anexoCambiaDuracion(d: { materiaAnexo?: string | null; fechaVenc
   }
 }
 
+/**
+ * El anexo que define la duración, por trabajador. De los que cambian la
+ * duración, el más nuevo; salvo que haya uno que lo dejó indefinido, que
+ * manda siempre: un contrato indefinido no vuelve a plazo fijo sin un
+ * contrato nuevo, y ese caso ya lo resuelve la comparación con el contrato.
+ *
+ * Sin esta regla, una prórroga vieja con la emisión mal leída le ganaba al
+ * indefinido. A María Alejandra Pallauta la emisión de su prórroga salió del
+ * nombre del archivo —el día que se descargó de Talana— y la dejaba vencida
+ * en abril, con un anexo de indefinido de por medio.
+ */
+export function anexosQueDefinenDuracion<T extends DocumentoComparable & { materiaAnexo?: string | null }>(
+  anexos: T[],
+): Map<string, T> {
+  const deDuracion = anexos.filter(anexoCambiaDuracion);
+  const porTrabajador = seleccionarVigentes(deDuracion);
+  for (const [clave, indefinido] of seleccionarVigentes(deDuracion.filter(a => a.materiaAnexo === "indefinido"))) {
+    porTrabajador.set(clave, indefinido);
+  }
+  return porTrabajador;
+}
+
 const sinTildes = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /**

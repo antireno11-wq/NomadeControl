@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import {
-  anexoCambiaDuracion,
+  anexosQueDefinenDuracion,
   calcularEstado,
   esEstadoOk,
   AJUSTES_NO_VENCE,
@@ -271,9 +271,7 @@ export async function getEstadoDocumental(
   const idAnexo = idTipo("anexo_contrato");
 
   if (idContrato && idAnexo) {
-    const anexosDeDuracion = seleccionarVigentes(
-      documentos.filter(d => d.tipoDocumentoId === idAnexo && anexoCambiaDuracion(d)),
-    );
+    const anexosDeDuracion = anexosQueDefinenDuracion(documentos.filter(d => d.tipoDocumentoId === idAnexo));
     for (const [staffMemberId, entry] of resultado) {
       const contrato = entry.porTipo.get(idContrato);
       const anexo = anexosDeDuracion.get(`${staffMemberId}|${idAnexo}`);
@@ -372,8 +370,9 @@ export async function sincronizarDesdeFicha(
       materiaAnexo: true,
     },
   });
-  // Del anexo solo interesa el que habla de la duración (ver getEstadoDocumental).
-  const vigentes = seleccionarVigentes(existentes.filter(d => d.tipoDocumentoId !== anexo?.id || anexoCambiaDuracion(d)));
+  // Del anexo solo interesa el que define la duración (ver getEstadoDocumental).
+  const vigentes = seleccionarVigentes(existentes.filter(d => d.tipoDocumentoId !== anexo?.id));
+  for (const [clave, a] of anexosQueDefinenDuracion(existentes.filter(d => d.tipoDocumentoId === anexo?.id))) vigentes.set(clave, a);
 
   const nuevos: Array<Record<string, unknown>> = [];
 
@@ -460,7 +459,8 @@ export async function sincronizarFichaDesdeDocumentos(
     }),
   ]);
   if (!worker) return {};
-  const vigentes = seleccionarVigentes(docs.filter(d => d.tipoDocumentoId !== idAnexo || anexoCambiaDuracion(d)));
+  const vigentes = seleccionarVigentes(docs.filter(d => d.tipoDocumentoId !== idAnexo));
+  for (const [clave, a] of anexosQueDefinenDuracion(docs.filter(d => d.tipoDocumentoId === idAnexo))) vigentes.set(clave, a);
   const ficha = worker as unknown as Record<string, Date | null>;
   const cambios: Record<string, Date | boolean | null> = {};
 
