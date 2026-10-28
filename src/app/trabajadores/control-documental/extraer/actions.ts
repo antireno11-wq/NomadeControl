@@ -6,7 +6,7 @@ import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, extraerFirmantes, extraerMrz, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
 import { getTiposDocumento, sincronizarFichaDesdeDocumentos } from "@/lib/acreditacion-db";
-import { agruparPorPersona, seleccionarVigentes, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
+import { agruparPorPersona, materiaAnexoPorNombre, esMateriaAnexo, type MateriaAnexo, seleccionarVigentes, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
 
@@ -111,6 +111,7 @@ export async function extractDocumentsAction(
           expiryDate: null, issueDate: null,
           workerName: null, workerRut: null, titulares: null, sinVencimiento: false,
         empleadorNombre: null, empleadorRut: null, cargoContrato: null,
+          materiaAnexo: propuesto?.codigo === "anexo_contrato" ? materiaAnexoPorNombre(file.fileName) : null,
           paginaInicio: null,
           confidence: "low",
           reasoning: porNombre
@@ -221,6 +222,17 @@ export async function extractDocumentsAction(
           doc.reasoning = `${doc.reasoning} · REVISAR: el nombre del archivo dice «${porNombre.nombre}» y el contenido se leyó como «${leido}». Se usó el del nombre.`.trim();
         }
 
+        // De qué trata el anexo. Si el nombre del archivo nombra un tema que
+        // no es la duración —marcaje, traslado, 14x14—, manda sobre la
+        // lectura, por la misma razón que el tipo: quien lo archivó lo tenía
+        // en la mano. Si no, el nombre solo completa lo que el modelo no dijo.
+        if (doc.detectedCodigo === "anexo_contrato") {
+          const temaDelNombre = materiaAnexoPorNombre(file.fileName);
+          doc.materiaAnexo = temaDelNombre === "otro" ? "otro" : doc.materiaAnexo ?? temaDelNombre;
+        } else {
+          doc.materiaAnexo = null;
+        }
+
         const matches = matchWorker(
           { name: doc.workerName, rut: doc.workerRut },
           workers,
@@ -252,7 +264,7 @@ export async function extractDocumentsAction(
         detectedDocTypeLabel: "Error",
         expiryDate: null, issueDate: null,
         workerName: null, workerRut: null, titulares: null, sinVencimiento: false,
-        empleadorNombre: null, empleadorRut: null, cargoContrato: null,
+        empleadorNombre: null, empleadorRut: null, cargoContrato: null, materiaAnexo: null,
         paginaInicio: null,
         confidence: "low",
         reasoning: "",
@@ -590,6 +602,8 @@ export type FilaAplicar = {
   empleadorNombre?: string | null;
   empleadorRut?: string | null;
   cargoContrato?: string | null;
+  /** Solo anexos: si cambia la duración del contrato o trata de otra cosa. */
+  materiaAnexo?: MateriaAnexo | null;
   /** true si la fecha se infirió de emisión + vigencia, en vez de leerse. */
   vencimientoCalculado?: boolean;
   /** El usuario decidió guardarlo sin vencimiento porque el documento no lo
@@ -811,8 +825,17 @@ export async function applyExtractionsAction(
       const fechaEmision =
         row.issueDate && /^\d{4}-\d{2}-\d{2}$/.test(row.issueDate) ? toUtcNoon(row.issueDate) : null;
 
+      // De qué trata el anexo. El de marcaje, el de traslado o el que deja
+      // indefinido el contrato no tienen fecha que pedir, y no se guardan
+      // como "fecha pendiente": no les falta nada. Al de prórroga sí.
+      const materiaAnexo = tipo.codigo === "anexo_contrato"
+        ? (esMateriaAnexo(row.materiaAnexo) ? row.materiaAnexo : materiaAnexoPorNombre(row.archivo?.fileName))
+        : null;
+      const anexoSinTermino = materiaAnexo === "indefinido" || materiaAnexo === "otro";
+      const anexoNoPideFecha = anexoSinTermino || materiaAnexo === "obra";
+
       let fechaVencimiento =
-        row.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate) ? toUtcNoon(row.expiryDate) : null;
+        !anexoSinTermino && row.expiryDate && /^\d{4}-\d{2}-\d{2}$/.test(row.expiryDate) ? toUtcNoon(row.expiryDate) : null;
       let calculado = Boolean(row.vencimientoCalculado);
 
       // Si el documento no trae vencimiento impreso pero el tipo tiene una
@@ -833,7 +856,7 @@ export async function applyExtractionsAction(
       // exigen, salvo que el usuario decida explícitamente lo contrario:
       // rechazar el documento lo deja como "no cargado" en la matriz y
       // encima pierde el archivo, que es peor que registrarlo incompleto.
-      if (!tieneFecha && !tipo.noVence && !row.sinVencimiento) {
+      if (!tieneFecha && !tipo.noVence && !row.sinVencimiento && !anexoNoPideFecha) {
         errors.push({ workerId, error: "Falta la fecha de vencimiento" });
         continue;
       }
@@ -850,6 +873,7 @@ export async function applyExtractionsAction(
           empleadorNombre: row.empleadorNombre ?? null,
           empleadorRut: row.empleadorRut ?? null,
           cargoContrato: row.cargoContrato ?? null,
+          materiaAnexo,
           origen: "extraido",
           confianzaExtraccion:
             row.confidence === "high" ? "alta" : row.confidence === "medium" ? "media" : "baja",
@@ -857,7 +881,7 @@ export async function applyExtractionsAction(
           confirmadoPorNombre: user.name,
           confirmadoAt: new Date(),
           nota: [
-            !tieneFecha && !tipo.noVence
+            !tieneFecha && !tipo.noVence && !anexoNoPideFecha
               ? "Extraído con IA. Guardado sin fecha de vencimiento: el documento no la trae y el tipo no tiene vigencia definida."
               : "Extraído con IA y confirmado manualmente",
             archivoPerdido

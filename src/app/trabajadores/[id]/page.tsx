@@ -125,7 +125,7 @@ export default async function PerfilTrabajadorPage({
       confianzaExtraccion: true, archivoId: true, originalFilename: true, nota: true,
       createdAt: true, confirmadoPorNombre: true, anulado: true,
       anuladoPorNombre: true, motivoAnulacion: true,
-      empleadorNombre: true, empleadorRut: true, cargoContrato: true,
+      empleadorNombre: true, empleadorRut: true, cargoContrato: true, materiaAnexo: true,
       archivosExtra: { select: { archivoId: true } },
     },
   });
@@ -164,6 +164,7 @@ export default async function PerfilTrabajadorPage({
     anulado: v.anulado,
     anuladoPor: v.anuladoPorNombre,
     motivoAnulacion: v.motivoAnulacion,
+    materiaAnexo: v.materiaAnexo,
   });
 
   // ── Coherencia entre los papeles laborales ──────────────────────────
@@ -193,6 +194,7 @@ export default async function PerfilTrabajadorPage({
     const vigenteId = entry.documento?.id ?? null;
     return {
       tipoId: tipo.id,
+      tipoCodigo: tipo.codigo,
       tipoNombre: tipo.nombre,
       estado: entry.estado,
       dias: entry.dias,

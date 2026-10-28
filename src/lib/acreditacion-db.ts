@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import {
+  anexoCambiaDuracion,
   calcularEstado,
   esEstadoOk,
   AJUSTES_NO_VENCE,
@@ -209,7 +210,7 @@ export async function getEstadoDocumental(
       id: true, staffMemberId: true, tipoDocumentoId: true,
       fechaEmision: true, fechaVencimiento: true, sinVencimiento: true,
       vencimientoCalculado: true, anulado: true, origen: true,
-      confianzaExtraccion: true, nota: true, createdAt: true,
+      confianzaExtraccion: true, nota: true, createdAt: true, materiaAnexo: true,
       archivoUrl: true, archivoId: true,
       // Caras u hojas adicionales: el reverso de la cédula, la hoja 2 de la
       // ficha. Guardarlas y no mostrarlas sería perderlas igual.
@@ -260,23 +261,28 @@ export async function getEstadoDocumental(
   // de la última reprogramación, no la original. Acá el anexo más nuevo define
   // hasta cuándo rige el contrato. La fila del contrato conserva su fecha
   // original —es lo que dice el papel— y lo que cambia es el estado.
+  //
+  // Solo cuentan los anexos que hablan de la duración. El de marcaje de Pablo
+  // Galaz no trae fecha porque no tiene por qué, y se guardó como "no vence":
+  // si lo contáramos, cualquier anexo de traslado o de jornada dejaría
+  // indefinido un contrato a plazo fijo.
   const idTipo = (codigo: string) => tipos.find(t => t.codigo === codigo)?.id ?? null;
   const idContrato = idTipo("contrato_trabajo");
   const idAnexo = idTipo("anexo_contrato");
 
   if (idContrato && idAnexo) {
-    for (const entry of resultado.values()) {
+    const anexosDeDuracion = seleccionarVigentes(
+      documentos.filter(d => d.tipoDocumentoId === idAnexo && anexoCambiaDuracion(d)),
+    );
+    for (const [staffMemberId, entry] of resultado) {
       const contrato = entry.porTipo.get(idContrato);
-      const anexo = entry.porTipo.get(idAnexo);
-      if (!contrato?.documento || !anexo?.documento) continue;
+      const anexo = anexosDeDuracion.get(`${staffMemberId}|${idAnexo}`);
+      if (!contrato?.documento || !anexo) continue;
 
-      if (!anexoRige(contrato.documento, anexo.documento)) continue;
+      if (!anexoRige(contrato.documento, anexo)) continue;
 
-      entry.porTipo.set(idContrato, {
-        ...contrato,
-        estado: anexo.estado,
-        dias: anexo.dias,
-      });
+      const { estado, dias } = calcularEstado(anexo, hoy, umbralDias, false);
+      entry.porTipo.set(idContrato, { ...contrato, estado, dias });
     }
   }
 
@@ -363,9 +369,11 @@ export async function sincronizarDesdeFicha(
     select: {
       id: true, staffMemberId: true, tipoDocumentoId: true,
       fechaEmision: true, fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
+      materiaAnexo: true,
     },
   });
-  const vigentes = seleccionarVigentes(existentes);
+  // Del anexo solo interesa el que habla de la duración (ver getEstadoDocumental).
+  const vigentes = seleccionarVigentes(existentes.filter(d => d.tipoDocumentoId !== anexo?.id || anexoCambiaDuracion(d)));
 
   const nuevos: Array<Record<string, unknown>> = [];
 
@@ -447,11 +455,12 @@ export async function sincronizarFichaDesdeDocumentos(
       select: {
         id: true, staffMemberId: true, tipoDocumentoId: true,
         fechaEmision: true, fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
+        materiaAnexo: true,
       },
     }),
   ]);
   if (!worker) return {};
-  const vigentes = seleccionarVigentes(docs);
+  const vigentes = seleccionarVigentes(docs.filter(d => d.tipoDocumentoId !== idAnexo || anexoCambiaDuracion(d)));
   const ficha = worker as unknown as Record<string, Date | null>;
   const cambios: Record<string, Date | boolean | null> = {};
 
@@ -469,7 +478,12 @@ export async function sincronizarFichaDesdeDocumentos(
       vigentes.get(`${staffMemberId}|${idContrato}`),
       idAnexo ? vigentes.get(`${staffMemberId}|${idAnexo}`) : undefined,
     );
-    if (rige?.sinVencimiento) {
+    if (rige?.materiaAnexo === "obra" && !rige.fechaVencimiento) {
+      // Hasta el término del proyecto: no tiene fecha, pero tampoco es
+      // indefinido, y marcarlo así le exigiría las pólizas del indefinido.
+      if (worker.contractIsIndefinite) cambios.contractIsIndefinite = false;
+      if (worker.contractEndDate) cambios.contractEndDate = null;
+    } else if (rige?.sinVencimiento) {
       if (!worker.contractIsIndefinite) cambios.contractIsIndefinite = true;
       if (worker.contractEndDate) cambios.contractEndDate = null;
     } else if (rige?.fechaVencimiento) {

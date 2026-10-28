@@ -678,6 +678,11 @@ model DocumentoAcreditacion {
   empleadorRut    String?
   /// Cargo que declara el contrato o anexo. El más nuevo manda.
   cargoContrato   String?
+  /// Solo anexos: de qué trata. prorroga | indefinido | obra | otro.
+  /// Únicamente los tres primeros cambian hasta cuándo rige el contrato; un
+  /// anexo de marcaje o de traslado no tiene fecha y no lo vuelve indefinido.
+  /// null = sin clasificar (cuenta solo si trae fecha).
+  materiaAnexo    String?
 
   origen              String    @default("manual")
   /// alta | media | baja — solo cuando origen = extraido

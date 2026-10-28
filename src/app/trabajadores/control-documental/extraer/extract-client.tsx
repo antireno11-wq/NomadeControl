@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import type { DragEvent } from "react";
 import { extractDocumentsAction, applyExtractionsAction } from "./actions";
-import { agruparPorPersona, formatearNombre, nombreMasProbable } from "@/lib/acreditacion";
+import { agruparPorPersona, formatearNombre, nombreMasProbable, MATERIAS_ANEXO, esMateriaAnexo, type MateriaAnexo } from "@/lib/acreditacion";
 
 type Worker = { id: string; fullName: string; nationalId: string | null };
 type DocType = { id: string; codigo: string; nombre: string; noVence: boolean; esFoto: boolean; vigenciaDias: number | null };
@@ -52,6 +52,8 @@ type EditableRow = {
   empleadorNombre?: string | null;
   empleadorRut?: string | null;
   cargoContrato?: string | null;
+  /** Solo anexos: si cambia la duración del contrato o trata de otra cosa. */
+  materiaAnexo?: MateriaAnexo | null;
   /** RUT de la cédula de esta carga, cuando el de esta fila no calza. */
   rutDeCedula?: string | null;
   /** Se guarda sin fecha de vencimiento, por decisión explícita del usuario.
@@ -267,6 +269,10 @@ export function ExtractClient({
     const t = tipoDe(tipoId);
     return t ? !t.noVence && !t.esFoto : true;
   };
+  const esAnexo = (r: Pick<EditableRow, "detectedTipoId">) => tipoDe(r.detectedTipoId)?.codigo === "anexo_contrato";
+  /** Un anexo que no prorroga el plazo no tiene fecha de término que pedir. */
+  const pideFechaFila = (r: Pick<EditableRow, "detectedTipoId" | "materiaAnexo">) =>
+    necesitaFecha(r.detectedTipoId) && !(esAnexo(r) && r.materiaAnexo && r.materiaAnexo !== "prorroga");
 
   async function handleFiles(fileList: FileList | File[]) {
     setGlobalError(null);
@@ -377,6 +383,7 @@ export function ExtractClient({
               empleadorNombre: res.empleadorNombre,
               empleadorRut: res.empleadorRut,
               cargoContrato: res.cargoContrato,
+              materiaAnexo: res.materiaAnexo,
               rutDeCedula: res.rutDeCedula,
               // El documento dice que no vence: no hay fecha que pedir.
               sinVencimiento: res.sinVencimiento,
@@ -491,7 +498,7 @@ export function ExtractClient({
   const motivoBloqueo = (r: EditableRow): string | null => {
     if (r.procesando || r.applied || r.error) return null;
     if (!r.detectedTipoId) return "Falta elegir el tipo de documento";
-    if (necesitaFecha(r.detectedTipoId) && !r.expiryDate && !r.sinVencimiento) {
+    if (pideFechaFila(r) && !r.expiryDate && !r.sinVencimiento) {
       return "Falta la fecha de vencimiento";
     }
     if (r.workerId === CREAR_NUEVO && !r.nuevoNombre.trim()) return "Falta el nombre del trabajador nuevo";
@@ -502,7 +509,7 @@ export function ExtractClient({
   const readyRows = rows.filter(r =>
     !r.procesando && !r.applied && !r.error &&
     r.detectedTipoId &&
-    (necesitaFecha(r.detectedTipoId) ? Boolean(r.expiryDate) || Boolean(r.sinVencimiento) : true) &&
+    (pideFechaFila(r) ? Boolean(r.expiryDate) || Boolean(r.sinVencimiento) : true) &&
     (r.workerId === CREAR_NUEVO ? Boolean(r.nuevoNombre.trim()) : Boolean(r.workerId)) &&
     // Las hojas de un grupo combinado no se guardan aparte: viajan como
     // archivos adicionales de su fila principal.
@@ -582,13 +589,14 @@ export function ExtractClient({
             : null,
           tipoDocumentoId: r.detectedTipoId!,
           confidence: r.confidence,
-          expiryDate: necesitaFecha(r.detectedTipoId) && !r.sinVencimiento ? r.expiryDate : null,
+          expiryDate: pideFechaFila(r) && !r.sinVencimiento ? r.expiryDate : null,
           sinVencimiento: Boolean(r.sinVencimiento),
           issueDate: r.issueDate,
           vencimientoCalculado: Boolean(r.expiryCalculada),
           empleadorNombre: r.empleadorNombre ?? null,
           empleadorRut: r.empleadorRut ?? null,
           cargoContrato: r.cargoContrato ?? null,
+          materiaAnexo: esAnexo(r) ? r.materiaAnexo ?? null : null,
           archivo: (() => {
             const a = infoDe(r.clientFileId);
             return a ? { clientFileId: a.clientFileId, fileName: a.fileName, mimeType: a.mimeType, base64: a.base64 } : null;
@@ -949,7 +957,7 @@ export function ExtractClient({
                     const info = infoDe(row.clientFileId);
                     const conf = CONFIDENCE_STYLE[row.confidence];
                     const tipo = tipoDe(row.detectedTipoId);
-                    const pideFecha = necesitaFecha(row.detectedTipoId);
+                    const pideFecha = pideFechaFila(row);
                     // Un vencimiento en el pasado suele significar que la IA
                     // tomó la fecha de emisión por la de caducidad.
                     const yaVencido = Boolean(
@@ -1142,12 +1150,37 @@ export function ExtractClient({
                           {row.procesando ? (
                             <span style={{ color: "var(--muted)" }}>{row.detectedDocTypeLabel}</span>
                           ) : (
-                            <SelectorTipo
-                              tipos={docTypes}
-                              valor={row.detectedTipoId}
-                              disabled={row.applied}
-                              onElegir={tipoId => updateRow(row.rowId, { detectedTipoId: tipoId })}
-                            />
+                            <>
+                              <SelectorTipo
+                                tipos={docTypes}
+                                valor={row.detectedTipoId}
+                                disabled={row.applied}
+                                onElegir={tipoId => updateRow(row.rowId, { detectedTipoId: tipoId })}
+                              />
+                              {/* Solo los anexos de prórroga, indefinido o término de
+                                  proyecto mueven la fecha del contrato. Un anexo de
+                                  marcaje guardado como "no vence" dejaba indefinido un
+                                  contrato que vencía en tres días. */}
+                              {tipo?.codigo === "anexo_contrato" && (
+                                <select
+                                  value={row.materiaAnexo ?? ""}
+                                  disabled={row.applied}
+                                  onChange={e => updateRow(row.rowId, {
+                                    materiaAnexo: esMateriaAnexo(e.target.value) ? e.target.value : null,
+                                  })}
+                                  title="¿Qué cambia este anexo?"
+                                  style={{
+                                    marginTop: 4, padding: "3px 6px", fontSize: "0.75rem", width: "100%",
+                                    border: row.materiaAnexo ? "1px solid var(--border)" : "1.5px solid #f59e0b",
+                                  }}
+                                >
+                                  <option value="">¿Qué cambia este anexo?</option>
+                                  {(Object.keys(MATERIAS_ANEXO) as MateriaAnexo[]).map(m => (
+                                    <option key={m} value={m}>{MATERIAS_ANEXO[m]}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </>
                           )}
                         </td>
 
@@ -1176,10 +1209,12 @@ export function ExtractClient({
                               Se guarda como foto
                             </span>
                           ) : !pideFecha ? (
-                            /* El tipo es una constancia según el catálogo: eso no
-                               se discute por documento. */
+                            /* El tipo es una constancia según el catálogo, o un
+                               anexo que no prorroga: no hay fecha que pedir. */
                             <span style={{ fontSize: "0.78rem", color: "#0369a1", fontWeight: 600 }}>
-                              ∞ No vence
+                              {tipo?.codigo === "anexo_contrato" && row.materiaAnexo
+                                ? row.materiaAnexo === "otro" ? "No cambia la duración" : MATERIAS_ANEXO[row.materiaAnexo]
+                                : "∞ No vence"}
                             </span>
                           ) : row.sinVencimiento ? (
                             /* Acá «no vence» lo decidió la lectura, no el catálogo, y

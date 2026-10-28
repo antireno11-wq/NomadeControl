@@ -1,6 +1,7 @@
 import { openaiChatCompletion } from "./openai";
 import { extraerTextoPdf, tieneTextoUtil } from "./pdf-text";
 import { esDocLegacy, esDocx, extraerTextoDocx } from "./docx-text";
+import { esMateriaAnexo, type MateriaAnexo } from "./acreditacion";
 
 /** Tipo del catálogo, tal como lo espera el extractor. */
 export type TipoParaExtraccion = {
@@ -31,6 +32,8 @@ export type ExtractedDoc = {
   empleadorRut: string | null;
   /** Cargo que dice el contrato o anexo. El anexo más nuevo manda. */
   cargoContrato: string | null;
+  /** Solo anexos: si cambia la duración del contrato o trata de otra cosa. */
+  materiaAnexo: MateriaAnexo | null;
   /**
    * Documento colectivo: un solo papel firmado por varias personas —una
    * declaración jurada, un acta de entrega de EPP grupal, la lista de
@@ -91,6 +94,8 @@ Reglas:
 - UN VENCIMIENTO NUNCA ES ANTERIOR A LA EMISIÓN. Si de dos fechas una es claramente posterior, esa es la de vencimiento y la anterior es la de emisión.
 - CONTRATO O ANEXO INDEFINIDO. Si el documento dice "indefinido", "de duración indefinida", "plazo indefinido" o convierte el contrato a indefinido, NO tiene fecha de vencimiento: pon expiryDate en null y sinVencimiento en true. Es distinto de no haberle encontrado la fecha — acá el documento sí dice que no caduca, y no hay nada que revisar.
 - sinVencimiento es true SOLO cuando el documento lo dice. Si simplemente no encontraste el vencimiento, déjalo en false y expiryDate en null.
+- EN CONTRATOS Y ANEXOS, LA CLÁUSULA DE DURACIÓN ES EL VENCIMIENTO. "El presente contrato tendrá una duración hasta el 11 de noviembre de 2026", "se prorroga hasta el...", "terminará el..." → expiryDate "2026-11-11". No dice "vence", pero es exactamente eso: hasta cuándo rige. Se perdieron decenas de fechas por buscar la palabra "vence".
+  · Si el anexo cuenta en sus antecedentes una prórroga anterior ("cuya duración fue prorrogada hasta el 9 de octubre de 2026 mediante anexo de fecha..."), esa fecha YA NO rige. La que va es la de la cláusula nueva.
 - Hay tipos marcados [NO VENCE]: son constancias (actas de entrega, recepciones, declaraciones juradas). NO tienen vencimiento. Para esos pon expiryDate en null, issueDate con la fecha del acta, y confidence "high" si identificaste bien el tipo. NO bajes la confianza por no encontrar un vencimiento que el documento no tiene.
 - Si un documento que normalmente sí vence no trae la fecha impresa (ej. contrato indefinido), pon expiryDate en null y explícalo en reasoning.
 - Los certificados de capacitación y los exámenes suelen traer solo la fecha de realización: esa va en issueDate y expiryDate queda null.
@@ -120,6 +125,14 @@ Reglas:
 - CRÍTICO — DE QUIÉN ES EL DOCUMENTO. workerName es SIEMPRE el titular del documento, nunca otra persona nombrada adentro. Este es el segundo error más grave: le carga los documentos a la persona equivocada.
   · Ficha de ingreso: el titular está en "Nombres" + "Apellidos" arriba de todo. La sección "EN CASO DE EMERGENCIA AVISAR A" nombra a un familiar — ESE NO ES EL TRABAJADOR. Si la hoja que estás leyendo SOLO tiene el contacto de emergencia y no el titular, devuelve workerName null; no uses el nombre del contacto.
   · Finiquito: el titular es el "Ex Trabajador(a)". NO el empleador, ni su representante legal, ni el notario, ni quien firma como apoderado.
+
+ANEXOS DE CONTRATO — DE QUÉ TRATAN (materiaAnexo; solo en anexo_contrato, en cualquier otro tipo va null)
+No todos los anexos cambian la duración del contrato, y confundirlos es grave: un anexo sin fecha que se toma por "indefinido" esconde un contrato vencido.
+  · "prorroga": extiende el plazo fijo hasta una fecha nueva. expiryDate = esa fecha; búscala siempre.
+  · "indefinido": el contrato pasa a duración indefinida. expiryDate null y sinVencimiento true.
+  · "obra": el contrato dura hasta el término de un proyecto, obra o faena, sin fecha ("tendrá una duración hasta el término del proyecto Anglo American"). expiryDate null y sinVencimiento true.
+  · "otro": cualquier otro tema. Traslado de faena o de empresa, sistema de marcaje o control de asistencia, jornada o turno (14x14, 4x3), remuneración o bonos, cargo, rectificación de datos. NO cambia la duración: expiryDate null y sinVencimiento true, porque el anexo no caduca. Aunque mencione la duración vigente del contrato, si no la modifica es "otro".
+  Ejemplo real: "ANEXO DE CONTRATO DE TRABAJO — Sistema de Control de Asistencia — Plataforma Talana con Biometría" → materiaAnexo "otro". Se había guardado como anexo indefinido y dejó como indefinido un contrato que vencía en tres días.
 
 EMPLEADOR Y CARGO (solo en contratos, anexos y finiquitos)
 Además del titular, anota quién contrata: la razón social que aparece como
@@ -156,6 +169,7 @@ Formato JSON exacto:
       "empleadorNombre": "<razón social que contrata, o null>",
       "empleadorRut": "<RUT de esa empresa, o null>",
       "cargoContrato": "<cargo que dice el documento, o null>",
+      "materiaAnexo": "<prorroga|indefinido|obra|otro, solo en anexos de contrato; null en los demás>",
       "sinVencimiento": false,
       "titulares": null,
       "//titulares": "solo en documentos colectivos: [{\"nombre\": \"...\", \"rut\": \"...\"}, ...]",
@@ -256,6 +270,11 @@ export async function extractDocumentInfo(input: {
   return await pedirExtraccion(input, contenido, esPdf ? 4000 : 900);
 }
 
+/** De qué trata el anexo, si es un anexo y el modelo lo dijo bien. */
+function materiaDe(tipo: TipoParaExtraccion | null, d: Record<string, unknown>): MateriaAnexo | null {
+  return tipo?.codigo === "anexo_contrato" && esMateriaAnexo(d.materiaAnexo) ? d.materiaAnexo : null;
+}
+
 /** Manda el contenido ya armado a OpenAI y normaliza la respuesta. */
 async function pedirExtraccion(
   input: { tipos: TipoParaExtraccion[]; model?: string },
@@ -309,6 +328,7 @@ async function pedirExtraccion(
         empleadorNombre: cleanString(d.empleadorNombre),
         empleadorRut: normalizeRut(d.empleadorRut),
         cargoContrato: cleanString(d.cargoContrato),
+        materiaAnexo: materiaDe(tipo, d),
         titulares: null,
         sinVencimiento: d.sinVencimiento === true,
         paginaInicio: pagina && pagina > 0 ? pagina : null,
@@ -328,6 +348,7 @@ async function pedirExtraccion(
       empleadorNombre: cleanString(d.empleadorNombre),
       empleadorRut: normalizeRut(d.empleadorRut),
       cargoContrato: cleanString(d.cargoContrato),
+      materiaAnexo: materiaDe(tipo, d),
       sinVencimiento: d.sinVencimiento === true,
       titulares: Array.isArray(d.titulares) && d.titulares.length > 1
         ? (d.titulares as Array<Record<string, unknown>>)

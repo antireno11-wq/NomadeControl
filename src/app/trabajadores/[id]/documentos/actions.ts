@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { sincronizarFichaDesdeDocumentos } from "@/lib/acreditacion-db";
+import { esMateriaAnexo, type MateriaAnexo } from "@/lib/acreditacion";
 
 /**
  * Correcciones sobre un documento de acreditación.
@@ -22,6 +23,26 @@ function fecha(valor: FormDataEntryValue | null): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
   const d = new Date(`${s}T12:00:00`);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * De qué trata el anexo, según el formulario. El campo solo aparece en los
+ * anexos: si no viene, se conserva lo que había.
+ */
+function materiaDelFormulario(formData: FormData, anterior: string | null = null): MateriaAnexo | null {
+  const valor = formData.get("materiaAnexo");
+  if (valor === null) return esMateriaAnexo(anterior) ? anterior : null;
+  return esMateriaAnexo(valor) ? valor : null;
+}
+
+/**
+ * Anexos sin fecha de término por naturaleza: el de otro tema, el que deja
+ * indefinido el contrato y el que lo extiende hasta el fin del proyecto
+ * cuando no se sabe cuándo es.
+ */
+function sinTermino(materia: MateriaAnexo | null, formData: FormData): boolean {
+  if (materia === "otro" || materia === "indefinido") return true;
+  return materia === "obra" && !fecha(formData.get("fechaVencimiento"));
 }
 
 /**
@@ -58,7 +79,10 @@ export async function corregirDocumentoAction(formData: FormData) {
     redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-no-encontrado`);
   }
 
-  const sinVencimiento = formData.get("sinVencimiento") === "on";
+  // Un anexo de otro tema, o el que deja indefinido el contrato, no tiene
+  // fecha de término: aunque el formulario traiga una, no es suya.
+  const materiaAnexo = materiaDelFormulario(formData, anterior.materiaAnexo);
+  const sinVencimiento = sinTermino(materiaAnexo, formData) || formData.get("sinVencimiento") === "on";
   const fechaEmision = fecha(formData.get("fechaEmision"));
   const fechaVencimiento = sinVencimiento ? null : fecha(formData.get("fechaVencimiento"));
   const nota = String(formData.get("nota") ?? "").trim() || null;
@@ -81,6 +105,7 @@ export async function corregirDocumentoAction(formData: FormData) {
         fechaEmision,
         fechaVencimiento,
         sinVencimiento,
+        materiaAnexo,
         // La fecha la puso una persona mirando el documento: ya no es
         // calculada, y por eso deja de dibujarse con borde punteado.
         vencimientoCalculado: false,
@@ -178,7 +203,8 @@ export async function registrarDocumentoAction(formData: FormData) {
   const tipoId = String(formData.get("tipoId") ?? "");
   if (!workerId || !tipoId) redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-invalido`);
 
-  const sinVencimiento = formData.get("sinVencimiento") === "on";
+  const materiaAnexo = materiaDelFormulario(formData);
+  const sinVencimiento = sinTermino(materiaAnexo, formData) || formData.get("sinVencimiento") === "on";
   const fechaEmision = fecha(formData.get("fechaEmision"));
   const fechaVencimiento = sinVencimiento ? null : fecha(formData.get("fechaVencimiento"));
 
@@ -197,6 +223,7 @@ export async function registrarDocumentoAction(formData: FormData) {
       fechaEmision,
       fechaVencimiento,
       sinVencimiento,
+      materiaAnexo,
       vencimientoCalculado: false,
       origen: "manual",
       nota: String(formData.get("nota") ?? "").trim() || null,

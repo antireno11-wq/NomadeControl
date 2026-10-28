@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ESTADO_STYLE, type EstadoDocumento } from "@/lib/acreditacion";
+import { ESTADO_STYLE, MATERIAS_ANEXO, esMateriaAnexo, type EstadoDocumento, type MateriaAnexo } from "@/lib/acreditacion";
 import {
   corregirDocumentoAction, anularDocumentoAction, registrarDocumentoAction,
 } from "./documentos/actions";
@@ -24,10 +24,13 @@ export type VersionDoc = {
   anulado: boolean;
   anuladoPor: string | null;
   motivoAnulacion: string | null;
+  /** Solo anexos: de qué trata (ver MATERIAS_ANEXO). */
+  materiaAnexo: string | null;
 };
 
 export type FilaDoc = {
   tipoId: string;
+  tipoCodigo: string;
   tipoNombre: string;
   estado: EstadoDocumento;
   dias: number | null;
@@ -48,6 +51,29 @@ const fmt = (iso: string | null) => {
   const [a, m, d] = iso.split("-");
   return `${d}-${m}-${a}`;
 };
+
+/**
+ * Qué cambia el anexo. Va en los dos formularios, el de corregir y el de
+ * registrar sin archivo, porque decide si el anexo mueve la fecha del contrato.
+ */
+function SelectorMateria({ valor, estilo }: { valor: string | null; estilo: React.CSSProperties }) {
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "var(--muted)", marginBottom: 4 }}>
+        ¿Qué cambia este anexo?
+      </label>
+      <select name="materiaAnexo" defaultValue={valor ?? ""} style={estilo}>
+        <option value="">Sin clasificar</option>
+        {(Object.keys(MATERIAS_ANEXO) as MateriaAnexo[]).map(m => (
+          <option key={m} value={m}>{MATERIAS_ANEXO[m]}</option>
+        ))}
+      </select>
+      <span style={{ display: "block", fontSize: "0.72rem", color: "var(--muted)", marginTop: 3 }}>
+        Solo la prórroga, el paso a indefinido y el término de proyecto cambian la fecha del contrato.
+      </span>
+    </div>
+  );
+}
 
 const ORIGEN_LABEL: Record<string, string> = {
   extraido: "Leído con IA",
@@ -230,6 +256,7 @@ function Detalle({
                     <input type="date" name="fechaVencimiento" style={campo} />
                   </div>
                 </div>
+                {fila.tipoCodigo === "anexo_contrato" && <SelectorMateria valor={null} estilo={campo} />}
                 <label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: "0.85rem", fontWeight: 400 }}>
                   <input type="checkbox" name="sinVencimiento" style={{ width: "auto", margin: 0 }} />
                   Este documento no vence
@@ -281,6 +308,24 @@ function Detalle({
                   )}
                 </div>
               </div>
+
+              {fila.tipoCodigo === "anexo_contrato" && (
+                <div style={{
+                  fontSize: "0.85rem", padding: "8px 12px", borderRadius: 8,
+                  ...(doc.materiaAnexo === "prorroga" && !doc.fechaVencimiento
+                    ? { background: "#fff4dc", color: "#9a6300" }
+                    : { background: "var(--bg)" }),
+                }}>
+                  <strong>{esMateriaAnexo(doc.materiaAnexo) ? MATERIAS_ANEXO[doc.materiaAnexo] : "Anexo sin clasificar"}.</strong>{" "}
+                  {doc.materiaAnexo === "prorroga" && !doc.fechaVencimiento
+                    ? "Prorroga el contrato pero no tiene la fecha hasta la que lo extiende: mientras no la tenga, el contrato se calcula con el papel anterior. Corrígela abajo."
+                    : doc.materiaAnexo === "otro"
+                      ? "No cambia hasta cuándo rige el contrato."
+                      : !esMateriaAnexo(doc.materiaAnexo)
+                        ? "Mueve la fecha del contrato solo si trae fecha de término. Clasifícalo abajo."
+                        : "Define hasta cuándo rige el contrato."}
+                </div>
+              )}
 
               {doc.nota && (
                 <div style={{ fontSize: "0.85rem", padding: "8px 12px", background: "var(--bg)", borderRadius: 8 }}>
@@ -344,6 +389,7 @@ function Detalle({
                     <input type="date" name="fechaVencimiento" defaultValue={doc.fechaVencimiento ?? ""} style={campo} />
                   </div>
                 </div>
+                {fila.tipoCodigo === "anexo_contrato" && <SelectorMateria valor={doc.materiaAnexo} estilo={campo} />}
                 <label style={{ display: "flex", gap: 7, alignItems: "center", fontSize: "0.85rem", fontWeight: 400 }}>
                   <input type="checkbox" name="sinVencimiento" defaultChecked={doc.sinVencimiento} style={{ width: "auto", margin: 0 }} />
                   Este documento no vence

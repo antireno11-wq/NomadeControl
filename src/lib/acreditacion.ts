@@ -435,6 +435,90 @@ function ganaDocumento(candidato: DocumentoComparable, actual: DocumentoComparab
   return candidato.createdAt.getTime() > actual.createdAt.getTime();
 }
 
+// ─── Anexos de contrato ────────────────────────────────────────────────
+
+/**
+ * De qué trata un anexo. No todos cambian la duración del contrato: el del
+ * sistema de marcaje, el de traslado de faena, el de jornada 14x14 o el de
+ * un bono no traen fecha de término, y guardados como "no vence" el sistema
+ * los leía como si dejaran el contrato indefinido.
+ */
+export const MATERIAS_ANEXO = {
+  prorroga: "Prorroga el plazo fijo",
+  indefinido: "Pasa a indefinido",
+  obra: "Hasta el término del proyecto",
+  otro: "Otro tema (no cambia la duración)",
+} as const;
+export type MateriaAnexo = keyof typeof MATERIAS_ANEXO;
+
+export function esMateriaAnexo(v: unknown): v is MateriaAnexo {
+  return typeof v === "string" && Object.prototype.hasOwnProperty.call(MATERIAS_ANEXO, v);
+}
+
+/** ¿Este anexo dice hasta cuándo rige el contrato? */
+export function anexoCambiaDuracion(d: { materiaAnexo?: string | null; fechaVencimiento: Date | null }): boolean {
+  switch (d.materiaAnexo) {
+    case "indefinido":
+    case "obra":
+      return true;
+    case "otro":
+      return false;
+    // Una prórroga sin la fecha hasta la que prorroga no dice nada, y un
+    // anexo sin clasificar solo se cree si trae fecha. Tomar "sin fecha"
+    // por indefinido es justo el error que esconde un contrato vencido.
+    default:
+      return d.fechaVencimiento != null;
+  }
+}
+
+const sinTildes = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/**
+ * Lo que dice el nombre del archivo. RRHH los nombra por tema al bajarlos de
+ * Talana —"Anexo - Sistema de Marcaje - Pablo Galaz", "anexo_de_traslado_
+ * monte_mina"—, así que es una pista fiable cuando el texto no alcanza.
+ */
+export function materiaAnexoPorNombre(nombre: string | null | undefined): MateriaAnexo | null {
+  if (!nombre) return null;
+  const n = sinTildes(nombre);
+  if (/traslado|marcaje|asistencia|bono|kpi|rectificaci|\d+x\d+|jornada|turno/.test(n)) return "otro";
+  if (/termino[\s_.-]*de[\s_.-]*proyecto|obra[\s_.-]*o[\s_.-]*faena/.test(n)) return "obra";
+  if (/indefinid/.test(n)) return "indefinido";
+  if (/plazo[\s_.-]*fijo|prorroga/.test(n)) return "prorroga";
+  return null;
+}
+
+const MESES: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8,
+  septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
+
+/**
+ * La cláusula de duración que escribe un anexo, leída de su texto. Las
+ * plantillas de Talana la dicen siempre igual —"El presente contrato tendrá
+ * una duración hasta el 11 de noviembre de 2026"— y la IA no la tomaba como
+ * vencimiento porque no dice "vence" ni "válido hasta".
+ *
+ * Solo mira la cláusula en futuro ("tendrá una duración"): los antecedentes
+ * del mismo anexo cuentan la prórroga anterior ("cuya duración fue prorrogada
+ * hasta el 9 de octubre") y esa fecha ya no rige.
+ */
+export function duracionEscritaEnAnexo(texto: string): { materia: Exclude<MateriaAnexo, "otro">; fecha: string | null } | null {
+  const t = sinTildes(texto).replace(/\s+/g, " ");
+  if (/tendra (una )?duracion hasta (el )?termino (del|de la) (proyecto|obra|faena|servicio)/.test(t)) {
+    return { materia: "obra", fecha: null };
+  }
+  if (/tendra (una )?duracion indefinida|(sera|pasa a ser|pasara a ser) (de )?(plazo|duracion) indefinid|por tiempo indefinido/.test(t)) {
+    return { materia: "indefinido", fecha: null };
+  }
+  const m = t.match(/(?:tendra (?:una )?duracion|se prorroga(?:ra)?(?: el presente contrato)?) hasta el (\d{1,2}) de ([a-z]+) (?:de|del) (\d{4})/);
+  if (m && MESES[m[2]]) {
+    const fecha = `${m[3]}-${String(MESES[m[2]]).padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    return { materia: "prorroga", fecha };
+  }
+  return null;
+}
+
 // ─── Identidad de personas ─────────────────────────────────────────────
 
 /**
