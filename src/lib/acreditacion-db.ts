@@ -270,11 +270,7 @@ export async function getEstadoDocumental(
       const anexo = entry.porTipo.get(idAnexo);
       if (!contrato?.documento || !anexo?.documento) continue;
 
-      // Solo si el anexo es posterior: un anexo viejo no revive un contrato
-      // que se venció después.
-      const fAnexo = anexo.documento.fechaEmision?.getTime() ?? 0;
-      const fContrato = contrato.documento.fechaEmision?.getTime() ?? 0;
-      if (fAnexo <= fContrato) continue;
+      if (!anexoRige(contrato.documento, anexo.documento)) continue;
 
       entry.porTipo.set(idContrato, {
         ...contrato,
@@ -288,6 +284,26 @@ export async function getEstadoDocumental(
 
   return resultado;
 }
+
+/**
+ * ¿El anexo define hasta cuándo rige el contrato? Solo si es posterior: un
+ * anexo viejo no revive un contrato que se venció después.
+ */
+function anexoRige(
+  contrato: { fechaEmision: Date | null },
+  anexo: { fechaEmision: Date | null },
+): boolean {
+  return (anexo.fechaEmision?.getTime() ?? 0) > (contrato.fechaEmision?.getTime() ?? 0);
+}
+
+/** El documento que dice hasta cuándo rige el contrato: el anexo o el contrato. */
+function contratoQueRige<T extends { fechaEmision: Date | null }>(contrato: T | undefined, anexo: T | undefined): T | undefined {
+  if (contrato && anexo && anexoRige(contrato, anexo)) return anexo;
+  return contrato;
+}
+
+const mismoDia = (a: Date | null | undefined, b: Date | null | undefined) =>
+  (a?.toISOString().slice(0, 10) ?? null) === (b?.toISOString().slice(0, 10) ?? null);
 
 /** Recalcula los totales de un trabajador a partir de su estado por tipo. */
 export function recontar(entry: EstadoTrabajador): void {
@@ -336,12 +352,13 @@ export async function sincronizarDesdeFicha(
     select: { id: true, legacyField: true },
   });
   if (tipos.length === 0) return 0; // catálogo aún no sembrado
+  const anexo = await db.tipoDocumento.findUnique({ where: { codigo: "anexo_contrato" }, select: { id: true } });
 
   const existentes = await db.documentoAcreditacion.findMany({
     where: {
       staffMemberId,
       anulado: false,
-      tipoDocumentoId: { in: tipos.map(t => t.id) },
+      tipoDocumentoId: { in: [...tipos.map(t => t.id), ...(anexo ? [anexo.id] : [])] },
     },
     select: {
       id: true, staffMemberId: true, tipoDocumentoId: true,
@@ -360,10 +377,15 @@ export async function sincronizarDesdeFicha(
 
     if (!fecha && !indefinido) continue;
 
-    const vigente = vigentes.get(`${staffMemberId}|${tipo.id}`);
+    // El contrato se compara con lo que rige, anexo incluido. La ficha
+    // muestra la fecha del anexo (ver sincronizarFichaDesdeDocumentos), y
+    // comparada contra el contrato solo, cada vez que alguien guardaba la
+    // ficha se habría creado un contrato nuevo, sin archivo, con esa fecha.
+    const vigente = esContrato
+      ? contratoQueRige(vigentes.get(`${staffMemberId}|${tipo.id}`), anexo ? vigentes.get(`${staffMemberId}|${anexo.id}`) : undefined)
+      : vigentes.get(`${staffMemberId}|${tipo.id}`);
     const mismoIndefinido = Boolean(vigente?.sinVencimiento) === Boolean(indefinido);
-    const mismaFecha =
-      (vigente?.fechaVencimiento?.getTime() ?? null) === (indefinido ? null : fecha?.getTime() ?? null);
+    const mismaFecha = mismoDia(vigente?.fechaVencimiento, indefinido ? null : fecha);
 
     if (vigente && mismoIndefinido && mismaFecha) continue; // sin cambios
 
@@ -384,6 +406,82 @@ export async function sincronizarDesdeFicha(
   if (nuevos.length === 0) return 0;
   const res = await db.documentoAcreditacion.createMany({ data: nuevos as never });
   return res.count;
+}
+
+/**
+ * El camino inverso: lleva a las columnas planas de la ficha lo que dicen los
+ * documentos vigentes.
+ *
+ * Las columnas planas todavía las leen las alertas de la lista de
+ * trabajadores, la columna de contrato y los requisitos que dependen de si el
+ * contrato es indefinido (las pólizas). Solo se copiaban al confirmar una
+ * extracción con IA, y nunca las del anexo, porque el anexo no tiene columna
+ * propia: se subía el anexo que dejaba indefinido el contrato y la ficha
+ * seguía mostrándolo vencido en mayo.
+ *
+ * `soloTipos` limita la copia a los campos de los documentos que se acaban de
+ * tocar. Subir una cédula no tiene por qué reescribir el contrato.
+ *
+ * Si no hay documento vigente la columna queda como está: puede ser el único
+ * dato que hay, y borrarlo sería peor.
+ */
+export async function sincronizarFichaDesdeDocumentos(
+  staffMemberId: string,
+  soloTipos?: string[],
+): Promise<Record<string, Date | boolean | null>> {
+  const tipos = await db.tipoDocumento.findMany({
+    where: { activo: true, OR: [{ legacyField: { not: null } }, { codigo: "anexo_contrato" }] },
+    select: { id: true, codigo: true, legacyField: true },
+  });
+  const idContrato = tipos.find(t => t.codigo === "contrato_trabajo")?.id;
+  const idAnexo = tipos.find(t => t.codigo === "anexo_contrato")?.id;
+  const tocaContrato = !soloTipos || soloTipos.some(id => id === idContrato || id === idAnexo);
+  const aCopiar = tipos.filter(t =>
+    t.legacyField && t.id !== idContrato && (!soloTipos || soloTipos.includes(t.id)));
+  if (!tocaContrato && aCopiar.length === 0) return {};
+
+  const [worker, docs] = await Promise.all([
+    db.staffMember.findUnique({ where: { id: staffMemberId } }),
+    db.documentoAcreditacion.findMany({
+      where: { staffMemberId, anulado: false, tipoDocumentoId: { in: tipos.map(t => t.id) } },
+      select: {
+        id: true, staffMemberId: true, tipoDocumentoId: true,
+        fechaEmision: true, fechaVencimiento: true, sinVencimiento: true, anulado: true, createdAt: true,
+      },
+    }),
+  ]);
+  if (!worker) return {};
+  const vigentes = seleccionarVigentes(docs);
+  const ficha = worker as unknown as Record<string, Date | null>;
+  const cambios: Record<string, Date | boolean | null> = {};
+
+  for (const tipo of aCopiar) {
+    const doc = vigentes.get(`${staffMemberId}|${tipo.id}`);
+    if (doc?.fechaVencimiento && !mismoDia(doc.fechaVencimiento, ficha[tipo.legacyField!])) {
+      cambios[tipo.legacyField!] = doc.fechaVencimiento;
+    }
+  }
+
+  // Al dar de baja, la fecha de término queda escrita en `contractEndDate`.
+  // Un documento cargado después no la puede pisar.
+  if (tocaContrato && idContrato && worker.isActive) {
+    const rige = contratoQueRige(
+      vigentes.get(`${staffMemberId}|${idContrato}`),
+      idAnexo ? vigentes.get(`${staffMemberId}|${idAnexo}`) : undefined,
+    );
+    if (rige?.sinVencimiento) {
+      if (!worker.contractIsIndefinite) cambios.contractIsIndefinite = true;
+      if (worker.contractEndDate) cambios.contractEndDate = null;
+    } else if (rige?.fechaVencimiento) {
+      if (worker.contractIsIndefinite) cambios.contractIsIndefinite = false;
+      if (!mismoDia(rige.fechaVencimiento, worker.contractEndDate)) cambios.contractEndDate = rige.fechaVencimiento;
+    }
+  }
+
+  if (Object.keys(cambios).length > 0) {
+    await db.staffMember.update({ where: { id: staffMemberId }, data: cambios });
+  }
+  return cambios;
 }
 
 /**

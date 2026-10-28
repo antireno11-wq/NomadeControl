@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireRole, type AppRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { extractDocumentInfo, extraerFirmantes, extraerMrz, matchWorker, type ExtractedDoc } from "@/lib/document-extractor";
-import { getTiposDocumento } from "@/lib/acreditacion-db";
+import { getTiposDocumento, sincronizarFichaDesdeDocumentos } from "@/lib/acreditacion-db";
 import { agruparPorPersona, seleccionarVigentes, normalizarRut, adivinarTipoDesdeNombre, nombreMasProbable, mismoDocumentoProbable, mismoNombre, rutValido, claveNombre } from "@/lib/acreditacion";
 
 const STAFF_MANAGER_ROLES: AppRole[] = ["ADMINISTRADOR", "OPERATIVO"];
@@ -883,29 +883,10 @@ export async function applyExtractionsAction(
         });
       }
 
-      // Espejo a la columna plana para que la ficha muestre lo mismo
-      if (tipo.legacyField && fechaVencimiento) {
-        await db.staffMember.update({
-          where: { id: workerId },
-          data: {
-            [tipo.legacyField]: fechaVencimiento,
-            // Un contrato con fecha deja de ser indefinido.
-            ...(tipo.codigo === "contrato_trabajo" ? { contractIsIndefinite: false } : {}),
-          },
-        });
-      }
-
-      // Un contrato o anexo indefinido no tiene fecha, así que el espejo de
-      // arriba no corría y el trabajador seguía figurando a plazo fijo con la
-      // fecha vieja. De ahí dependen la etiqueta de la ficha y los requisitos
-      // condicionados al contrato indefinido —las pólizas—, que no se le
-      // pedían a nadie.
-      if ((tipo.codigo === "contrato_trabajo" || tipo.codigo === "anexo_contrato") && !tieneFecha) {
-        await db.staffMember.update({
-          where: { id: workerId },
-          data: { contractIsIndefinite: true, contractEndDate: null },
-        });
-      }
+      // Espejo a la columna plana para que la ficha muestre lo mismo. Copia
+      // lo vigente y no lo recién subido: un contrato viejo cargado después
+      // del anexo no puede devolver la ficha a la fecha original.
+      await sincronizarFichaDesdeDocumentos(workerId, [row.tipoDocumentoId]);
 
       applied++;
     } catch (e) {

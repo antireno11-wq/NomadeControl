@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { TRABAJADORES_ROLES, requireRole } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
+import { sincronizarFichaDesdeDocumentos } from "@/lib/acreditacion-db";
 
 /**
  * Correcciones sobre un documento de acreditación.
@@ -109,6 +110,7 @@ export async function corregirDocumentoAction(formData: FormData) {
       },
     }),
   ]);
+  await sincronizarFichaDesdeDocumentos(workerId, [anterior.tipoDocumentoId]);
 
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
@@ -135,7 +137,7 @@ export async function anularDocumentoAction(formData: FormData) {
   }
 
   const doc = await db.documentoAcreditacion.findUnique({
-    where: { id: docId }, select: { staffMemberId: true },
+    where: { id: docId }, select: { staffMemberId: true, tipoDocumentoId: true },
   });
   if (!doc || doc.staffMemberId !== workerId) {
     redirect(`/trabajadores/${workerId}?tab=documentos&status=doc-no-encontrado`);
@@ -150,6 +152,8 @@ export async function anularDocumentoAction(formData: FormData) {
       motivoAnulacion: motivo,
     },
   });
+  // Anular el anexo devuelve la ficha a la fecha del contrato.
+  await sincronizarFichaDesdeDocumentos(workerId, [doc.tipoDocumentoId]);
 
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
@@ -201,6 +205,7 @@ export async function registrarDocumentoAction(formData: FormData) {
       confirmadoAt: new Date(),
     },
   });
+  await sincronizarFichaDesdeDocumentos(workerId, [tipoId]);
 
   await logAuditEvent({
     actorUserId: user.id, actorName: user.name, actorEmail: user.email,
