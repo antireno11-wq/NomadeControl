@@ -625,6 +625,7 @@ model ArchivoAcreditacion {
   ArchivoDeDocumento ArchivoDeDocumento[]
   DocumentoEmpresa   DocumentoEmpresa[]
   fotosChecklist     ChecklistFoto[]
+  documentosVehiculo VehicleDocument[]
 
   @@index([hash])
 }
@@ -824,20 +825,24 @@ model Vehicle {
 }
 
 model VehicleDocument {
-  id           String    @id @default(cuid())
+  id           String               @id @default(cuid())
   vehicleId    String
-  vehicle      Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  documentType String    @default("OTRO")
+  vehicle      Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentType String               @default("OTRO")
   name         String
   number       String?
   issuer       String?
   issuedAt     DateTime?
   expiresAt    DateTime
-  alertDays    Int       @default(30)
-  status       String    @default("VIGENTE")
+  alertDays    Int                  @default(30)
+  status       String               @default("VIGENTE")
   notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  /// El papel escaneado. Antes solo se guardaban las fechas y no había nada
+  /// que descargar cuando el mandante pedía la revisión técnica o el SOAP.
+  archivoId    String?
+  archivo      ArchivoAcreditacion? @relation(fields: [archivoId], references: [id], onDelete: SetNull)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([vehicleId, expiresAt])
 }

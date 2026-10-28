@@ -165,11 +165,21 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
 
                   return (
                     <div key={`${item.label}-${item.expiresAt.toISOString()}`} className="summary-row">
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <strong>{item.label}</strong>
                         <div style={{ color: "var(--muted)" }}>{formatDisplayDate(item.expiresAt)}</div>
                       </div>
-                      <span className={`status-pill ${pillClass}`}>{pillLabel}</span>
+                      <div style={{ display: "flex", gap: 12, fontSize: "0.82rem", flexShrink: 0 }}>
+                        {item.archivoId ? (
+                          <>
+                            <a href={`/api/archivo/${item.archivoId}`} target="_blank" rel="noreferrer">Ver ↗</a>
+                            <a href={`/api/archivo/${item.archivoId}?download=1`} style={{ fontWeight: 700 }}>Descargar ↓</a>
+                          </>
+                        ) : (
+                          <span style={{ color: "var(--muted)" }}>Sin archivo</span>
+                        )}
+                      </div>
+                      <span className={`status-pill ${pillClass}`} style={{ flexShrink: 0 }}>{pillLabel}</span>
                     </div>
                   );
                 })
@@ -179,7 +189,11 @@ export default async function VehiculoDetallePage({ params }: { params: { id: st
 
           {canManageVehicles ? (
             <div className="card" style={{ gridColumn: "span 5" }}>
-              <h2 style={{ marginTop: 0 }}>Agregar documento</h2>
+              <h2 style={{ marginTop: 0 }}>Subir documento</h2>
+              <p style={{ margin: "0 0 12px", fontSize: "0.82rem", color: "var(--muted)" }}>
+                Si es la revisión técnica, el SOAP, el permiso, el seguro o el extintor,
+                su fecha en la ficha se actualiza con la de este documento.
+              </p>
               <VehicleDocumentForm vehicleId={vehicle.id} />
             </div>
           ) : null}

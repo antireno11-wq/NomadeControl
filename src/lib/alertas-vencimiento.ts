@@ -206,12 +206,22 @@ export async function getAlertasVencimiento(opts: GetAlertasOptions = {}): Promi
     select: {
       id: true,
       name: true,
+      documentType: true,
       expiresAt: true,
       vehicle: { select: { id: true, plate: true, brand: true, model: true } },
     },
   });
 
+  // Solo el último de cada documento: al subir la revisión técnica nueva, la
+  // del año pasado no puede seguir alertando como vencida.
+  const vigentesVehiculo = new Map<string, (typeof docsVehiculos)[number]>();
   for (const d of docsVehiculos) {
+    const clave = `${d.vehicle.id}|${d.documentType === "OTRO" ? `OTRO:${d.name}` : d.documentType}`;
+    const actual = vigentesVehiculo.get(clave);
+    if (!actual || d.expiresAt.getTime() >= actual.expiresAt.getTime()) vigentesVehiculo.set(clave, d);
+  }
+
+  for (const d of vigentesVehiculo.values()) {
     const dias = calcularDias(d.expiresAt, hoy);
     const sev = severidad(dias);
     if (opts.excludeOk && sev === "ok") continue;

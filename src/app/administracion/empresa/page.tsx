@@ -147,10 +147,15 @@ export default async function DocumentosEmpresaPage({
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         {doc?.archivoId ? (
-                          <a href={`/api/archivo/${doc.archivoId}`} target="_blank" rel="noreferrer"
-                             style={{ color: "var(--teal)", fontWeight: 600 }}>
-                            📎 {doc.originalFilename ?? "Ver"}
-                          </a>
+                          <span style={{ display: "inline-flex", gap: 10, alignItems: "baseline" }}>
+                            <a href={`/api/archivo/${doc.archivoId}`} target="_blank" rel="noreferrer"
+                               style={{ color: "var(--teal)", fontWeight: 600 }}>
+                              📎 {doc.originalFilename ?? "Ver"}
+                            </a>
+                            <a href={`/api/archivo/${doc.archivoId}?download=1`} style={{ fontSize: "0.8rem" }}>
+                              Descargar ↓
+                            </a>
+                          </span>
                         ) : <span style={{ color: "var(--muted)" }}>—</span>}
                       </td>
                       <td style={{ padding: "10px 14px", textAlign: "right" }}>

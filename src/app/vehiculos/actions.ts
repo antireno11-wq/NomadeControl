@@ -10,8 +10,12 @@ import {
 import { logAuditEvent } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/report-utils";
+import { CAMPO_DE_FICHA, documentLabelForType } from "@/lib/vehicle-status";
 
 export type ActionState = { error: string; success: string };
+
+/** Mismo tope que los documentos de la empresa. */
+const MAX_ARCHIVO_DOCUMENTO = 18 * 1024 * 1024;
 
 const optionalDate = z.string().optional().transform((value) => {
   if (!value) return null;
@@ -57,7 +61,8 @@ const updateVehicleSchema = vehicleSchema.extend({
 const vehicleDocumentSchema = z.object({
   vehicleId: z.string().min(1),
   documentType: z.string().trim().min(2),
-  name: z.string().trim().min(2),
+  // Opcional: para los tipos conocidos el nombre es el tipo mismo.
+  name: z.string().trim().optional(),
   number: z.string().trim().optional(),
   issuer: z.string().trim().optional(),
   issuedAt: optionalDate,
@@ -303,7 +308,7 @@ export async function updateVehicleAction(_: ActionState, formData: FormData): P
 
 export async function addVehicleDocumentAction(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    await requireRole(VEHICLE_MANAGE_ROLES);
+    const user = await requireRole(VEHICLE_MANAGE_ROLES);
 
     const parsed = vehicleDocumentSchema.safeParse({
       vehicleId: formData.get("vehicleId"),
@@ -320,23 +325,61 @@ export async function addVehicleDocumentAction(_: ActionState, formData: FormDat
     if (!parsed.success) return { error: "Datos inválidos para agregar documento.", success: "" };
 
     const payload = parsed.data;
+    const nombre = payload.name || documentLabelForType(payload.documentType);
+    if (payload.documentType === "OTRO" && !payload.name) {
+      return { error: "Para «Otro», escribe qué documento es.", success: "" };
+    }
+
+    // El archivo se valida antes de escribir nada: un documento guardado sin
+    // el archivo que el usuario creyó adjuntar es peor que un error.
+    const archivo = formData.get("archivo");
+    const hayArchivo = archivo instanceof File && archivo.size > 0;
+    if (hayArchivo && archivo.size > MAX_ARCHIVO_DOCUMENTO) {
+      return { error: "El archivo supera los 18 MB.", success: "" };
+    }
+
+    let archivoId: string | null = null;
+    if (hayArchivo) {
+      const creado = await db.archivoAcreditacion.create({
+        data: {
+          contenido: Buffer.from(await archivo.arrayBuffer()),
+          originalFilename: archivo.name || `${nombre}.pdf`,
+          mimeType: archivo.type || "application/octet-stream",
+          fileSize: archivo.size,
+          subidoPorNombre: user.name,
+        },
+        select: { id: true },
+      });
+      archivoId = creado.id;
+    }
+
     await db.vehicleDocument.create({
       data: {
         vehicleId: payload.vehicleId,
         documentType: payload.documentType,
-        name: payload.name,
+        name: nombre,
         number: payload.number || null,
         issuer: payload.issuer || null,
         issuedAt: payload.issuedAt,
         expiresAt: payload.expiresAt,
         alertDays: payload.alertDays,
-        notes: payload.notes || null
+        notes: payload.notes || null,
+        archivoId,
       }
     });
 
+    // La revisión técnica, el SOAP y compañía tienen además su fecha en la
+    // ficha, que es la que leen la flota y el próximo vencimiento. El papel
+    // recién subido es lo más actual que hay, así que la ficha pasa a decir
+    // lo mismo.
+    const campo = CAMPO_DE_FICHA[payload.documentType as keyof typeof CAMPO_DE_FICHA];
+    if (campo) {
+      await db.vehicle.update({ where: { id: payload.vehicleId }, data: { [campo]: payload.expiresAt } });
+    }
+
     revalidatePath("/vehiculos");
     revalidatePath(`/vehiculos/${payload.vehicleId}`);
-    return { error: "", success: "Documento agregado correctamente." };
+    return { error: "", success: hayArchivo ? "Documento y archivo guardados." : "Documento agregado, sin archivo adjunto." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "No se pudo agregar el documento.", success: "" };
   }

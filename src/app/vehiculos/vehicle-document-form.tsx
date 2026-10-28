@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { addVehicleDocumentAction, type ActionState } from "./actions";
 
@@ -12,26 +13,39 @@ function SubmitButton() {
 
 export function VehicleDocumentForm({ vehicleId }: { vehicleId: string }) {
   const [state, formAction] = useFormState(addVehicleDocumentAction, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Se limpia al guardar: con el archivo todavía seleccionado, un segundo
+  // clic subía el mismo documento dos veces.
+  useEffect(() => {
+    if (state.success) formRef.current?.reset();
+  }, [state]);
 
   return (
-    <form action={formAction} className="grid two vehicle-form-grid">
+    <form ref={formRef} action={formAction} className="grid two vehicle-form-grid">
       <input type="hidden" name="vehicleId" value={vehicleId} />
 
       <div>
         <label htmlFor="document-type">Tipo documental</label>
-        <select id="document-type" name="documentType" defaultValue="DECRETO_80">
+        <select id="document-type" name="documentType" defaultValue="REVISION_TECNICA">
+          <option value="REVISION_TECNICA">Revisión técnica</option>
+          <option value="SOAP">SOAP</option>
+          <option value="PERMISO_CIRCULACION">Permiso de circulación</option>
+          <option value="SEGURO">Seguro</option>
+          <option value="EXTINTOR">Extintor</option>
           <option value="DECRETO_80">Decreto 80</option>
           <option value="BARRA_INTERIOR">Barra interior</option>
           <option value="BARRA_EXTERIOR">Barra exterior</option>
-          <option value="REVISION_TECNICA">Revisión técnica adicional</option>
-          <option value="SOAP">SOAP adicional</option>
-          <option value="PERMISO_CIRCULACION">Permiso circulación adicional</option>
           <option value="OTRO">Otro</option>
         </select>
       </div>
       <div>
-        <label htmlFor="document-name">Documento</label>
-        <input id="document-name" name="name" placeholder="Póliza especial, revisión GPS..." required />
+        <label htmlFor="document-name">Nombre (solo si es «Otro»)</label>
+        <input id="document-name" name="name" placeholder="Póliza especial, revisión GPS..." />
+      </div>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <label htmlFor="document-file">Archivo (PDF o foto)</label>
+        <input id="document-file" name="archivo" type="file" accept="application/pdf,image/*" />
       </div>
       <div>
         <label htmlFor="document-number">Número</label>

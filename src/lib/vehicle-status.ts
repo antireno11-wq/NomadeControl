@@ -12,6 +12,7 @@ type BaseVehicleDates = {
     name: string;
     expiresAt: Date;
     alertDays: number;
+    archivoId?: string | null;
   }>;
 };
 
@@ -39,6 +40,8 @@ export type VehicleExpiryItem = {
   label: string;
   expiresAt: Date;
   alertDays: number;
+  /** El archivo del documento, si se subió. */
+  archivoId?: string | null;
 };
 
 export const STANDARD_DOCUMENT_TYPES = [
@@ -50,8 +53,29 @@ export const STANDARD_DOCUMENT_TYPES = [
   { key: "PERMISO_CIRCULACION", label: "Permiso circulación" }
 ] as const;
 
+/**
+ * Los cinco vencimientos que viven en la ficha del vehículo. Un documento de
+ * estos tipos actualiza esa fecha y se muestra en su misma línea: si no, la
+ * revisión técnica aparecía dos veces, una con la fecha de la ficha y otra
+ * con la del papel.
+ */
+export const CAMPO_DE_FICHA = {
+  PERMISO_CIRCULACION: "circulationPermitDue",
+  SOAP: "soapDue",
+  REVISION_TECNICA: "technicalReviewDue",
+  SEGURO: "insuranceDue",
+  EXTINTOR: "extinguisherDue",
+} as const;
+
 export function documentLabelForType(type?: string) {
+  if (type === "SEGURO") return "Seguro";
+  if (type === "EXTINTOR") return "Extintor";
   return STANDARD_DOCUMENT_TYPES.find((item) => item.key === type)?.label ?? type ?? "Otro";
+}
+
+/** Un mismo papel renovado es la misma línea; "Otro" se distingue por nombre. */
+function claveDocumento(d: { documentType?: string; name: string }) {
+  return !d.documentType || d.documentType === "OTRO" ? `OTRO:${d.name}` : d.documentType;
 }
 
 export function startOfDay(date: Date) {
@@ -64,22 +88,42 @@ export function daysUntil(target: Date, baseDate = new Date()) {
 }
 
 export function collectVehicleExpiryItems(vehicle: BaseVehicleDates): VehicleExpiryItem[] {
-  const baseItems: VehicleExpiryItem[] = [
+  const baseItems: Array<Omit<VehicleExpiryItem, "expiresAt"> & { expiresAt: Date | null }> = [
     { key: "PERMISO_CIRCULACION", label: "Permiso circulación", expiresAt: vehicle.circulationPermitDue ?? null, alertDays: 45 },
     { key: "SOAP", label: "SOAP", expiresAt: vehicle.soapDue ?? null, alertDays: 30 },
     { key: "REVISION_TECNICA", label: "Revisión técnica", expiresAt: vehicle.technicalReviewDue ?? null, alertDays: 30 },
     { key: "SEGURO", label: "Seguro", expiresAt: vehicle.insuranceDue ?? null, alertDays: 30 },
     { key: "EXTINTOR", label: "Extintor", expiresAt: vehicle.extinguisherDue ?? null, alertDays: 30 }
-  ].filter((item): item is VehicleExpiryItem => item.expiresAt instanceof Date);
+  ];
 
-  const customItems = (vehicle.documents ?? []).map((document) => ({
-    key: document.documentType ?? document.name,
-    label: documentLabelForType(document.documentType) ?? document.name,
-    expiresAt: document.expiresAt,
-    alertDays: document.alertDays
-  }));
+  // El documento que vale de cada tipo es el que vence más tarde: una
+  // renovación no deja la anterior marcando "vencido".
+  const ultimo = new Map<string, NonNullable<BaseVehicleDates["documents"]>[number]>();
+  for (const d of vehicle.documents ?? []) {
+    const actual = ultimo.get(claveDocumento(d));
+    if (!actual || d.expiresAt.getTime() >= actual.expiresAt.getTime()) ultimo.set(claveDocumento(d), d);
+  }
 
-  return [...baseItems, ...customItems].sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime());
+  const items: VehicleExpiryItem[] = [];
+  for (const base of baseItems) {
+    const doc = ultimo.get(base.key);
+    ultimo.delete(base.key);
+    const expiresAt = base.expiresAt ?? doc?.expiresAt ?? null;
+    if (!(expiresAt instanceof Date)) continue;
+    items.push({ ...base, expiresAt, archivoId: doc?.archivoId ?? null });
+  }
+
+  for (const document of ultimo.values()) {
+    items.push({
+      key: claveDocumento(document),
+      label: !document.documentType || document.documentType === "OTRO" ? document.name : documentLabelForType(document.documentType),
+      expiresAt: document.expiresAt,
+      alertDays: document.alertDays,
+      archivoId: document.archivoId ?? null,
+    });
+  }
+
+  return items.sort((a, b) => a.expiresAt.getTime() - b.expiresAt.getTime());
 }
 
 export function summarizeVehicleExpiries(vehicle: BaseVehicleDates, baseDate = new Date()) {

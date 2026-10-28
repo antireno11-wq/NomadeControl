@@ -293,10 +293,14 @@ function Detalle({
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                     <span style={etiqueta}>{doc.nombreArchivo ?? "Documento"}</span>
-                    <a href={`/api/archivo/${doc.archivoId}`} target="_blank" rel="noreferrer"
-                       style={{ fontSize: "0.78rem" }}>
-                      Abrir en otra pestaña ↗
-                    </a>
+                    <span style={{ display: "flex", gap: 14, fontSize: "0.78rem", flexShrink: 0 }}>
+                      <a href={`/api/archivo/${doc.archivoId}`} target="_blank" rel="noreferrer">
+                        Abrir en otra pestaña ↗
+                      </a>
+                      <a href={`/api/archivo/${doc.archivoId}?download=1`} style={{ fontWeight: 700 }}>
+                        Descargar ↓
+                      </a>
+                    </span>
                   </div>
                   <iframe
                     src={`/api/archivo/${doc.archivoId}`}
@@ -307,9 +311,10 @@ function Detalle({
                     <div style={{ marginTop: 6, fontSize: "0.78rem", display: "flex", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ color: "var(--muted)" }}>Otras hojas o el reverso:</span>
                       {doc.archivosExtra.map((a, i) => (
-                        <a key={a} href={`/api/archivo/${a}`} target="_blank" rel="noreferrer">
-                          hoja {i + 2} ↗
-                        </a>
+                        <span key={a} style={{ display: "inline-flex", gap: 6 }}>
+                          <a href={`/api/archivo/${a}`} target="_blank" rel="noreferrer">hoja {i + 2} ↗</a>
+                          <a href={`/api/archivo/${a}?download=1`} aria-label={`Descargar hoja ${i + 2}`}>↓</a>
+                        </span>
                       ))}
                     </div>
                   )}
