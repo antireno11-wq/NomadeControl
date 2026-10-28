@@ -456,6 +456,43 @@ def predict_quality(session: SessionDep) -> dict[str, Any]:
     return {"run": _run_dict(run), "items": items}
 
 
+@app.get("/api/explain")
+def explain(session: SessionDep) -> dict[str, Any]:
+    """Por qué el radar apostó o no en la última corrida en vivo, en frases simples.
+
+    Un mercado cuenta una vez: con su señal si la hubo, si no con el resultado de mayor
+    diferencia a favor."""
+    from collections import Counter
+
+    from sqlalchemy import select
+
+    from radar.db.models import ValuationRecord
+    from radar.predict.explain import headline
+
+    run = _latest_prediction_run(session, "live")
+    if run is None:
+        return {"run": None, "mercados": 0, "motivos": []}
+    cols = [ValuationRecord.market_id, ValuationRecord.category, ValuationRecord.recommendation,
+            ValuationRecord.reasons, ValuationRecord.edge_pp]  # fmt: skip
+    best: dict[str, Any] = {}
+    for r in session.execute(select(*cols).where(ValuationRecord.run_id == run.id)):
+        cur = best.get(r.market_id)
+        key = (r.recommendation == "señal_operable", r.edge_pp if r.edge_pp is not None else -1e9)
+        if cur is None or key > cur[0]:
+            best[r.market_id] = (key, r)
+    reasons: Counter[str] = Counter()
+    by_category: Counter[str] = Counter()
+    for _key, r in best.values():
+        reasons[headline(dict(r._mapping))] += 1
+        by_category[r.category] += 1
+    return {
+        "run": _run_dict(run),
+        "mercados": len(best),
+        "por_categoria": dict(by_category),
+        "motivos": [{"motivo": k, "mercados": n} for k, n in reasons.most_common()],
+    }
+
+
 @app.get("/api/paper")
 def paper(session: SessionDep, limit: Annotated[int, Query(ge=1, le=2000)] = 500) -> dict[str, Any]:
     """Cartera de papel (``paper-v1``): posiciones simuladas abiertas por las señales."""

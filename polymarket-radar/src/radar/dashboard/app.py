@@ -10,6 +10,7 @@ import hmac
 import os
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import altair as alt
 import httpx
@@ -774,6 +775,10 @@ REC_LABELS = {
 }
 
 
+CHILE = ZoneInfo("America/Santiago")
+MESES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+
+
 VARIANT_LABELS = {
     "hourly_above": "Cripto: precio sobre un nivel (por hora)",
     "hourly_updown": "Cripto: sube o baja (por hora)",
@@ -796,10 +801,6 @@ VARIANT_LABELS = {
 CATEGORY_LABELS = {"crypto": "cripto", "sports": "deportes", "economy": "economía"}
 
 
-def _money(x: float | None) -> str:
-    return "—" if x is None else f"{'+' if x > 0 else ''}US${x:,.2f}"
-
-
 def _verdict(row: dict[str, Any]) -> str:
     """Comparación con el mercado en palabras simples (forward-v1)."""
     lo, hi = row.get("vs_market_ll_lo"), row.get("vs_market_ll_hi")
@@ -813,135 +814,192 @@ def _verdict(row: dict[str, Any]) -> str:
 
 
 def page_summary() -> None:
+    from radar.predict.explain import cents, checklist, headline, pct, trade_story, usd
+
+    def md(text: str) -> str:  # en markdown, "$...$" se dibuja como fórmula
+        return text.replace("$", "\\$")
+
+    def num(n: int) -> str:
+        return f"{n:,}".replace(",", ".")
+
+    def when(ts: str | None) -> str:  # hora de Chile, corta
+        if not ts:
+            return "—"
+        t = datetime.fromisoformat(ts).astimezone(CHILE)
+        return f"{t.day}-{MESES[t.month - 1]} {t:%H:%M}"
+
     st.header("Resumen")
+    st.info(
+        "**Qué hace el radar.** Cada 30 minutos revisa los mercados de Polymarket que elegiste "
+        "(cripto, economía, política, elecciones, NBA, tenis ATP y fútbol). Para cada uno "
+        "calcula qué tan probable es que pase y lo compara con lo que cobra Polymarket. Solo "
+        "apuesta cuando cree que el precio está claramente mal **y** está probado que acierta "
+        "en ese tipo de mercado. Las apuestas son **de práctica**: no se usa dinero real."
+    )
     live = (api_get("/api/predict/summary") or {}).get("live")
     paper = api_get("/api/paper") or {}
+    why = api_get("/api/explain") or {}
     fwd = api_get("/api/forward") or {}
-    if live:
-        crypto = (live.get("summary") or {}).get("crypto") or {}
-        age = None
-        if live.get("finished_at"):
-            age = (datetime.now(UTC) - datetime.fromisoformat(live["finished_at"])).total_seconds()
-        ext = (live.get("summary") or {}).get("externos") or {}
-        n_ext = sum((ext.get("emparejados") or {}).values())
-        msg = (
-            f"Última revisión de precios {fmt_age(age)} · {crypto.get('interpretables', 0):,} "
-            f"mercados cripto y {n_ext:,} de deportes y la Fed · se repite cada 30 min."
-        )
-        (st.warning if age is not None and age > 3600 else st.caption)(msg)
-    else:
-        st.info("Todavía no hay corridas en vivo.")
+    items = paper.get("items") or []
+
+    # ---------------------------------------------------------------- ahora mismo
+    st.subheader("Ahora mismo")
+    age = None
+    if live and live.get("finished_at"):
+        age = (datetime.now(UTC) - datetime.fromisoformat(live["finished_at"])).total_seconds()
     signals = (api_get("/api/opportunities", recommendation="señal_operable") or {}).get(
         "items"
     ) or []
-
+    n_markets = why.get("mercados", 0)
+    if age is None:
+        st.warning("Todavía no hay revisiones del radar.")
+    else:
+        n_sig = len(signals)
+        found = (
+            "no encontró apuestas que valgan la pena"
+            if n_sig == 0
+            else "encontró **1 apuesta que vale la pena**"
+            if n_sig == 1
+            else f"encontró **{n_sig} apuestas que valen la pena**"
+        )
+        (st.warning if age > 3600 else st.write)(
+            f"La última revisión fue **{fmt_age(age)}**: el radar miró **{num(n_markets)} "
+            f"mercados** y {found}."
+        )
     c1, c2 = st.columns(2)
     c3, c4 = st.columns(2)
-    c1.metric("Señales ahora", len(signals))
-    c2.metric(
-        "Posiciones abiertas",
-        paper.get("abiertas", 0),
-        help=f"Exposición {_money(paper.get('exposicion_usd'))} de un máximo de "
-        f"US${paper.get('exposicion_maxima_usd', 300):,.0f}",
-    )
-    closed = paper.get("cerradas", 0)
-    c3.metric(
-        "Resultado de la cartera",
-        _money(paper.get("resultado_usd", 0.0)),
-        help=f"{paper.get('ganadas', 0)} ganadas, {paper.get('perdidas', 0)} perdidas y "
-        f"{paper.get('empates', 0)} empates sobre {closed} cerradas.",
-    )
-    c4.metric("Capital simulado", f"US${paper.get('capital_actual_usd', 1000):,.2f}",
-              help="Parte de US$1.000. Todo es papel: no hay dinero real.")  # fmt: skip
+    c1.metric("Apuestas que valen la pena ahora", len(signals))
+    c2.metric("Apuestas de práctica abiertas", paper.get("abiertas", 0),
+              help=md(f"Dinero puesto en ellas: {usd(paper.get('exposicion_usd'))} "
+                   f"(máximo {usd(paper.get('exposicion_maxima_usd'))})."))  # fmt: skip
+    c3.metric("Ganado o perdido hasta hoy", usd(paper.get("resultado_usd", 0.0), sign=True),
+              help=f"{paper.get('ganadas', 0)} acertadas y {paper.get('perdidas', 0)} falladas "
+                   f"de {paper.get('cerradas', 0)} ya resueltas.")  # fmt: skip
+    c4.metric("Plata de práctica", usd(paper.get("capital_actual_usd", 1000.0)),
+              help=md("Empezó con US$1.000."))  # fmt: skip
 
-    st.subheader("Señales de ahora")
-    if signals:
+    for it in signals:
+        st.success(
+            md(
+                f"**{it['question']}** — conviene comprar **{it['outcome']}** a "
+                f"**{cents(it.get('ask_vwap'))}**: el radar calcula **{pct(it.get('p_model'))}**. "
+                f"Ganancia esperada con US$25: {usd(it.get('ev_net_usd'), sign=True)}. "
+                f"[Ver en Polymarket]({it.get('url')})"
+            )
+        )
+
+    # ---------------------------------------------------- por qué (no) apostó
+    st.subheader("¿Por qué apostó o no apostó esta vez?")
+    reasons = why.get("motivos") or []
+    if reasons:
+        st.caption(f"Los {num(n_markets)} mercados de la última revisión, por su motivo principal:")
+        st.markdown("\n".join(f"- **{num(r['mercados'])}** · {r['motivo']}" for r in reasons))
+        st.caption(
+            "Casi siempre la respuesta es que el precio ya es justo: Polymarket suele acertar. "
+            "El radar busca las pocas veces en que se equivoca."
+        )
+
+    # ------------------------------------------------------- apuestas de práctica
+    st.subheader("Mis apuestas de práctica")
+    if not items:
+        st.write("Todavía no hay apuestas. Se abren solas cuando aparece una que vale la pena.")
+    for t in items[:30]:
+        icon = {"ganada": "✅", "perdida": "❌", "empate": "➖"}.get(t["status"], "⏳")
+        label = VARIANT_LABELS.get(t.get("variant") or "", "")
+        with st.expander(f"{icon} {t['question']}", expanded=t["status"] == "abierta"):
+            st.markdown(md(trade_story(t)))
+            st.caption(
+                f"{label} · abierta el {when(t['opened_at'])} · cierra el "
+                f"{when(t.get('end_date'))} (hora de Chile)"
+                + (f" · [ver en Polymarket]({t['url']})" if t.get("url") else "")
+            )
+    if len(items) > 30:
+        st.caption(f"Se muestran las 30 más recientes de {len(items)}.")
+
+    # ------------------------------------------------- las que casi entraron
+    st.subheader("Las que casi entraron")
+    alerts = (
+        api_get("/api/opportunities", recommendation="alerta_investigacion", limit=10) or {}
+    ).get("items") or []
+    if not alerts:
+        st.write("En la última revisión ningún mercado tuvo una diferencia grande con el radar.")
+    else:
+        st.caption(
+            "Mercados donde el radar ve una diferencia grande con el precio, pero no apostó. "
+            "Elige uno para ver qué condición le faltó."
+        )
         st.dataframe(
             pd.DataFrame(
                 [
                     {
                         "Mercado": it["question"],
-                        "Comprar": it["outcome"],
-                        "Precio": it.get("ask_vwap"),
-                        "Prob. del radar": it.get("p_model"),
-                        "Ganancia esperada con US$25": it.get("ev_net_usd"),
-                        "Cierra": fmt_ts(it.get("end_date")),
-                        "Enlace": it.get("url"),
+                        "Resultado": it["outcome"],
+                        "Precio": cents(it.get("ask_vwap")),
+                        "El radar cree": pct(it.get("p_model")),
+                        "Por qué no apostó": headline(it),
                     }
-                    for it in signals
+                    for it in alerts
                 ]
             ),
             hide_index=True,
             use_container_width=True,
-            column_config={
-                "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
-                "Precio": st.column_config.NumberColumn(format="%.3f"),
-                "Prob. del radar": st.column_config.NumberColumn(format="%.3f"),
-                "Ganancia esperada con US$25": st.column_config.NumberColumn(format="US$%.2f"),
-            },
         )
-    else:
-        st.info(
-            "Ahora no hay señales. El radar propone una solo cuando su modelo está validado, "
-            "le gana al mercado y la diferencia cubre los costos."
+        names = [f"{it['question']} — {it['outcome']}" for it in alerts]
+        pick = st.selectbox("Ver detalle", names)
+        it = alerts[names.index(pick)]
+        st.markdown(
+            f"Polymarket cobra **{cents(it.get('ask_vwap'))}** por **{it['outcome']}** y el "
+            f"radar calcula **{pct(it.get('p_model'))}**. Para apostar tienen que cumplirse "
+            "todas estas condiciones:"
         )
-
-    st.subheader("Cartera de papel")
-    items = paper.get("items") or []
-    if not items:
-        st.info("Todavía no hay posiciones: se abren solas con cada señal nueva.")
-    else:
-        df = pd.DataFrame(
-            [
-                {
-                    "Abierta": fmt_ts(t["opened_at"]),
-                    "Mercado": t["question"],
-                    "Compra": t["outcome"],
-                    "Precio": t["entry_price"],
-                    "Costo": t["cost_usd"],
-                    "Estado": t["status"],
-                    "Resultado": t.get("pnl_usd"),
-                    "Enlace": t.get("url"),
-                }
-                for t in items
-            ]
-        )
+        rows = checklist(it)
         st.dataframe(
-            df,
+            pd.DataFrame(
+                [
+                    {"": "✅" if r["ok"] else "❌", "Condición": r["condición"],
+                     "Dato": r.get("detalle", "")}
+                    for r in rows
+                ]
+            ),
             hide_index=True,
             use_container_width=True,
-            column_config={
-                "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
-                "Precio": st.column_config.NumberColumn(format="%.3f"),
-                "Costo": st.column_config.NumberColumn(format="US$%.2f"),
-                "Resultado": st.column_config.NumberColumn(format="US$%.2f"),
-            },
-        )
-        st.caption(
-            "Una compra simulada de US$25 por señal, al precio real del libro en ese momento. "
-            "Se cierra sola con el resultado oficial."
-        )
+        )  # fmt: skip
+        if it.get("url"):
+            st.markdown(f"[Ver este mercado en Polymarket]({it['url']})")
 
+    # ----------------------------------------------------------- ¿acierta?
     st.subheader("¿Acierta el radar?")
     rows = [r for r in fwd.get("items") or [] if r.get("is_reference")]
     if not rows:
-        st.info("Todavía no hay predicciones resueltas para medir.")
+        st.write("Todavía no hay predicciones resueltas para medir.")
     else:
-        days = {r["variant"]: r["n_clusters"] for r in rows}
+        st.caption(
+            "Cada predicción se compara con lo que pasó de verdad y con el precio de Polymarket "
+            "en ese momento. Para dar un veredicto hacen falta al menos 200 predicciones "
+            "repartidas en 20 días (o activos) distintos."
+        )
+
+        def state(r: dict[str, Any]) -> str:
+            if r["status"] == "validado":
+                return "Probado en vivo"
+            if r["n"] < 200 or r["n_clusters"] < 20:
+                return f"Juntando datos ({r['n_clusters']} de 20 días-activo)"
+            return "Probado: no alcanza"
+
+        verdicts = {
+            "mejor que el mercado": "Mejor que Polymarket",
+            "peor que el mercado": "Peor que Polymarket",
+            "igual al mercado": "Igual que Polymarket",
+            "faltan datos": "Faltan datos",
+        }
         st.dataframe(
             pd.DataFrame(
                 [
                     {
                         "Tipo de mercado": VARIANT_LABELS.get(r["variant"], r["variant"]),
-                        "Predicciones medidas": r["n"],
-                        "Frente al mercado": _verdict(r),
-                        "Estado": (
-                            "validado en vivo"
-                            if r["status"] == "validado"
-                            else "en observación"
-                            if r["n"] < 200 or r["n_clusters"] < 20
-                            else "no validado"
-                        ),
+                        "Predicciones revisadas": r["n"],
+                        "¿Le gana al precio?": verdicts[_verdict(r)],
+                        "Estado": state(r),
                     }
                     for r in sorted(rows, key=lambda r: -r["n"])
                 ]
@@ -950,42 +1008,38 @@ def page_summary() -> None:
             use_container_width=True,
         )
         st.caption(
-            "Compara lo que el radar predijo en el momento con el resultado oficial y con el "
-            "precio del mercado en ese mismo momento. Para validar hacen falta al menos 200 "
-            f"predicciones y 20 días-activo (hoy el máximo es {max(days.values())}). Si un "
-            "modelo resulta peor que el mercado, sus señales se suspenden solas."
+            "Si un modelo resulta peor que Polymarket, sus apuestas se apagan solas. Deportes "
+            "y la Fed se comparan con Kalshi, otro mercado de predicciones, y no apuestan hasta "
+            "probar dos veces, con una semana de diferencia, que le ganan a Polymarket."
         )
 
-    st.subheader("Alertas para mirar")
-    alerts = (
-        api_get("/api/opportunities", recommendation="alerta_investigacion", limit=5) or {}
-    ).get("items") or []
-    if not alerts:
-        st.caption("Sin alertas en la última revisión.")
-    else:
-        st.dataframe(
-            pd.DataFrame(
-                [
-                    {
-                        "Mercado": it["question"],
-                        "Resultado": it["outcome"],
-                        "Precio": it.get("ask_vwap"),
-                        "Prob. del radar": it.get("p_model"),
-                        "Por qué no es señal": (it.get("reasons") or ["—"])[0],
-                        "Enlace": it.get("url"),
-                    }
-                    for it in alerts
-                ]
-            ),
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "Enlace": st.column_config.LinkColumn("Enlace", display_text="abrir"),
-                "Precio": st.column_config.NumberColumn(format="%.3f"),
-                "Prob. del radar": st.column_config.NumberColumn(format="%.3f"),
-            },
+    with st.expander("Cómo decide el radar, en 4 pasos"):
+        st.markdown(
+            md(
+                "1. **Calcula la probabilidad.** En cripto, con los precios de Binance y cómo se "
+                "mueven. En deportes y la Fed, con el precio del mismo mercado en Kalshi.\n"
+                "2. **Mira el precio real.** Cuánto cuesta comprar ahora en Polymarket una acción "
+                "que paga US$1 si acierta. Si cuesta 36¢, el mercado cree que hay ~36 % de "
+                "probabilidad.\n"
+                "3. **Compara.** Si el radar cree 48 % y cuesta 36¢, hay 12 puntos de "
+                "diferencia.\n"
+                "4. **Revisa las condiciones.** Solo apuesta si la diferencia es de 5 puntos o "
+                "más, queda ganancia tras la comisión, hay vendedores suficientes, y está "
+                "probado que el radar acierta en ese tipo de mercado."
+            )
         )
-        st.caption("Diferencias grandes con el mercado que no cumplen todo. No son compras.")
+    with st.expander("Palabras que aparecen aquí"):
+        st.markdown(
+            md(
+                "- **Precio (¢):** lo que cuesta una acción que paga US$1 si el resultado ocurre.\n"
+                "- **El radar cree X %:** la probabilidad que calcula el radar.\n"
+                "- **Puntos de diferencia:** probabilidad del radar menos el precio.\n"
+                "- **Apuesta de práctica:** una compra simulada de US$25 al precio real del "
+                "momento; se cierra sola con el resultado oficial.\n"
+                "- **Probado:** el radar acertó mejor que el precio en cientos de casos que no usó "
+                "para ajustarse."
+            )
+        )
 
 
 def page_opportunities() -> None:
