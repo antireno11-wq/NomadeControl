@@ -187,15 +187,20 @@ requiere un proxy TCP) y guárdela como `RADAR_DATABASE_URL` en `.env`, que no s
 El prefijo `postgresql://` se convierte solo a `postgresql+psycopg://`. Ojo: Railway cobra
 la salida de datos por la URL pública, y cada `radar predict live` lee ~1,5 GB.
 
-**Todo en Railway (preparado, todavía no desplegado).** Tres servicios con la misma imagen
-(`Dockerfile`, etapa final `deploy`, que corre `radar serve`), en el mismo proyecto que la
-base y por la red privada (sin cobro de salida):
+**Todo en Railway (desplegado desde el 2026-10-28).** Tres servicios con la misma imagen
+(`Dockerfile.railway`, que corre `radar serve`), en el mismo proyecto que la base y por la
+red privada (sin cobro de salida). El builder de Railway rechaza el secreto opcional de la
+CA del `Dockerfile` principal; por eso cada servicio lleva
+`RAILWAY_DOCKERFILE_PATH=Dockerfile.railway`.
 
 | Servicio | `RADAR_ROLE` | Variables | Acceso |
 |---|---|---|---|
-| scheduler | `scheduler` (aplica migraciones al arrancar) | `RADAR_DATABASE_URL=${{Postgres.DATABASE_URL}}` | ninguno |
-| api | `api`, `PORT=8000` | `RADAR_DATABASE_URL=${{Postgres.DATABASE_URL}}` | solo red privada |
-| dashboard | `dashboard` | `RADAR_API_BASE_URL=http://${{api.RAILWAY_PRIVATE_DOMAIN}}:8000`, `RADAR_DASHBOARD_PASSWORD` | dominio público |
+| radar-scheduler | `scheduler` (aplica migraciones al arrancar) | `RADAR_DATABASE_URL=${{Postgres.DATABASE_URL}}` | ninguno |
+| radar-api | `api`, `PORT=8000` | `RADAR_DATABASE_URL=${{Postgres.DATABASE_URL}}` | solo red privada |
+| radar-dashboard | `dashboard`, `PORT=8501` | `RADAR_API_BASE_URL=http://${{radar-api.RAILWAY_PRIVATE_DOMAIN}}:8000`, `RADAR_DASHBOARD_PASSWORD` | dominio público |
+
+Para desplegar una versión nueva, desde `polymarket-radar/`:
+`railway up --service <servicio> --detach` (`.railwayignore` deja fuera `.env` y los datos).
 
 Las pruebas de base de datos hacen `DROP SCHEMA`. `TEST_DATABASE_URL` debe apuntar a
 **otra** base, nunca a la principal. Después de la primera ingesta completa, más un
