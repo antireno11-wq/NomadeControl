@@ -639,3 +639,42 @@ Primera corrida con precios de venta (#149) y `radar predict forward`:
   mismo resultado en las dos carteras.
 
 Pruebas: 181 correctas y 2 omitidas (las en vivo).
+
+## 13. Despliegue en Railway y mudanza del historial — 28/29-oct-2026 UTC
+
+### 13.1 Despliegue
+
+- Servicios `radar-scheduler`, `radar-api` y `radar-dashboard` desde el 28-oct 21:46 UTC, con
+  `Dockerfile.railway` (el builder de Railway rechaza el secreto opcional de la CA).
+- Primera ingesta allá (corrida #2): 8 min, 70.108 mercados, 43.587 libros; "parcial" por 30
+  libros que Polymarket no entregó (igual que en el Mac).
+- La API escuchaba solo por IPv6 con `"::"` (asyncio deja `IPV6_V6ONLY`); ahora usa un socket
+  doble. El dashboard llegó a la API por la red privada con 200.
+
+### 13.2 Mudanza del historial (29-oct ~13:22 UTC)
+
+Regla fijada antes de copiar: en las claves `(market_id, model, moment_min)` que ya existían
+en Railway se conserva la captura de Railway (de ahí sale su cursor de captura); el resto se
+copia del Mac. Números del Mac desplazados: `run_id − 10⁹`, `prediction_id` y
+`valuation_id − 10¹²`.
+
+| | Antes en Railway | Copiado del Mac | Después |
+|---|---:|---:|---:|
+| Instancias `forward-v1` | 10.250 | 34.827 | 45.077 |
+| Posiciones de papel | 2 | 11 | 13 |
+
+El scheduler, la API y el dashboard del Mac quedaron detenidos y desactivados; la base local
+queda como respaldo.
+
+Primera evaluación con el historial unido (corrida #68, 13:52 UTC): coincide con la última
+del Mac en todos los pares salvo:
+- `hourly_above`: 4.428 → 4.500 instancias (Railway siguió capturando después de que el Mac paró).
+- `hourly_updown`: 1.301 → 1.247 en bootstrap, ewma y rv, y 434 → 416 en dvol. En el tramo
+  en que corrieron los dos, las 426 claves comunes salen de 258 predicciones distintas en
+  Railway contra 336 en el Mac. Railway predice a :17/:47 y el Mac a :23/:53, y una predicción
+  que sirve a dos momentos cuenta una vez (regla preregistrada).
+- Con esa muestra, `cripto-bootstrap|hourly_updown` pasa de "validado" a "no validado".
+  `supera_mercado` sigue en falso en los dos casos, así que no cambia ninguna señal.
+- No se cambió la regla de duplicados después de ver este resultado.
+
+Pruebas: 183 correctas y 2 omitidas (las en vivo).
