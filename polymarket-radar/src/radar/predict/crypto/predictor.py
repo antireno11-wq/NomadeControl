@@ -79,6 +79,8 @@ class CryptoEvidence:
 
     candles: dict[str, Candles]
     dvol: dict[str, DvolSeries] = field(default_factory=dict)
+    # Fotos de opciones de Deribit por activo (``cripto2-opciones``; solo en vivo).
+    options: dict[str, Any] = field(default_factory=dict)
 
     def candles_until(self, symbol: str, as_of: datetime) -> Candles | None:
         c = self.candles.get(symbol)

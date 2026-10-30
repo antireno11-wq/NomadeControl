@@ -145,7 +145,7 @@ def test_live_run_values_each_batch_against_fresh_books(
     refreshed: list[datetime] = []
 
     class FakeLoader:
-        def __init__(self, _settings: Any) -> None:
+        def __init__(self, _settings: Any, **_k: Any) -> None:
             pass
 
         def load(self, *_a: Any, **_k: Any) -> CryptoEvidence:
@@ -209,7 +209,13 @@ def test_live_run_values_each_batch_against_fresh_books(
     ids = {k: FIX["markets"][k]["id"] for k in KEYS}
     assert {v.market_id for v in vals} == {ids["hourly_above"], ids["hourly_updown"],
                                            ids["touch_month"]}  # fmt: skip
-    assert len(preds) == 3 * 4 and all(v.book_age_s < 1 for v in vals)
+    v1 = [p for p in preds if p.model_version == "crypto-models-v1"]
+    assert len(v1) == 3 * 4 and all(v.book_age_s < 1 for v in vals)
+    # v2 corre en paralelo (sin valorar): opciones y mezcla siempre; vol si hay parámetros v2
+    v2 = {p.model for p in preds if p.model_version == "crypto-models-v2"}
+    assert {"cripto2-opciones", "cripto2-mezcla"} <= v2
+    assert all(by.model_version == "crypto-models-v1" for by in preds
+               if by.id in {v.prediction_id for v in vals})  # fmt: skip
     # Cada tanda predice en su propio as_of, no en el de inicio de la corrida.
     as_of = {p.market_id: p.as_of for p in preds}
     assert as_of[ids["hourly_above"]] < T0 + timedelta(minutes=1)

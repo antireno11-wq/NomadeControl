@@ -528,6 +528,8 @@ class ForwardInstance(Base):
     p_market: Mapped[float | None] = mapped_column(Float)  # punto medio del libro (CLOB)
     y: Mapped[float | None] = mapped_column(Float)
     resolved_at: Mapped[datetime | None] = mapped_column(TS)
+    # Variables del libro de cripto2-mezcla (fase B de docs/PREREGISTRO_CRIPTO_V2.md).
+    features: Mapped[dict[str, Any] | None] = mapped_column(JSONType)
 
     __table_args__ = (
         UniqueConstraint("market_id", "model", "moment_min", name="uq_forward_market_model_moment"),

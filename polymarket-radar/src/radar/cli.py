@@ -287,6 +287,19 @@ def cmd_predict(args: argparse.Namespace) -> int:
         meta = service.collect_crypto_dataset(settings, start, end)
         print(json.dumps(meta, indent=2, ensure_ascii=False, default=str))
         return 0
+    if args.predict_command == "backtest-v2":
+        report = service.run_crypto_backtest_v2(
+            settings, out_dir=Path(args.out), evaluate_test=args.prueba
+        )
+        print(
+            json.dumps(
+                {k: report[k] for k in ("version", "counts", "params_v2_sha256")}
+                | {"params_v2": report["params_v2"]},
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
     engine = get_engine(settings.database_url)
     if args.predict_command == "backtest":
         run_id = service.start_run(engine, "backtest")
@@ -370,6 +383,8 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--start", default="2026-05-01")
     c.add_argument("--end", default="2026-10-26")
     psub.add_parser("backtest", help="ajuste, validación y prueba de los modelos cripto")
+    b2 = psub.add_parser("backtest-v2", help="ajuste de cripto2-vol (PREREGISTRO_CRIPTO_V2)")
+    b2.add_argument("--prueba", action="store_true", help="mide la partición de prueba (una vez)")
     lv = psub.add_parser("live", help="predice y valora los mercados abiertos")
     lv.add_argument("--max-markets", type=int, default=None)
     psub.add_parser(

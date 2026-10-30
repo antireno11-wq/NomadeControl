@@ -97,7 +97,7 @@ def capture(engine: Any, run_ids: list[int] | None = None) -> dict[str, int]:
         select p.id, p.run_id, p.market_id, p.model, p.family, p.outcome, p.as_of,
                p.probability, p.details->'terms'->>'variant' as variant,
                p.details->'terms'->>'asset' as asset, (p.details->>'tau_min')::float as tau,
-               v.p_market_mid
+               p.details->'features' as features, v.p_market_mid
         from predictions p
         left join valuations v
           on v.run_id = p.run_id and v.market_id = p.market_id and v.outcome = p.outcome
@@ -131,11 +131,12 @@ def capture(engine: Any, run_ids: list[int] | None = None) -> dict[str, int]:
                         "cluster": f"{r['asset']}|{day}",
                         "p_model": r["probability"],
                         "p_market": r["p_market_mid"],
+                        "features": r["features"],
                     }
         if not rows:
             continue
         stmt = insert(ForwardInstance).values(list(rows.values()))
-        cols = ("gap_min", "prediction_id", "run_id", "as_of", "p_model", "p_market")
+        cols = ("gap_min", "prediction_id", "run_id", "as_of", "p_model", "p_market", "features")
         stmt = stmt.on_conflict_do_update(
             constraint="uq_forward_market_model_moment",
             set_={c: stmt.excluded[c] for c in cols},
@@ -635,5 +636,81 @@ def update(settings: Settings, engine: Any, *, n_boot: int = 500) -> dict[str, A
     out["resolucion"] = resolve(engine, settings)
     ev = evaluate(engine, n_boot=n_boot)
     out["evaluacion"] = {"run_id": ev["run_id"], "instancias": ev["instancias"]}
+    try:  # v2 corre en paralelo: un error suyo no detiene forward-v1
+        cmp = compare_v2(settings, engine, n_boot=n_boot)
+        out["comparacion_v2"] = {"run_id": cmp["run_id"], "pares": len(cmp["pares"])}
+    except Exception as exc:
+        log.exception("compare_v2_failed")
+        out["comparacion_v2"] = {"error": repr(exc)}
     out["segundos"] = round((datetime.now(UTC) - started).total_seconds(), 1)
     return out
+
+
+# ------------------------------------------------------------- 5. v2 contra v1 (crypto-eval-v2)
+
+V2_MODELS = ("cripto2-vol", "cripto2-opciones", "cripto2-mezcla")
+EVAL_V2_VERSION = "crypto-eval-v2"
+
+
+def compare_v2(settings: Settings, engine: Any, *, n_boot: int = 500) -> dict[str, Any]:
+    """Diferencia de log loss pareada (mismo mercado y momento) de cada modelo v2 contra la
+    referencia v1 de su variante y contra el mercado (``docs/PREREGISTRO_CRIPTO_V2.md``)."""
+    import json
+
+    from sqlalchemy import select
+
+    from radar.db.models import ForwardInstance
+    from radar.predict.service import calibration_path, finish_run, start_run
+
+    path = calibration_path(settings)
+    reference = (json.loads(path.read_text()) if path.exists() else {}).get(
+        "reference_by_variant"
+    ) or {}
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(
+                ForwardInstance.prediction_id, ForwardInstance.market_id, ForwardInstance.model,
+                ForwardInstance.variant, ForwardInstance.moment_min, ForwardInstance.p_model,
+                ForwardInstance.p_market, ForwardInstance.y, ForwardInstance.cluster,
+            )
+            .where(ForwardInstance.y.is_not(None), ForwardInstance.family == "cripto")
+            .order_by(ForwardInstance.prediction_id, ForwardInstance.moment_min)
+        ).all()  # fmt: skip
+    by_key = {(r.market_id, r.moment_min, r.model): r for r in rows}
+    seen: set[int] = set()
+    groups: dict[tuple[str, str], list[tuple[Any, Any]]] = defaultdict(list)
+    for r in rows:
+        if r.model not in V2_MODELS or r.prediction_id in seen:
+            continue
+        seen.add(r.prediction_id)
+        ref = by_key.get((r.market_id, r.moment_min, f"cripto-{reference.get(r.variant) or 'rv'}"))
+        groups[(r.model, r.variant)].append((r, ref))
+    out: dict[str, Any] = {}
+    for (model, variant), pairs in sorted(groups.items()):
+        res: dict[str, Any] = {
+            "n": len(pairs),
+            "referencia_v1": f"cripto-{reference.get(variant) or 'rv'}",
+        }
+        both = [(a, b) for a, b in pairs if b is not None]
+        if len(both) >= MIN_VS_MARKET:
+            y = np.array([a.y for a, _ in both], dtype=float)
+            d = MX.paired_diff(np.array([a.p_model for a, _ in both], dtype=float),
+                               np.array([b.p_model for _, b in both], dtype=float), y,
+                               [a.cluster for a, _ in both], n_boot=n_boot)  # fmt: skip
+            res["vs_v1"] = {"n": len(both), "conglomerados": len({a.cluster for a, _ in both}),
+                            "log_loss_diff": d}  # fmt: skip
+            res["supera_v1"] = bool(d["hi"] < 0)
+            res["peor_que_v1"] = bool(d["lo"] > 0)
+        mk = [a for a, _ in pairs if a.p_market is not None]
+        if len(mk) >= MIN_VS_MARKET:
+            d = MX.paired_diff(np.array([a.p_model for a in mk], dtype=float),
+                               np.array([a.p_market for a in mk], dtype=float),
+                               np.array([a.y for a in mk], dtype=float),
+                               [a.cluster for a in mk], n_boot=n_boot)  # fmt: skip
+            res["vs_mercado"] = {"n": len(mk), "log_loss_diff": d}
+            res["supera_mercado"] = bool(d["hi"] < 0)
+        out[f"{model}|{variant}"] = res
+    run_id = start_run(engine, "forward-v2")
+    summary = {"version": EVAL_V2_VERSION, "pares": out}
+    finish_run(engine, run_id, "success", summary)
+    return {"run_id": run_id, **summary}

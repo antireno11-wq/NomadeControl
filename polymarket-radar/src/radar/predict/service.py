@@ -95,11 +95,19 @@ class EvidenceLoader:
     y vuelve a pedir el DVOL cuando cerró una hora nueva.
     """
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, *, options: bool = False) -> None:
         self.binance = make_binance(data_dir(settings) / "raw" / "binance", user_agent=RESEARCH_UA)
         self.deribit = make_deribit(data_dir(settings) / "raw" / "deribit", user_agent=RESEARCH_UA)
         self._start: datetime | None = None
         self._dvol_hour: datetime | None = None
+        # Fotos de opciones (cripto2-opciones): solo en vivo, cada OPTIONS_REFRESH.
+        self._options_client: Any = None
+        if options:
+            from radar.predict.crypto.options import make_options
+
+            self._options_client = make_options(user_agent=RESEARCH_UA)
+        self._options_at: datetime | None = None
+        self._options: dict[str, Any] = {}
 
     def load(
         self, symbols: set[str], start: datetime, end: datetime, *, now: datetime | None = None
@@ -112,7 +120,24 @@ class EvidenceLoader:
                      gaps=candles[sym].coverage_gaps())  # fmt: skip
         self._start = start
         self._dvol_hour = _hour(min(end, now or utcnow()))
-        return CryptoEvidence(candles=candles, dvol=self._load_dvol(symbols, start, end, now))
+        return CryptoEvidence(
+            candles=candles,
+            dvol=self._load_dvol(symbols, start, end, now),
+            options=self._load_options(now or utcnow()),
+        )
+
+    def _load_options(self, now: datetime) -> dict[str, Any]:
+        from radar.predict.crypto.options import REFRESH
+
+        if self._options_client is None:
+            return {}
+        if self._options_at is None or now - self._options_at >= REFRESH:
+            try:
+                self._options = self._options_client.snapshot()
+            except Exception as exc:  # la foto vieja se descarta sola por antigüedad
+                log.warning("options_snapshot_failed", error=repr(exc))
+            self._options_at = now
+        return self._options
 
     def _load_dvol(
         self, symbols: set[str], start: datetime, end: datetime, now: datetime | None
@@ -135,7 +160,7 @@ class EvidenceLoader:
         if self._start is not None and (self._dvol_hour is None or _hour(now) > self._dvol_hour):
             dvol = self._load_dvol(set(candles), self._start, now, now)
             self._dvol_hour = _hour(now)
-        return CryptoEvidence(candles=candles, dvol=dvol)
+        return CryptoEvidence(candles=candles, dvol=dvol, options=self._load_options(now))
 
 
 def _hour(t: datetime) -> datetime:
@@ -217,6 +242,62 @@ def run_crypto_backtest(
     from radar.predict.report import crypto_backtest_markdown
 
     (out / "backtest_cripto.md").write_text(crypto_backtest_markdown(report), encoding="utf-8")
+    return report
+
+
+def params_v2_path(settings: Settings) -> Path:
+    return models_dir(settings) / "crypto_params_v2.json"
+
+
+def load_params_v2(settings: Settings) -> Any:
+    from radar.predict.crypto.v2 import CryptoV2Params
+
+    path = params_v2_path(settings)
+    return CryptoV2Params.load(path) if path.exists() else None
+
+
+def run_crypto_backtest_v2(
+    settings: Settings, *, out_dir: Path | None = None, evaluate_test: bool = False
+) -> dict[str, Any]:
+    """Ajusta ``cripto2-vol`` y, con ``evaluate_test``, mide la prueba **una sola vez**."""
+    import hashlib
+
+    from radar.predict.crypto.backtest_v2 import markdown, run_backtest_v2
+
+    out = out_dir or PROJECT_ROOT / "reports"
+    report_path = out / "backtest_cripto_v2.json"
+    if evaluate_test and report_path.exists():
+        prev = json.loads(report_path.read_text())
+        if prev.get("prueba") is not None:
+            raise RuntimeError(
+                "la prueba de v2 ya se midió (reports/backtest_cripto_v2.json): el preregistro "
+                "permite medirla una sola vez"
+            )
+    ds_path = dataset_path(settings)
+    ds = load_dataset(ds_path)
+    records = ds["markets"]
+    symbols = {r["terms"]["symbol"] for r in records}
+    first = min(datetime.fromisoformat(a) for r in records for a in r.get("as_of") or [])
+    last = max(datetime.fromisoformat(r["end_date"]) for r in records if r.get("end_date"))
+    evidence = load_evidence(
+        settings, symbols, first - timedelta(days=31), last + timedelta(days=8)
+    )
+    calib = json.loads(calibration_path(settings).read_text())
+    reference = calib.get("reference_by_variant") or {}
+    report, v2 = run_backtest_v2(
+        records, evidence, load_params(settings), reference, evaluate_test=evaluate_test
+    )
+    prereg = PROJECT_ROOT / "docs" / "PREREGISTRO_CRIPTO_V2.md"
+    report["preregistro"] = {
+        "path": "docs/PREREGISTRO_CRIPTO_V2.md",
+        "sha256": hashlib.sha256(prereg.read_bytes()).hexdigest(),
+    }
+    report["dataset_sha256"] = dataset_sha256(ds_path)
+    models_dir(settings).mkdir(parents=True, exist_ok=True)
+    params_v2_path(settings).write_text(json.dumps(v2.to_dict(), indent=1, sort_keys=True))
+    out.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=1, ensure_ascii=False, default=str))
+    (out / "backtest_cripto_v2.md").write_text(markdown(report), encoding="utf-8")
     return report
 
 
@@ -472,6 +553,7 @@ def predict_live(
     beats = calib_doc.get("supera_mercado") or {}
     reference = calib_doc.get("reference_by_variant") or {}
     registry = default_registry(params, calib)
+    v2_models = v2_predictors(settings, params, calib)  # en paralelo, sin valorar ni apostar
     from radar.predict.forward import enabled_pairs, open_positions, suspended_pairs
 
     suspended = suspended_pairs(engine)  # forward-v1: solo puede quitar señales
@@ -511,8 +593,9 @@ def predict_live(
         summary["crypto"]["no_interpretables"] = dict(unsupported.most_common())
         summary["crypto"]["interpretables"] = len(crypto)
         symbols = {t.symbol for _, t in crypto}
-        loader = EvidenceLoader(settings)
+        loader = EvidenceLoader(settings, options=True)
         evidence = loader.load(symbols, started - timedelta(days=31), started, now=started)
+        prev_mids = previous_mids(engine, run_id)
         books_n: Counter[str] = Counter(pedidos=0, recibidos=0, faltantes=0, fallidos=0)
         closed: Counter[str] = Counter(antes_de_pedir_libro=0, antes_de_recibir_libro=0)
         recs: Counter[str] = Counter()
@@ -551,6 +634,7 @@ def predict_live(
                     preds = {
                         p.name: p.predict_terms(mv, t, evidence, as_of) for p in registry.crypto
                     }
+                    preds |= predict_v2(v2_models, mv, t, evidence, as_of, books, prev_mids)
                     n_pred += len(preds)
                     for name, pr in preds.items():
                         if pr.probability is None:
@@ -609,6 +693,73 @@ def predict_live(
         raise
     summary["run_id"] = run_id
     return summary
+
+
+def v2_predictors(settings: Settings, params: CryptoParams, calib: CalibrationRegistry) -> list:
+    """Modelos v2 (``docs/PREREGISTRO_CRIPTO_V2.md``): se guardan y evalúan, no se valoran."""
+    from radar.predict.crypto.options import OptionsPredictor
+    from radar.predict.crypto.v2 import VolV2Predictor
+
+    out: list[Any] = [OptionsPredictor(params, calib)]
+    params_v2 = load_params_v2(settings)
+    if params_v2 is not None:
+        out.insert(0, VolV2Predictor(params, params_v2, calib))
+    return out
+
+
+def predict_v2(
+    models: list[Any],
+    mv: Any,
+    terms: Any,
+    evidence: CryptoEvidence,
+    as_of: datetime,
+    books: dict[str, Any],
+    prev_mids: dict[tuple[str, str], tuple[float, datetime]],
+) -> dict[str, Any]:
+    """Predicciones v2 de un mercado. Un error de v2 nunca detiene la corrida de v1."""
+    from radar.predict.base import abstain
+    from radar.predict.crypto.mezcla import MEZCLA_NAME, mezcla_prediction
+    from radar.predict.crypto.v2 import MODELS_V2_VERSION
+
+    def failed(name: str, exc: Exception) -> Any:
+        log.warning("v2_prediction_failed", model=name, market_id=mv.market_id, error=repr(exc))
+        reason = f"error interno de v2: {exc!r}"[:300]
+        return abstain(mv, model=name, version=MODELS_V2_VERSION, family="cripto", as_of=as_of,
+                       reason=reason, outcome=terms.yes_outcome)  # fmt: skip
+
+    out: dict[str, Any] = {}
+    for m in models:
+        try:
+            out[m.name] = m.predict_terms(mv, terms, evidence, as_of)
+        except Exception as exc:
+            out[m.name] = failed(m.name, exc)
+    try:
+        idx = mv.outcomes.index(terms.yes_outcome)
+        tok = mv.token_ids[idx] if idx < len(mv.token_ids) else None
+        out[MEZCLA_NAME] = mezcla_prediction(
+            mv, terms, out, books.get(tok) if tok else None,
+            prev_mids.get((mv.market_id, terms.yes_outcome)), as_of,
+        )  # fmt: skip
+    except Exception as exc:
+        out[MEZCLA_NAME] = failed(MEZCLA_NAME, exc)
+    return out
+
+
+def previous_mids(engine: Any, run_id: int) -> dict[tuple[str, str], tuple[float, datetime]]:
+    """Punto medio de cada resultado cripto en la corrida en vivo exitosa anterior."""
+    from sqlalchemy import text
+
+    q = text(
+        """
+        select market_id, outcome, p_market_mid, as_of from valuations
+        where run_id = (select max(id) from prediction_runs
+                        where kind = 'live' and status = 'success' and id < :r)
+          and category = 'crypto' and p_market_mid is not null
+        """
+    )
+    with engine.connect() as conn:
+        return {(r.market_id, r.outcome): (float(r.p_market_mid), r.as_of)
+                for r in conn.execute(q, {"r": run_id})}  # fmt: skip
 
 
 def _run_external(

@@ -102,6 +102,7 @@ externa del ledger en vivo antes de cada cierre.
 | Evaluación preregistrada fuera de muestra | ✅ | `docs/PREREGISTRO_CRIPTO.md`, `reports/backtest_cripto.md`. 26-oct: 25.895 mercados, 22 de 36 pares validados y 13 que superan al mercado; repetida con métricas idénticas (`docs/EVIDENCE.md` §9.3) |
 | Elecciones vía la misma interfaz | ✅ | adaptador `elecciones-2t` |
 | Deportes (NBA, NFL, NHL, MLB, fútbol) y Fed | 🟡 | referencia de Kalshi sin margen (`ref-kalshi-v1`), en observación hasta pasar la evaluación en vivo (`docs/EVIDENCE.md` §11.2) |
+| Modelos cripto v2 en paralelo, sin apostar (`crypto-models-v2`) | 🟡 | `docs/PREREGISTRO_CRIPTO_V2.md` (commit f4db524, antes de programar). `cripto2-vol` (hora de Nueva York, eventos IPC/empleo/Fed, colas t, recalibración): prueba medida una vez el 30-oct (`reports/backtest_cripto_v2.md`): mejor que v1 y que el mercado en `daily_above` y `daily_range`, peor que v1 en `touch_range`. `cripto2-opciones` (Deribit) y `cripto2-mezcla` (libro de Polymarket) solo en vivo; pesos ajustados de la mezcla pendientes para el 16-nov. Reemplazo de v1: dos evaluaciones en vivo separadas 7 días (`radar.predict.forward.compare_v2`) |
 | Corporativo, clima, política, otras ligas | ⬜ | se abstienen; candidatos: clima (pronósticos por conjuntos) y Tesoro (motor de toque) |
 
 ## Hito 5 — Valoración ✅ (`valuation-v1`)
