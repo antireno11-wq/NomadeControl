@@ -19,6 +19,7 @@ export const ENABLED_MODULES = {
   vehiculos:      true,    // /vehiculos — flota completa
   biblioteca:     false,   // /biblioteca — documentos compartidos
   ddd:            true,    // /compromisos y /reuniones — Diálogo de Desempeño
+  requerimientos: true,    // /requerimientos — solicitudes de cargo y reclutamiento
   administracion: true,    // /administracion — CRUD de camps, usuarios, proyectos
 } as const;
 
@@ -45,6 +46,10 @@ export const ALL_MODULES = [
   { key: "vehiculos",    label: "Vehículos",             description: "Control vehicular" },
   { key: "biblioteca",   label: "Biblioteca",            description: "Documentos y recursos" },
   { key: "ddd",          label: "Compromisos y minutas", description: "Diálogo de Desempeño: reuniones, compromisos y minutas" },
+  // Dos casillas para un mismo módulo: una para pedir cargos y otra para
+  // reclutar. Quien pide ve solo lo suyo; RRHH ve todo y mueve los estados.
+  { key: "requerimientos", label: "Requerimientos de personal", description: "Pedir cargos y seguir sus postulantes" },
+  { key: "reclutamiento",  label: "Reclutamiento (RRHH)",       description: "Ver todas las solicitudes, cargar postulantes y cambiar estados" },
 ] as const;
 
 /**

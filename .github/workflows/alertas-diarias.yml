@@ -51,6 +51,8 @@ jobs:
             endpoint: document-alerts
           - nombre: Compromisos por cerrar
             endpoint: compromiso-alerts
+          - nombre: Requerimientos de personal a 7 días
+            endpoint: requerimiento-alerts
     name: ${{ matrix.nombre }}
     steps:
       - name: Barrer

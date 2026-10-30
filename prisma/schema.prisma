@@ -45,6 +45,7 @@ model User {
   matricesRiesgo        MatrizRiesgo[]      @relation("MatrizResponsable")
   eppEntregados         EntregaEPP[]        @relation("EPPEntregador")
   cursosCreados         Curso[]             @relation("CursoCreador")
+  requerimientos        Requerimiento[]     @relation("RequerimientoSolicitante")
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 }
@@ -360,6 +361,8 @@ model StaffMember {
   continuidad           String?
   /// Trabajó antes en una faena del mandante. Activa el finiquito previo.
   trabajoPrevioMandante Boolean              @default(false)
+  /// Postulación de la que salió, si entró por Requerimientos de personal.
+  postulaciones         Postulante[]
 
   @@index([campId, isActive])
   @@index([proyectoId, cargoId])
@@ -406,6 +409,7 @@ model Proyecto {
   Amenaza            Amenaza[]
   TrabajadorProyecto TrabajadorProyecto[]
   informesAvance     InformeAvance[]
+  requerimientos     Requerimiento[]
 
   @@unique([mandanteId, nombre])
 }
@@ -423,6 +427,7 @@ model Cargo {
   requisitos         RequisitoDocumento[]
   trabajadores       StaffMember[]
   TrabajadorProyecto TrabajadorProyecto[]
+  requerimientos     Requerimiento[]
 }
 
 /// Qué documento exige un proyecto a un cargo.
@@ -626,6 +631,7 @@ model ArchivoAcreditacion {
   DocumentoEmpresa   DocumentoEmpresa[]
   fotosChecklist     ChecklistFoto[]
   documentosVehiculo VehicleDocument[]
+  cvPostulantes      Postulante[]
 
   @@index([hash])
 }
@@ -1536,4 +1542,137 @@ model KpiRegistro {
 
   @@unique([kpiDefinicionId, fecha])
   @@index([fecha])
+}
+
+// ─── Requerimientos de personal ──────────────────────────────────────────────
+
+/// Solicitud de cargo: un líder de proyecto pide N personas para un cargo en
+/// un proyecto, y RRHH recluta hasta cubrirlas.
+model Requerimiento {
+  id                String    @id @default(cuid())
+  /// Correlativo visible (REQ-0001). Lo asigna la base y no el código: dos
+  /// solicitudes creadas en el mismo segundo no pueden llevarse el mismo
+  /// número.
+  numero            Int       @unique @default(autoincrement())
+  cargoId           String
+  cargo             Cargo     @relation(fields: [cargoId], references: [id], onDelete: Restrict)
+  vacantes          Int
+  proyectoId        String
+  proyecto          Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Restrict)
+  fechaRequerida    DateTime
+  /// Puede quedar vacío si se borra el usuario; el nombre se conserva igual.
+  solicitanteId     String?
+  solicitante       User?     @relation("RequerimientoSolicitante", fields: [solicitanteId], references: [id], onDelete: SetNull)
+  solicitanteNombre String
+  /// 7x7 | 10x10 | 14x14 | 5x2 | lo que se escriba en «Otro»
+  turno             String
+  requisitos        String?
+  /// alta | media | baja
+  prioridad         String    @default("media")
+  /// solicitado | reclutamiento | entrevistas | seleccionado | examenes
+  /// | contratado | cerrado | desistido
+  estado            String    @default("solicitado")
+  /// Obligatorio al desistir, y al cerrar con vacantes sin cubrir.
+  motivoCierre      String?
+  observaciones     String?
+  /// Cuándo se cubrió la última vacante. De acá sale el tiempo de contratación.
+  contratadoEn      DateTime?
+  cerradoEn         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  postulantes Postulante[]
+  comentarios RequerimientoComentario[]
+  eventos     RequerimientoEvento[]
+  alertas     AlertaRequerimiento[]
+
+  @@index([estado, fechaRequerida])
+  @@index([solicitanteId, estado])
+}
+
+/// Una persona en una solicitud. Si postula a dos cargos son dos filas; la
+/// pantalla avisa del cruce por RUT.
+model Postulante {
+  id                String               @id @default(cuid())
+  requerimientoId   String
+  requerimiento     Requerimiento        @relation(fields: [requerimientoId], references: [id], onDelete: Cascade)
+  nombre            String
+  /// Formateado (12.345.678-9) cuando es RUT; tal cual si es pasaporte.
+  rut               String
+  telefono          String?
+  email             String?
+  cvArchivoId       String?
+  cvArchivo         ArchivoAcreditacion? @relation(fields: [cvArchivoId], references: [id], onDelete: SetNull)
+  fechaPostulacion  DateTime             @default(now())
+  /// postulado | preseleccionado | entrevistado | aprobado | examenes
+  /// | contratado | descartado
+  estado            String               @default("postulado")
+  motivoDescarte    String?
+  /// La aprobación del solicitante. Se conserva aunque el postulante siga
+  /// avanzando: es lo que habilita exámenes y contrato.
+  aprobadoEn        DateTime?
+  aprobadoPorNombre String?
+  contratadoEn      DateTime?
+  /// Ficha de trabajador creada (o encontrada) al contratarlo.
+  staffMemberId     String?
+  staffMember       StaffMember?         @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
+  cargadoPorNombre  String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  comentarios RequerimientoComentario[]
+  eventos     RequerimientoEvento[]
+
+  @@unique([requerimientoId, rut])
+  @@index([rut])
+}
+
+/// Conversación entre solicitante y RRHH. No se edita ni se borra.
+model RequerimientoComentario {
+  id              String        @id @default(cuid())
+  requerimientoId String
+  requerimiento   Requerimiento @relation(fields: [requerimientoId], references: [id], onDelete: Cascade)
+  /// Vacío = comentario de la solicitud.
+  postulanteId    String?
+  postulante      Postulante?   @relation(fields: [postulanteId], references: [id], onDelete: SetNull)
+  texto           String
+  autorId         String?
+  autorNombre     String
+  createdAt       DateTime      @default(now())
+
+  @@index([requerimientoId, createdAt])
+}
+
+/// Historial de la solicitud. Cada cambio deja una fila y ninguna se
+/// modifica: es lo que responde "quién lo movió y cuándo".
+model RequerimientoEvento {
+  id              String        @id @default(cuid())
+  requerimientoId String
+  requerimiento   Requerimiento @relation(fields: [requerimientoId], references: [id], onDelete: Cascade)
+  postulanteId    String?
+  postulante      Postulante?   @relation(fields: [postulanteId], references: [id], onDelete: SetNull)
+  /// creacion | estado | edicion | postulante | cv | ficha | alerta
+  tipo            String
+  estadoAnterior  String?
+  estadoNuevo     String?
+  detalle         String?
+  autorId         String?
+  /// "Automático" cuando el cambio lo hizo la plataforma.
+  autorNombre     String
+  createdAt       DateTime      @default(now())
+
+  @@index([requerimientoId, createdAt])
+}
+
+/// Alerta de 7 días ya enviada. Si la fecha requerida cambia, el aviso
+/// vuelve a correr: es un plazo nuevo.
+model AlertaRequerimiento {
+  id              String        @id @default(cuid())
+  requerimientoId String
+  requerimiento   Requerimiento @relation(fields: [requerimientoId], references: [id], onDelete: Cascade)
+  fechaRequerida  DateTime
+  recipients      String
+  sentAt          DateTime      @default(now())
+
+  @@unique([requerimientoId, fechaRequerida])
 }

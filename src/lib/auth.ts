@@ -126,6 +126,32 @@ export async function requireDdd() {
   return user;
 }
 
+/**
+ * Requerimientos de personal. Por defecto solo administración; al resto se le
+ * marca en su usuario el módulo para pedir cargos o el de RRHH.
+ */
+export function canAccessRequerimientos(role: string) {
+  return isAdminRole(role);
+}
+
+/**
+ * Puerta de Requerimientos de personal, con el perfil de quien entra.
+ *
+ * - Gerencia (administrador): ve y edita todo.
+ * - RRHH (módulo "reclutamiento"): ve todo, carga postulantes, mueve estados.
+ * - Solicitante (módulo "requerimientos"): pide cargos y ve solo los suyos.
+ */
+export async function requireRequerimientos() {
+  const user = await requireRole(TRABAJADORES_ROLES);
+  const permisos = parseModulePermissions((user as { modulePermissions?: unknown }).modulePermissions);
+  const gerencia = isAdminRole(user.role);
+  const rrhh = permisos.includes("reclutamiento");
+  if (!gerencia && !rrhh && !permisos.includes("requerimientos")) {
+    redirect("/?moduloDeshabilitado=requerimientos");
+  }
+  return { user, gerencia, rrhh, gestiona: gerencia || rrhh };
+}
+
 export function canAccessAdministration(role: string) {
   return normalizeRole(role) === "ADMINISTRADOR";
 }

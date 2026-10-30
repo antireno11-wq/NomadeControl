@@ -494,6 +494,72 @@ export async function sendCompromisosAtrasadosEmail(
   }
 }
 
+// ─── Requerimientos de personal ──────────────────────────────────────────────
+
+type SendRequerimientoEmailInput = {
+  to: string[];
+  asunto: string;
+  titulo: string;
+  /** Una línea por cosa que pasó: "Ana Cifuentes fue aprobada". */
+  novedades: string[];
+  /** Ficha corta de la solicitud: [etiqueta, valor]. */
+  ficha: Array<[string, string]>;
+  /** Ruta interna, p. ej. `/requerimientos/abc`. */
+  ruta: string;
+};
+
+/**
+ * Aviso de Requerimientos de personal. Un solo formato para todos los
+ * eventos: si una misma acción produce dos novedades (llegó un postulante y
+ * por eso la solicitud pasó a reclutamiento), salen en un correo, no en dos.
+ *
+ * Devuelve si se pudo mandar, igual que el de compromisos: quien llama
+ * decide si un fallo se informa o se registra.
+ */
+export async function sendRequerimientoEmail(
+  input: SendRequerimientoEmailInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL;
+  if (!apiKey || !from) return { ok: false, error: "Falta RESEND_API_KEY o RESEND_FROM_EMAIL" };
+  if (input.to.length === 0) return { ok: false, error: "Sin destinatarios" };
+
+  const url = appUrl();
+  const filas = input.ficha.map(([k, v]) => `<tr>
+      <td style="padding:6px 10px;color:#64748b;white-space:nowrap;vertical-align:top">${escaparHtml(k)}</td>
+      <td style="padding:6px 10px;color:#0f172a;font-weight:600">${escaparHtml(v)}</td>
+    </tr>`).join("");
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#0f172a">
+      <h2 style="margin:0 0 12px;color:#006878">${escaparHtml(input.titulo)}</h2>
+      <ul style="margin:0 0 18px;padding-left:20px;line-height:1.6">
+        ${input.novedades.map(n => `<li>${escaparHtml(n)}</li>`).join("")}
+      </ul>
+      <table style="border-collapse:collapse;font-size:0.9rem;background:#f8fafc;border-radius:8px">${filas}</table>
+      <a href="${url}${input.ruta}" style="display:inline-block;margin-top:20px;padding:10px 24px;background:#006878;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+        Abrir la solicitud
+      </a>
+      <p style="color:#94a3b8;font-size:0.75rem;margin-top:24px">
+        Aviso automático de Requerimientos de personal.<br>
+        NomadeControl — control.nomadechile.cl
+      </p>
+    </div>
+  `;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: input.to, subject: input.asunto, html }),
+    });
+    if (!res.ok) return { ok: false, error: `Resend respondió ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error de red" };
+  }
+}
+
 // ─── Ranking semanal de pendientes atrasados ─────────────────────────────────
 
 export type FilaRanking = {

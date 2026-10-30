@@ -6,13 +6,13 @@ import { NotificationBell } from "@/components/notification-bell";
 import {
   canAccessAdministration, canAccessBiblioteca,
   canAccessDashboard, canAccessHSEC,
-  canAccessDdd, canAccessVehicles, canViewTareas,
+  canAccessDdd, canAccessRequerimientos, canAccessVehicles, canViewTareas,
   canAccessTrabajadores, isVehicleOnlyRole, canAccessModule, parseModulePermissions
 } from "@/lib/auth";
 import { ENABLED_MODULES } from "@/lib/modules-config";
 import { NavMenu, type NavEntry } from "@/components/nav-menu";
 
-type ShellNavKey = "compromisos" | "reuniones" | "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
+type ShellNavKey = "compromisos" | "requerimientos" | "reuniones" | "dashboard" | "resumen" | "trabajadores" | "vehiculos" | "carga" | "tareas" | "biblioteca" | "gestion-tareas" | "evaluaciones" | "hsec" | "administracion" | "operaciones" | null;
 
 type NotificationItem = {
   text: string;
@@ -49,6 +49,8 @@ export function AppShell({
   const canSeeTareasBasic  = mod("tareas",        canViewTareas);
   const canSeeHSEC         = mod("hsec",          canAccessHSEC);
   const canSeeDdd          = mod("ddd",           canAccessDdd);
+  // RRHH entra con su propia casilla, aunque no tenga la de pedir cargos.
+  const canSeeReq          = mod("requerimientos", canAccessRequerimientos) || mods.includes("reclutamiento");
   const isOfficeRole = user.role === "OFICINA" || user.role === "COLABORADOR";
 
   const opcionesActivas = ["resumen", "carga", "tareas", "operaciones"] as ShellNavKey[];
@@ -95,6 +97,14 @@ export function AppShell({
       label: "Compromisos",
       navKey: "compromisos",
       active: activeNav === "compromisos" || activeNav === "reuniones",
+    }] : []),
+
+    ...(ENABLED_MODULES.requerimientos && canSeeReq ? [{
+      type: "link" as const,
+      href: "/requerimientos",
+      label: "Requerimientos",
+      navKey: "requerimientos",
+      active: activeNav === "requerimientos",
     }] : []),
 
     ...(ENABLED_MODULES.hsec && canSeeHSEC ? [{

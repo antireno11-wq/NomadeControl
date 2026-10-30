@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentUser, canAccessDashboard, canAccessCampOperations, canAccessVehicles, canAccessBiblioteca, canViewTareas, canAccessAdministration, canAccessTrabajadores } from "@/lib/auth";
+import { getCurrentUser, canAccessDashboard, canAccessCampOperations, canAccessVehicles, canAccessBiblioteca, canViewTareas, canAccessAdministration, canAccessTrabajadores, isAdminRole, normalizeRole, parseModulePermissions } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
 import { redirect } from "next/navigation";
 import { ENABLED_MODULES } from "@/lib/modules-config";
@@ -28,6 +28,10 @@ export default async function HomePage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  const permisos = parseModulePermissions(user.modulePermissions);
+  const veRequerimientos = isAdminRole(user.role) || (normalizeRole(user.role) === "OPERATIVO"
+    && (permisos.includes("requerimientos") || permisos.includes("reclutamiento")));
+
   const modules: Module[] = [
     ...(ENABLED_MODULES.trabajadores && canAccessTrabajadores(user.role) ? [{
       key: "control-documental",
@@ -44,6 +48,14 @@ export default async function HomePage({
       title: "Vehículos",
       description: "Control de flota, checklists y documentos",
       color: "#7c3aed",
+    }] : []),
+    ...(ENABLED_MODULES.requerimientos && veRequerimientos ? [{
+      key: "requerimientos",
+      href: "/requerimientos",
+      icon: "🧑‍💼",
+      title: "Requerimientos de personal",
+      description: "Solicitudes de cargo, postulantes y contratación",
+      color: "#e05500",
     }] : []),
     ...(ENABLED_MODULES.operaciones && canAccessCampOperations(user.role) ? [{
       key: "campamentos",
@@ -94,7 +106,7 @@ export default async function HomePage({
   const saludo = hora < 12 ? "Buenos días" : hora < 19 ? "Buenas tardes" : "Buenas noches";
 
   return (
-    <AppShell title="Inicio" user={{ name: user.name, role: user.role }} activeNav={null}>
+    <AppShell title="Inicio" user={{ name: user.name, role: user.role, modulePermissions: user.modulePermissions }} activeNav={null}>
       {/* Welcome */}
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "var(--teal)" }}>
