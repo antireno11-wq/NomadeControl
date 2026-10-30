@@ -1,4 +1,4 @@
-"""Ejecución programada de la ingesta y de las predicciones en vivo con APScheduler.
+"""Ejecución programada de la ingesta, la poda y las predicciones en vivo con APScheduler.
 
 Una sola instancia de trabajo (``max_instances=1``, ``coalesce=True``) y, además,
 el lock consultivo de PostgreSQL impide que una corrida manual y una programada
@@ -24,20 +24,28 @@ def scheduled_job(settings: Settings) -> None:
         engine = get_engine(settings.database_url)
         run_id = run_ingestion(engine, settings, trigger="scheduled")
         log.info("scheduled_run_done", run_id=run_id)
-        from radar.retention import prune
-
-        pruned = prune(
-            engine,
-            live_days=settings.retention_live_days,
-            snapshot_days=settings.retention_snapshot_days,
-        )
-        log.info("retention_done", **pruned)
     except RunAlreadyInProgressError:
         log.warning("scheduled_run_skipped", reason="ingesta en curso")
     except Exception:
         # La corrida ya quedó registrada como 'failed' con su error; el
         # programador sigue vivo para el próximo intervalo.
         log.exception("scheduled_run_failed")
+
+
+def retention_job(settings: Settings) -> None:
+    # Va aparte de la ingesta: si la ingesta falla (por ejemplo, con el disco lleno),
+    # la poda igual corre y libera espacio.
+    from radar.retention import prune
+
+    try:
+        pruned = prune(
+            get_engine(settings.database_url),
+            live_days=settings.retention_live_days,
+            snapshot_days=settings.retention_snapshot_days,
+        )
+        log.info("retention_done", **pruned)
+    except Exception:
+        log.exception("retention_failed")
 
 
 def predict_job(settings: Settings) -> None:
@@ -68,6 +76,16 @@ def run_scheduler(settings: Settings) -> None:
         max_instances=1,
         coalesce=True,
         next_run_time=utcnow() if settings.schedule_run_on_start else None,
+        misfire_grace_time=300,
+    )
+    scheduler.add_job(
+        retention_job,
+        IntervalTrigger(minutes=60),
+        args=[settings],
+        id="retention",
+        max_instances=1,
+        coalesce=True,
+        next_run_time=utcnow(),
         misfire_grace_time=300,
     )
     if settings.predict_interval_minutes > 0:
