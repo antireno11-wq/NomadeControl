@@ -382,9 +382,30 @@ def _run_dict(run: Any) -> dict[str, Any] | None:
 
 @app.get("/api/predict/summary")
 def predict_summary(session: SessionDep) -> dict[str, Any]:
+    from sqlalchemy import select
+
+    from radar.db.models import PredictionRun
+
+    recent = session.execute(
+        select(PredictionRun.id, PredictionRun.status, PredictionRun.started_at,
+               PredictionRun.finished_at)
+        .where(PredictionRun.kind == "live")
+        .order_by(PredictionRun.id.desc())
+        .limit(12)
+    ).all()  # fmt: skip
     return {
         "live": _run_dict(_latest_prediction_run(session, "live")),
         "backtest": _run_dict(_latest_prediction_run(session, "backtest")),
+        # Últimas revisiones en vivo (cualquier estado), de la más nueva a la más vieja.
+        "recientes": [
+            {
+                "run_id": r.id,
+                "status": r.status,
+                "started_at": r.started_at.isoformat(),
+                "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+            }
+            for r in recent
+        ],
     }
 
 

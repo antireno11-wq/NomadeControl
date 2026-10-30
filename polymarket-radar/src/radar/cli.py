@@ -204,6 +204,17 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         "true",
         "--browser.gatherUsageStats",
         "false",
+        # Tema oscuro (ver radar.dashboard.theme)
+        "--theme.base",
+        "dark",
+        "--theme.primaryColor",
+        "#6fbf73",
+        "--theme.backgroundColor",
+        "#0a0e0c",
+        "--theme.secondaryBackgroundColor",
+        "#1b1e1a",
+        "--theme.textColor",
+        "#f1f1ec",
     ]
     return subprocess.call(cmd, env=os.environ.copy())  # noqa: S603 - argumentos fijos
 

@@ -828,55 +828,44 @@ def page_summary() -> None:
         t = datetime.fromisoformat(ts).astimezone(CHILE)
         return f"{t.day}-{MESES[t.month - 1]} {t:%H:%M}"
 
-    st.header("Resumen")
-    st.info(
-        "**Qué hace el radar.** Cada 30 minutos revisa los mercados de Polymarket que elegiste "
-        "(cripto, economía, política, elecciones, NBA, tenis ATP y fútbol). Para cada uno "
-        "calcula qué tan probable es que pase y lo compara con lo que cobra Polymarket. Solo "
-        "apuesta cuando cree que el precio está claramente mal **y** está probado que acierta "
-        "en ese tipo de mercado. Las apuestas son **de práctica**: no se usa dinero real."
-    )
-    live = (api_get("/api/predict/summary") or {}).get("live")
+    from radar.dashboard import theme as T
+
+    summary = api_get("/api/predict/summary") or {}
+    live = summary.get("live")
     paper = api_get("/api/paper") or {}
     why = api_get("/api/explain") or {}
     fwd = api_get("/api/forward") or {}
     items = paper.get("items") or []
-
-    # ---------------------------------------------------------------- ahora mismo
-    st.subheader("Ahora mismo")
-    age = None
-    if live and live.get("finished_at"):
-        age = (datetime.now(UTC) - datetime.fromisoformat(live["finished_at"])).total_seconds()
     signals = (api_get("/api/opportunities", recommendation="señal_operable") or {}).get(
         "items"
     ) or []
+    n_alerts = len(
+        (api_get("/api/opportunities", recommendation="alerta_investigacion") or {}).get("items")
+        or []
+    )
     n_markets = why.get("mercados", 0)
+    now = datetime.now(UTC)
+    st.html(T.header(now=now, live=live))
+    st.html(
+        T.board(now=now, live=live, recent=summary.get("recientes") or [], paper=paper,
+                n_markets=n_markets, n_signals=len(signals), n_alerts=n_alerts)
+    )  # fmt: skip
+    age = None
+    if live and live.get("finished_at"):
+        age = (now - datetime.fromisoformat(live["finished_at"])).total_seconds()
     if age is None:
         st.warning("Todavía no hay revisiones del radar.")
-    else:
-        n_sig = len(signals)
-        found = (
-            "no encontró apuestas que valgan la pena"
-            if n_sig == 0
-            else "encontró **1 apuesta que vale la pena**"
-            if n_sig == 1
-            else f"encontró **{n_sig} apuestas que valen la pena**"
+    elif age > 3600:
+        st.warning(f"La última revisión fue **{fmt_age(age)}**: el radar puede estar detenido.")
+
+    with st.expander("Qué hace el radar"):
+        st.markdown(
+            "Cada 30 minutos revisa los mercados de Polymarket que elegiste (cripto, economía, "
+            "política, elecciones, NBA, tenis ATP y fútbol). Para cada uno calcula qué tan "
+            "probable es que pase y lo compara con lo que cobra Polymarket. Solo apuesta cuando "
+            "cree que el precio está claramente mal **y** está probado que acierta en ese tipo "
+            "de mercado. Las apuestas son **de práctica**: no se usa dinero real."
         )
-        (st.warning if age > 3600 else st.write)(
-            f"La última revisión fue **{fmt_age(age)}**: el radar miró **{num(n_markets)} "
-            f"mercados** y {found}."
-        )
-    c1, c2 = st.columns(2)
-    c3, c4 = st.columns(2)
-    c1.metric("Apuestas que valen la pena ahora", len(signals))
-    c2.metric("Apuestas de práctica abiertas", paper.get("abiertas", 0),
-              help=md(f"Dinero puesto en ellas: {usd(paper.get('exposicion_usd'))} "
-                   f"(máximo {usd(paper.get('exposicion_maxima_usd'))})."))  # fmt: skip
-    c3.metric("Ganado o perdido hasta hoy", usd(paper.get("resultado_usd", 0.0), sign=True),
-              help=f"{paper.get('ganadas', 0)} acertadas y {paper.get('perdidas', 0)} falladas "
-                   f"de {paper.get('cerradas', 0)} ya resueltas.")  # fmt: skip
-    c4.metric("Plata de práctica", usd(paper.get("capital_actual_usd", 1000.0)),
-              help=md("Empezó con US$1.000."))  # fmt: skip
 
     for it in signals:
         st.success(
@@ -889,15 +878,9 @@ def page_summary() -> None:
         )
 
     # ---------------------------------------------------- por qué (no) apostó
-    st.subheader("¿Por qué apostó o no apostó esta vez?")
     reasons = why.get("motivos") or []
     if reasons:
-        st.caption(f"Los {num(n_markets)} mercados de la última revisión, por su motivo principal:")
-        st.markdown("\n".join(f"- **{num(r['mercados'])}** · {r['motivo']}" for r in reasons))
-        st.caption(
-            "Casi siempre la respuesta es que el precio ya es justo: Polymarket suele acertar. "
-            "El radar busca las pocas veces en que se equivoca."
-        )
+        st.html(T.reasons_card(reasons, n_markets))
 
     # ------------------------------------------------------- apuestas de práctica
     st.subheader("Mis apuestas de práctica")
@@ -1341,9 +1324,15 @@ def password_ok() -> bool:
 
 
 def main() -> None:
+    from radar.dashboard.theme import CSS
+
+    st.html(CSS)
     if not password_ok():
         return
-    st.sidebar.title("Polymarket AI Radar")
+    st.sidebar.html(
+        '<div class="rb-brand" style="margin:4px 0 18px"><div class="rb-logo">R</div><div>'
+        "<b>Radar</b><span>Polymarket</span></div></div>"
+    )
     tech = st.sidebar.toggle("Pantallas técnicas", value=False)
     page = st.sidebar.radio("Pantalla", MAIN_PAGES + (TECH_PAGES if tech else []))
     st.sidebar.caption("Solo simulación: no opera con dinero real.")
