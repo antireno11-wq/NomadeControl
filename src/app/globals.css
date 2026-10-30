@@ -1631,3 +1631,22 @@ th {
 .card-enlace:hover .flecha-ir {
   opacity: 1;
 }
+
+/* ─── Requerimientos de personal ───────────────────────────────────────────
+   Los paneles de las acciones de la ficha (cambiar estado, editar, cerrar,
+   desistir, agregar postulante) flotan sobre la página en vez de empujarla:
+   abiertos en línea, estiraban el botón a lo ancho y corrían toda la ficha
+   hacia abajo. En el teléfono vuelven a ir en línea, porque flotando se
+   saldrían de la pantalla. */
+.req-accion { position: relative; }
+.req-accion > summary::-webkit-details-marker { display: none; }
+.req-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  box-shadow: 0 12px 32px rgba(8, 50, 58, 0.18);
+}
+@media (max-width: 760px) {
+  .req-pop { position: static; box-shadow: none; }
+}

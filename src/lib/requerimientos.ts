@@ -263,8 +263,8 @@ export type FiltrosReq = {
 };
 
 export const FILTROS_ESTADO = [
-  { valor: "en-curso", label: "En curso (sin cerradas)" },
-  { valor: "abiertas", label: "Abiertas (sin cubrir)" },
+  { valor: "en-curso", label: "En curso" },
+  { valor: "abiertas", label: "Abiertas" },
   ...ESTADOS_SOLICITUD.map(e => ({ valor: e, label: ESTADO_SOLICITUD_LABEL[e] })),
   { valor: "terminadas", label: "Cerradas y desistidas" },
   { valor: "todas", label: "Todas" },

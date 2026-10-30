@@ -2,7 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRequerimientos } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
-import { formatDisplayDate } from "@/lib/report-utils";
+import { formatDisplayDate, formatShortDisplayDate } from "@/lib/report-utils";
 import { getCargos, getProyectos } from "@/lib/requisitos-db";
 import {
   COLUMNAS_TABLERO, FILTROS_ESTADO, PRIORIDADES, SEMAFORO_REQ_STYLE,
@@ -185,7 +185,7 @@ export default async function RequerimientosPage({ searchParams }: { searchParam
         {vista === "tablero" ? (
           <>
             <div style={{ overflowX: "auto", paddingBottom: 4 }}>
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLUMNAS_TABLERO.length}, minmax(210px, 1fr))`, gap: 10, alignItems: "start", minWidth: COLUMNAS_TABLERO.length * 215 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLUMNAS_TABLERO.length}, minmax(165px, 1fr))`, gap: 10, alignItems: "start", minWidth: COLUMNAS_TABLERO.length * 172 }}>
                 {COLUMNAS_TABLERO.map(col => {
                   const tarjetas = orden.filter(r => r.estado === col);
                   return (
@@ -213,15 +213,17 @@ export default async function RequerimientosPage({ searchParams }: { searchParam
                               </div>
                               <div style={{ fontWeight: 800, fontSize: "0.9rem", lineHeight: 1.2 }}>{r.cargo.nombre}</div>
                               <div style={{ color: "var(--muted)" }}>{r.proyecto.nombre} · {r.solicitanteNombre}</div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
-                                <strong style={{ fontVariantNumeric: "tabular-nums" }}>{r.cubiertas}/{r.vacantes} vacante{r.vacantes === 1 ? "" : "s"}</strong>
-                                <span style={{ color: "var(--muted)" }}>{r.nPostulantes} postulante{r.nPostulantes === 1 ? "" : "s"}</span>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: "2px 6px", flexWrap: "wrap" }}>
+                                <strong style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{r.cubiertas}/{r.vacantes} vacante{r.vacantes === 1 ? "" : "s"}</strong>
+                                <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{r.nPostulantes} postulante{r.nPostulantes === 1 ? "" : "s"}</span>
                               </div>
                               <div style={{ height: 4, background: "#e2e8f0", borderRadius: 99, overflow: "hidden" }}>
                                 <div style={{ width: `${avance}%`, height: "100%", background: "var(--teal)" }} />
                               </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                                <span style={{ color: "var(--muted)" }}>requerida {formatDisplayDate(r.fechaRequerida)}</span>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
+                                <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }} title={`Fecha requerida: ${formatDisplayDate(r.fechaRequerida)}`}>
+                                  ingreso {formatShortDisplayDate(r.fechaRequerida)}
+                                </span>
                                 {plazo(r)}
                               </div>
                             </div>

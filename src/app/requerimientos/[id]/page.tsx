@@ -64,10 +64,11 @@ const PILL_POSTULANTE: Record<string, { bg: string; color: string; border: strin
 const PILL_NEUTRO = { bg: "#e3f1f3", color: "#00505c", border: "#b9dde2" };
 
 function fechaHora(d: Date): string {
+  // 24 h y sin "p. m.": cabe en una línea de la columna del historial.
   return d.toLocaleString("es-CL", {
     timeZone: "America/Santiago", day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).replace(",", "");
 }
 
 function Pill({ estilo, children }: { estilo: { bg: string; color: string; border: string }; children: ReactNode }) {
@@ -227,9 +228,9 @@ export default async function RequerimientoDetallePage({
                 traería escrito el motivo o los datos del anterior. */}
             <div key={req.updatedAt.getTime()} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
               {gestiona && abierta && (
-                <details>
+                <details className="req-accion">
                   <summary style={summaryBtn}>Cambiar estado</summary>
-                  <form action={cambiarEstadoRequerimientoAction} style={panel}>
+                  <form action={cambiarEstadoRequerimientoAction} className="req-pop" style={{ ...panel, width: 280 }}>
                     <input type="hidden" name="requerimientoId" value={req.id} />
                     <select name="estado" defaultValue={req.estado} style={inputChico}>
                       {ESTADOS_ABIERTOS.map(e => <option key={e} value={e}>{etiquetaSolicitud(e)}</option>)}
@@ -240,9 +241,9 @@ export default async function RequerimientoDetallePage({
                 </details>
               )}
               {puedeEditar && !terminada && (
-                <details>
+                <details className="req-accion">
                   <summary style={summaryBtn}>Editar</summary>
-                  <form action={editarRequerimientoAction} className="grid two" style={{ ...panel, minWidth: "min(620px, 85vw)" }}>
+                  <form action={editarRequerimientoAction} className="grid two req-pop" style={{ ...panel, width: "min(640px, 88vw)" }}>
                     <input type="hidden" name="requerimientoId" value={req.id} />
                     <CamposSolicitud cargos={cargos} proyectos={proyectos} prefijo="editar" valores={req} />
                     <div><button type="submit">Guardar cambios</button></div>
@@ -250,9 +251,9 @@ export default async function RequerimientoDetallePage({
                 </details>
               )}
               {gestiona && !terminada && (
-                <details>
+                <details className="req-accion">
                   <summary style={{ ...summaryBtn, background: "#16a34a", color: "#fff", borderColor: "#16a34a" }}>Cerrar</summary>
-                  <form action={cerrarRequerimientoAction} style={{ ...panel, minWidth: 300 }}>
+                  <form action={cerrarRequerimientoAction} className="req-pop" style={{ ...panel, width: 340 }}>
                     <input type="hidden" name="requerimientoId" value={req.id} />
                     <input type="hidden" name="accion" value="cerrar" />
                     <span style={mini}>
@@ -269,9 +270,9 @@ export default async function RequerimientoDetallePage({
                 </details>
               )}
               {puedeDesistir && (
-                <details>
+                <details className="req-accion">
                   <summary style={{ ...summaryBtn, color: "#b42318", borderColor: "#f5c0bb" }}>Desistir</summary>
-                  <form action={cerrarRequerimientoAction} style={{ ...panel, minWidth: 300 }}>
+                  <form action={cerrarRequerimientoAction} className="req-pop" style={{ ...panel, width: 340 }}>
                     <input type="hidden" name="requerimientoId" value={req.id} />
                     <input type="hidden" name="accion" value="desistir" />
                     <span style={mini}>La solicitud se cancela y no se busca a nadie más.</span>
@@ -312,9 +313,9 @@ export default async function RequerimientoDetallePage({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "14px 16px 6px", flexWrap: "wrap" }}>
             <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Postulantes</h2>
             {gestiona && abierta && (
-              <details key={`agregar-${req.postulantes.length}`}>
+              <details key={`agregar-${req.postulantes.length}`} className="req-accion">
                 <summary style={{ ...summaryBtn, background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" }}>+ Agregar postulante</summary>
-                <form action={agregarPostulanteAction} className="grid two" style={{ ...panel, minWidth: "min(560px, 85vw)" }}>
+                <form action={agregarPostulanteAction} className="grid two req-pop" style={{ ...panel, width: "min(560px, 88vw)" }}>
                   <input type="hidden" name="requerimientoId" value={req.id} />
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label htmlFor="np-nombre">Nombre completo</label>
@@ -537,7 +538,7 @@ export default async function RequerimientoDetallePage({
             <h2 style={{ margin: 0, fontSize: "1.05rem" }}>Historial</h2>
             <div style={{ display: "grid", gap: 8 }}>
               {req.eventos.map(e => (
-                <div key={e.id} style={{ display: "grid", gridTemplateColumns: "118px 1fr", gap: 8, fontSize: "0.82rem", borderBottom: "1px solid #f1f5f9", paddingBottom: 6 }}>
+                <div key={e.id} style={{ display: "grid", gridTemplateColumns: "122px 1fr", gap: 8, fontSize: "0.82rem", borderBottom: "1px solid #f1f5f9", paddingBottom: 6 }}>
                   <span style={{ color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{fechaHora(e.createdAt)}</span>
                   <span style={{ color: e.tipo === "alerta" ? "#9a6300" : undefined }}>
                     <strong>{e.autorNombre}</strong> {describirEvento(e)}
