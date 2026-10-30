@@ -1,0 +1,80 @@
+{
+ "br-2022-presidente-2t": {
+  "title": "Opinion polling for the 2022 Brazilian presidential election",
+  "revid": 1368964934,
+  "revision_ts": "2026-08-12T03:01:09+00:00",
+  "sha256": "d433f796560eaaf5b2e44f599a82b49529bd90111cb2b111c299e44f81553c2d"
+ },
+ "br-2018-presidente-2t": {
+  "title": "Opinion polling for the 2018 Brazilian presidential election",
+  "revid": 1365268056,
+  "revision_ts": "2026-07-21T09:12:06+00:00",
+  "sha256": "56aefd92e957c86ba0ae7eec13697e991446dea53ad1d997fe351ee192440e32"
+ },
+ "br-2010-presidente-2t": {
+  "title": "Opinion polling for the 2010 Brazilian presidential election",
+  "revid": 1373536970,
+  "revision_ts": "2026-09-06T14:59:22+00:00",
+  "sha256": "8f9b11b841fdedf441aaccc87c8822d12af1c518508287ace34329ece188509e"
+ },
+ "fr-2017-presidente-2t": {
+  "title": "Opinion polling for the 2017 French presidential election",
+  "revid": 1213598918,
+  "revision_ts": "2024-03-14T00:43:38+00:00",
+  "sha256": "f80c93697d11895aab0b4263b401a81d6f5e8de4f99d38799b9908911bf47824"
+ },
+ "fr-2022-presidente-2t": {
+  "title": "Opinion polling for the 2022 French presidential election",
+  "revid": 1363121499,
+  "revision_ts": "2026-07-08T04:37:33+00:00",
+  "sha256": "6400c4197645533eeac6f221cb1c66ea6884208a694b76f47737b6c99accb571"
+ },
+ "pl-2020-presidente-2t": {
+  "title": "Opinion polling for the 2020 Polish presidential election",
+  "revid": 1380193388,
+  "revision_ts": "2026-10-14T09:24:23+00:00",
+  "sha256": "e5cb00e242568813bc476185ee7211859f3dd39f38da184176507cca6d0709a0"
+ },
+ "pl-2025-presidente-2t": {
+  "title": "Opinion polling for the 2025 Polish presidential election",
+  "revid": 1328916009,
+  "revision_ts": "2025-12-22T15:26:22+00:00",
+  "sha256": "695da776ad8090c8042fe66f9dcb21b439ec1bb69f52e8e63f8ede22a95fb4b4"
+ },
+ "cl-2021-presidente-2t": {
+  "title": "Opinion polling for the 2021 Chilean presidential election",
+  "revid": 1373173252,
+  "revision_ts": "2026-09-04T11:51:22+00:00",
+  "sha256": "b361abd1bf83b9709f5ab160a82a2e1937dc9171088113cc773ad04d37f8838e"
+ },
+ "cl-2025-presidente-2t": {
+  "title": "Opinion polling for the 2025 Chilean presidential election",
+  "revid": 1369398847,
+  "revision_ts": "2026-08-14T19:06:13+00:00",
+  "sha256": "5e691efa43a2fb921505246c6fd75b95f2a5b184db3abfc5425a106f6e988de1"
+ },
+ "pe-2021-presidente-2t": {
+  "title": "Opinion polling for the 2021 Peruvian general election",
+  "revid": 1352211104,
+  "revision_ts": "2026-05-02T20:24:14+00:00",
+  "sha256": "a99d13a067a59d7c80575b25a4be8a5de32e886a0defc8245b478906208570cc"
+ },
+ "co-2022-presidente-2t": {
+  "title": "Opinion polling for the 2022 Colombian presidential election",
+  "revid": 1357951000,
+  "revision_ts": "2026-06-05T17:40:00+00:00",
+  "sha256": "aac29d9d8e9783a974fb556127a3df98d194bb7f3ff75a0cf2450d3d15137b8e"
+ },
+ "ro-2025-presidente-2t": {
+  "title": "2025 Romanian presidential election",
+  "revid": 1379809836,
+  "revision_ts": "2026-10-12T01:47:13+00:00",
+  "sha256": "e6c2f0e48948d44211cdd202e2e2afcab4755608d5489aefeb4761282e20626c"
+ },
+ "ec-2025-presidente-2t": {
+  "title": "Opinion polling for the 2025 Ecuadorian general election",
+  "revid": 1315289337,
+  "revision_ts": "2025-10-05T21:29:07+00:00",
+  "sha256": "7048117fc0accb2bcdce56c35130e41bd71a7d201a26b198d0a68a79d5d458d1"
+ }
+}

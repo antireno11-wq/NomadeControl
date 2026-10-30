@@ -1,0 +1,40 @@
+{
+ "base_params_sha256": "1a39aef2bfbb4a1a8ada829252c24fa4b2d217b04a2bad3f115c847e5cde379f",
+ "events_version": "crypto-events-v1",
+ "fitted_on": {
+  "fitted_at": "2026-10-30T16:40:17.825279+00:00",
+  "k_evento_y_nu": "entrenamiento (resoluci\u00f3n < 2026-08-01T00:00:00+00:00)",
+  "recalibracion": "entrenamiento + validaci\u00f3n (resoluci\u00f3n < 2026-09-15T00:00:00+00:00)"
+ },
+ "k_event": 0.3139965330853398,
+ "notes": [
+  "k_evento: mediana de (var. realizada / esperada) \u2212 1 en la hora de cada evento",
+  "nu: m\u00ednimo log loss en entrenamiento por tramo (None = normal)",
+  "recal: log\u00edstica a + b\u00b7logit(p) por tramo, m\u00e1xima verosimilitud"
+ ],
+ "nu": {
+  "<=1d": 10.0,
+  "<=2h": 3.0,
+  "<=7d": null,
+  ">7d": null
+ },
+ "recal": {
+  "<=1d": [
+   -0.04002893647876555,
+   0.8737206506050591
+  ],
+  "<=2h": [
+   0.008554819694514866,
+   1.1174608686584122
+  ],
+  "<=7d": [
+   -0.891804378392758,
+   0.5028000363556833
+  ],
+  ">7d": [
+   -0.573436384773075,
+   0.29666807318991273
+  ]
+ },
+ "version": "crypto-params-v2-fit-20260915"
+}

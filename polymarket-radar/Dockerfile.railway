@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+# Imagen para Railway: la misma etapa runtime del Dockerfile principal, sin el secreto
+# opcional de la CA (el builder de Railway solo acepta montajes de tipo cache). Si cambia
+# el Dockerfile principal, cambiar este igual. Cada servicio la elige con
+# RAILWAY_DOCKERFILE_PATH=Dockerfile.railway.
+FROM python:3.12-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app/src
+WORKDIR /app
+RUN useradd --create-home --uid 10001 radar
+COPY requirements.lock ./
+RUN pip install --require-hashes -r requirements.lock
+COPY alembic.ini pyproject.toml README.md ./
+COPY migrations ./migrations
+COPY src ./src
+COPY data/models ./data/models
+RUN mkdir -p data/raw && chown -R radar:radar data
+USER radar
+EXPOSE 8000 8501
+# Arranca como api, dashboard o scheduler según RADAR_ROLE.
+CMD ["python", "-m", "radar.cli", "serve"]

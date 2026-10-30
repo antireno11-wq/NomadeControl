@@ -1,0 +1,3365 @@
+{
+ "creado": "2026-10-26T03:17:06.788160+00:00",
+ "calibracion": {
+  "contiendas": [
+   "br-2022-presidente-2t",
+   "br-2018-presidente-2t",
+   "br-2010-presidente-2t",
+   "fr-2017-presidente-2t",
+   "fr-2022-presidente-2t",
+   "pl-2025-presidente-2t",
+   "pe-2021-presidente-2t",
+   "co-2022-presidente-2t",
+   "ro-2025-presidente-2t"
+  ],
+  "problemas": [
+   "br-2022-presidente-2t: tabla 11: fecha ilegible '— N/a' (Atlas)",
+   "br-2018-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "br-2010-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "fr-2017-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "fr-2022-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "pl-2020-presidente-2t: tabla 3: fecha ilegible 'N/A May 2020' (Maison & Partners)",
+   "pl-2020-presidente-2t: tabla 3: fecha ilegible 'N/A May 2020' (N/A)",
+   "pl-2020-presidente-2t: la página no tiene fila de resultado; se descarta",
+   "pl-2025-presidente-2t: tabla 5: fecha ilegible 'May 2025' (Opinia24 / \"Fakty\" TVN, TVN24)",
+   "pl-2025-presidente-2t: tabla 5: fecha ilegible 'Apr 2025' (Opinia24 / \"Fakty\" TVN, TVN24)",
+   "pl-2025-presidente-2t: tabla 5: fecha ilegible 'Apr 2025' (Opinia24 / \"Fakty\" TVN, TVN24)",
+   "pl-2025-presidente-2t: tabla 5: fecha ilegible 'Feb 2025' (Social Changes / wPolsce24)",
+   "pl-2025-presidente-2t: tabla 5: fecha ilegible 'Dec 2024' (Opinia24 / RMF FM)",
+   "pl-2025-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "cl-2021-presidente-2t: la página no tiene fila de resultado; se descarta",
+   "cl-2025-presidente-2t: la página no tiene fila de resultado; se descarta",
+   "pe-2021-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "co-2022-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "ro-2025-presidente-2t: tabla 41: fecha ilegible '' (Men)",
+   "ro-2025-presidente-2t: tabla 41: fecha ilegible '' (Women)",
+   "ro-2025-presidente-2t: tabla 41: fecha ilegible '' (18–30)",
+   "ro-2025-presidente-2t: tabla 41: fecha ilegible '' (31–60)",
+   "ro-2025-presidente-2t: tabla 41: fecha ilegible '' (61 or older)",
+   "ro-2025-presidente-2t: el resultado no indica 'votos válidos'; se usa igual",
+   "ec-2025-presidente-2t: la página no tiene fila de resultado; se descarta"
+  ],
+  "fuentes": [
+   {
+    "contest": "br-2022-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2022 Brazilian presidential election",
+    "revid": 1368964934,
+    "revision_ts": "2026-08-12T03:01:09+00:00",
+    "retrieved_at": "2026-10-26T02:57:00.383963+00:00",
+    "sha256": "d433f796560eaaf5b2e44f599a82b49529bd90111cb2b111c299e44f81553c2d",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2022_Brazilian_presidential_election/1368964934",
+    "encuestas_parseadas": 191,
+    "tablas": [
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "resultado": {
+     "a": 50.9,
+     "b": 49.1,
+     "base": "valid_votes",
+     "two_party_a": 0.509
+    },
+    "encuestas_en_ventana": 69
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2018 Brazilian presidential election",
+    "revid": 1365268056,
+    "revision_ts": "2026-07-21T09:12:06+00:00",
+    "retrieved_at": "2026-10-26T02:58:05.056943+00:00",
+    "sha256": "56aefd92e957c86ba0ae7eec13697e991446dea53ad1d997fe351ee192440e32",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2018_Brazilian_presidential_election/1365268056",
+    "encuestas_parseadas": 22,
+    "tablas": [
+     6
+    ],
+    "resultado": {
+     "a": 55.13,
+     "b": 44.87,
+     "base": "unknown",
+     "two_party_a": 0.5513
+    },
+    "encuestas_en_ventana": 22
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2010 Brazilian presidential election",
+    "revid": 1373536970,
+    "revision_ts": "2026-09-06T14:59:22+00:00",
+    "retrieved_at": "2026-10-26T02:59:05.002150+00:00",
+    "sha256": "8f9b11b841fdedf441aaccc87c8822d12af1c518508287ace34329ece188509e",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2010_Brazilian_presidential_election/1373536970",
+    "encuestas_parseadas": 18,
+    "tablas": [
+     2
+    ],
+    "resultado": {
+     "a": 56.05,
+     "b": 43.95,
+     "base": "unknown",
+     "two_party_a": 0.5605
+    },
+    "encuestas_en_ventana": 18
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2017 French presidential election",
+    "revid": 1213598918,
+    "revision_ts": "2024-03-14T00:43:38+00:00",
+    "retrieved_at": "2026-10-26T02:59:29.365548+00:00",
+    "sha256": "f80c93697d11895aab0b4263b401a81d6f5e8de4f99d38799b9908911bf47824",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2017_French_presidential_election/1213598918",
+    "encuestas_parseadas": 211,
+    "tablas": [
+     8
+    ],
+    "resultado": {
+     "a": 66.1,
+     "b": 33.9,
+     "base": "unknown",
+     "two_party_a": 0.661
+    },
+    "encuestas_en_ventana": 143
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2022 French presidential election",
+    "revid": 1363121499,
+    "revision_ts": "2026-07-08T04:37:33+00:00",
+    "retrieved_at": "2026-10-26T03:00:05.550980+00:00",
+    "sha256": "6400c4197645533eeac6f221cb1c66ea6884208a694b76f47737b6c99accb571",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2022_French_presidential_election/1363121499",
+    "encuestas_parseadas": 325,
+    "tablas": [
+     8
+    ],
+    "resultado": {
+     "a": 58.55,
+     "b": 41.45,
+     "base": "unknown",
+     "two_party_a": 0.5855
+    },
+    "encuestas_en_ventana": 177
+   },
+   {
+    "contest": "pl-2020-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2020 Polish presidential election",
+    "revid": 1380193388,
+    "revision_ts": "2026-10-14T09:24:23+00:00",
+    "retrieved_at": "2026-10-26T03:01:08.622727+00:00",
+    "sha256": "e5cb00e242568813bc476185ee7211859f3dd39f38da184176507cca6d0709a0",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2020_Polish_presidential_election/1380193388",
+    "encuestas_parseadas": 66,
+    "tablas": [
+     3
+    ],
+    "resultado": null
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2025 Polish presidential election",
+    "revid": 1328916009,
+    "revision_ts": "2025-12-22T15:26:22+00:00",
+    "retrieved_at": "2026-10-26T03:02:00.788746+00:00",
+    "sha256": "695da776ad8090c8042fe66f9dcb21b439ec1bb69f52e8e63f8ede22a95fb4b4",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2025_Polish_presidential_election/1328916009",
+    "encuestas_parseadas": 82,
+    "tablas": [
+     1,
+     2,
+     5
+    ],
+    "resultado": {
+     "a": 49.11,
+     "b": 50.89,
+     "base": "unknown",
+     "two_party_a": 0.4911
+    },
+    "encuestas_en_ventana": 52
+   },
+   {
+    "contest": "cl-2021-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2021 Chilean presidential election",
+    "revid": 1373173252,
+    "revision_ts": "2026-09-04T11:51:22+00:00",
+    "retrieved_at": "2026-10-26T03:03:00.844542+00:00",
+    "sha256": "b361abd1bf83b9709f5ab160a82a2e1937dc9171088113cc773ad04d37f8838e",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2021_Chilean_presidential_election/1373173252",
+    "encuestas_parseadas": 4,
+    "tablas": [
+     3
+    ],
+    "resultado": null
+   },
+   {
+    "contest": "cl-2025-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2025 Chilean presidential election",
+    "revid": 1369398847,
+    "revision_ts": "2026-08-14T19:06:13+00:00",
+    "retrieved_at": "2026-10-26T03:03:10.577159+00:00",
+    "sha256": "5e691efa43a2fb921505246c6fd75b95f2a5b184db3abfc5425a106f6e988de1",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2025_Chilean_presidential_election/1369398847",
+    "encuestas_parseadas": 85,
+    "tablas": [
+     0
+    ],
+    "resultado": null
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2021 Peruvian general election",
+    "revid": 1352211104,
+    "revision_ts": "2026-05-02T20:24:14+00:00",
+    "retrieved_at": "2026-10-26T03:03:20.557079+00:00",
+    "sha256": "a99d13a067a59d7c80575b25a4be8a5de32e886a0defc8245b478906208570cc",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2021_Peruvian_general_election/1352211104",
+    "encuestas_parseadas": 43,
+    "tablas": [
+     0,
+     1
+    ],
+    "resultado": {
+     "a": 50.13,
+     "b": 49.87,
+     "base": "unknown",
+     "two_party_a": 0.5013
+    },
+    "encuestas_en_ventana": 43
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2022 Colombian presidential election",
+    "revid": 1357951000,
+    "revision_ts": "2026-06-05T17:40:00+00:00",
+    "retrieved_at": "2026-10-26T03:04:05.665469+00:00",
+    "sha256": "aac29d9d8e9783a974fb556127a3df98d194bb7f3ff75a0cf2450d3d15137b8e",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2022_Colombian_presidential_election/1357951000",
+    "encuestas_parseadas": 23,
+    "tablas": [
+     4
+    ],
+    "resultado": {
+     "a": 50.42,
+     "b": 47.35,
+     "base": "unknown",
+     "two_party_a": 0.5157
+    },
+    "encuestas_en_ventana": 23
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "2025 Romanian presidential election",
+    "revid": 1379809836,
+    "revision_ts": "2026-10-12T01:47:13+00:00",
+    "retrieved_at": "2026-10-26T03:05:05.702206+00:00",
+    "sha256": "e6c2f0e48948d44211cdd202e2e2afcab4755608d5489aefeb4761282e20626c",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/2025_Romanian_presidential_election/1379809836",
+    "encuestas_parseadas": 22,
+    "tablas": [
+     9
+    ],
+    "resultado": {
+     "a": 53.6,
+     "b": 46.4,
+     "base": "unknown",
+     "two_party_a": 0.536
+    },
+    "encuestas_en_ventana": 19
+   },
+   {
+    "contest": "ec-2025-presidente-2t",
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2025 Ecuadorian general election",
+    "revid": 1315289337,
+    "revision_ts": "2025-10-05T21:29:07+00:00",
+    "retrieved_at": "2026-10-26T03:05:15.588650+00:00",
+    "sha256": "7048117fc0accb2bcdce56c35130e41bd71a7d201a26b198d0a68a79d5d458d1",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2025_Ecuadorian_general_election/1315289337",
+    "encuestas_parseadas": 20,
+    "tablas": [
+     0
+    ],
+    "resultado": null
+   }
+  ]
+ },
+ "validacion_loo_ponderado": {
+  "method": "weighted",
+  "n_contests": 9,
+  "forecasts": [
+   {
+    "contest": "br-2022-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5174144812436886,
+    "result": 0.509,
+    "prob_a": 0.7825,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2022-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.52351706480904,
+    "result": 0.509,
+    "prob_a": 0.8116,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2022-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5272954341159453,
+    "result": 0.509,
+    "prob_a": 0.8148000000000002,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5802697721682276,
+    "result": 0.5513,
+    "prob_a": 0.9907,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5958629745135551,
+    "result": 0.5513,
+    "prob_a": 0.9914000000000002,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5775335874066421,
+    "result": 0.5513,
+    "prob_a": 0.9803000000000002,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.563162193448499,
+    "result": 0.5605,
+    "prob_a": 0.9803999999999999,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.548115030136607,
+    "result": 0.5605,
+    "prob_a": 0.9418000000000001,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5332625325613448,
+    "result": 0.5605,
+    "prob_a": 0.8595,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.6140009618901271,
+    "result": 0.6609999999999999,
+    "prob_a": 0.9991,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.6085682415865071,
+    "result": 0.6609999999999999,
+    "prob_a": 0.9969,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.6271857757779562,
+    "result": 0.6609999999999999,
+    "prob_a": 0.9956999999999999,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5540872686403632,
+    "result": 0.5855,
+    "prob_a": 0.9792000000000001,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.533835935769476,
+    "result": 0.5855,
+    "prob_a": 0.9105,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5244056172189698,
+    "result": 0.5855,
+    "prob_a": 0.8183000000000001,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5057031675665539,
+    "result": 0.4911,
+    "prob_a": 0.6087,
+    "outcome_a": 0.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5315382621701701,
+    "result": 0.4911,
+    "prob_a": 0.8836999999999999,
+    "outcome_a": 0.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5452900766396951,
+    "result": 0.4911,
+    "prob_a": 0.9350999999999999,
+    "outcome_a": 0.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5008964957467299,
+    "result": 0.5013000000000001,
+    "prob_a": 0.5114000000000001,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5027558336081182,
+    "result": 0.5013000000000001,
+    "prob_a": 0.5446,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5224702119358015,
+    "result": 0.5013000000000001,
+    "prob_a": 0.7724,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.500299354173677,
+    "result": 0.5157001125089495,
+    "prob_a": 0.5042,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.500299354173677,
+    "result": 0.5157001125089495,
+    "prob_a": 0.5042,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.4963239162609768,
+    "result": 0.5157001125089495,
+    "prob_a": 0.44909999999999994,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.49884261389575707,
+    "result": 0.536,
+    "prob_a": 0.47229999999999994,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.4959605572789755,
+    "result": 0.536,
+    "prob_a": 0.42919999999999997,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5074682556483759,
+    "result": 0.536,
+    "prob_a": 0.6058999999999999,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   }
+  ],
+  "brier": 0.15782006777777777,
+  "log_loss": 0.4770333286572545,
+  "coverage50": 0.4444444444444444,
+  "coverage90": 0.8518518518518519,
+  "status": "no_validado",
+  "reasons": [
+   "solo 9 contiendas fuera de muestra (mínimo 15)"
+  ],
+  "criteria": {
+   "min_contests": 15,
+   "max_brier_vs_coin": 0.23,
+   "coverage90_range": [
+    0.8,
+    0.97
+   ],
+   "coverage50_range": [
+    0.35,
+    0.65
+   ]
+  }
+ },
+ "validacion_loo_mediana": {
+  "method": "median",
+  "n_contests": 9,
+  "forecasts": [
+   {
+    "contest": "br-2022-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5268817204301075,
+    "result": 0.509,
+    "prob_a": 0.8640000000000001,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2022-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5217391304347826,
+    "result": 0.509,
+    "prob_a": 0.7914,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2022-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5217391304347826,
+    "result": 0.509,
+    "prob_a": 0.7668000000000003,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5771290491118077,
+    "result": 0.5513,
+    "prob_a": 0.9871,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5862524785194977,
+    "result": 0.5513,
+    "prob_a": 0.9862999999999998,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "br-2018-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.581338742393509,
+    "result": 0.5513,
+    "prob_a": 0.9840000000000001,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5632183908045977,
+    "result": 0.5605,
+    "prob_a": 0.976,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5448232323232323,
+    "result": 0.5605,
+    "prob_a": 0.9307000000000001,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "br-2010-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5333498023715415,
+    "result": 0.5605,
+    "prob_a": 0.8664999999999999,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.605,
+    "result": 0.6609999999999999,
+    "prob_a": 0.9991,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.605,
+    "result": 0.6609999999999999,
+    "prob_a": 0.9961000000000001,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "fr-2017-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.64,
+    "result": 0.6609999999999999,
+    "prob_a": 0.9969,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.555,
+    "result": 0.5855,
+    "prob_a": 0.9769,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5325,
+    "result": 0.5855,
+    "prob_a": 0.8978999999999999,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "fr-2022-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.53,
+    "result": 0.5855,
+    "prob_a": 0.8618000000000001,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5047795219796691,
+    "result": 0.4911,
+    "prob_a": 0.5897000000000001,
+    "outcome_a": 0.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5212765957446809,
+    "result": 0.4911,
+    "prob_a": 0.7975,
+    "outcome_a": 0.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "pl-2025-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.55,
+    "result": 0.4911,
+    "prob_a": 0.9435999999999999,
+    "outcome_a": 0.0,
+    "in50": false,
+    "in90": false
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.5049630541871921,
+    "result": 0.5013000000000001,
+    "prob_a": 0.5851000000000001,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.505,
+    "result": 0.5013000000000001,
+    "prob_a": 0.5775,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "pe-2021-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5250875145857643,
+    "result": 0.5013000000000001,
+    "prob_a": 0.7966,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.49497859626658636,
+    "result": 0.5157001125089495,
+    "prob_a": 0.40239999999999987,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.49497859626658636,
+    "result": 0.5157001125089495,
+    "prob_a": 0.42269999999999996,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "co-2022-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.49315068493150677,
+    "result": 0.5157001125089495,
+    "prob_a": 0.4021,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "horizon_days": 1,
+    "avg": 0.49233160621761657,
+    "result": 0.536,
+    "prob_a": 0.34709999999999996,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "horizon_days": 7,
+    "avg": 0.5141262246525404,
+    "result": 0.536,
+    "prob_a": 0.722,
+    "outcome_a": 1.0,
+    "in50": false,
+    "in90": true
+   },
+   {
+    "contest": "ro-2025-presidente-2t",
+    "horizon_days": 14,
+    "avg": 0.5141262246525404,
+    "result": 0.536,
+    "prob_a": 0.6985000000000001,
+    "outcome_a": 1.0,
+    "in50": true,
+    "in90": true
+   }
+  ],
+  "brier": 0.15106626555555558,
+  "log_loss": 0.4561639479982483,
+  "coverage50": 0.48148148148148145,
+  "coverage90": 0.8518518518518519,
+  "status": "no_validado",
+  "reasons": [
+   "solo 9 contiendas fuera de muestra (mínimo 15)"
+  ],
+  "criteria": {
+   "min_contests": 15,
+   "max_brier_vs_coin": 0.23,
+   "coverage90_range": [
+    0.8,
+    0.97
+   ],
+   "coverage50_range": [
+    0.35,
+    0.65
+   ]
+  }
+ },
+ "comparacion_mercado": [
+  {
+   "contest": "br-2026-presidente-2t",
+   "candidatos": {
+    "a": "Lula",
+    "b": "Flávio Bolsonaro"
+   },
+   "evento_polymarket": "brazil-presidential-election",
+   "ganador_segun_mercado": "a",
+   "nota_resolucion": "outcomePrices de Gamma (YES ≥ 0,99)",
+   "calibrado_con": [
+    "br-2022-presidente-2t",
+    "br-2018-presidente-2t",
+    "br-2010-presidente-2t",
+    "fr-2017-presidente-2t",
+    "fr-2022-presidente-2t",
+    "pl-2025-presidente-2t",
+    "pe-2021-presidente-2t",
+    "co-2022-presidente-2t",
+    "ro-2025-presidente-2t"
+   ],
+   "puntos": [
+    {
+     "t": "2026-10-18T20:00:00+00:00",
+     "dias_al_cierre": 7.0,
+     "encuestas_disponibles": 161,
+     "modelo_p_a": 0.3397,
+     "rango_estimaciones": [
+      0.33724999999999994,
+      0.4444444444444444
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.205,
+     "alertas": [
+      {
+       "token": "Lula YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.205,
+       "discrepancia_pp": 13.47,
+       "ventaja_conservadora_pp": 3.0,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB"
+       ]
+      },
+      {
+       "token": "Lula YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.21,
+       "discrepancia_pp": 12.97,
+       "ventaja_conservadora_pp": 2.5,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.2005,
+       "discrepancia_pp": 13.92,
+       "ventaja_conservadora_pp": 3.45,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.2019999998,
+       "discrepancia_pp": 13.77,
+       "ventaja_conservadora_pp": 3.3,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Lula YES": {
+       "asset": "30630994248667897740988010928640156931882346081873066002335460180076741328029",
+       "window_start": "2026-10-18T19:00:00+00:00",
+       "window_end": "2026-10-18T20:00:00+00:00",
+       "n_buys": 5,
+       "buy_shares": 3189.476192,
+       "buy_notional": 669.79,
+       "min_buy_price": 0.2099999993,
+       "max_buy_price": 0.21,
+       "vwap_buy_price": 0.21,
+       "last_buy": null
+      },
+      "Lula NO": {
+       "asset": "79191939610100241429039499950443680906623179487184628479206155805558220344190",
+       "window_start": "2026-10-18T19:00:00+00:00",
+       "window_end": "2026-10-18T20:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro YES": {
+       "asset": "109876868437950584369987384406356259939519193117253465815665152916226511121427",
+       "window_start": "2026-10-18T19:00:00+00:00",
+       "window_end": "2026-10-18T20:00:00+00:00",
+       "n_buys": 6,
+       "buy_shares": 6481.970589,
+       "buy_notional": 5185.357,
+       "min_buy_price": 0.7989997387,
+       "max_buy_price": 0.8,
+       "vwap_buy_price": 0.799966,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro NO": {
+       "asset": "38310927461258927563020508025396887688249787380193911540547071417200646834355",
+       "window_start": "2026-10-18T19:00:00+00:00",
+       "window_end": "2026-10-18T20:00:00+00:00",
+       "n_buys": 2,
+       "buy_shares": 570.940595,
+       "buy_notional": 115.33,
+       "min_buy_price": 0.2019999979,
+       "max_buy_price": 0.2019999998,
+       "vwap_buy_price": 0.202,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2026-10-22T20:00:00+00:00",
+     "dias_al_cierre": 3.0,
+     "encuestas_disponibles": 174,
+     "modelo_p_a": 0.31504999999999994,
+     "rango_estimaciones": [
+      0.30875,
+      0.3333333333333333
+     ],
+     "n_estimaciones": 4,
+     "mercado_p_a_referencia": 0.225,
+     "alertas": [
+      {
+       "token": "Lula YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.225,
+       "discrepancia_pp": 9.005,
+       "ventaja_conservadora_pp": -6.333,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "ventaja conservadora -6.333333333333336 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Lula YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.23,
+       "discrepancia_pp": 8.505,
+       "ventaja_conservadora_pp": -6.833,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "ventaja conservadora -6.833333333333336 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.221,
+       "discrepancia_pp": 9.405,
+       "ventaja_conservadora_pp": -5.933,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "ventaja conservadora -5.933333333333335 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.222,
+       "discrepancia_pp": 9.305,
+       "ventaja_conservadora_pp": -6.033,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "ventaja conservadora -6.033333333333335 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Lula YES": {
+       "asset": "30630994248667897740988010928640156931882346081873066002335460180076741328029",
+       "window_start": "2026-10-22T19:00:00+00:00",
+       "window_end": "2026-10-22T20:00:00+00:00",
+       "n_buys": 13,
+       "buy_shares": 25980.391312,
+       "buy_notional": 5975.49,
+       "min_buy_price": 0.2299999517,
+       "max_buy_price": 0.23,
+       "vwap_buy_price": 0.23,
+       "last_buy": null
+      },
+      "Lula NO": {
+       "asset": "79191939610100241429039499950443680906623179487184628479206155805558220344190",
+       "window_start": "2026-10-22T19:00:00+00:00",
+       "window_end": "2026-10-22T20:00:00+00:00",
+       "n_buys": 7,
+       "buy_shares": 561.011536,
+       "buy_notional": 437.588998,
+       "min_buy_price": 0.7799999453,
+       "max_buy_price": 0.78,
+       "vwap_buy_price": 0.78,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro YES": {
+       "asset": "109876868437950584369987384406356259939519193117253465815665152916226511121427",
+       "window_start": "2026-10-22T19:00:00+00:00",
+       "window_end": "2026-10-22T20:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 2054.367512,
+       "buy_notional": 1602.94,
+       "min_buy_price": 0.7799999882,
+       "max_buy_price": 0.780832901,
+       "vwap_buy_price": 0.78026,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro NO": {
+       "asset": "38310927461258927563020508025396887688249787380193911540547071417200646834355",
+       "window_start": "2026-10-22T19:00:00+00:00",
+       "window_end": "2026-10-22T20:00:00+00:00",
+       "n_buys": 8,
+       "buy_shares": 3510.635338,
+       "buy_notional": 775.83411,
+       "min_buy_price": 0.22,
+       "max_buy_price": 0.222,
+       "vwap_buy_price": 0.220995,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2026-10-24T20:00:00+00:00",
+     "dias_al_cierre": 1.0,
+     "encuestas_disponibles": 184,
+     "modelo_p_a": 0.3333333333333333,
+     "rango_estimaciones": [
+      0.29724999999999996,
+      0.48784999999999995
+     ],
+     "n_estimaciones": 9,
+     "mercado_p_a_referencia": 0.165,
+     "alertas": [
+      {
+       "token": "Lula YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.165,
+       "discrepancia_pp": 16.833,
+       "ventaja_conservadora_pp": -0.333,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "ventaja conservadora -0.3333333333333355 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Lula YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.17,
+       "discrepancia_pp": 16.333,
+       "ventaja_conservadora_pp": -0.833,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "ventaja conservadora -0.8333333333333359 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.1655,
+       "discrepancia_pp": 16.783,
+       "ventaja_conservadora_pp": -0.383,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "ventaja conservadora -0.3833333333333355 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.166,
+       "discrepancia_pp": 16.733,
+       "ventaja_conservadora_pp": -0.433,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "ventaja conservadora -0.43333333333333557 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Lula YES": {
+       "asset": "30630994248667897740988010928640156931882346081873066002335460180076741328029",
+       "window_start": "2026-10-24T19:00:00+00:00",
+       "window_end": "2026-10-24T20:00:00+00:00",
+       "n_buys": 13,
+       "buy_shares": 14688.460594,
+       "buy_notional": 2497.0383,
+       "min_buy_price": 0.1699999983,
+       "max_buy_price": 0.17,
+       "vwap_buy_price": 0.17,
+       "last_buy": null
+      },
+      "Lula NO": {
+       "asset": "79191939610100241429039499950443680906623179487184628479206155805558220344190",
+       "window_start": "2026-10-24T19:00:00+00:00",
+       "window_end": "2026-10-24T20:00:00+00:00",
+       "n_buys": 1,
+       "buy_shares": 3.0,
+       "buy_notional": 2.52,
+       "min_buy_price": 0.84,
+       "max_buy_price": 0.84,
+       "vwap_buy_price": 0.84,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro YES": {
+       "asset": "109876868437950584369987384406356259939519193117253465815665152916226511121427",
+       "window_start": "2026-10-24T19:00:00+00:00",
+       "window_end": "2026-10-24T20:00:00+00:00",
+       "n_buys": 44,
+       "buy_shares": 10978.355488,
+       "buy_notional": 9181.019948,
+       "min_buy_price": 0.8349999689,
+       "max_buy_price": 0.838,
+       "vwap_buy_price": 0.836284,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro NO": {
+       "asset": "38310927461258927563020508025396887688249787380193911540547071417200646834355",
+       "window_start": "2026-10-24T19:00:00+00:00",
+       "window_end": "2026-10-24T20:00:00+00:00",
+       "n_buys": 12,
+       "buy_shares": 2331.998804,
+       "buy_notional": 386.98812,
+       "min_buy_price": 0.1629999995,
+       "max_buy_price": 0.166,
+       "vwap_buy_price": 0.165947,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2026-10-25T08:00:00+00:00",
+     "dias_al_cierre": 0.5,
+     "encuestas_disponibles": 189,
+     "modelo_p_a": 0.33574999999999994,
+     "rango_estimaciones": [
+      0.30075,
+      0.49075
+     ],
+     "n_estimaciones": 9,
+     "mercado_p_a_referencia": 0.205,
+     "alertas": [
+      {
+       "token": "Lula YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.205,
+       "discrepancia_pp": 13.075,
+       "ventaja_conservadora_pp": -5.0,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "ventaja conservadora -4.999999999999999 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Lula YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.21,
+       "discrepancia_pp": 12.575,
+       "ventaja_conservadora_pp": -5.5,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "ventaja conservadora -5.499999999999999 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.203,
+       "discrepancia_pp": 13.275,
+       "ventaja_conservadora_pp": -4.8,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "ventaja conservadora -4.800000000000002 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Flávio Bolsonaro NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.205,
+       "discrepancia_pp": 13.075,
+       "ventaja_conservadora_pp": -5.0,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "ventaja conservadora -4.999999999999999 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Lula YES": {
+       "asset": "30630994248667897740988010928640156931882346081873066002335460180076741328029",
+       "window_start": "2026-10-25T07:00:00+00:00",
+       "window_end": "2026-10-25T08:00:00+00:00",
+       "n_buys": 13,
+       "buy_shares": 3151.128099,
+       "buy_notional": 643.228,
+       "min_buy_price": 0.2,
+       "max_buy_price": 0.21,
+       "vwap_buy_price": 0.204126,
+       "last_buy": null
+      },
+      "Lula NO": {
+       "asset": "79191939610100241429039499950443680906623179487184628479206155805558220344190",
+       "window_start": "2026-10-25T07:00:00+00:00",
+       "window_end": "2026-10-25T08:00:00+00:00",
+       "n_buys": 18,
+       "buy_shares": 2198.1825,
+       "buy_notional": 1758.596,
+       "min_buy_price": 0.8,
+       "max_buy_price": 0.81,
+       "vwap_buy_price": 0.800023,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro YES": {
+       "asset": "109876868437950584369987384406356259939519193117253465815665152916226511121427",
+       "window_start": "2026-10-25T07:00:00+00:00",
+       "window_end": "2026-10-25T08:00:00+00:00",
+       "n_buys": 21,
+       "buy_shares": 9547.257401,
+       "buy_notional": 7633.768309,
+       "min_buy_price": 0.7959999918,
+       "max_buy_price": 0.8039999997,
+       "vwap_buy_price": 0.799577,
+       "last_buy": null
+      },
+      "Flávio Bolsonaro NO": {
+       "asset": "38310927461258927563020508025396887688249787380193911540547071417200646834355",
+       "window_start": "2026-10-25T07:00:00+00:00",
+       "window_end": "2026-10-25T08:00:00+00:00",
+       "n_buys": 11,
+       "buy_shares": 2220.449339,
+       "buy_notional": 449.645,
+       "min_buy_price": 0.2,
+       "max_buy_price": 0.205,
+       "vwap_buy_price": 0.202502,
+       "last_buy": null
+      }
+     }
+    }
+   ],
+   "operacion_hipotetica": {
+    "tipo": "HIPOTÉTICA (no ejecutada, no es ganancia realizada)",
+    "t": "2026-10-18T20:00:00+00:00",
+    "token": "Flávio Bolsonaro NO",
+    "precio_base": 0.2019999998,
+    "base_precio": "precio_ejecutado_observado",
+    "costo_por_accion": 0.207,
+    "monto_usd": 25.0,
+    "acciones": 120.7729,
+    "gana": true,
+    "pago_usd": 120.7729,
+    "pnl_hipotetico_usd": 95.7729,
+    "senal_operable": false,
+    "bloqueos": [
+     "modelo no validado: solo 9 contiendas fuera de muestra (mínimo 15)",
+     "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB"
+    ]
+   },
+   "metricas": {
+    "n_puntos": 4,
+    "brier_modelo": 0.44770627486111114,
+    "brier_mercado": 0.640475,
+    "logloss_modelo": 1.106179264664143,
+    "logloss_mercado": 1.615738820386683
+   },
+   "revision_encuestas": {
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2026 Brazilian presidential election",
+    "revid": 1382025421,
+    "revision_ts": "2026-10-26T02:56:04+00:00",
+    "retrieved_at": "2026-10-26T03:09:05.945427+00:00",
+    "sha256": "dd98c809c9176049a3622aa0b3526d175221196fd08bf51db92a0130fec59f6b",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2026_Brazilian_presidential_election/1382025421"
+   },
+   "nota_disponibilidad": "revisiones exactas en el backtest específico"
+  },
+  {
+   "contest": "pl-2025-presidente-2t",
+   "candidatos": {
+    "a": "Rafał Trzaskowski",
+    "b": "Karol Nawrocki"
+   },
+   "evento_polymarket": "poland-presidential-election",
+   "ganador_segun_mercado": "b",
+   "nota_resolucion": "outcomePrices de Gamma (YES ≥ 0,99)",
+   "calibrado_con": [
+    "br-2022-presidente-2t",
+    "br-2018-presidente-2t",
+    "br-2010-presidente-2t",
+    "fr-2017-presidente-2t",
+    "fr-2022-presidente-2t",
+    "pe-2021-presidente-2t",
+    "co-2022-presidente-2t",
+    "ro-2025-presidente-2t"
+   ],
+   "puntos": [
+    {
+     "t": "2025-05-25T19:00:00+00:00",
+     "dias_al_cierre": 7.0,
+     "encuestas_disponibles": 62,
+     "modelo_p_a": 0.80345,
+     "rango_estimaciones": [
+      0.75,
+      0.9018
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.615,
+     "alertas": [
+      {
+       "token": "Karol Nawrocki NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.615,
+       "discrepancia_pp": 18.845,
+       "ventaja_conservadora_pp": -5.75,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -5.75 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Karol Nawrocki NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.6299930032,
+       "discrepancia_pp": 17.346,
+       "ventaja_conservadora_pp": -7.249,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -7.249300319999996 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Rafał Trzaskowski YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.615,
+       "discrepancia_pp": 18.845,
+       "ventaja_conservadora_pp": -5.75,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -5.75 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Rafał Trzaskowski YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.64,
+       "discrepancia_pp": 16.345,
+       "ventaja_conservadora_pp": -8.25,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -8.250000000000002 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Karol Nawrocki YES": {
+       "asset": "52378310446953465163845338048369876961360578335284428810587513450420811578746",
+       "window_start": "2025-05-25T18:00:00+00:00",
+       "window_end": "2025-05-25T19:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 4417.205122,
+       "buy_notional": 1722.709996,
+       "min_buy_price": 0.3899998908,
+       "max_buy_price": 0.3899999999,
+       "vwap_buy_price": 0.39,
+       "last_buy": null
+      },
+      "Karol Nawrocki NO": {
+       "asset": "12000674920991755992211074758866949296981843307621554385852540153569787669909",
+       "window_start": "2025-05-25T18:00:00+00:00",
+       "window_end": "2025-05-25T19:00:00+00:00",
+       "n_buys": 10,
+       "buy_shares": 23458.494795,
+       "buy_notional": 14560.692597,
+       "min_buy_price": 0.6199999998,
+       "max_buy_price": 0.6299930032,
+       "vwap_buy_price": 0.6207,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski YES": {
+       "asset": "9985510571211594606436989364549728150268400968429116207816527248582274291346",
+       "window_start": "2025-05-25T18:00:00+00:00",
+       "window_end": "2025-05-25T19:00:00+00:00",
+       "n_buys": 39,
+       "buy_shares": 80389.652895,
+       "buy_notional": 50256.789953,
+       "min_buy_price": 0.619999845,
+       "max_buy_price": 0.64,
+       "vwap_buy_price": 0.625165,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski NO": {
+       "asset": "95044204495071447962354072933210357509612220350121617225795580441278155097858",
+       "window_start": "2025-05-25T18:00:00+00:00",
+       "window_end": "2025-05-25T19:00:00+00:00",
+       "n_buys": 6,
+       "buy_shares": 979.444864,
+       "buy_notional": 373.556995,
+       "min_buy_price": 0.38,
+       "max_buy_price": 0.3899999921,
+       "vwap_buy_price": 0.381397,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-05-29T19:00:00+00:00",
+     "dias_al_cierre": 3.0,
+     "encuestas_disponibles": 68,
+     "modelo_p_a": 0.75,
+     "rango_estimaciones": [
+      0.6831999999999999,
+      0.7825
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.6875,
+     "alertas": [
+      {
+       "token": "Karol Nawrocki NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.688,
+       "discrepancia_pp": 6.2,
+       "ventaja_conservadora_pp": -13.3,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.29999999999999 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Karol Nawrocki NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.688,
+       "discrepancia_pp": 6.2,
+       "ventaja_conservadora_pp": -13.3,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.29999999999999 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Rafał Trzaskowski YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.6875,
+       "discrepancia_pp": 6.25,
+       "ventaja_conservadora_pp": -13.25,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.249999999999995 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Rafał Trzaskowski YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.69,
+       "discrepancia_pp": 6.0,
+       "ventaja_conservadora_pp": -13.5,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.49999999999999 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Karol Nawrocki YES": {
+       "asset": "52378310446953465163845338048369876961360578335284428810587513450420811578746",
+       "window_start": "2025-05-29T18:00:00+00:00",
+       "window_end": "2025-05-29T19:00:00+00:00",
+       "n_buys": 57,
+       "buy_shares": 46985.979413,
+       "buy_notional": 15305.466085,
+       "min_buy_price": 0.313,
+       "max_buy_price": 0.331,
+       "vwap_buy_price": 0.325745,
+       "last_buy": null
+      },
+      "Karol Nawrocki NO": {
+       "asset": "12000674920991755992211074758866949296981843307621554385852540153569787669909",
+       "window_start": "2025-05-29T18:00:00+00:00",
+       "window_end": "2025-05-29T19:00:00+00:00",
+       "n_buys": 8,
+       "buy_shares": 837.861859,
+       "buy_notional": 574.104579,
+       "min_buy_price": 0.68,
+       "max_buy_price": 0.688,
+       "vwap_buy_price": 0.685202,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski YES": {
+       "asset": "9985510571211594606436989364549728150268400968429116207816527248582274291346",
+       "window_start": "2025-05-29T18:00:00+00:00",
+       "window_end": "2025-05-29T19:00:00+00:00",
+       "n_buys": 21,
+       "buy_shares": 6540.25456,
+       "buy_notional": 4476.212774,
+       "min_buy_price": 0.6749999944,
+       "max_buy_price": 0.69,
+       "vwap_buy_price": 0.68441,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski NO": {
+       "asset": "95044204495071447962354072933210357509612220350121617225795580441278155097858",
+       "window_start": "2025-05-29T18:00:00+00:00",
+       "window_end": "2025-05-29T19:00:00+00:00",
+       "n_buys": 60,
+       "buy_shares": 21618.719158,
+       "buy_notional": 6999.387634,
+       "min_buy_price": 0.311,
+       "max_buy_price": 0.329,
+       "vwap_buy_price": 0.323765,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-05-31T19:00:00+00:00",
+     "dias_al_cierre": 1.0,
+     "encuestas_disponibles": 80,
+     "modelo_p_a": 0.625,
+     "rango_estimaciones": [
+      0.5946,
+      0.6411999999999999
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.629,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Karol Nawrocki YES": {
+       "asset": "52378310446953465163845338048369876961360578335284428810587513450420811578746",
+       "window_start": "2025-05-31T18:00:00+00:00",
+       "window_end": "2025-05-31T19:00:00+00:00",
+       "n_buys": 20,
+       "buy_shares": 6748.138504,
+       "buy_notional": 2505.583985,
+       "min_buy_price": 0.362,
+       "max_buy_price": 0.3729217849,
+       "vwap_buy_price": 0.3713,
+       "last_buy": null
+      },
+      "Karol Nawrocki NO": {
+       "asset": "12000674920991755992211074758866949296981843307621554385852540153569787669909",
+       "window_start": "2025-05-31T18:00:00+00:00",
+       "window_end": "2025-05-31T19:00:00+00:00",
+       "n_buys": 45,
+       "buy_shares": 6338.138993,
+       "buy_notional": 4014.520533,
+       "min_buy_price": 0.63,
+       "max_buy_price": 0.644,
+       "vwap_buy_price": 0.633391,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski YES": {
+       "asset": "9985510571211594606436989364549728150268400968429116207816527248582274291346",
+       "window_start": "2025-05-31T18:00:00+00:00",
+       "window_end": "2025-05-31T19:00:00+00:00",
+       "n_buys": 37,
+       "buy_shares": 42954.026725,
+       "buy_notional": 27354.920353,
+       "min_buy_price": 0.6318802823,
+       "max_buy_price": 0.642,
+       "vwap_buy_price": 0.636842,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski NO": {
+       "asset": "95044204495071447962354072933210357509612220350121617225795580441278155097858",
+       "window_start": "2025-05-31T18:00:00+00:00",
+       "window_end": "2025-05-31T19:00:00+00:00",
+       "n_buys": 22,
+       "buy_shares": 8875.990831,
+       "buy_notional": 3317.833637,
+       "min_buy_price": 0.359,
+       "max_buy_price": 0.3745497154,
+       "vwap_buy_price": 0.373799,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-06-01T07:00:00+00:00",
+     "dias_al_cierre": 0.5,
+     "encuestas_disponibles": 82,
+     "modelo_p_a": 0.60265,
+     "rango_estimaciones": [
+      0.58695,
+      0.625
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.6865,
+     "alertas": [
+      {
+       "token": "Karol Nawrocki YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.311,
+       "discrepancia_pp": 8.635,
+       "ventaja_conservadora_pp": -12.85,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -12.85 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Karol Nawrocki YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.3363931463,
+       "discrepancia_pp": 6.096,
+       "ventaja_conservadora_pp": -15.389,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -15.389314630000001 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Rafał Trzaskowski NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.3135,
+       "discrepancia_pp": 8.385,
+       "ventaja_conservadora_pp": -13.1,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.100000000000001 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Rafał Trzaskowski NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.3359999974,
+       "discrepancia_pp": 6.135,
+       "ventaja_conservadora_pp": -15.35,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -15.349999739999998 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Karol Nawrocki YES": {
+       "asset": "52378310446953465163845338048369876961360578335284428810587513450420811578746",
+       "window_start": "2025-06-01T06:00:00+00:00",
+       "window_end": "2025-06-01T07:00:00+00:00",
+       "n_buys": 26,
+       "buy_shares": 46037.377151,
+       "buy_notional": 15127.384503,
+       "min_buy_price": 0.3267453657,
+       "max_buy_price": 0.3363931463,
+       "vwap_buy_price": 0.328589,
+       "last_buy": null
+      },
+      "Karol Nawrocki NO": {
+       "asset": "12000674920991755992211074758866949296981843307621554385852540153569787669909",
+       "window_start": "2025-06-01T06:00:00+00:00",
+       "window_end": "2025-06-01T07:00:00+00:00",
+       "n_buys": 8,
+       "buy_shares": 831.554301,
+       "buy_notional": 556.936558,
+       "min_buy_price": 0.666,
+       "max_buy_price": 0.676,
+       "vwap_buy_price": 0.669754,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski YES": {
+       "asset": "9985510571211594606436989364549728150268400968429116207816527248582274291346",
+       "window_start": "2025-06-01T06:00:00+00:00",
+       "window_end": "2025-06-01T07:00:00+00:00",
+       "n_buys": 47,
+       "buy_shares": 41386.181282,
+       "buy_notional": 27699.576897,
+       "min_buy_price": 0.6649999534,
+       "max_buy_price": 0.689,
+       "vwap_buy_price": 0.669295,
+       "last_buy": null
+      },
+      "Rafał Trzaskowski NO": {
+       "asset": "95044204495071447962354072933210357509612220350121617225795580441278155097858",
+       "window_start": "2025-06-01T06:00:00+00:00",
+       "window_end": "2025-06-01T07:00:00+00:00",
+       "n_buys": 29,
+       "buy_shares": 23578.599406,
+       "buy_notional": 7734.46401,
+       "min_buy_price": 0.3169999837,
+       "max_buy_price": 0.3359999974,
+       "vwap_buy_price": 0.328029,
+       "last_buy": null
+      }
+     }
+    }
+   ],
+   "operacion_hipotetica": {
+    "tipo": "HIPOTÉTICA (no ejecutada, no es ganancia realizada)",
+    "t": "2025-05-25T19:00:00+00:00",
+    "token": "Karol Nawrocki NO",
+    "precio_base": 0.6299930032,
+    "base_precio": "precio_ejecutado_observado",
+    "costo_por_accion": 0.634993,
+    "monto_usd": 25.0,
+    "acciones": 39.3705,
+    "gana": false,
+    "pago_usd": 0.0,
+    "pnl_hipotetico_usd": -25.0,
+    "senal_operable": false,
+    "bloqueos": [
+     "modelo no validado: solo 8 contiendas fuera de muestra (mínimo 15)",
+     "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+     "modelo de comisión no verificado para este mercado",
+     "ventaja conservadora -7.249300319999996 p.p. no positiva tras costos"
+    ]
+   },
+   "metricas": {
+    "n_puntos": 4,
+    "brier_modelo": 0.49046098125000004,
+    "brier_mercado": 0.429451125,
+    "logloss_modelo": 1.2292249539604583,
+    "logloss_mercado": 1.0672929724459743
+   },
+   "revision_encuestas": {
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2025 Polish presidential election",
+    "revid": 1328916009,
+    "revision_ts": "2025-12-22T15:26:22+00:00",
+    "retrieved_at": "2026-10-26T03:02:00.788746+00:00",
+    "sha256": "695da776ad8090c8042fe66f9dcb21b439ec1bb69f52e8e63f8ede22a95fb4b4",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2025_Polish_presidential_election/1328916009"
+   },
+   "nota_disponibilidad": "disponibilidad estimada: fin de campo + 2 días (página posterior a la elección)"
+  },
+  {
+   "contest": "ro-2025-presidente-2t",
+   "candidatos": {
+    "a": "Nicușor Dan",
+    "b": "George Simion"
+   },
+   "evento_polymarket": "romania-presidential-election-winner",
+   "ganador_segun_mercado": "a",
+   "nota_resolucion": "outcomePrices de Gamma (YES ≥ 0,99)",
+   "calibrado_con": [
+    "br-2022-presidente-2t",
+    "br-2018-presidente-2t",
+    "br-2010-presidente-2t",
+    "fr-2017-presidente-2t",
+    "fr-2022-presidente-2t",
+    "pe-2021-presidente-2t",
+    "co-2022-presidente-2t"
+   ],
+   "puntos": [
+    {
+     "t": "2025-05-11T18:00:00+00:00",
+     "dias_al_cierre": 7.0,
+     "encuestas_disponibles": 16,
+     "modelo_p_a": 0.42857142857142855,
+     "rango_estimaciones": [
+      0.42275000000000007,
+      0.7310499999999999
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.345,
+     "alertas": [
+      {
+       "token": "George Simion NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.345,
+       "discrepancia_pp": 8.357,
+       "ventaja_conservadora_pp": -13.571,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.571428571428571 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "George Simion NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.35,
+       "discrepancia_pp": 7.857,
+       "ventaja_conservadora_pp": -14.071,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -14.071428571428571 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Nicușor Dan YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.345,
+       "discrepancia_pp": 8.357,
+       "ventaja_conservadora_pp": -13.571,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -13.571428571428571 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Nicușor Dan YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.35,
+       "discrepancia_pp": 7.857,
+       "ventaja_conservadora_pp": -14.071,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -14.071428571428571 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "George Simion YES": {
+       "asset": "39906998422459186897731915920227947929676695276484226649445098509987541352268",
+       "window_start": "2025-05-11T17:00:00+00:00",
+       "window_end": "2025-05-11T18:00:00+00:00",
+       "n_buys": 18,
+       "buy_shares": 1480.818156,
+       "buy_notional": 977.339975,
+       "min_buy_price": 0.6599996679,
+       "max_buy_price": 0.66,
+       "vwap_buy_price": 0.66,
+       "last_buy": null
+      },
+      "George Simion NO": {
+       "asset": "27804215744716732413063941336669826182851764173867962754282833425742958825900",
+       "window_start": "2025-05-11T17:00:00+00:00",
+       "window_end": "2025-05-11T18:00:00+00:00",
+       "n_buys": 25,
+       "buy_shares": 13049.09713,
+       "buy_notional": 4567.183991,
+       "min_buy_price": 0.3499999839,
+       "max_buy_price": 0.35,
+       "vwap_buy_price": 0.35,
+       "last_buy": null
+      },
+      "Nicușor Dan YES": {
+       "asset": "65635069780420563470359317634895637337713542089289204127626426923331166629221",
+       "window_start": "2025-05-11T17:00:00+00:00",
+       "window_end": "2025-05-11T18:00:00+00:00",
+       "n_buys": 34,
+       "buy_shares": 27986.114251,
+       "buy_notional": 9795.139977,
+       "min_buy_price": 0.3499998717,
+       "max_buy_price": 0.35,
+       "vwap_buy_price": 0.35,
+       "last_buy": null
+      },
+      "Nicușor Dan NO": {
+       "asset": "75108011059255100121309616647139761925541153138774950455720013752098078766968",
+       "window_start": "2025-05-11T17:00:00+00:00",
+       "window_end": "2025-05-11T18:00:00+00:00",
+       "n_buys": 5,
+       "buy_shares": 840.666661,
+       "buy_notional": 554.839996,
+       "min_buy_price": 0.659999856,
+       "max_buy_price": 0.66,
+       "vwap_buy_price": 0.66,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-05-15T18:00:00+00:00",
+     "dias_al_cierre": 3.0,
+     "encuestas_disponibles": 20,
+     "modelo_p_a": 0.3353999999999999,
+     "rango_estimaciones": [
+      0.19635000000000002,
+      0.35714285714285715
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.465,
+     "alertas": [
+      {
+       "token": "George Simion YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.535,
+       "discrepancia_pp": 12.96,
+       "ventaja_conservadora_pp": -11.143,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -11.142857142857142 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "George Simion YES",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.54,
+       "discrepancia_pp": 12.46,
+       "ventaja_conservadora_pp": -11.643,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -11.642857142857144 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Nicușor Dan NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.535,
+       "discrepancia_pp": 12.96,
+       "ventaja_conservadora_pp": -11.143,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -11.142857142857142 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Nicușor Dan NO",
+       "base": "precio_ejecutado_observado",
+       "precio": 0.54,
+       "discrepancia_pp": 12.46,
+       "ventaja_conservadora_pp": -11.643,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -11.642857142857144 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "George Simion YES": {
+       "asset": "39906998422459186897731915920227947929676695276484226649445098509987541352268",
+       "window_start": "2025-05-15T17:00:00+00:00",
+       "window_end": "2025-05-15T18:00:00+00:00",
+       "n_buys": 7,
+       "buy_shares": 659.259249,
+       "buy_notional": 355.999993,
+       "min_buy_price": 0.5399999881,
+       "max_buy_price": 0.54,
+       "vwap_buy_price": 0.54,
+       "last_buy": null
+      },
+      "George Simion NO": {
+       "asset": "27804215744716732413063941336669826182851764173867962754282833425742958825900",
+       "window_start": "2025-05-15T17:00:00+00:00",
+       "window_end": "2025-05-15T18:00:00+00:00",
+       "n_buys": 36,
+       "buy_shares": 24045.495724,
+       "buy_notional": 11301.382987,
+       "min_buy_price": 0.4699998778,
+       "max_buy_price": 0.47,
+       "vwap_buy_price": 0.47,
+       "last_buy": null
+      },
+      "Nicușor Dan YES": {
+       "asset": "65635069780420563470359317634895637337713542089289204127626426923331166629221",
+       "window_start": "2025-05-15T17:00:00+00:00",
+       "window_end": "2025-05-15T18:00:00+00:00",
+       "n_buys": 87,
+       "buy_shares": 182291.89948,
+       "buy_notional": 86507.007237,
+       "min_buy_price": 0.4699998919,
+       "max_buy_price": 0.48,
+       "vwap_buy_price": 0.474552,
+       "last_buy": null
+      },
+      "Nicușor Dan NO": {
+       "asset": "75108011059255100121309616647139761925541153138774950455720013752098078766968",
+       "window_start": "2025-05-15T17:00:00+00:00",
+       "window_end": "2025-05-15T18:00:00+00:00",
+       "n_buys": 12,
+       "buy_shares": 11326.286295,
+       "buy_notional": 6106.494699,
+       "min_buy_price": 0.53,
+       "max_buy_price": 0.54,
+       "vwap_buy_price": 0.539144,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-05-17T18:00:00+00:00",
+     "dias_al_cierre": 1.0,
+     "encuestas_disponibles": 22,
+     "modelo_p_a": 0.42857142857142855,
+     "rango_estimaciones": [
+      0.35535000000000005,
+      0.46825000000000006
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.465,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "George Simion YES": {
+       "asset": "39906998422459186897731915920227947929676695276484226649445098509987541352268",
+       "window_start": "2025-05-17T17:00:00+00:00",
+       "window_end": "2025-05-17T18:00:00+00:00",
+       "n_buys": 27,
+       "buy_shares": 51803.609177,
+       "buy_notional": 27285.31758,
+       "min_buy_price": 0.5199999938,
+       "max_buy_price": 0.5399999984,
+       "vwap_buy_price": 0.526707,
+       "last_buy": null
+      },
+      "George Simion NO": {
+       "asset": "27804215744716732413063941336669826182851764173867962754282833425742958825900",
+       "window_start": "2025-05-17T17:00:00+00:00",
+       "window_end": "2025-05-17T18:00:00+00:00",
+       "n_buys": 49,
+       "buy_shares": 59042.515764,
+       "buy_notional": 28210.136793,
+       "min_buy_price": 0.4699999475,
+       "max_buy_price": 0.49,
+       "vwap_buy_price": 0.477794,
+       "last_buy": null
+      },
+      "Nicușor Dan YES": {
+       "asset": "65635069780420563470359317634895637337713542089289204127626426923331166629221",
+       "window_start": "2025-05-17T17:00:00+00:00",
+       "window_end": "2025-05-17T18:00:00+00:00",
+       "n_buys": 102,
+       "buy_shares": 82855.7237,
+       "buy_notional": 39808.70633,
+       "min_buy_price": 0.4699998778,
+       "max_buy_price": 0.49,
+       "vwap_buy_price": 0.480458,
+       "last_buy": null
+      },
+      "Nicușor Dan NO": {
+       "asset": "75108011059255100121309616647139761925541153138774950455720013752098078766968",
+       "window_start": "2025-05-17T17:00:00+00:00",
+       "window_end": "2025-05-17T18:00:00+00:00",
+       "n_buys": 19,
+       "buy_shares": 28758.285848,
+       "buy_notional": 15213.960199,
+       "min_buy_price": 0.52,
+       "max_buy_price": 0.54,
+       "vwap_buy_price": 0.529029,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-05-18T06:00:00+00:00",
+     "dias_al_cierre": 0.5,
+     "encuestas_disponibles": 22,
+     "modelo_p_a": 0.42857142857142855,
+     "rango_estimaciones": [
+      0.35719999999999996,
+      0.47290000000000004
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.445,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "George Simion YES": {
+       "asset": "39906998422459186897731915920227947929676695276484226649445098509987541352268",
+       "window_start": "2025-05-18T05:00:00+00:00",
+       "window_end": "2025-05-18T06:00:00+00:00",
+       "n_buys": 147,
+       "buy_shares": 73091.319488,
+       "buy_notional": 37832.916888,
+       "min_buy_price": 0.49,
+       "max_buy_price": 0.56,
+       "vwap_buy_price": 0.517612,
+       "last_buy": null
+      },
+      "George Simion NO": {
+       "asset": "27804215744716732413063941336669826182851764173867962754282833425742958825900",
+       "window_start": "2025-05-18T05:00:00+00:00",
+       "window_end": "2025-05-18T06:00:00+00:00",
+       "n_buys": 89,
+       "buy_shares": 162106.863704,
+       "buy_notional": 78728.475589,
+       "min_buy_price": 0.45,
+       "max_buy_price": 0.51,
+       "vwap_buy_price": 0.485658,
+       "last_buy": null
+      },
+      "Nicușor Dan YES": {
+       "asset": "65635069780420563470359317634895637337713542089289204127626426923331166629221",
+       "window_start": "2025-05-18T05:00:00+00:00",
+       "window_end": "2025-05-18T06:00:00+00:00",
+       "n_buys": 92,
+       "buy_shares": 507480.673476,
+       "buy_notional": 248882.593148,
+       "min_buy_price": 0.4499999979,
+       "max_buy_price": 0.5268389661,
+       "vwap_buy_price": 0.490428,
+       "last_buy": null
+      },
+      "Nicușor Dan NO": {
+       "asset": "75108011059255100121309616647139761925541153138774950455720013752098078766968",
+       "window_start": "2025-05-18T05:00:00+00:00",
+       "window_end": "2025-05-18T06:00:00+00:00",
+       "n_buys": 134,
+       "buy_shares": 48326.34887,
+       "buy_notional": 25530.807288,
+       "min_buy_price": 0.4899999433,
+       "max_buy_price": 0.56,
+       "vwap_buy_price": 0.5283,
+       "last_buy": null
+      }
+     }
+    }
+   ],
+   "operacion_hipotetica": {
+    "tipo": "HIPOTÉTICA (no ejecutada, no es ganancia realizada)",
+    "t": "2025-05-11T18:00:00+00:00",
+    "token": "George Simion NO",
+    "precio_base": 0.35,
+    "base_precio": "precio_ejecutado_observado",
+    "costo_por_accion": 0.355,
+    "monto_usd": 25.0,
+    "acciones": 70.4225,
+    "gana": true,
+    "pago_usd": 70.4225,
+    "pnl_hipotetico_usd": 45.4225,
+    "senal_operable": false,
+    "bloqueos": [
+     "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+     "precio no ejecutable (precio_ejecutado_observado): se requiere ask del order book del CLOB",
+     "modelo de comisión no verificado para este mercado",
+     "ventaja conservadora -14.071428571428571 p.p. no positiva tras costos"
+    ]
+   },
+   "metricas": {
+    "n_puntos": 4,
+    "brier_modelo": 0.35532124918367347,
+    "brier_mercado": 0.32737499999999997,
+    "logloss_modelo": 0.90858125268866,
+    "logloss_mercado": 0.8513319013890589
+   },
+   "revision_encuestas": {
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "2025 Romanian presidential election",
+    "revid": 1379809836,
+    "revision_ts": "2026-10-12T01:47:13+00:00",
+    "retrieved_at": "2026-10-26T03:05:05.702206+00:00",
+    "sha256": "e6c2f0e48948d44211cdd202e2e2afcab4755608d5489aefeb4761282e20626c",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/2025_Romanian_presidential_election/1379809836"
+   },
+   "nota_disponibilidad": "disponibilidad estimada: fin de campo + 2 días (página posterior a la elección)"
+  },
+  {
+   "contest": "ec-2025-presidente-2t",
+   "candidatos": {
+    "a": "Daniel Noboa",
+    "b": "Luisa González"
+   },
+   "evento_polymarket": "ecuador-presidential-election",
+   "ganador_segun_mercado": "a",
+   "nota_resolucion": "outcomePrices de Gamma (YES ≥ 0,99)",
+   "calibrado_con": [
+    "br-2022-presidente-2t",
+    "br-2018-presidente-2t",
+    "br-2010-presidente-2t",
+    "fr-2017-presidente-2t",
+    "fr-2022-presidente-2t",
+    "pe-2021-presidente-2t",
+    "co-2022-presidente-2t"
+   ],
+   "puntos": [
+    {
+     "t": "2025-04-06T22:00:00+00:00",
+     "dias_al_cierre": 7.0,
+     "encuestas_disponibles": 20,
+     "modelo_p_a": 0.37579999999999997,
+     "rango_estimaciones": [
+      0.2928,
+      0.42857142857142855
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.465,
+     "alertas": [
+      {
+       "token": "Daniel Noboa NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.535,
+       "discrepancia_pp": 8.92,
+       "ventaja_conservadora_pp": -18.286,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -18.285714285714295 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Luisa González YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.54,
+       "discrepancia_pp": 8.42,
+       "ventaja_conservadora_pp": -18.786,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -18.785714285714295 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Daniel Noboa YES": {
+       "asset": "78529201497074592652635694767108128464886305064134175900444209409569043565924",
+       "window_start": "2025-04-06T21:00:00+00:00",
+       "window_end": "2025-04-06T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Daniel Noboa NO": {
+       "asset": "115230139536184724002226462331333766173022439149690756223377046833339238863472",
+       "window_start": "2025-04-06T21:00:00+00:00",
+       "window_end": "2025-04-06T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Luisa González YES": {
+       "asset": "31462369160152841995177527804912923307710608138814696727701585015260363916969",
+       "window_start": "2025-04-06T21:00:00+00:00",
+       "window_end": "2025-04-06T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Luisa González NO": {
+       "asset": "86965966444880126816373079784261927191409678982132353789731086350839103913519",
+       "window_start": "2025-04-06T21:00:00+00:00",
+       "window_end": "2025-04-06T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-04-10T22:00:00+00:00",
+     "dias_al_cierre": 3.0,
+     "encuestas_disponibles": 20,
+     "modelo_p_a": 0.35714285714285715,
+     "rango_estimaciones": [
+      0.31425,
+      0.37170000000000003
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.385,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Daniel Noboa YES": {
+       "asset": "78529201497074592652635694767108128464886305064134175900444209409569043565924",
+       "window_start": "2025-04-10T21:00:00+00:00",
+       "window_end": "2025-04-10T22:00:00+00:00",
+       "n_buys": 1,
+       "buy_shares": 2.564101,
+       "buy_notional": 0.999999,
+       "min_buy_price": 0.3899998479,
+       "max_buy_price": 0.3899998479,
+       "vwap_buy_price": 0.39,
+       "last_buy": null
+      },
+      "Daniel Noboa NO": {
+       "asset": "115230139536184724002226462331333766173022439149690756223377046833339238863472",
+       "window_start": "2025-04-10T21:00:00+00:00",
+       "window_end": "2025-04-10T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Luisa González YES": {
+       "asset": "31462369160152841995177527804912923307710608138814696727701585015260363916969",
+       "window_start": "2025-04-10T21:00:00+00:00",
+       "window_end": "2025-04-10T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Luisa González NO": {
+       "asset": "86965966444880126816373079784261927191409678982132353789731086350839103913519",
+       "window_start": "2025-04-10T21:00:00+00:00",
+       "window_end": "2025-04-10T22:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-04-12T22:00:00+00:00",
+     "dias_al_cierre": 1.0,
+     "encuestas_disponibles": 20,
+     "modelo_p_a": 0.36784999999999995,
+     "rango_estimaciones": [
+      0.35714285714285715,
+      0.46165000000000006
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.435,
+     "alertas": [
+      {
+       "token": "Daniel Noboa NO",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.565,
+       "discrepancia_pp": 6.715,
+       "ventaja_conservadora_pp": -15.0,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -14.999999999999991 p.p. no positiva tras costos"
+       ]
+      },
+      {
+       "token": "Luisa González YES",
+       "base": "precio_referencia_no_ejecutable",
+       "precio": 0.575,
+       "discrepancia_pp": 5.715,
+       "ventaja_conservadora_pp": -16.0,
+       "senal_operable": false,
+       "bloqueos": [
+        "modelo no validado: solo 7 contiendas fuera de muestra (mínimo 15)",
+        "precio no ejecutable (precio_referencia_no_ejecutable): se requiere ask del order book del CLOB",
+        "modelo de comisión no verificado para este mercado",
+        "ventaja conservadora -15.999999999999993 p.p. no positiva tras costos"
+       ]
+      }
+     ],
+     "evidencia_operaciones": {
+      "Daniel Noboa YES": {
+       "asset": "78529201497074592652635694767108128464886305064134175900444209409569043565924",
+       "window_start": "2025-04-12T21:00:00+00:00",
+       "window_end": "2025-04-12T22:00:00+00:00",
+       "n_buys": 6,
+       "buy_shares": 2374.485518,
+       "buy_notional": 1061.499998,
+       "min_buy_price": 0.41,
+       "max_buy_price": 0.449149936,
+       "vwap_buy_price": 0.447044,
+       "last_buy": null
+      },
+      "Daniel Noboa NO": {
+       "asset": "115230139536184724002226462331333766173022439149690756223377046833339238863472",
+       "window_start": "2025-04-12T21:00:00+00:00",
+       "window_end": "2025-04-12T22:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 489.3,
+       "buy_notional": 280.287,
+       "min_buy_price": 0.57,
+       "max_buy_price": 0.59,
+       "vwap_buy_price": 0.572833,
+       "last_buy": null
+      },
+      "Luisa González YES": {
+       "asset": "31462369160152841995177527804912923307710608138814696727701585015260363916969",
+       "window_start": "2025-04-12T21:00:00+00:00",
+       "window_end": "2025-04-12T22:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 1835.840226,
+       "buy_notional": 1065.029997,
+       "min_buy_price": 0.5799999984,
+       "max_buy_price": 0.6,
+       "vwap_buy_price": 0.580132,
+       "last_buy": null
+      },
+      "Luisa González NO": {
+       "asset": "86965966444880126816373079784261927191409678982132353789731086350839103913519",
+       "window_start": "2025-04-12T21:00:00+00:00",
+       "window_end": "2025-04-12T22:00:00+00:00",
+       "n_buys": 9,
+       "buy_shares": 645.971116,
+       "buy_notional": 277.562496,
+       "min_buy_price": 0.41,
+       "max_buy_price": 0.4399999872,
+       "vwap_buy_price": 0.429683,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-04-13T10:00:00+00:00",
+     "dias_al_cierre": 0.5,
+     "encuestas_disponibles": 20,
+     "modelo_p_a": 0.36415,
+     "rango_estimaciones": [
+      0.35714285714285715,
+      0.45915
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.4,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Daniel Noboa YES": {
+       "asset": "78529201497074592652635694767108128464886305064134175900444209409569043565924",
+       "window_start": "2025-04-13T09:00:00+00:00",
+       "window_end": "2025-04-13T10:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 2749.86,
+       "buy_notional": 1117.3926,
+       "min_buy_price": 0.4,
+       "max_buy_price": 0.41,
+       "vwap_buy_price": 0.406345,
+       "last_buy": null
+      },
+      "Daniel Noboa NO": {
+       "asset": "115230139536184724002226462331333766173022439149690756223377046833339238863472",
+       "window_start": "2025-04-13T09:00:00+00:00",
+       "window_end": "2025-04-13T10:00:00+00:00",
+       "n_buys": 1,
+       "buy_shares": 40.983605,
+       "buy_notional": 24.999999,
+       "min_buy_price": 0.6099999988,
+       "max_buy_price": 0.6099999988,
+       "vwap_buy_price": 0.61,
+       "last_buy": null
+      },
+      "Luisa González YES": {
+       "asset": "31462369160152841995177527804912923307710608138814696727701585015260363916969",
+       "window_start": "2025-04-13T09:00:00+00:00",
+       "window_end": "2025-04-13T10:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 563.91891,
+       "buy_notional": 333.062997,
+       "min_buy_price": 0.5904525939,
+       "max_buy_price": 0.6199998512,
+       "vwap_buy_price": 0.590622,
+       "last_buy": null
+      },
+      "Luisa González NO": {
+       "asset": "86965966444880126816373079784261927191409678982132353789731086350839103913519",
+       "window_start": "2025-04-13T09:00:00+00:00",
+       "window_end": "2025-04-13T10:00:00+00:00",
+       "n_buys": 3,
+       "buy_shares": 490.0,
+       "buy_notional": 198.4,
+       "min_buy_price": 0.4,
+       "max_buy_price": 0.42,
+       "vwap_buy_price": 0.404898,
+       "last_buy": null
+      }
+     }
+    }
+   ],
+   "operacion_hipotetica": null,
+   "metricas": {
+    "n_puntos": 4,
+    "brier_modelo": 0.40170244778061226,
+    "brier_mercado": 0.33591874999999993,
+    "logloss_modelo": 1.0046467625265016,
+    "logloss_mercado": 0.8672324494641854
+   },
+   "revision_encuestas": {
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2025 Ecuadorian general election",
+    "revid": 1315289337,
+    "revision_ts": "2025-10-05T21:29:07+00:00",
+    "retrieved_at": "2026-10-26T03:05:15.588650+00:00",
+    "sha256": "7048117fc0accb2bcdce56c35130e41bd71a7d201a26b198d0a68a79d5d458d1",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2025_Ecuadorian_general_election/1315289337"
+   },
+   "nota_disponibilidad": "disponibilidad estimada: fin de campo + 2 días (página posterior a la elección)"
+  },
+  {
+   "contest": "cl-2025-presidente-2t",
+   "candidatos": {
+    "a": "Jeannette Jara",
+    "b": "José Antonio Kast"
+   },
+   "evento_polymarket": "chile-presidential-election",
+   "ganador_segun_mercado": "b",
+   "nota_resolucion": "outcomePrices de Gamma (YES ≥ 0,99)",
+   "calibrado_con": [
+    "br-2022-presidente-2t",
+    "br-2018-presidente-2t",
+    "br-2010-presidente-2t",
+    "fr-2017-presidente-2t",
+    "fr-2022-presidente-2t",
+    "pl-2025-presidente-2t",
+    "pe-2021-presidente-2t",
+    "co-2022-presidente-2t",
+    "ro-2025-presidente-2t"
+   ],
+   "puntos": [
+    {
+     "t": "2025-12-07T21:00:00+00:00",
+     "dias_al_cierre": 7.0,
+     "encuestas_disponibles": 84,
+     "modelo_p_a": 0.00745,
+     "rango_estimaciones": [
+      0.0,
+      0.00795
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.0285,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Jeannette Jara YES": {
+       "asset": "25275258976601860306151056759609321158827361858594627600120521769056579627932",
+       "window_start": "2025-12-07T20:00:00+00:00",
+       "window_end": "2025-12-07T21:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      },
+      "Jeannette Jara NO": {
+       "asset": "32529863558788470022431759869254132455003412332939346616344514335248802832428",
+       "window_start": "2025-12-07T20:00:00+00:00",
+       "window_end": "2025-12-07T21:00:00+00:00",
+       "n_buys": 1,
+       "buy_shares": 7.194222,
+       "buy_notional": 6.999978,
+       "min_buy_price": 0.9729999992,
+       "max_buy_price": 0.9729999992,
+       "vwap_buy_price": 0.973,
+       "last_buy": null
+      },
+      "José Antonio Kast YES": {
+       "asset": "57527508293969725929016010432598810481282998125631347013024726997019637985331",
+       "window_start": "2025-12-07T20:00:00+00:00",
+       "window_end": "2025-12-07T21:00:00+00:00",
+       "n_buys": 1,
+       "buy_shares": 101.038025,
+       "buy_notional": 98.309998,
+       "min_buy_price": 0.9729999968,
+       "max_buy_price": 0.9729999968,
+       "vwap_buy_price": 0.973,
+       "last_buy": null
+      },
+      "José Antonio Kast NO": {
+       "asset": "4589745821222679801714536143948817055789206104581183883296167003774519971663",
+       "window_start": "2025-12-07T20:00:00+00:00",
+       "window_end": "2025-12-07T21:00:00+00:00",
+       "n_buys": 0,
+       "buy_shares": 0,
+       "buy_notional": 0,
+       "min_buy_price": null,
+       "max_buy_price": null,
+       "vwap_buy_price": null,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-12-11T21:00:00+00:00",
+     "dias_al_cierre": 3.0,
+     "encuestas_disponibles": 85,
+     "modelo_p_a": 0.00625,
+     "rango_estimaciones": [
+      0.0,
+      0.0063
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.0195,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Jeannette Jara YES": {
+       "asset": "25275258976601860306151056759609321158827361858594627600120521769056579627932",
+       "window_start": "2025-12-11T20:00:00+00:00",
+       "window_end": "2025-12-11T21:00:00+00:00",
+       "n_buys": 9,
+       "buy_shares": 54132.821891,
+       "buy_notional": 1230.689996,
+       "min_buy_price": 0.0204883071,
+       "max_buy_price": 0.0239817727,
+       "vwap_buy_price": 0.022735,
+       "last_buy": null
+      },
+      "Jeannette Jara NO": {
+       "asset": "32529863558788470022431759869254132455003412332939346616344514335248802832428",
+       "window_start": "2025-12-11T20:00:00+00:00",
+       "window_end": "2025-12-11T21:00:00+00:00",
+       "n_buys": 16,
+       "buy_shares": 19339.361067,
+       "buy_notional": 18985.57914,
+       "min_buy_price": 0.9789999889,
+       "max_buy_price": 0.9822283612,
+       "vwap_buy_price": 0.981707,
+       "last_buy": null
+      },
+      "José Antonio Kast YES": {
+       "asset": "57527508293969725929016010432598810481282998125631347013024726997019637985331",
+       "window_start": "2025-12-11T20:00:00+00:00",
+       "window_end": "2025-12-11T21:00:00+00:00",
+       "n_buys": 7,
+       "buy_shares": 34.871193,
+       "buy_notional": 34.179882,
+       "min_buy_price": 0.9799991572,
+       "max_buy_price": 0.9809999982,
+       "vwap_buy_price": 0.980175,
+       "last_buy": null
+      },
+      "José Antonio Kast NO": {
+       "asset": "4589745821222679801714536143948817055789206104581183883296167003774519971663",
+       "window_start": "2025-12-11T20:00:00+00:00",
+       "window_end": "2025-12-11T21:00:00+00:00",
+       "n_buys": 7,
+       "buy_shares": 19016.4874,
+       "buy_notional": 398.395999,
+       "min_buy_price": 0.02,
+       "max_buy_price": 0.022,
+       "vwap_buy_price": 0.02095,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-12-13T21:00:00+00:00",
+     "dias_al_cierre": 1.0,
+     "encuestas_disponibles": 85,
+     "modelo_p_a": 0.0051,
+     "rango_estimaciones": [
+      0.0,
+      0.00655
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.012,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Jeannette Jara YES": {
+       "asset": "25275258976601860306151056759609321158827361858594627600120521769056579627932",
+       "window_start": "2025-12-13T20:00:00+00:00",
+       "window_end": "2025-12-13T21:00:00+00:00",
+       "n_buys": 16,
+       "buy_shares": 48710.596563,
+       "buy_notional": 700.180666,
+       "min_buy_price": 0.012,
+       "max_buy_price": 0.017,
+       "vwap_buy_price": 0.014374,
+       "last_buy": null
+      },
+      "Jeannette Jara NO": {
+       "asset": "32529863558788470022431759869254132455003412332939346616344514335248802832428",
+       "window_start": "2025-12-13T20:00:00+00:00",
+       "window_end": "2025-12-13T21:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 191.484085,
+       "buy_notional": 188.699908,
+       "min_buy_price": 0.985,
+       "max_buy_price": 0.989,
+       "vwap_buy_price": 0.98546,
+       "last_buy": null
+      },
+      "José Antonio Kast YES": {
+       "asset": "57527508293969725929016010432598810481282998125631347013024726997019637985331",
+       "window_start": "2025-12-13T20:00:00+00:00",
+       "window_end": "2025-12-13T21:00:00+00:00",
+       "n_buys": 4,
+       "buy_shares": 204.477102,
+       "buy_notional": 201.929824,
+       "min_buy_price": 0.9859999999,
+       "max_buy_price": 0.989,
+       "vwap_buy_price": 0.987542,
+       "last_buy": null
+      },
+      "José Antonio Kast NO": {
+       "asset": "4589745821222679801714536143948817055789206104581183883296167003774519971663",
+       "window_start": "2025-12-13T20:00:00+00:00",
+       "window_end": "2025-12-13T21:00:00+00:00",
+       "n_buys": 6,
+       "buy_shares": 21101.172616,
+       "buy_notional": 292.089999,
+       "min_buy_price": 0.011,
+       "max_buy_price": 0.016,
+       "vwap_buy_price": 0.013842,
+       "last_buy": null
+      }
+     }
+    },
+    {
+     "t": "2025-12-14T09:00:00+00:00",
+     "dias_al_cierre": 0.5,
+     "encuestas_disponibles": 85,
+     "modelo_p_a": 0.00545,
+     "rango_estimaciones": [
+      0.0,
+      0.00625
+     ],
+     "n_estimaciones": 3,
+     "mercado_p_a_referencia": 0.017,
+     "alertas": [],
+     "evidencia_operaciones": {
+      "Jeannette Jara YES": {
+       "asset": "25275258976601860306151056759609321158827361858594627600120521769056579627932",
+       "window_start": "2025-12-14T08:00:00+00:00",
+       "window_end": "2025-12-14T09:00:00+00:00",
+       "n_buys": 3,
+       "buy_shares": 304.555554,
+       "buy_notional": 5.133999,
+       "min_buy_price": 0.016,
+       "max_buy_price": 0.0179999825,
+       "vwap_buy_price": 0.016857,
+       "last_buy": null
+      },
+      "Jeannette Jara NO": {
+       "asset": "32529863558788470022431759869254132455003412332939346616344514335248802832428",
+       "window_start": "2025-12-14T08:00:00+00:00",
+       "window_end": "2025-12-14T09:00:00+00:00",
+       "n_buys": 24,
+       "buy_shares": 8354.574693,
+       "buy_notional": 8225.620335,
+       "min_buy_price": 0.984,
+       "max_buy_price": 0.9859999464,
+       "vwap_buy_price": 0.984565,
+       "last_buy": null
+      },
+      "José Antonio Kast YES": {
+       "asset": "57527508293969725929016010432598810481282998125631347013024726997019637985331",
+       "window_start": "2025-12-14T08:00:00+00:00",
+       "window_end": "2025-12-14T09:00:00+00:00",
+       "n_buys": 13,
+       "buy_shares": 3840.032507,
+       "buy_notional": 3778.591981,
+       "min_buy_price": 0.9839991577,
+       "max_buy_price": 0.984,
+       "vwap_buy_price": 0.984,
+       "last_buy": null
+      },
+      "José Antonio Kast NO": {
+       "asset": "4589745821222679801714536143948817055789206104581183883296167003774519971663",
+       "window_start": "2025-12-14T08:00:00+00:00",
+       "window_end": "2025-12-14T09:00:00+00:00",
+       "n_buys": 2,
+       "buy_shares": 350.0,
+       "buy_notional": 5.95,
+       "min_buy_price": 0.017,
+       "max_buy_price": 0.017,
+       "vwap_buy_price": 0.017,
+       "last_buy": null
+      }
+     }
+    }
+   ],
+   "operacion_hipotetica": null,
+   "metricas": {
+    "n_puntos": 4,
+    "brier_modelo": 3.7569375000000005e-05,
+    "brier_mercado": 0.000406375,
+    "logloss_modelo": 0.006081364421861124,
+    "logloss_mercado": 0.01945634589490451
+   },
+   "revision_encuestas": {
+    "source": "wikimedia",
+    "lang": "en",
+    "title": "Opinion polling for the 2025 Chilean presidential election",
+    "revid": 1369398847,
+    "revision_ts": "2026-08-14T19:06:13+00:00",
+    "retrieved_at": "2026-10-26T03:03:10.577159+00:00",
+    "sha256": "5e691efa43a2fb921505246c6fd75b95f2a5b184db3abfc5425a106f6e988de1",
+    "url": "https://en.wikipedia.org/api/rest_v1/page/html/Opinion_polling_for_the_2025_Chilean_presidential_election/1369398847"
+   },
+   "nota_disponibilidad": "disponibilidad estimada: fin de campo + 2 días (página posterior a la elección)"
+  }
+ ],
+ "agregado": {
+  "reglas": {
+   "calibracion": "walk-forward (solo contiendas anteriores)",
+   "disponibilidad_encuestas": "fin de campo + 2 días",
+   "momentos_decision_dias": [
+    7,
+    3,
+    1,
+    0.5
+   ],
+   "operacion_hipotetica": "primera alerta con compras observadas; máx. precio pagado en 60 min + comisión + 0,5 c; US$25; hasta resolución"
+  },
+  "contiendas": 5,
+  "contiendas_evaluadas": 5,
+  "contiendas_con_alerta": 4,
+  "senales_operables": 0,
+  "operaciones_hipoteticas": 3,
+  "pnl_hipotetico_total_usd": 116.1954,
+  "capital_hipotetico_usd": 75.0,
+  "brier_medio_modelo": 0.33904570449007937,
+  "brier_medio_mercado": 0.34672525,
+  "advertencia": "Muestra pequeña, precios históricos no ejecutables y operaciones hipotéticas: esto no demuestra rentabilidad ni calibración."
+ },
+ "fuentes_mercado": [
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=30630994248667897740988010928640156931882346081873066002335460180076741328029&startTs=1792267200&endTs=1792958400&fidelity=60",
+   "received_at": "2026-10-26T03:10:14.589866+00:00",
+   "sha256": "65ddfa7dfc060e215620ae46f57271ea68a715c8e06db86eafead9ea2743ef91"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=79191939610100241429039499950443680906623179487184628479206155805558220344190&startTs=1792267200&endTs=1792958400&fidelity=60",
+   "received_at": "2026-10-26T03:10:14.748243+00:00",
+   "sha256": "7733171aadc3f75bc4842365149515e2914bbd3cfee1685efe7c764b4f9107a0"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=109876868437950584369987384406356259939519193117253465815665152916226511121427&startTs=1792267200&endTs=1792958400&fidelity=60",
+   "received_at": "2026-10-26T03:10:14.908160+00:00",
+   "sha256": "05288e0d712a7958eda0b90a91050ae25592ba2be4142b9f17d684267c18630a"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=38310927461258927563020508025396887688249787380193911540547071417200646834355&startTs=1792267200&endTs=1792958400&fidelity=60",
+   "received_at": "2026-10-26T03:10:15.071818+00:00",
+   "sha256": "30310b82df4e6a8cd72ac29e4f73f854aa47b15d0cf49ca503f9e5ff7b11e867"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8&takerOnly=true&start=1792350000&end=1792353600&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:15.733588+00:00",
+   "sha256": "9449b52559e495f9a917fe7bfa94f175d8a3f19e0756c922c9e53a97ac45ec9a"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d&takerOnly=true&start=1792350000&end=1792353600&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:16.006429+00:00",
+   "sha256": "10cbf2ecabbd40b774b4ca4475b602b97ead53679e4769fe531611ecc23511fd"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8&takerOnly=true&start=1792695600&end=1792699200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:16.428614+00:00",
+   "sha256": "79c658527847308008c59535f9311862a5958a0ed868ebcf172e7b0f1ddae988"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d&takerOnly=true&start=1792695600&end=1792699200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:16.769571+00:00",
+   "sha256": "0b85b800e7c698f4ea51aecbaea551a9c62b2ebffb559bf0c42701b7bd08b9de"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8&takerOnly=true&start=1792868400&end=1792872000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:17.587932+00:00",
+   "sha256": "dd6c3f3a9cd96ccf208c5ede6b899d146f698169d3087b77c0981d5df14fdd83"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d&takerOnly=true&start=1792868400&end=1792872000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:17.954268+00:00",
+   "sha256": "98f13839c820f6a154e9ab3987e2cd9f5ed5409b6bcd136a456f6af58047c546"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8&takerOnly=true&start=1792911600&end=1792915200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:18.703832+00:00",
+   "sha256": "d05611be48d8d583143b4741505b65f1932e39d2052708b82e6f82575d39ac20"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d&takerOnly=true&start=1792911600&end=1792915200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:10:18.964366+00:00",
+   "sha256": "541722d44edadca72e6fa8e5820e1cfab90ebd1e3c0e71ab64ac033f1c7798ce"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=52378310446953465163845338048369876961360578335284428810587513450420811578746&startTs=1748113200&endTs=1748804400&fidelity=60",
+   "received_at": "2026-10-26T03:11:02.350151+00:00",
+   "sha256": "06da2450c2118b426e2a175ece6e9a9656d246699f8410aa7ff86c70f7f8a84a"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=12000674920991755992211074758866949296981843307621554385852540153569787669909&startTs=1748113200&endTs=1748804400&fidelity=60",
+   "received_at": "2026-10-26T03:11:02.549757+00:00",
+   "sha256": "478f43b25fcafb03f128736e74b37157714141bc9fef608fab62884d7df70ae2"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=9985510571211594606436989364549728150268400968429116207816527248582274291346&startTs=1748113200&endTs=1748804400&fidelity=60",
+   "received_at": "2026-10-26T03:11:02.700538+00:00",
+   "sha256": "07a091bddfb4b98f618c823c9ecede5c88c989a07b13487f0790cc10b126e503"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=95044204495071447962354072933210357509612220350121617225795580441278155097858&startTs=1748113200&endTs=1748804400&fidelity=60",
+   "received_at": "2026-10-26T03:11:02.855255+00:00",
+   "sha256": "d485a2d183122e04ca8e72d36d3df000e553bb01388db026e6f9d67992ef4f86"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5ce0d897bd66142c43a38204a67ad85bc3e0643382258411a5aa58ca3e825082&takerOnly=true&start=1748196000&end=1748199600&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:03.498430+00:00",
+   "sha256": "f56cfdbe45a11fe02abc483763ef97b37f000a863f37888a30e5f179ee222394"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xd009ac14bccdd12925a2d9f8d910411556e4ed153337abb18a97b97fabcf7db0&takerOnly=true&start=1748196000&end=1748199600&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:03.798533+00:00",
+   "sha256": "b1b9403f68507011e03b134843616bb1069974d617f3ca6375cf127c8076875a"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5ce0d897bd66142c43a38204a67ad85bc3e0643382258411a5aa58ca3e825082&takerOnly=true&start=1748541600&end=1748545200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:04.338230+00:00",
+   "sha256": "4ed33b84b0948937989c594a0fa0d85aeba276a1867c8569792f8b663f926dec"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xd009ac14bccdd12925a2d9f8d910411556e4ed153337abb18a97b97fabcf7db0&takerOnly=true&start=1748541600&end=1748545200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:04.669258+00:00",
+   "sha256": "740c124b3aea9fb8260577c596ffb055771662dc94176825d9b4f5bf04f10ada"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5ce0d897bd66142c43a38204a67ad85bc3e0643382258411a5aa58ca3e825082&takerOnly=true&start=1748714400&end=1748718000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:05.014121+00:00",
+   "sha256": "afd9f20f8c01f5e34bbbed25e601bc77497db635adf6ca5b56315dc1403ea2e7"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xd009ac14bccdd12925a2d9f8d910411556e4ed153337abb18a97b97fabcf7db0&takerOnly=true&start=1748714400&end=1748718000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:05.319220+00:00",
+   "sha256": "85f0953ef3ba7d5e0f3f57f5c9598743dc316b3525acf51ec1923dc8e40c000d"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5ce0d897bd66142c43a38204a67ad85bc3e0643382258411a5aa58ca3e825082&takerOnly=true&start=1748757600&end=1748761200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:05.772750+00:00",
+   "sha256": "369fdd97a06679093be8a45f8ac4d635c3da8d74fb8bfc554dfc43b49d47af42"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xd009ac14bccdd12925a2d9f8d910411556e4ed153337abb18a97b97fabcf7db0&takerOnly=true&start=1748757600&end=1748761200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:06.014546+00:00",
+   "sha256": "383c70b479932205937f68e56ad0fb4d320c62cd507fb64d9a189dc1b6690ff2"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=39906998422459186897731915920227947929676695276484226649445098509987541352268&startTs=1746900000&endTs=1747591200&fidelity=60",
+   "received_at": "2026-10-26T03:11:08.367659+00:00",
+   "sha256": "8c3cd464435c7180100bd2ad15d95bebb7c7149ef9ea8fb91cfcffa79fc6cdf5"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=27804215744716732413063941336669826182851764173867962754282833425742958825900&startTs=1746900000&endTs=1747591200&fidelity=60",
+   "received_at": "2026-10-26T03:11:08.527416+00:00",
+   "sha256": "1966dd3a69d41b003d2fd513c75f52c4f7b83d406ff5a367af40b24a96bd6ecb"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=65635069780420563470359317634895637337713542089289204127626426923331166629221&startTs=1746900000&endTs=1747591200&fidelity=60",
+   "received_at": "2026-10-26T03:11:08.731265+00:00",
+   "sha256": "284c92122bf885e6d6e1d22b0eb66a2106d3c4b1e2330e54739cc1e6899628fb"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=75108011059255100121309616647139761925541153138774950455720013752098078766968&startTs=1746900000&endTs=1747591200&fidelity=60",
+   "received_at": "2026-10-26T03:11:08.889933+00:00",
+   "sha256": "bf2bf1cd43363a74a591895ba63a1d17a9ea3c09b64a33db10ee2e21b55fd84d"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5fc28bfcb6f16080415695b53f1f60820f403a94ce16696eea2f0085d823bc92&takerOnly=true&start=1746982800&end=1746986400&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:09.313676+00:00",
+   "sha256": "1df41d17774534938c7b8fa43d919ecddf21e0e0fe70a324c1f55858d1597da2"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaf51603d78545c838490bafe178ee9ff4c23d0c2161f15e0e530d3735229ad3f&takerOnly=true&start=1746982800&end=1746986400&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:09.560492+00:00",
+   "sha256": "3ed241fec9c897d68dfd447fe508cfc151603942adcf7ce06e19e88f426e39fe"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5fc28bfcb6f16080415695b53f1f60820f403a94ce16696eea2f0085d823bc92&takerOnly=true&start=1747328400&end=1747332000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:09.986799+00:00",
+   "sha256": "38348999e59aa02a515db32afe02cb0666d5f8a67a8d88f83251b47c1e34c607"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaf51603d78545c838490bafe178ee9ff4c23d0c2161f15e0e530d3735229ad3f&takerOnly=true&start=1747328400&end=1747332000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:10.258293+00:00",
+   "sha256": "623e117eca068df2ee2f694890a340e332f39647b1bd358c94c27ced68430453"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5fc28bfcb6f16080415695b53f1f60820f403a94ce16696eea2f0085d823bc92&takerOnly=true&start=1747501200&end=1747504800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:10.765248+00:00",
+   "sha256": "148fad4a5091268336dac9022060f604217d187f01a504d98f84e7f35b12a09f"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaf51603d78545c838490bafe178ee9ff4c23d0c2161f15e0e530d3735229ad3f&takerOnly=true&start=1747501200&end=1747504800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:11.352527+00:00",
+   "sha256": "8cf00d892f352639d60488ea787a729224e5e70a8979a91657502e48074098c1"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x5fc28bfcb6f16080415695b53f1f60820f403a94ce16696eea2f0085d823bc92&takerOnly=true&start=1747544400&end=1747548000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:11.913836+00:00",
+   "sha256": "f2554af22330f58c800c982bc81bf23f10573854510769c163577fb657e41440"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaf51603d78545c838490bafe178ee9ff4c23d0c2161f15e0e530d3735229ad3f&takerOnly=true&start=1747544400&end=1747548000&limit=500&offset=0",
+   "received_at": "2026-10-26T03:11:12.427789+00:00",
+   "sha256": "f4a0d37fed94f8d06a453a7c7464a63a2ed702d1a07d68756495b00d2907efc3"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=78529201497074592652635694767108128464886305064134175900444209409569043565924&startTs=1743890400&endTs=1744581600&fidelity=60",
+   "received_at": "2026-10-26T03:12:01.425139+00:00",
+   "sha256": "a03190253fc7dda83f0f987be7c1b46148f315baab4e5cf5c57ee1a7b7c8d7ec"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=115230139536184724002226462331333766173022439149690756223377046833339238863472&startTs=1743890400&endTs=1744581600&fidelity=60",
+   "received_at": "2026-10-26T03:12:01.628400+00:00",
+   "sha256": "298a613950f66ab0f5ce7af4861a40dfd19d43ef0220abf9f583bcfe851230e0"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=31462369160152841995177527804912923307710608138814696727701585015260363916969&startTs=1743890400&endTs=1744581600&fidelity=60",
+   "received_at": "2026-10-26T03:12:01.826450+00:00",
+   "sha256": "c62fbb0075bf657d4db3067b7663e228e3e21fec2d9ee344b7ea4daaefda9908"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=86965966444880126816373079784261927191409678982132353789731086350839103913519&startTs=1743890400&endTs=1744581600&fidelity=60",
+   "received_at": "2026-10-26T03:12:01.987399+00:00",
+   "sha256": "b9c9f4648fb79dfc1290c6438964347e354fdcdeba5ed1a73d70ddef52ad77b8"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x961ee2529ff3c3b27a9b7dc424c1d7046f52bdd5b4ae38bd74ae65f0838fabaa&takerOnly=true&start=1743973200&end=1743976800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:02.626512+00:00",
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x73f531e7088e7da29626e152d60566aa71a4a078b6ae6b7215577a963edc376c&takerOnly=true&start=1743973200&end=1743976800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:02.858739+00:00",
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x961ee2529ff3c3b27a9b7dc424c1d7046f52bdd5b4ae38bd74ae65f0838fabaa&takerOnly=true&start=1744318800&end=1744322400&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:03.222467+00:00",
+   "sha256": "dd437b073a8dd6487157e1ce3e8530dd2e8ba755a94b7c3edce7f560090cf5c4"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x73f531e7088e7da29626e152d60566aa71a4a078b6ae6b7215577a963edc376c&takerOnly=true&start=1744318800&end=1744322400&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:03.392931+00:00",
+   "sha256": "1ebc4a1d91949889b3c67f0a7b6753deee26d1adb1bf0cdaaca0c0d6abac5745"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x961ee2529ff3c3b27a9b7dc424c1d7046f52bdd5b4ae38bd74ae65f0838fabaa&takerOnly=true&start=1744491600&end=1744495200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:03.763494+00:00",
+   "sha256": "a92ac10511355a5f10f4b19a98783f87a7c1210a9f2e590ba4d304166b3fa9c1"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x73f531e7088e7da29626e152d60566aa71a4a078b6ae6b7215577a963edc376c&takerOnly=true&start=1744491600&end=1744495200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:03.964738+00:00",
+   "sha256": "f4d211137994c1fecfa7e0022766d32094dccbc6eefd129a1d81a03f352460d8"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x961ee2529ff3c3b27a9b7dc424c1d7046f52bdd5b4ae38bd74ae65f0838fabaa&takerOnly=true&start=1744534800&end=1744538400&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:04.283747+00:00",
+   "sha256": "d7d745c2a75cbdc16c6ba271acfd783cf5ec812b412b9d7599ab7857174c36b5"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0x73f531e7088e7da29626e152d60566aa71a4a078b6ae6b7215577a963edc376c&takerOnly=true&start=1744534800&end=1744538400&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:04.682050+00:00",
+   "sha256": "a2f0af2c90c2295bc3ef2e8a2c0d12a2c0b579c5329262455ea0eae5ad90f47d"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=25275258976601860306151056759609321158827361858594627600120521769056579627932&startTs=1765054800&endTs=1765746000&fidelity=60",
+   "received_at": "2026-10-26T03:12:06.024006+00:00",
+   "sha256": "0057e296674f02a7751b23f3348b03c6374d97fc50f98303951bf3dba3b10e05"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=32529863558788470022431759869254132455003412332939346616344514335248802832428&startTs=1765054800&endTs=1765746000&fidelity=60",
+   "received_at": "2026-10-26T03:12:06.200468+00:00",
+   "sha256": "09d2658313f4b50b334e9565cc7736174fd5a2ef5fc5c47d9216d3549d1cfd16"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=57527508293969725929016010432598810481282998125631347013024726997019637985331&startTs=1765054800&endTs=1765746000&fidelity=60",
+   "received_at": "2026-10-26T03:12:06.370464+00:00",
+   "sha256": "1b899bb6371567a1a1d8a71ffeb81dfe79ff1389296ac3010a086d8e427317d6"
+  },
+  {
+   "kind": "prices_history",
+   "url": "https://clob.polymarket.com/prices-history?market=4589745821222679801714536143948817055789206104581183883296167003774519971663&startTs=1765054800&endTs=1765746000&fidelity=60",
+   "received_at": "2026-10-26T03:12:06.534346+00:00",
+   "sha256": "da31a21e63143bd0dd955cdc616028ceb3c913af850e99e30438e58a7dcac948"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xbc12b9cfb9b3694dee7221b78ea7c1723ebfbee683efeabc0e047f3e547b4170&takerOnly=true&start=1765137600&end=1765141200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:07.071828+00:00",
+   "sha256": "b61b72432de4d40f4c33023d789e218f1b1e605fa91f66d8d400c812ca6195ab"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaa5041ca3ea8400325d726e0fb44b85180c4d6211dea960d7a3fb4600d5d6c76&takerOnly=true&start=1765137600&end=1765141200&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:07.270785+00:00",
+   "sha256": "e79a91e85bbfa6a485d1f1d69057f41c2e9b6fc341b759c874119fd37c262551"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xbc12b9cfb9b3694dee7221b78ea7c1723ebfbee683efeabc0e047f3e547b4170&takerOnly=true&start=1765483200&end=1765486800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:07.763788+00:00",
+   "sha256": "db6c4931f736cf11e7bf9c9cdbf9d90d64cc7cadc462fb2c6422bc378fc9d29a"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaa5041ca3ea8400325d726e0fb44b85180c4d6211dea960d7a3fb4600d5d6c76&takerOnly=true&start=1765483200&end=1765486800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:07.980946+00:00",
+   "sha256": "eb1721a9cd61286bd85302e3c6801983b9e2006b3da299f946042bc56cfcaa53"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xbc12b9cfb9b3694dee7221b78ea7c1723ebfbee683efeabc0e047f3e547b4170&takerOnly=true&start=1765656000&end=1765659600&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:08.512447+00:00",
+   "sha256": "de225330346e6b9019c6774e84b4e275a637cabaa06c494d9b2ccd248e51c6d3"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaa5041ca3ea8400325d726e0fb44b85180c4d6211dea960d7a3fb4600d5d6c76&takerOnly=true&start=1765656000&end=1765659600&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:08.829494+00:00",
+   "sha256": "1e27ec9cfbfd73e41be815220ffee91a6a7af7a15ad7077f234c6f818a8bc58b"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xbc12b9cfb9b3694dee7221b78ea7c1723ebfbee683efeabc0e047f3e547b4170&takerOnly=true&start=1765699200&end=1765702800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:09.357942+00:00",
+   "sha256": "3f12c232162ae8a8dd0664e14c1bb81f9f033665e8f7da05d261d18ddb1229e7"
+  },
+  {
+   "kind": "trades",
+   "url": "https://data-api.polymarket.com/trades?market=0xaa5041ca3ea8400325d726e0fb44b85180c4d6211dea960d7a3fb4600d5d6c76&takerOnly=true&start=1765699200&end=1765702800&limit=500&offset=0",
+   "received_at": "2026-10-26T03:12:09.623422+00:00",
+   "sha256": "9e79412f856456d2b52a20a57ed2a9194e6a5beb1352c809e8be846b4bb1959c"
+  }
+ ]
+}

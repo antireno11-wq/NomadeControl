@@ -1,0 +1,966 @@
+{
+ "_provenance": {
+  "data_origin": "real",
+  "captured_at_utc": "2026-10-25T22:14:17.379968+00:00",
+  "note": "Respuestas reales de las APIs públicas de Polymarket, capturadas para pruebas. Los libros se recortaron a 10 niveles por lado (se conserva el orden original de la API: bids ascendentes, asks descendentes). No usar como datos de mercado actuales.",
+  "sources": {
+   "markets": "https://gamma-api.polymarket.com/markets/keyset?limit=3&closed=false",
+   "events": "https://gamma-api.polymarket.com/events/keyset?limit=2&closed=false&include_markets=false",
+   "books": "POST https://clob.polymarket.com/books"
+  }
+ },
+ "markets_page": {
+  "markets": [
+   {
+    "id": "559651",
+    "question": "Xi Jinping out before 2027?",
+    "conditionId": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+    "slug": "xi-jinping-out-before-2027",
+    "resolutionSource": "",
+    "endDate": "2027-01-01T04:59:00Z",
+    "liquidity": "320516.49173",
+    "startDate": "2025-07-03T20:37:00.228Z",
+    "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/xi-jinping-out-in-2025-EjF4SM20eaa3.jpg",
+    "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/xi-jinping-out-in-2025-EjF4SM20eaa3.jpg",
+    "description": "This market will resolve to \"Yes\" if China's General Secretary of the Communist Party, Xi Jinping, is removed from power for any length of time between July 3, 2025, and December 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nCCP General Secretary Xi Jinping will be considered removed from power if he announces his resignation from his role as General Secretary, or is otherwise dismissed, detained, disqualified, or otherwise loses his position or is prevented from fulfilling his duties as General Secretary within this market's timeframe.\n\nThe primary resolution source for this market will be a consensus of credible reporting.",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0.0335\", \"0.9665\"]",
+    "volume": "15720319.199072002",
+    "active": true,
+    "closed": false,
+    "marketMakerAddress": "",
+    "createdAt": "2025-07-03T20:25:56.889606Z",
+    "updatedAt": "2026-10-25T22:12:37.286175Z",
+    "new": false,
+    "featured": false,
+    "submitted_by": "0x91430CaD2d3975766499717fA0D66A78D814E5c5",
+    "archived": false,
+    "resolvedBy": "0x157Ce2d672854c848c9b79C49a8Cc6cc89176a49",
+    "restricted": true,
+    "groupItemTitle": "",
+    "groupItemThreshold": "0",
+    "questionID": "0x1d925c6933062c2e38031293612d8680ffa097c5d3ba2f87a8ecc565bd47183e",
+    "enableOrderBook": true,
+    "orderPriceMinTickSize": 0.001,
+    "orderMinSize": 5,
+    "volumeNum": 15720319.199072002,
+    "liquidityNum": 320516.49173,
+    "endDateIso": "2027-01-01",
+    "startDateIso": "2025-07-03",
+    "hasReviewedDates": true,
+    "volume24hr": 189740.314497,
+    "volume1wk": 598468.0283400001,
+    "volume1mo": 1777496.4771590002,
+    "volume1yr": 13634550.699322004,
+    "clobTokenIds": "[\"32338220190071351435772801779725302244575775216413325951443816017994629993401\", \"25659310674993675562345759665114759892400026242514633218387667107987341231962\"]",
+    "positionIds": [
+     "895257453734540292493143124621755605615887197499956109032745153687078305792",
+     "895257453734540292493143124621755605615887197499956109032745153687078305793"
+    ],
+    "comboStatus": "enabled",
+    "umaBond": "500",
+    "umaReward": "5",
+    "volume24hrClob": 189740.314497,
+    "volume1wkClob": 598468.0283400001,
+    "volume1moClob": 1777496.4771590002,
+    "volume1yrClob": 13634550.699322004,
+    "volumeClob": 15720319.199072002,
+    "liquidityClob": 320516.49173,
+    "makerBaseFee": 1000,
+    "takerBaseFee": 1000,
+    "customLiveness": 0,
+    "acceptingOrders": true,
+    "negRisk": false,
+    "negRiskRequestID": "",
+    "events": [
+     {
+      "id": "30828",
+      "ticker": "xi-jinping-out-before-2027",
+      "slug": "xi-jinping-out-before-2027",
+      "title": "Xi Jinping out before 2027?",
+      "description": "This market will resolve to \"Yes\" if China's General Secretary of the Communist Party, Xi Jinping, is removed from power for any length of time between July 3, 2025, and December 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nCCP General Secretary Xi Jinping will be considered removed from power if he announces his resignation from his role as General Secretary, or is otherwise dismissed, detained, disqualified, or otherwise loses his position or is prevented from fulfilling his duties as General Secretary within this market's timeframe.\n\nThe primary resolution source for this market will be a consensus of credible reporting.",
+      "resolutionSource": "",
+      "startDate": "2025-07-03T20:37:00.228Z",
+      "creationDate": "2025-07-03T20:37:17.339044Z",
+      "endDate": "2027-01-01T04:59:00Z",
+      "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/xi-jinping-out-in-2025-EjF4SM20eaa3.jpg",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/xi-jinping-out-in-2025-EjF4SM20eaa3.jpg",
+      "active": true,
+      "closed": false,
+      "archived": false,
+      "new": false,
+      "featured": false,
+      "restricted": true,
+      "liquidity": 320599.91394,
+      "volume": 15720319.199072002,
+      "openInterest": 4454392.77656,
+      "createdAt": "2025-07-03T20:25:55.760196Z",
+      "updatedAt": "2026-10-25T22:12:49.09752Z",
+      "competitive": 0.8212727715841264,
+      "volume24hr": 189740.314497,
+      "volume1wk": 598468.0283400001,
+      "volume1mo": 1777496.4771590002,
+      "volume1yr": 13634550.699322004,
+      "enableOrderBook": true,
+      "liquidityClob": 320599.91394,
+      "commentCount": 709,
+      "series": [
+       {
+        "id": "10150",
+        "ticker": "xi-jinping-out",
+        "slug": "xi-jinping-out",
+        "title": "Xi Jinping out",
+        "seriesType": "single",
+        "image": "",
+        "icon": "",
+        "active": true,
+        "closed": false,
+        "archived": false,
+        "featured": false,
+        "restricted": true,
+        "createdAt": "2025-07-03T20:26:34.992616Z",
+        "updatedAt": "2026-10-25T22:13:04.327924Z",
+        "volume24hr": 189740.314497,
+        "volume": 15720319.199072002,
+        "liquidity": 320599.91394,
+        "commentCount": 822
+       }
+      ],
+      "cyom": false,
+      "showAllOutcomes": true,
+      "showMarketImages": true,
+      "enableNegRisk": false,
+      "automaticallyActive": true,
+      "seriesSlug": "xi-jinping-out",
+      "negRiskAugmented": false,
+      "cumulativeMarkets": false,
+      "pendingDeployment": false,
+      "deploying": false,
+      "eventMetadata": {
+       "context_requires_regen": true
+      },
+      "version": "v1"
+     }
+    ],
+    "ready": false,
+    "funded": false,
+    "acceptingOrdersTimestamp": "2025-07-03T20:36:33Z",
+    "cyom": false,
+    "competitive": 0.8212727715841264,
+    "approved": true,
+    "clobRewards": [
+     {
+      "id": "303430",
+      "conditionId": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+      "assetAddress": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+      "rewardsAmount": 0,
+      "rewardsDailyRate": 100,
+      "startDate": "2026-09-16",
+      "endDate": "2500-12-31"
+     }
+    ],
+    "rewardsMinSize": 200,
+    "rewardsMaxSpread": 3.5,
+    "spread": 0.001,
+    "oneDayPriceChange": 0.001,
+    "oneHourPriceChange": -0.0005,
+    "oneWeekPriceChange": 0.0065,
+    "oneMonthPriceChange": -0.0085,
+    "oneYearPriceChange": -0.1315,
+    "lastTradePrice": 0.035,
+    "bestBid": 0.033,
+    "bestAsk": 0.034,
+    "automaticallyActive": true,
+    "clearBookOnStart": true,
+    "manualActivation": false,
+    "negRiskOther": false,
+    "umaResolutionStatuses": "[]",
+    "pendingDeployment": false,
+    "deploying": false,
+    "deployingTimestamp": "2025-07-03T20:35:48.270879Z",
+    "rfqEnabled": false,
+    "holdingRewardsEnabled": true,
+    "feesEnabled": true,
+    "feeType": "zero_fees",
+    "feeSchedule": {
+     "exponent": 1,
+     "rate": 0,
+     "takerOnly": true,
+     "rebateRate": 0
+    },
+    "fallbackResolutionType": "none",
+    "version": "v1"
+   },
+   {
+    "id": "559652",
+    "question": "Will Gavin Newsom win the 2028 Democratic presidential nomination?",
+    "conditionId": "0x0f49db97f71c68b1e42a6d16e3de93d85dbf7d4148e3f018eb79e88554be9f75",
+    "slug": "will-gavin-newsom-win-the-2028-democratic-presidential-nomination-568",
+    "resolutionSource": "",
+    "endDate": "2028-11-08T04:59:00Z",
+    "liquidity": "381208.99756",
+    "startDate": "2025-07-11T18:35:56.805Z",
+    "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-gavin-newsom-win-the-2028-us-presidential-election-x9lPL7_gXn--.png",
+    "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-gavin-newsom-win-the-2028-us-presidential-election-x9lPL7_gXn--.png",
+    "description": "This market will resolve to “Yes” if the named individual wins and accepts the 2028 nomination of the Democratic Party for U.S. president. Otherwise, this market will resolve to “No”.\n\nThe resolution source for this market will be a consensus of official Democratic Party sources.\n\nAny replacement of the democratic nominee before election day will not change the resolution of the market.",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0.1545\", \"0.8455\"]",
+    "volume": "28083478.844683997",
+    "active": true,
+    "closed": false,
+    "marketMakerAddress": "",
+    "createdAt": "2025-07-03T20:36:58.88434Z",
+    "updatedAt": "2026-10-25T22:12:37.286175Z",
+    "new": false,
+    "featured": false,
+    "submitted_by": "0x91430CaD2d3975766499717fA0D66A78D814E5c5",
+    "archived": false,
+    "resolvedBy": "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d",
+    "restricted": true,
+    "groupItemTitle": "Gavin Newsom",
+    "groupItemThreshold": "0",
+    "questionID": "0x2c3d7e0eee6f058be3006baabf0d54a07da254ba47fe6e3e095e7990c7814700",
+    "enableOrderBook": true,
+    "orderPriceMinTickSize": 0.001,
+    "orderMinSize": 5,
+    "volumeNum": 28083478.844683997,
+    "liquidityNum": 381208.99756,
+    "endDateIso": "2028-11-08",
+    "startDateIso": "2025-07-11",
+    "hasReviewedDates": true,
+    "volume24hr": 12899.514288999999,
+    "volume1wk": 91456.40351,
+    "volume1mo": 334286.951168,
+    "volume1yr": 25689336.390857007,
+    "clobTokenIds": "[\"54533043819946592547517511176940999955633860128497669742211153063842200957669\", \"87854174148074652060467921081181402357467303721471806610111179101805869578687\"]",
+    "comboStatus": "disabled",
+    "umaBond": "25000",
+    "umaReward": "10",
+    "volume24hrClob": 12899.514288999999,
+    "volume1wkClob": 91456.40351,
+    "volume1moClob": 334286.951168,
+    "volume1yrClob": 25689336.390857007,
+    "volumeClob": 28083478.844683997,
+    "liquidityClob": 381208.99756,
+    "makerBaseFee": 1000,
+    "takerBaseFee": 1000,
+    "customLiveness": 0,
+    "acceptingOrders": true,
+    "negRisk": true,
+    "negRiskMarketID": "0x2c3d7e0eee6f058be3006baabf0d54a07da254ba47fe6e3e095e7990c7814700",
+    "negRiskRequestID": "0x3763120bc45adb952c842119daf7978d5010523bd5a7f1fa42331964b815efec",
+    "events": [
+     {
+      "id": "30829",
+      "ticker": "democratic-presidential-nominee-2028",
+      "slug": "democratic-presidential-nominee-2028",
+      "title": "Democratic Presidential Nominee 2028",
+      "description": "This market will resolve to “Yes” if the named individual wins and accepts the 2028 nomination of the Democratic Party for U.S. president. Otherwise, this market will resolve to “No”.\n\nThe resolution source for this market will be a consensus of official Democratic Party sources.\n\nAny replacement of the democratic nominee before election day will not change the resolution of the market.",
+      "resolutionSource": "",
+      "startDate": "2025-07-11T18:35:56.805Z",
+      "creationDate": "2025-07-11T18:41:17.827389Z",
+      "endDate": "2028-11-08T04:59:00Z",
+      "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/democrats+2028+donkey.png",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/democrats+2028+donkey.png",
+      "active": true,
+      "closed": false,
+      "archived": false,
+      "new": false,
+      "featured": true,
+      "restricted": true,
+      "liquidity": 74707493.54983,
+      "volume": 1297992352.4796839,
+      "openInterest": 8020921.806761,
+      "sortBy": "price",
+      "createdAt": "2025-07-03T20:36:57.824243Z",
+      "updatedAt": "2026-10-25T22:12:49.09752Z",
+      "competitive": 0.9025985586854915,
+      "volume24hr": 78225.911,
+      "volume1wk": 3030757.01933,
+      "volume1mo": 11658927.759107,
+      "volume1yr": 842515403.351185,
+      "enableOrderBook": true,
+      "liquidityClob": 74707493.54983,
+      "negRisk": true,
+      "negRiskMarketID": "0x2c3d7e0eee6f058be3006baabf0d54a07da254ba47fe6e3e095e7990c7814700",
+      "commentCount": 845,
+      "cyom": false,
+      "showAllOutcomes": true,
+      "showMarketImages": true,
+      "enableNegRisk": true,
+      "automaticallyActive": true,
+      "startTime": "2028-11-07T12:00:00Z",
+      "gmpChartMode": "default",
+      "negRiskAugmented": true,
+      "countryName": "U.S.",
+      "electionType": "Democratic Nomination",
+      "estimateValue": false,
+      "cumulativeMarkets": false,
+      "pendingDeployment": false,
+      "deploying": false,
+      "deployingTimestamp": "2025-07-11T18:14:44.108448Z",
+      "eventMetadata": {
+       "context_requires_regen": true
+      },
+      "version": "v1"
+     }
+    ],
+    "ready": false,
+    "funded": false,
+    "acceptingOrdersTimestamp": "2025-07-11T18:35:34Z",
+    "cyom": false,
+    "competitive": 0.8933594581417543,
+    "approved": true,
+    "clobRewards": [
+     {
+      "id": "349774",
+      "conditionId": "0x0f49db97f71c68b1e42a6d16e3de93d85dbf7d4148e3f018eb79e88554be9f75",
+      "assetAddress": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+      "rewardsAmount": 0,
+      "rewardsDailyRate": 6,
+      "startDate": "2026-10-25",
+      "endDate": "2500-12-31"
+     }
+    ],
+    "rewardsMinSize": 20,
+    "rewardsMaxSpread": 5.5,
+    "spread": 0.001,
+    "oneDayPriceChange": -0.008,
+    "oneWeekPriceChange": -0.018,
+    "oneMonthPriceChange": 0.0015,
+    "oneYearPriceChange": -0.2005,
+    "lastTradePrice": 0.154,
+    "bestBid": 0.154,
+    "bestAsk": 0.155,
+    "automaticallyActive": true,
+    "clearBookOnStart": true,
+    "seriesColor": "",
+    "showGmpSeries": false,
+    "showGmpOutcome": false,
+    "manualActivation": false,
+    "negRiskOther": false,
+    "umaResolutionStatuses": "[]",
+    "pendingDeployment": false,
+    "deploying": false,
+    "deployingTimestamp": "2025-07-11T18:15:12.555139Z",
+    "rfqEnabled": false,
+    "holdingRewardsEnabled": true,
+    "feesEnabled": true,
+    "feeType": "zero_fees",
+    "feeSchedule": {
+     "exponent": 1,
+     "rate": 0,
+     "takerOnly": true,
+     "rebateRate": 0
+    },
+    "fallbackResolutionType": "none",
+    "version": "v1"
+   },
+   {
+    "id": "559653",
+    "question": "Will Alexandria Ocasio-Cortez win the 2028 Democratic presidential nomination?",
+    "conditionId": "0xe6bcc2f1dd025ce5e1833190f7c60a71171c94f805df55b9ab0ded695ec93565",
+    "slug": "will-alexandria-ocasio-cortez-win-the-2028-democratic-presidential-nomination-653",
+    "resolutionSource": "",
+    "endDate": "2028-11-08T04:59:00Z",
+    "liquidity": "291027.86897",
+    "startDate": "2025-07-11T18:35:59.075Z",
+    "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-alexandria-ocasio-cortez-win-the-2028-us-presidential-election-eX2nG09sPJUu.png",
+    "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-alexandria-ocasio-cortez-win-the-2028-us-presidential-election-eX2nG09sPJUu.png",
+    "description": "This market will resolve to “Yes” if the named individual wins and accepts the 2028 nomination of the Democratic Party for U.S. president. Otherwise, this market will resolve to “No”.\n\nThe resolution source for this market will be a consensus of official Democratic Party sources.\n\nAny replacement of the democratic nominee before election day will not change the resolution of the market.",
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0.1715\", \"0.8285\"]",
+    "volume": "15585043.280200003",
+    "active": true,
+    "closed": false,
+    "marketMakerAddress": "",
+    "createdAt": "2025-07-03T20:36:59.751189Z",
+    "updatedAt": "2026-10-25T22:12:37.286175Z",
+    "new": false,
+    "featured": false,
+    "submitted_by": "0x91430CaD2d3975766499717fA0D66A78D814E5c5",
+    "archived": false,
+    "resolvedBy": "0x2F5e3684cb1F318ec51b00Edba38d79Ac2c0aA9d",
+    "restricted": true,
+    "groupItemTitle": "Alexandria Ocasio-Cortez",
+    "groupItemThreshold": "1",
+    "questionID": "0x2c3d7e0eee6f058be3006baabf0d54a07da254ba47fe6e3e095e7990c7814701",
+    "enableOrderBook": true,
+    "orderPriceMinTickSize": 0.001,
+    "orderMinSize": 5,
+    "volumeNum": 15585043.280200003,
+    "liquidityNum": 291027.86897,
+    "endDateIso": "2028-11-08",
+    "startDateIso": "2025-07-11",
+    "hasReviewedDates": true,
+    "volume24hr": 4913.035173,
+    "volume1wk": 85292.414779,
+    "volume1mo": 345153.419186,
+    "volume1yr": 14668729.322758002,
+    "clobTokenIds": "[\"107064985435494333113391038470401719113272800530429703182710416066774068907304\", \"65176072261324737856085688071627118509549293922582857186996392180609764586527\"]",
+    "comboStatus": "disabled",
+    "umaBond": "25000",
+    "umaReward": "10",
+    "volume24hrClob": 4913.035173,
+    "volume1wkClob": 85292.414779,
+    "volume1moClob": 345153.419186,
+    "volume1yrClob": 14668729.322758002,
+    "volumeClob": 15585043.280200003,
+    "liquidityClob": 291027.86897,
+    "makerBaseFee": 1000,
+    "takerBaseFee": 1000,
+    "customLiveness": 0,
+    "acceptingOrders": true,
+    "negRisk": true,
+    "negRiskMarketID": "0x2c3d7e0eee6f058be3006baabf0d54a07da254ba47fe6e3e095e7990c7814700",
+    "negRiskRequestID": "0x64b5923d55bcc7660f6e4514cc75eb1f2f39a75872bf7e40f21eae43f7842f7f",
+    "events": [
+     {
+      "id": "30829",
+      "ticker": "democratic-presidential-nominee-2028",
+      "slug": "democratic-presidential-nominee-2028",
+      "title": "Democratic Presidential Nominee 2028",
+      "description": "This market will resolve to “Yes” if the named individual wins and accepts the 2028 nomination of the Democratic Party for U.S. president. Otherwise, this market will resolve to “No”.\n\nThe resolution source for this market will be a consensus of official Democratic Party sources.\n\nAny replacement of the democratic nominee before election day will not change the resolution of the market.",
+      "resolutionSource": "",
+      "startDate": "2025-07-11T18:35:56.805Z",
+      "creationDate": "2025-07-11T18:41:17.827389Z",
+      "endDate": "2028-11-08T04:59:00Z",
+      "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/democrats+2028+donkey.png",
+      "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/democrats+2028+donkey.png",
+      "active": true,
+      "closed": false,
+      "archived": false,
+      "new": false,
+      "featured": true,
+      "restricted": true,
+      "liquidity": 74707493.54983,
+      "volume": 1297992352.4796839,
+      "openInterest": 8020921.806761,
+      "sortBy": "price",
+      "createdAt": "2025-07-03T20:36:57.824243Z",
+      "updatedAt": "2026-10-25T22:12:49.09752Z",
+      "competitive": 0.9025985586854915,
+      "volume24hr": 78225.911,
+      "volume1wk": 3030757.01933,
+      "volume1mo": 11658927.759107,
+      "volume1yr": 842515403.351185,
+      "enableOrderBook": true,
+      "liquidityClob": 74707493.54983,
+      "negRisk": true,
+      "negRiskMarketID": "0x2c3d7e0eee6f058be3006baabf0d54a07da254ba47fe6e3e095e7990c7814700",
+      "commentCount": 845,
+      "cyom": false,
+      "showAllOutcomes": true,
+      "showMarketImages": true,
+      "enableNegRisk": true,
+      "automaticallyActive": true,
+      "startTime": "2028-11-07T12:00:00Z",
+      "gmpChartMode": "default",
+      "negRiskAugmented": true,
+      "countryName": "U.S.",
+      "electionType": "Democratic Nomination",
+      "estimateValue": false,
+      "cumulativeMarkets": false,
+      "pendingDeployment": false,
+      "deploying": false,
+      "deployingTimestamp": "2025-07-11T18:14:44.108448Z",
+      "eventMetadata": {
+       "context_requires_regen": true
+      },
+      "version": "v1"
+     }
+    ],
+    "ready": false,
+    "funded": false,
+    "acceptingOrdersTimestamp": "2025-07-11T18:35:36Z",
+    "cyom": false,
+    "competitive": 0.9025985586854915,
+    "approved": true,
+    "clobRewards": [
+     {
+      "id": "527373",
+      "conditionId": "0xe6bcc2f1dd025ce5e1833190f7c60a71171c94f805df55b9ab0ded695ec93565",
+      "assetAddress": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+      "rewardsAmount": 0,
+      "rewardsDailyRate": 7,
+      "startDate": "2026-10-25",
+      "endDate": "2500-12-31"
+     }
+    ],
+    "rewardsMinSize": 20,
+    "rewardsMaxSpread": 5.5,
+    "spread": 0.001,
+    "oneDayPriceChange": 0.0045,
+    "oneWeekPriceChange": 0.024,
+    "oneMonthPriceChange": -0.011,
+    "oneYearPriceChange": 0.0515,
+    "lastTradePrice": 0.171,
+    "bestBid": 0.171,
+    "bestAsk": 0.172,
+    "automaticallyActive": true,
+    "clearBookOnStart": true,
+    "seriesColor": "",
+    "showGmpSeries": false,
+    "showGmpOutcome": false,
+    "manualActivation": false,
+    "negRiskOther": false,
+    "umaResolutionStatuses": "[]",
+    "pendingDeployment": false,
+    "deploying": false,
+    "deployingTimestamp": "2025-07-11T18:15:12.61559Z",
+    "rfqEnabled": false,
+    "holdingRewardsEnabled": true,
+    "feesEnabled": true,
+    "feeType": "zero_fees",
+    "feeSchedule": {
+     "exponent": 1,
+     "rate": 0,
+     "takerOnly": true,
+     "rebateRate": 0
+    },
+    "fallbackResolutionType": "none",
+    "version": "v1"
+   }
+  ],
+  "next_cursor": "7nQOm0ypGyI0kjQ_3miyt6C6jRFewdLCmFFAu1KegPl7InYiOjEsImsiOiJtYXJrZXRzIiwib2giOiI0ZjUzY2RhMThjMmJhYTBjMDM1NGJiNWY5YTNlY2JlNWVkMTJhYjRkOGUxMWJhODczYzJmMTExNjEyMDJiOTQ1Iiwia2V5cyI6W3sidCI6InN0cmluZyIsInYiOiI1NTk2NTMifV19"
+ },
+ "events": [
+  {
+   "id": "16183",
+   "ticker": "kraken-ipo-in-2025",
+   "slug": "kraken-ipo-in-2025",
+   "title": "Kraken IPO by ___ ?",
+   "description": "This market will resolve to \"Yes\" if Kraken (US-based cryptocurrency exchange) completes an Initial Public Offering (IPO) by December 31, 2025, 11:59 PM ET, as confirmed by official company announcements or credible news sources. The IPO refers to the first sale of stock by Kraken to the public on any recognized stock exchange.\n\nIf Kraken merges with another entity, is acquired, or ceases to exist before the market resolves, the market will also resolve to \"No\".\n\nThis market will resolve early if Kraken completes an IPO by December 31, 2025, 11:59 PM ET.\n\nThe resolution source for this market is a consensus of credible reporting.",
+   "resolutionSource": "",
+   "startDate": "2024-12-31T19:05:45.901363Z",
+   "creationDate": "2024-12-31T19:05:45.901361Z",
+   "endDate": "2028-01-01T04:59:00Z",
+   "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-kraken-ipo-in-2024--_GT-GzKWtUW.jpg",
+   "active": true,
+   "closed": false,
+   "archived": false,
+   "new": false,
+   "featured": false,
+   "restricted": true,
+   "liquidity": 6105.80063,
+   "volume": 1622145.101635,
+   "openInterest": 53020.854345,
+   "sortBy": "ascending",
+   "createdAt": "2024-12-31T18:18:36.692417Z",
+   "updatedAt": "2026-10-25T22:12:49.09752Z",
+   "competitive": 0.9821012055292297,
+   "volume24hr": 351.644134,
+   "volume1wk": 23034.681343,
+   "volume1mo": 133059.09485099994,
+   "volume1yr": 1073874.6186759996,
+   "enableOrderBook": true,
+   "liquidityClob": 6105.80063,
+   "negRisk": false,
+   "commentCount": 52,
+   "tags": [
+    {
+     "id": "21",
+     "label": "Crypto",
+     "slug": "crypto",
+     "forceShow": false,
+     "publishedAt": "2023-11-02 21:03:54.55+00",
+     "updatedBy": 15,
+     "createdAt": "2023-11-02T21:03:54.564Z",
+     "updatedAt": "2026-03-09T22:28:03.349847Z"
+    },
+    {
+     "id": "101300",
+     "label": "exchange",
+     "slug": "exchange",
+     "createdAt": "2024-11-21T17:09:30.941319Z",
+     "updatedAt": "2026-04-17T21:11:05.93931Z"
+    },
+    {
+     "id": "120",
+     "label": "Finance",
+     "slug": "finance",
+     "forceShow": false,
+     "publishedAt": "2023-11-02 21:22:21.615+00",
+     "createdAt": "2023-11-02T21:22:21.62Z",
+     "updatedAt": "2026-04-17T20:17:43.066649Z",
+     "isCarousel": false
+    },
+    {
+     "id": "107",
+     "label": "Business",
+     "slug": "business",
+     "forceShow": false,
+     "publishedAt": "2023-11-02 21:20:37.48+00",
+     "createdAt": "2023-11-02T21:20:37.488Z",
+     "updatedAt": "2026-04-17T20:26:28.786983Z"
+    },
+    {
+     "id": "101588",
+     "label": "2025 Predictions",
+     "slug": "2025-predictions",
+     "forceShow": false,
+     "createdAt": "2024-12-30T20:11:13.144816Z",
+     "updatedAt": "2026-04-15T20:30:55.933838Z"
+    },
+    {
+     "id": "102137",
+     "label": "Featured",
+     "slug": "featured",
+     "forceShow": true,
+     "createdAt": "2025-05-16T09:58:40.682219Z",
+     "updatedAt": "2026-04-17T20:26:28.761286Z",
+     "isCarousel": false
+    },
+    {
+     "id": "600",
+     "label": "IPOs",
+     "slug": "ipos",
+     "forceShow": false,
+     "publishedAt": "2023-11-30 16:53:29.136+00",
+     "createdAt": "2023-11-30T16:53:29.141Z",
+     "updatedAt": "2026-04-17T20:24:27.888545Z"
+    },
+    {
+     "id": "105297",
+     "label": "Crypto Listings",
+     "slug": "crypto-listings",
+     "createdAt": "2026-06-09T20:34:36.11836Z",
+     "updatedAt": "2026-06-09T20:35:01.983304Z"
+    }
+   ],
+   "cyom": false,
+   "showAllOutcomes": true,
+   "showMarketImages": false,
+   "enableNegRisk": false,
+   "automaticallyActive": true,
+   "gmpChartMode": "default",
+   "negRiskAugmented": false,
+   "estimateValue": false,
+   "cumulativeMarkets": false,
+   "pendingDeployment": false,
+   "deploying": false,
+   "eventMetadata": {
+    "context_requires_regen": true
+   },
+   "version": "v1"
+  },
+  {
+   "id": "16263",
+   "ticker": "macron-out-in-2025",
+   "slug": "macron-out-in-2025",
+   "title": "Macron out by...?",
+   "description": "This market will resolve to \"Yes\" if Emmanuel Macron ceases to be President of France for any length of time between January 2 and December 31, 2025, 11:59 PM ET (inclusive). Otherwise, this market will resolve to \"No\".\n\nIf Macron departs from office before the expiry date, the market should resolve immediately.\n\nThe primary resolution source for this market will be information from the government of France, however a consensus of credible reporting will also be used.",
+   "resolutionSource": "",
+   "startDate": "2025-01-03T19:35:04.095066Z",
+   "creationDate": "2025-01-03T19:35:04.095064Z",
+   "endDate": "2027-01-01T04:59:00Z",
+   "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/macron-out-in-2025-qFUc7czZE3Ev.jpg",
+   "icon": "https://polymarket-upload.s3.us-east-2.amazonaws.com/macron-out-in-2025-qFUc7czZE3Ev.jpg",
+   "active": true,
+   "closed": false,
+   "archived": false,
+   "new": false,
+   "featured": false,
+   "restricted": true,
+   "liquidity": 61880.9706,
+   "volume": 2229490.411774,
+   "openInterest": 79230.736874,
+   "sortBy": "ascending",
+   "createdAt": "2025-01-03T19:28:39.855536Z",
+   "updatedAt": "2026-10-25T22:12:49.09752Z",
+   "competitive": 0.8347071221385196,
+   "volume24hr": 5663.592047,
+   "volume1wk": 70157.59902,
+   "volume1mo": 477500.42738000024,
+   "volume1yr": 1692465.4686540018,
+   "enableOrderBook": true,
+   "liquidityClob": 61880.9706,
+   "negRisk": false,
+   "commentCount": 98,
+   "tags": [
+    {
+     "id": "1378",
+     "label": "France",
+     "slug": "france",
+     "forceShow": false,
+     "publishedAt": "2024-02-21 00:21:54.303+00",
+     "createdAt": "2024-02-21T00:21:54.404Z",
+     "updatedAt": "2026-04-17T20:46:36.664748Z",
+     "isCarousel": false
+    },
+    {
+     "id": "2",
+     "label": "Politics",
+     "slug": "politics",
+     "forceShow": false,
+     "publishedAt": "2023-10-25 18:55:50.674+00",
+     "updatedBy": 13,
+     "createdAt": "2023-10-25T18:55:50.681Z",
+     "updatedAt": "2026-04-17T20:39:54.201881Z",
+     "forceHide": true
+    },
+    {
+     "id": "101619",
+     "label": "Macron",
+     "slug": "macron",
+     "createdAt": "2025-01-03T19:28:40.482628Z",
+     "updatedAt": "2026-04-17T21:11:46.159817Z"
+    },
+    {
+     "id": "101588",
+     "label": "2025 Predictions",
+     "slug": "2025-predictions",
+     "forceShow": false,
+     "createdAt": "2024-12-30T20:11:13.144816Z",
+     "updatedAt": "2026-04-15T20:30:55.933838Z"
+    },
+    {
+     "id": "101970",
+     "label": "World",
+     "slug": "world",
+     "forceShow": false,
+     "createdAt": "2025-03-19T23:36:08.498099Z",
+     "updatedAt": "2026-04-17T17:18:59.135061Z"
+    },
+    {
+     "id": "100453",
+     "label": "resign",
+     "slug": "resign",
+     "createdAt": "2024-09-12T19:52:49.084783Z",
+     "updatedAt": "2026-04-17T20:43:53.73096Z"
+    },
+    {
+     "id": "100282",
+     "label": "French Election",
+     "slug": "french-election",
+     "forceShow": true,
+     "createdAt": "2024-06-24T15:42:35.370921Z",
+     "updatedAt": "2026-04-17T20:52:30.987573Z"
+    },
+    {
+     "id": "104091",
+     "label": "French Elections",
+     "slug": "french-elections",
+     "forceShow": false,
+     "createdAt": "2026-03-04T18:55:42.931764Z",
+     "updatedAt": "2026-04-17T20:48:24.189238Z",
+     "isCarousel": false
+    },
+    {
+     "id": "106387",
+     "label": "France Riots",
+     "slug": "france-riots",
+     "forceShow": false,
+     "createdAt": "2026-10-18T13:32:16.21877Z",
+     "updatedAt": "2026-10-18T13:35:19.043426Z",
+     "isCarousel": false
+    }
+   ],
+   "cyom": false,
+   "showAllOutcomes": true,
+   "showMarketImages": false,
+   "enableNegRisk": false,
+   "automaticallyActive": true,
+   "gmpChartMode": "default",
+   "negRiskAugmented": false,
+   "cumulativeMarkets": false,
+   "pendingDeployment": false,
+   "deploying": false,
+   "eventMetadata": {
+    "context_requires_regen": true
+   },
+   "version": "v1"
+  }
+ ],
+ "books": [
+  {
+   "market": "0x0f49db97f71c68b1e42a6d16e3de93d85dbf7d4148e3f018eb79e88554be9f75",
+   "asset_id": "54533043819946592547517511176940999955633860128497669742211153063842200957669",
+   "timestamp": "1792966458381",
+   "hash": "046ca8d802b59c9ea827c54456158d716bf7994b",
+   "bids": [
+    {
+     "price": "0.139",
+     "size": "30"
+    },
+    {
+     "price": "0.14",
+     "size": "60"
+    },
+    {
+     "price": "0.141",
+     "size": "500"
+    },
+    {
+     "price": "0.144",
+     "size": "1094.99"
+    },
+    {
+     "price": "0.146",
+     "size": "5"
+    },
+    {
+     "price": "0.147",
+     "size": "440"
+    },
+    {
+     "price": "0.148",
+     "size": "50"
+    },
+    {
+     "price": "0.15",
+     "size": "498.01"
+    },
+    {
+     "price": "0.153",
+     "size": "210.38"
+    },
+    {
+     "price": "0.154",
+     "size": "1197.72"
+    }
+   ],
+   "asks": [
+    {
+     "price": "0.17",
+     "size": "9894.26"
+    },
+    {
+     "price": "0.169",
+     "size": "3285"
+    },
+    {
+     "price": "0.167",
+     "size": "100"
+    },
+    {
+     "price": "0.166",
+     "size": "813.79"
+    },
+    {
+     "price": "0.165",
+     "size": "540"
+    },
+    {
+     "price": "0.162",
+     "size": "440"
+    },
+    {
+     "price": "0.159",
+     "size": "184.04"
+    },
+    {
+     "price": "0.158",
+     "size": "37"
+    },
+    {
+     "price": "0.156",
+     "size": "471.31"
+    },
+    {
+     "price": "0.155",
+     "size": "1018.72"
+    }
+   ],
+   "min_order_size": "5",
+   "tick_size": "0.001",
+   "neg_risk": true,
+   "last_trade_price": "0.154"
+  },
+  {
+   "market": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+   "asset_id": "32338220190071351435772801779725302244575775216413325951443816017994629993401",
+   "timestamp": "1792966450798",
+   "hash": "20188b21bb23c96b4da6e4eed3f28bc807018aa1",
+   "bids": [
+    {
+     "price": "0.024",
+     "size": "17540.61"
+    },
+    {
+     "price": "0.025",
+     "size": "76039.39"
+    },
+    {
+     "price": "0.026",
+     "size": "77158.48"
+    },
+    {
+     "price": "0.027",
+     "size": "40827"
+    },
+    {
+     "price": "0.028",
+     "size": "10746.01"
+    },
+    {
+     "price": "0.029",
+     "size": "2104.42"
+    },
+    {
+     "price": "0.03",
+     "size": "2079"
+    },
+    {
+     "price": "0.031",
+     "size": "562.99"
+    },
+    {
+     "price": "0.032",
+     "size": "1159.23"
+    },
+    {
+     "price": "0.033",
+     "size": "2715.35"
+    }
+   ],
+   "asks": [
+    {
+     "price": "0.043",
+     "size": "1647.25"
+    },
+    {
+     "price": "0.042",
+     "size": "16700"
+    },
+    {
+     "price": "0.041",
+     "size": "4517.1"
+    },
+    {
+     "price": "0.04",
+     "size": "4441.5"
+    },
+    {
+     "price": "0.039",
+     "size": "16164.09"
+    },
+    {
+     "price": "0.038",
+     "size": "8026.28"
+    },
+    {
+     "price": "0.037",
+     "size": "6620.59"
+    },
+    {
+     "price": "0.036",
+     "size": "4306.72"
+    },
+    {
+     "price": "0.035",
+     "size": "483.44"
+    },
+    {
+     "price": "0.034",
+     "size": "41"
+    }
+   ],
+   "min_order_size": "5",
+   "tick_size": "0.001",
+   "neg_risk": false,
+   "last_trade_price": "0.966"
+  }
+ ]
+}
